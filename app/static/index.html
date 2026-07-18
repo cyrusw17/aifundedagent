@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCPT Lab — Trading Strategy Tester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="brand-lockup">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <p class="brand-name">MCPT Lab</p>
+        <p class="brand-tag">Monte Carlo Permutation Tests</p>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <a href="#tester">Tester</a>
+      <a href="#method">Method</a>
+      <a href="https://github.com/neurotrader888/mcpt" target="_blank" rel="noopener">Source</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <h1 class="hero-brand">MCPT Lab</h1>
+        <p class="hero-line">Prove your edge isn’t just data-mining bias.</p>
+        <p class="hero-sub">
+          Run the four-step validation process from neurotrader’s permutation-test workflow:
+          optimize in-sample, stress with MCPT, walk forward, then permute the future path.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#tester">Open tester</a>
+          <a class="btn btn-ghost" href="#method">See the method</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <canvas id="hero-canvas" width="720" height="420"></canvas>
+      </div>
+    </section>
+
+    <section class="method" id="method">
+      <h2>Four steps. One null hypothesis.</h2>
+      <p class="section-sub">Your strategy is garbage until the permutations say otherwise.</p>
+      <ol class="steps">
+        <li>
+          <span class="step-num">01</span>
+          <h3>In-sample excellence</h3>
+          <p>Optimize parameters on training data. Study the equity curve before celebrating.</p>
+        </li>
+        <li>
+          <span class="step-num">02</span>
+          <h3>In-sample MCPT</h3>
+          <p>Re-optimize on shuffled OHLC paths. If noise matches real PF, it’s mining bias.</p>
+        </li>
+        <li>
+          <span class="step-num">03</span>
+          <h3>Walk-forward</h3>
+          <p>Re-fit on rolling windows and trade the unseen fold — how live trading works.</p>
+        </li>
+        <li>
+          <span class="step-num">04</span>
+          <h3>Walk-forward MCPT</h3>
+          <p>Permute after the first train fold. Ask: could luck alone print that OOS result?</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="tester" id="tester">
+      <div class="tester-head">
+        <h2>Strategy tester</h2>
+        <p class="section-sub">Configure a run, then watch the null hypothesis fight back.</p>
+      </div>
+
+      <form id="run-form" class="panel controls">
+        <div class="field">
+          <label for="strategy">Strategy</label>
+          <select id="strategy" name="strategy">
+            <option value="donchian">Donchian Breakout</option>
+            <option value="ma_crossover">MA Crossover</option>
+            <option value="tree">Decision Tree (overfit demo)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="source">Data source</label>
+          <select id="source" name="source">
+            <option value="synthetic">Synthetic (instant)</option>
+            <option value="yfinance">Yahoo Finance</option>
+            <option value="cache">Local cache</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="symbol">Symbol</label>
+          <input id="symbol" name="symbol" value="BTC-USD" />
+        </div>
+        <div class="field">
+          <label for="n_insample_perms">In-sample perms</label>
+          <input id="n_insample_perms" type="number" min="10" max="500" value="60" />
+        </div>
+        <div class="field">
+          <label for="n_walkforward_perms">Walk-forward perms</label>
+          <input id="n_walkforward_perms" type="number" min="10" max="200" value="30" />
+        </div>
+        <div class="field">
+          <label for="train_years">Train years</label>
+          <input id="train_years" type="number" min="1" max="6" value="3" />
+        </div>
+        <div class="field field-check">
+          <label>
+            <input id="run_walkforward" type="checkbox" checked />
+            Run walk-forward (Donchian)
+          </label>
+        </div>
+        <div class="field field-actions">
+          <button type="submit" class="btn btn-primary" id="run-btn">Run MCPT</button>
+          <p class="hint" id="status-line">Ready.</p>
+        </div>
+      </form>
+
+      <div id="results" class="results hidden">
+        <div class="verdict-banner" id="verdict"></div>
+
+        <div class="metric-row" id="metric-row"></div>
+
+        <div class="charts">
+          <article class="chart-panel">
+            <h3>In-sample equity</h3>
+            <canvas id="equity-chart" height="220"></canvas>
+          </article>
+          <article class="chart-panel">
+            <h3>In-sample MCPT distribution</h3>
+            <canvas id="hist-chart" height="220"></canvas>
+          </article>
+          <article class="chart-panel" id="wf-equity-panel">
+            <h3>Walk-forward equity (OOS)</h3>
+            <canvas id="wf-equity-chart" height="220"></canvas>
+          </article>
+          <article class="chart-panel" id="wf-hist-panel">
+            <h3>Walk-forward MCPT distribution</h3>
+            <canvas id="wf-hist-chart" height="220"></canvas>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <p>
+        Method inspired by
+        <a href="https://youtu.be/NLBXgSmRBgU" target="_blank" rel="noopener">neurotrader’s MCPT video</a>
+        and
+        <a href="https://github.com/neurotrader888/mcpt" target="_blank" rel="noopener">neurotrader888/mcpt</a>.
+        Not financial advice.
+      </p>
+    </footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
