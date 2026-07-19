@@ -41,6 +41,16 @@ def generate_signals(ohlc: pd.DataFrame, mode: str = "smc", **kwargs) -> tuple[p
         sig = _active_smc(ohlc, feats)
     elif mode == "donchian_smc":
         sig = _donchian_smc(ohlc, feats)
+    elif mode == "killzone_smc":
+        sig = _killzone_smc(ohlc, feats)
+    elif mode == "london_asia_sweep":
+        sig = _london_asia_sweep(ohlc, feats)
+    elif mode == "kz_fvg":
+        sig = _kz_fvg(ohlc, feats)
+    elif mode == "h1_sweep_bos":
+        sig = _h1_sweep_bos(ohlc, feats)
+    elif mode == "kz_active":
+        sig = _kz_active(ohlc, feats)
     else:
         sig = generate_smc_signals(ohlc, feats, min_confluence=2)
     return sig.astype(int), feats
@@ -235,6 +245,137 @@ def _asia_style_daily(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
         & (f["trend_dn"] == 1)
         & (f["in_premium"] == 1)
         & (f["good_day"] == 1)
+    )
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _session_masks(index: pd.DatetimeIndex) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """UTC session masks: Asia 00-06, London 07-10, NY 12-15."""
+    hours = pd.Series([ts.hour for ts in index], index=index)
+    asia = (hours >= 0) & (hours <= 6)
+    london = (hours >= 7) & (hours <= 10)
+    ny = (hours >= 12) & (hours <= 15)
+    return asia, london, ny
+
+
+def _killzone_smc(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """SMC sweep confluence restricted to London/NY killzones (H1)."""
+    _, london, ny = _session_masks(ohlc.index)
+    kz = london | ny
+    long_ok = (
+        kz
+        & (f["sweep_low"] == 1)
+        & (f["in_discount"] == 1)
+        & ((f["trend_up"] == 1) | (f["bias"] >= 0))
+        & (f["rsi"] < 50)
+        & ((f["bull_fvg"] == 1) | (f["displacement"] == 1) | (f["active_bull_fvg"] == 1))
+    )
+    short_ok = (
+        kz
+        & (f["sweep_high"] == 1)
+        & (f["in_premium"] == 1)
+        & ((f["trend_dn"] == 1) | (f["bias"] <= 0))
+        & (f["rsi"] > 50)
+        & ((f["bear_fvg"] == 1) | (f["displacement"] == 1) | (f["active_bear_fvg"] == 1))
+    )
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _london_asia_sweep(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Classic ICT: sweep Asia high/low during London, trade reversal/continuation.
+
+    Asia range uses prior completed Asia session only (causal).
+    """
+    asia, london, _ = _session_masks(ohlc.index)
+    daily_ah = ohlc["high"].where(asia).groupby(ohlc.index.floor("D")).max()
+    daily_al = ohlc["low"].where(asia).groupby(ohlc.index.floor("D")).min()
+    prev_ah = daily_ah.shift(1).reindex(ohlc.index.floor("D")).to_numpy()
+    prev_al = daily_al.shift(1).reindex(ohlc.index.floor("D")).to_numpy()
+    prev_ah = pd.Series(prev_ah, index=ohlc.index)
+    prev_al = pd.Series(prev_al, index=ohlc.index)
+
+    sweep_asia_low = london & (ohlc["low"] < prev_al) & (ohlc["close"] > prev_al)
+    sweep_asia_high = london & (ohlc["high"] > prev_ah) & (ohlc["close"] < prev_ah)
+
+    long_ok = sweep_asia_low & (f["trend_up"] == 1) & (f["rsi"] < 55)
+    short_ok = sweep_asia_high & (f["trend_dn"] == 1) & (f["rsi"] > 45)
+    # also allow displacement confirmation
+    long_ok = long_ok | (sweep_asia_low & (f["displacement"] == 1) & (f["in_discount"] == 1))
+    short_ok = short_ok | (sweep_asia_high & (f["displacement"] == 1) & (f["in_premium"] == 1))
+
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _kz_fvg(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Killzone + FVG/displacement with light trend filter (higher trade rate)."""
+    _, london, ny = _session_masks(ohlc.index)
+    kz = london | ny
+    long_ok = (
+        kz
+        & ((f["bull_fvg"] == 1) | (f["active_bull_fvg"] == 1) | (f["displacement"] == 1))
+        & (f["in_discount"] == 1)
+        & ((f["trend_up"] == 1) | (f["bias"] >= 0))
+        & (f["rsi"] < 58)
+    )
+    short_ok = (
+        kz
+        & ((f["bear_fvg"] == 1) | (f["active_bear_fvg"] == 1) | (f["displacement"] == 1))
+        & (f["in_premium"] == 1)
+        & ((f["trend_dn"] == 1) | (f["bias"] <= 0))
+        & (f["rsi"] > 42)
+    )
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _h1_sweep_bos(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """H1: liquidity sweep then BOS within a few bars (no weekday filter)."""
+    n = len(f)
+    sig = np.zeros(n, dtype=int)
+    sweep_low = f["sweep_low"].to_numpy()
+    sweep_high = f["sweep_high"].to_numpy()
+    bos_up = f["bos_up"].to_numpy()
+    bos_dn = f["bos_dn"].to_numpy()
+    discount = f["in_discount"].to_numpy()
+    premium = f["in_premium"].to_numpy()
+    pending = 0
+    age = 0
+    for i in range(n):
+        if pending != 0:
+            age += 1
+            if age > 8:
+                pending = 0
+            elif pending == 1 and bos_up[i] == 1:
+                sig[i] = 1
+                pending = 0
+            elif pending == -1 and bos_dn[i] == 1:
+                sig[i] = -1
+                pending = 0
+        if sweep_low[i] == 1 and discount[i] == 1:
+            pending, age = 1, 0
+        elif sweep_high[i] == 1 and premium[i] == 1:
+            pending, age = -1, 0
+    return pd.Series(sig, index=ohlc.index)
+
+
+def _kz_active(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Killzone-only active SMC: sweep or discount/premium BOS."""
+    _, london, ny = _session_masks(ohlc.index)
+    kz = london | ny
+    long_ok = (
+        kz
+        & ((f["sweep_low"] == 1) | ((f["bos_up"] == 1) & (f["in_discount"] == 1)))
+        & ((f["trend_up"] == 1) | (f["bias"] >= 0))
+        & (f["rsi"] < 60)
+    )
+    short_ok = (
+        kz
+        & ((f["sweep_high"] == 1) | ((f["bos_dn"] == 1) & (f["in_premium"] == 1)))
+        & ((f["trend_dn"] == 1) | (f["bias"] <= 0))
+        & (f["rsi"] > 40)
     )
     sig = pd.Series(0, index=ohlc.index, dtype=int)
     return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
