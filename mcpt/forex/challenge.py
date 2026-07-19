@@ -68,7 +68,8 @@ def simulate_challenge(
         for p, df in data.items()
     }
     funded_kwargs = dict(backtest_kwargs)
-    funded_kwargs["weekly_withdraw"] = True
+    # Honor caller setting; default True for The5ers-style funded withdrawals.
+    funded_kwargs.setdefault("weekly_withdraw", True)
     funded_kwargs["rules"] = rules
     funded_bt = run_backtest(funded_data, **funded_kwargs)
 

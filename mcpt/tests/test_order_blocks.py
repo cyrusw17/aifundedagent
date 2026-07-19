@@ -38,7 +38,14 @@ def test_order_block_columns_present() -> None:
 
 def test_confirmation_modes_emit_int_series() -> None:
     df = _synth(200)
-    for mode in ("ob_confirm", "sweep_wait_ob", "triple_confirm", "kz_ob_fvg"):
+    for mode in (
+        "ob_confirm",
+        "sweep_wait_ob",
+        "triple_confirm",
+        "kz_ob_fvg",
+        "sweep_bos_ob",
+        "sweep_bos_ob_kz",
+    ):
         sig, _ = generate_signals(df, mode=mode, swing_left=2, swing_right=2)
         assert len(sig) == len(df)
         assert set(np.unique(sig)).issubset({-1, 0, 1})
