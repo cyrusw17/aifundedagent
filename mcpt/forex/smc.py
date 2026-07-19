@@ -180,6 +180,67 @@ def build_smc_features(
     # On daily data, prefer Tue–Thu
     good_day = dow.isin([1, 2, 3])
 
+    # --- Order blocks (causal ICT-style) ---
+    # Bullish OB: last down-close candle before a bullish impulse (displacement or BOS up).
+    # Bearish OB: last up-close candle before a bearish impulse.
+    # Active until mitigated by close through the zone; touch = range overlaps OB.
+    o_arr = o.to_numpy(dtype=float)
+    h_arr = h.to_numpy(dtype=float)
+    l_arr = l.to_numpy(dtype=float)
+    c_arr = c.to_numpy(dtype=float)
+    disp_arr = displacement.fillna(False).to_numpy(dtype=bool)
+    bos_up_arr = bos_up.fillna(False).to_numpy(dtype=bool)
+    bos_dn_arr = bos_dn.fillna(False).to_numpy(dtype=bool)
+    n = len(df)
+    bull_ob_hi = np.full(n, np.nan)
+    bull_ob_lo = np.full(n, np.nan)
+    bear_ob_hi = np.full(n, np.nan)
+    bear_ob_lo = np.full(n, np.nan)
+    touch_bull_ob = np.zeros(n, dtype=bool)
+    touch_bear_ob = np.zeros(n, dtype=bool)
+    in_bull_ob = np.zeros(n, dtype=bool)
+    in_bear_ob = np.zeros(n, dtype=bool)
+    cur_b_hi = cur_b_lo = np.nan
+    cur_s_hi = cur_s_lo = np.nan
+    for i in range(n):
+        # mitigate first on this close
+        if not np.isnan(cur_b_lo) and c_arr[i] < cur_b_lo:
+            cur_b_hi = cur_b_lo = np.nan
+        if not np.isnan(cur_s_hi) and c_arr[i] > cur_s_hi:
+            cur_s_hi = cur_s_lo = np.nan
+        # form new OB from impulse at i (origin candle is prior opposite-body bar)
+        if disp_arr[i] or bos_up_arr[i]:
+            for j in range(i - 1, max(i - 8, -1), -1):
+                if c_arr[j] < o_arr[j]:  # down-close
+                    cur_b_hi, cur_b_lo = h_arr[j], l_arr[j]
+                    break
+        if disp_arr[i] or bos_dn_arr[i]:
+            for j in range(i - 1, max(i - 8, -1), -1):
+                if c_arr[j] > o_arr[j]:  # up-close
+                    cur_s_hi, cur_s_lo = h_arr[j], l_arr[j]
+                    break
+        bull_ob_hi[i], bull_ob_lo[i] = cur_b_hi, cur_b_lo
+        bear_ob_hi[i], bear_ob_lo[i] = cur_s_hi, cur_s_lo
+        if not np.isnan(cur_b_lo):
+            touch_bull_ob[i] = (l_arr[i] <= cur_b_hi) and (h_arr[i] >= cur_b_lo)
+            in_bull_ob[i] = (c_arr[i] <= cur_b_hi) and (c_arr[i] >= cur_b_lo)
+        if not np.isnan(cur_s_hi):
+            touch_bear_ob[i] = (l_arr[i] <= cur_s_hi) and (h_arr[i] >= cur_s_lo)
+            in_bear_ob[i] = (c_arr[i] <= cur_s_hi) and (c_arr[i] >= cur_s_lo)
+
+    # Active FVG zone touch (use carried active_* levels)
+    ab_top = active_bull_top.to_numpy(dtype=float)
+    ab_bot = active_bull_bot.to_numpy(dtype=float)
+    as_top = active_bear_top.to_numpy(dtype=float)
+    as_bot = active_bear_bot.to_numpy(dtype=float)
+    touch_bull_fvg = np.zeros(n, dtype=bool)
+    touch_bear_fvg = np.zeros(n, dtype=bool)
+    for i in range(n):
+        if not np.isnan(ab_bot[i]) and not np.isnan(ab_top[i]):
+            touch_bull_fvg[i] = (l_arr[i] <= ab_top[i]) and (h_arr[i] >= ab_bot[i])
+        if not np.isnan(as_bot[i]) and not np.isnan(as_top[i]):
+            touch_bear_fvg[i] = (l_arr[i] <= as_top[i]) and (h_arr[i] >= as_bot[i])
+
     out = pd.DataFrame(
         {
             "atr": atr,
@@ -205,6 +266,18 @@ def build_smc_features(
             "ema_fast": ema_fast,
             "ema_slow": ema_slow,
             "eq": eq,
+            "bull_ob_high": bull_ob_hi,
+            "bull_ob_low": bull_ob_lo,
+            "bear_ob_high": bear_ob_hi,
+            "bear_ob_low": bear_ob_lo,
+            "active_bull_ob": (~np.isnan(bull_ob_lo)).astype(int),
+            "active_bear_ob": (~np.isnan(bear_ob_hi)).astype(int),
+            "touch_bull_ob": touch_bull_ob.astype(int),
+            "touch_bear_ob": touch_bear_ob.astype(int),
+            "in_bull_ob": in_bull_ob.astype(int),
+            "in_bear_ob": in_bear_ob.astype(int),
+            "touch_bull_fvg": touch_bull_fvg.astype(int),
+            "touch_bear_fvg": touch_bear_fvg.astype(int),
         },
         index=df.index,
     )

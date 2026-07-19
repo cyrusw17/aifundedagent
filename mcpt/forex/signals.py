@@ -51,9 +51,30 @@ def generate_signals(ohlc: pd.DataFrame, mode: str = "smc", **kwargs) -> tuple[p
         sig = _h1_sweep_bos(ohlc, feats)
     elif mode == "kz_active":
         sig = _kz_active(ohlc, feats)
+    elif mode == "ob_confirm":
+        sig = _ob_confirm(ohlc, feats)
+    elif mode == "sweep_wait_ob":
+        sig = _sweep_wait_ob(ohlc, feats)
+    elif mode == "triple_confirm":
+        sig = _triple_confirm(ohlc, feats)
+    elif mode == "kz_ob_fvg":
+        sig = _kz_ob_fvg(ohlc, feats)
+    elif mode == "sweep_bos_ob":
+        sig = _sweep_bos_ob(ohlc, feats)
+    elif mode == "sweep_bos_ob_kz":
+        sig = _sweep_bos_ob(ohlc, feats, require_killzone=True)
     else:
         sig = generate_smc_signals(ohlc, feats, min_confluence=2)
     return sig.astype(int), feats
+
+
+def _recent_flag(flag: np.ndarray, lookback: int) -> np.ndarray:
+    """True if flag was set on any of the prior 1..lookback bars (not current)."""
+    out = np.zeros(len(flag), dtype=bool)
+    for k in range(1, lookback + 1):
+        out |= np.roll(flag, k)
+    out[: lookback + 1] = False
+    return out
 
 
 def _smc_strict(f: pd.DataFrame) -> pd.Series:
@@ -373,3 +394,160 @@ def _kz_active(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
     )
     sig = pd.Series(0, index=ohlc.index, dtype=int)
     return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _ob_confirm(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """See a liquidity sweep, then wait for order-block (or FVG) confluence to enter.
+
+    Setup (prior bars): sweep in discount/premium.
+    Trigger (now): touch active OB or FVG zone + impulse confirm (BOS or displacement)
+    + trend/bias alignment. Optional killzone preferred but not required.
+    """
+    sweep_long = ((f["sweep_low"] == 1) & (f["in_discount"] == 1)).to_numpy()
+    sweep_short = ((f["sweep_high"] == 1) & (f["in_premium"] == 1)).to_numpy()
+    recent_sweep_l = _recent_flag(sweep_long, 12)
+    recent_sweep_s = _recent_flag(sweep_short, 12)
+    zone_l = (f["touch_bull_ob"] == 1) | (f["touch_bull_fvg"] == 1) | (f["in_bull_ob"] == 1)
+    zone_s = (f["touch_bear_ob"] == 1) | (f["touch_bear_fvg"] == 1) | (f["in_bear_ob"] == 1)
+    impulse_l = (f["bos_up"] == 1) | (f["displacement"] == 1)
+    impulse_s = (f["bos_dn"] == 1) | (f["displacement"] == 1)
+    trend_l = (f["trend_up"] == 1) | (f["bias"] >= 0)
+    trend_s = (f["trend_dn"] == 1) | (f["bias"] <= 0)
+    long_ok = recent_sweep_l & zone_l.to_numpy() & impulse_l.to_numpy() & trend_l.to_numpy()
+    short_ok = recent_sweep_s & zone_s.to_numpy() & impulse_s.to_numpy() & trend_s.to_numpy()
+    # prefer killzone when both fire same bar
+    kz = (f["killzone"] == 1).to_numpy()
+    both = long_ok & short_ok
+    long_ok = long_ok & ~(both & ~kz & (f["rsi"] > 50).to_numpy())
+    short_ok = short_ok & ~long_ok
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
+    return pd.Series(sig, index=ohlc.index)
+
+
+def _sweep_wait_ob(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Strict confirmation: sweep setup, enter only on later OB touch in killzone."""
+    _, london, ny = _session_masks(ohlc.index)
+    kz = (london | ny).to_numpy()
+    sweep_long = ((f["sweep_low"] == 1) & (f["in_discount"] == 1)).to_numpy()
+    sweep_short = ((f["sweep_high"] == 1) & (f["in_premium"] == 1)).to_numpy()
+    recent_l = _recent_flag(sweep_long, 16)
+    recent_s = _recent_flag(sweep_short, 16)
+    long_ok = (
+        recent_l
+        & kz
+        & (f["touch_bull_ob"] == 1).to_numpy()
+        & ((f["trend_up"] == 1) | (f["bias"] > 0)).to_numpy()
+        & (f["rsi"] < 55).to_numpy()
+    )
+    short_ok = (
+        recent_s
+        & kz
+        & (f["touch_bear_ob"] == 1).to_numpy()
+        & ((f["trend_dn"] == 1) | (f["bias"] < 0)).to_numpy()
+        & (f["rsi"] > 45).to_numpy()
+        & ~long_ok
+    )
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
+    return pd.Series(sig, index=ohlc.index)
+
+
+def _triple_confirm(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Stack three confluences before entry: recent sweep + zone (OB/FVG) + BOS.
+
+    More selective — meant to raise win-rate so higher risk sizing stays alive.
+    """
+    sweep_long = ((f["sweep_low"] == 1) & (f["in_discount"] == 1)).to_numpy()
+    sweep_short = ((f["sweep_high"] == 1) & (f["in_premium"] == 1)).to_numpy()
+    recent_l = _recent_flag(sweep_long, 10)
+    recent_s = _recent_flag(sweep_short, 10)
+    zone_l = ((f["touch_bull_ob"] == 1) | (f["touch_bull_fvg"] == 1)).to_numpy()
+    zone_s = ((f["touch_bear_ob"] == 1) | (f["touch_bear_fvg"] == 1)).to_numpy()
+    long_ok = (
+        recent_l
+        & zone_l
+        & (f["bos_up"] == 1).to_numpy()
+        & ((f["trend_up"] == 1) | (f["bias"] >= 0)).to_numpy()
+        & ((f["killzone"] == 1) | (f["displacement"] == 1)).to_numpy()
+    )
+    short_ok = (
+        recent_s
+        & zone_s
+        & (f["bos_dn"] == 1).to_numpy()
+        & ((f["trend_dn"] == 1) | (f["bias"] <= 0)).to_numpy()
+        & ((f["killzone"] == 1) | (f["displacement"] == 1)).to_numpy()
+        & ~long_ok
+    )
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
+    return pd.Series(sig, index=ohlc.index)
+
+
+def _kz_ob_fvg(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Killzone entries at OB or FVG with sweep or BOS confluence (higher activity)."""
+    _, london, ny = _session_masks(ohlc.index)
+    kz = (london | ny).to_numpy()
+    sweep_l = _recent_flag((f["sweep_low"] == 1).to_numpy(), 6) | (f["sweep_low"] == 1).to_numpy()
+    sweep_s = _recent_flag((f["sweep_high"] == 1).to_numpy(), 6) | (f["sweep_high"] == 1).to_numpy()
+    long_ok = (
+        kz
+        & (f["in_discount"] == 1).to_numpy()
+        & ((f["touch_bull_ob"] == 1) | (f["touch_bull_fvg"] == 1) | (f["active_bull_fvg"] == 1)).to_numpy()
+        & (sweep_l | (f["bos_up"] == 1).to_numpy() | (f["displacement"] == 1).to_numpy())
+        & ((f["trend_up"] == 1) | (f["bias"] >= 0)).to_numpy()
+        & (f["rsi"] < 58).to_numpy()
+    )
+    short_ok = (
+        kz
+        & (f["in_premium"] == 1).to_numpy()
+        & ((f["touch_bear_ob"] == 1) | (f["touch_bear_fvg"] == 1) | (f["active_bear_fvg"] == 1)).to_numpy()
+        & (sweep_s | (f["bos_dn"] == 1).to_numpy() | (f["displacement"] == 1).to_numpy())
+        & ((f["trend_dn"] == 1) | (f["bias"] <= 0)).to_numpy()
+        & (f["rsi"] > 42).to_numpy()
+        & ~long_ok
+    )
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
+    return pd.Series(sig, index=ohlc.index)
+
+
+def _sweep_bos_ob(ohlc: pd.DataFrame, f: pd.DataFrame, require_killzone: bool = False) -> pd.Series:
+    """Sweep → wait for BOS, but only enter if OB/FVG confluence is present.
+
+    Same delayed-BOS idea as h1_sweep_bos, plus a zone confluence gate so we
+    skip naked structure breaks. Optional London/NY killzone filter.
+    """
+    sweep_long = ((f["sweep_low"] == 1) & (f["in_discount"] == 1)).to_numpy()
+    sweep_short = ((f["sweep_high"] == 1) & (f["in_premium"] == 1)).to_numpy()
+    recent_l = _recent_flag(sweep_long, 10)
+    recent_s = _recent_flag(sweep_short, 10)
+    zone_l = (
+        (f["touch_bull_ob"] == 1)
+        | (f["in_bull_ob"] == 1)
+        | (f["touch_bull_fvg"] == 1)
+        | (f["active_bull_fvg"] == 1)
+    ).to_numpy()
+    zone_s = (
+        (f["touch_bear_ob"] == 1)
+        | (f["in_bear_ob"] == 1)
+        | (f["touch_bear_fvg"] == 1)
+        | (f["active_bear_fvg"] == 1)
+    ).to_numpy()
+    long_ok = recent_l & (f["bos_up"] == 1).to_numpy() & zone_l
+    short_ok = recent_s & (f["bos_dn"] == 1).to_numpy() & zone_s & ~long_ok
+    if require_killzone:
+        kz = (f["killzone"] == 1).to_numpy()
+        long_ok &= kz
+        short_ok &= kz
+    # light trend alignment
+    long_ok &= ((f["trend_up"] == 1) | (f["bias"] >= 0)).to_numpy()
+    short_ok &= ((f["trend_dn"] == 1) | (f["bias"] <= 0)).to_numpy()
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
+    return pd.Series(sig, index=ohlc.index)
