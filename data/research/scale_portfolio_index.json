@@ -1,0 +1,1091 @@
+{
+  "strategy": "aggressive_ob_10k_winner",
+  "params": {
+    "signal_mode": "sweep_bos_ob",
+    "risk_pct": 0.0065,
+    "rr": 1.8,
+    "atr_stop_mult": 1.5,
+    "max_positions": 1,
+    "min_confluence": 2,
+    "swing_left": 3,
+    "swing_right": 3,
+    "require_killzone": false,
+    "weekly_withdraw": false,
+    "move_be_at_r": 0.0,
+    "skip_mondays": false,
+    "daily_halt_loss_pct": 0.025,
+    "daily_halt_profit_pct": 0.04,
+    "cooldown_losses": 2,
+    "one_entry_per_day": false
+  },
+  "pairs": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCHF",
+    "USDCAD"
+  ],
+  "eval_max_days": 90,
+  "windows": {
+    "yahoo_2024_2025": {
+      "summary": {
+        "accounts_started": 24,
+        "evals_passed": 6,
+        "eval_pass_rate": 0.25,
+        "eval_failed": 18,
+        "funded_blown": 0,
+        "funded_survived_to_end": 6,
+        "total_payouts_usd": 58125.79,
+        "avg_monthly_portfolio_payout_usd": 2421.91,
+        "median_monthly_portfolio_payout_usd": 0.0,
+        "peak_funded_active": 6,
+        "median_eval_days": 26.5,
+        "mean_eval_days": 30.333333333333332,
+        "notional_peak_usd": 600000.0,
+        "recommended_personal_buffer_usd": 12000.0,
+        "recommended_keep_per_account_above_initial_usd": 4000.0,
+        "note": "One new $100k eval on the 1st of each month. Funded books use weekly withdraw (min $250, cap $2000). Eval must hit +10% within 90 days without blowing. Challenge fees not deducted."
+      },
+      "monthly": [
+        {
+          "month": "2024-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 2,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 2,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-04",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 2,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-06",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 868.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 4,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-07",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 5,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 6,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-10",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 8,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 868.0,
+          "eval_failed_to_date": 9,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2024-12",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 3,
+          "payout_usd": 1545.07,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 9,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 10,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 11,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 12,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-04",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-06",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 2413.07,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-07",
+          "accounts_started": 1,
+          "evals_passed": 3,
+          "funded_active": 6,
+          "payout_usd": 12286.99,
+          "cumulative_payout_usd": 14700.06,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 24000.0,
+          "cumulative_payout_usd": 38700.06,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 19425.74,
+          "cumulative_payout_usd": 58125.8,
+          "eval_failed_to_date": 15,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-10",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 58125.8,
+          "eval_failed_to_date": 16,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 58125.8,
+          "eval_failed_to_date": 17,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2025-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 58125.8,
+          "eval_failed_to_date": 18,
+          "funded_blown_to_date": 0
+        }
+      ],
+      "path": "data/research/scale_portfolio_2024_2025.json"
+    },
+    "hist_2020_2022": {
+      "summary": {
+        "accounts_started": 27,
+        "evals_passed": 12,
+        "eval_pass_rate": 0.4444444444444444,
+        "eval_failed": 15,
+        "funded_blown": 8,
+        "funded_survived_to_end": 4,
+        "total_payouts_usd": 129401.02,
+        "avg_monthly_portfolio_payout_usd": 4792.63,
+        "median_monthly_portfolio_payout_usd": 621.93,
+        "peak_funded_active": 7,
+        "median_eval_days": 36.0,
+        "mean_eval_days": 42.916666666666664,
+        "notional_peak_usd": 700000.0,
+        "recommended_personal_buffer_usd": 14378.0,
+        "recommended_keep_per_account_above_initial_usd": 4000.0,
+        "note": "One new $100k eval on the 1st of each month. Funded books use weekly withdraw (min $250, cap $2000). Eval must hit +10% within 90 days without blowing. Challenge fees not deducted."
+      },
+      "monthly": [
+        {
+          "month": "2020-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2020-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2020-03",
+          "accounts_started": 1,
+          "evals_passed": 3,
+          "funded_active": 3,
+          "payout_usd": 11376.78,
+          "cumulative_payout_usd": 11376.78,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2020-04",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 16000.0,
+          "cumulative_payout_usd": 27376.78,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2020-05",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 27376.78,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2020-06",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 5,
+          "payout_usd": 21296.57,
+          "cumulative_payout_usd": 48673.35,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-07",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 3,
+          "payout_usd": 1853.96,
+          "cumulative_payout_usd": 50527.31,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 621.93,
+          "cumulative_payout_usd": 51149.24,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 3069.66,
+          "cumulative_payout_usd": 54218.9,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-10",
+          "accounts_started": 1,
+          "evals_passed": 3,
+          "funded_active": 6,
+          "payout_usd": 13181.8,
+          "cumulative_payout_usd": 67400.7,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 15327.38,
+          "cumulative_payout_usd": 82728.08,
+          "eval_failed_to_date": 2,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2020-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 22271.74,
+          "cumulative_payout_usd": 104999.82,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 104999.82,
+          "eval_failed_to_date": 4,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 104999.82,
+          "eval_failed_to_date": 4,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 6,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 104999.82,
+          "eval_failed_to_date": 5,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-04",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 7,
+          "payout_usd": 1985.91,
+          "cumulative_payout_usd": 106985.73,
+          "eval_failed_to_date": 6,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 7,
+          "payout_usd": 8706.96,
+          "cumulative_payout_usd": 115692.69,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-06",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 7,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 115692.69,
+          "eval_failed_to_date": 8,
+          "funded_blown_to_date": 3
+        },
+        {
+          "month": "2021-07",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 7,
+          "payout_usd": 8000.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 9,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2021-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 10,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2021-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 11,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2021-10",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 12,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2021-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 3,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 12,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2021-12",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 123692.69,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 7
+        },
+        {
+          "month": "2022-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 3708.33,
+          "cumulative_payout_usd": 127401.02,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 8
+        },
+        {
+          "month": "2022-02",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 4,
+          "payout_usd": 2000.0,
+          "cumulative_payout_usd": 129401.02,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 8
+        },
+        {
+          "month": "2022-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 129401.02,
+          "eval_failed_to_date": 15,
+          "funded_blown_to_date": 8
+        }
+      ],
+      "path": "data/research/scale_portfolio_2020_2022.json"
+    },
+    "hist_2016_2019": {
+      "summary": {
+        "accounts_started": 48,
+        "evals_passed": 19,
+        "eval_pass_rate": 0.3958333333333333,
+        "eval_failed": 29,
+        "funded_blown": 1,
+        "funded_survived_to_end": 18,
+        "total_payouts_usd": 93445.55,
+        "avg_monthly_portfolio_payout_usd": 1946.78,
+        "median_monthly_portfolio_payout_usd": 0.0,
+        "peak_funded_active": 19,
+        "median_eval_days": 50.0,
+        "mean_eval_days": 45.8421052631579,
+        "notional_peak_usd": 1900000.0,
+        "recommended_personal_buffer_usd": 38000.0,
+        "recommended_keep_per_account_above_initial_usd": 4000.0,
+        "note": "One new $100k eval on the 1st of each month. Funded books use weekly withdraw (min $250, cap $2000). Eval must hit +10% within 90 days without blowing. Challenge fees not deducted."
+      },
+      "monthly": [
+        {
+          "month": "2016-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 0,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 0,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-02",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 1,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 1,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 1,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 2,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-04",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 1,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 1,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-06",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 2,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 0.0,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-07",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 2,
+          "payout_usd": 2000.0,
+          "cumulative_payout_usd": 2000.0,
+          "eval_failed_to_date": 3,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-08",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 4,
+          "payout_usd": 14935.99,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 4,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 5,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-10",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 6,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2016-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 4,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 16935.99,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-02",
+          "accounts_started": 1,
+          "evals_passed": 3,
+          "funded_active": 7,
+          "payout_usd": 1914.35,
+          "cumulative_payout_usd": 18850.34,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 7,
+          "payout_usd": 9098.55,
+          "cumulative_payout_usd": 27948.89,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-04",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 7,
+          "payout_usd": 11910.41,
+          "cumulative_payout_usd": 39859.3,
+          "eval_failed_to_date": 7,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-05",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 9,
+          "payout_usd": 16573.13,
+          "cumulative_payout_usd": 56432.43,
+          "eval_failed_to_date": 8,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-06",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 9,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 56432.43,
+          "eval_failed_to_date": 9,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-07",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 9,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 56432.43,
+          "eval_failed_to_date": 10,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 9,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 56432.43,
+          "eval_failed_to_date": 10,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 9,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 56432.43,
+          "eval_failed_to_date": 10,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-10",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 11,
+          "payout_usd": 5207.45,
+          "cumulative_payout_usd": 61639.88,
+          "eval_failed_to_date": 11,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 11,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 61639.88,
+          "eval_failed_to_date": 12,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2017-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 11,
+          "payout_usd": 6854.25,
+          "cumulative_payout_usd": 68494.13,
+          "eval_failed_to_date": 13,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 11,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 68494.13,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 11,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 68494.13,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-03",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 12,
+          "payout_usd": 819.44,
+          "cumulative_payout_usd": 69313.57,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-04",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 14,
+          "payout_usd": 4885.03,
+          "cumulative_payout_usd": 74198.6,
+          "eval_failed_to_date": 14,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 14,
+          "payout_usd": 1590.89,
+          "cumulative_payout_usd": 75789.49,
+          "eval_failed_to_date": 15,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-06",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 14,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 75789.49,
+          "eval_failed_to_date": 15,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-07",
+          "accounts_started": 1,
+          "evals_passed": 2,
+          "funded_active": 16,
+          "payout_usd": 4000.0,
+          "cumulative_payout_usd": 79789.49,
+          "eval_failed_to_date": 15,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 2843.92,
+          "cumulative_payout_usd": 82633.41,
+          "eval_failed_to_date": 16,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 920.24,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 17,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-10",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 18,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 19,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2018-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 20,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-01",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 21,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-02",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 22,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-03",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 23,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-04",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 24,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-05",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 16,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 24,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-06",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 17,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 83553.65,
+          "eval_failed_to_date": 24,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-07",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 18,
+          "payout_usd": 8114.01,
+          "cumulative_payout_usd": 91667.66,
+          "eval_failed_to_date": 25,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-08",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 18,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 91667.66,
+          "eval_failed_to_date": 26,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-09",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 18,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 91667.66,
+          "eval_failed_to_date": 26,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-10",
+          "accounts_started": 1,
+          "evals_passed": 1,
+          "funded_active": 19,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 91667.66,
+          "eval_failed_to_date": 27,
+          "funded_blown_to_date": 0
+        },
+        {
+          "month": "2019-11",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 19,
+          "payout_usd": 1777.9,
+          "cumulative_payout_usd": 93445.56,
+          "eval_failed_to_date": 28,
+          "funded_blown_to_date": 1
+        },
+        {
+          "month": "2019-12",
+          "accounts_started": 1,
+          "evals_passed": 0,
+          "funded_active": 18,
+          "payout_usd": 0.0,
+          "cumulative_payout_usd": 93445.56,
+          "eval_failed_to_date": 29,
+          "funded_blown_to_date": 1
+        }
+      ],
+      "path": "data/research/scale_portfolio_2016_2019.json"
+    }
+  }
+}
