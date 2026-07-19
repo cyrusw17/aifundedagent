@@ -123,6 +123,7 @@ def run_backtest(
     daily_halt_loss_pct: float = 0.015,
     daily_halt_profit_pct: float = 0.025,
     cooldown_losses: int = 3,
+    one_entry_per_day: bool = True,
     _prepared: tuple | None = None,
 ) -> BacktestResult:
     rules = rules or FundedRules()
@@ -255,8 +256,11 @@ def run_backtest(
             daily_room = rules.daily_loss_limit - max(
                 0.0, account.day_start_equity - account.equity
             )
+            entries_today = 0
             for pair, sig in signals.items():
                 if len(open_trades) >= max_positions:
+                    break
+                if one_entry_per_day and entries_today >= 1:
                     break
                 ohlc = frames[pair]
                 if t not in ohlc.index:
@@ -301,6 +305,7 @@ def run_backtest(
                 )
                 room_to_floor -= risk_amt
                 daily_room -= risk_amt
+                entries_today += 1
 
         if cooldown_left > 0:
             cooldown_left -= 1

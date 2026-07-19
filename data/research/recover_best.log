@@ -1,0 +1,46 @@
+batch=500
+  100/500 hits=1 top=$4577
+  200/500 hits=1 top=$4577
+  300/500 hits=1 top=$4577
+  400/500 hits=1 top=$4577
+  500/500 hits=3 top=$5031
+hits=3
+screen $5031 tr=73 pf=1.95 smc_plus risk=0.0075 rr=3.0 mp=1
+screen $5031 tr=73 pf=1.95 smc_plus risk=0.0075 rr=3.0 mp=1
+screen $4577 tr=71 pf=1.67 smc risk=0.01 rr=2.5 mp=2
+p=0.010 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20 smc_plus risk=0.0075
+p=0.010 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20 smc_plus risk=0.0075
+p=0.010 full=$4480 oos=$1219 fund=$-615 eval=False pr=0.20 smc risk=0.01
+
+BEST
+{
+  "params": {
+    "signal_mode": "smc_plus",
+    "risk_pct": 0.0075,
+    "rr": 3.0,
+    "atr_stop_mult": 1.4,
+    "max_positions": 1,
+    "min_confluence": 2,
+    "swing_left": 3,
+    "swing_right": 3,
+    "require_killzone": false,
+    "weekly_withdraw": true,
+    "move_be_at_r": 0.0,
+    "skip_mondays": true,
+    "daily_halt_loss_pct": 0.02,
+    "daily_halt_profit_pct": 0.03,
+    "cooldown_losses": 2,
+    "one_entry_per_day": true
+  },
+  "mcpt_p": 0.01,
+  "mcpt_pass": true,
+  "full_ann": 5042.808621483488,
+  "oos_ann": 3234.1077163074738,
+  "fund_ann": 4432.073176520875,
+  "eval": true,
+  "survived": true,
+  "pr": 0.2,
+  "trades": 73,
+  "pf": 1.9625106962416539,
+  "blown": false
+}

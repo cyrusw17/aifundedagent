@@ -14,7 +14,7 @@ from typing import Any
 
 import pandas as pd
 
-from mcpt.forex.smc import build_smc_features, generate_smc_signals
+from mcpt.forex.signals import generate_signals
 
 
 @dataclass
@@ -55,13 +55,14 @@ class Signal:
 class LiveSMCEngine:
     """Stateful multi-pair engine for live/paper trading."""
 
-    risk_pct: float = 0.005
-    rr: float = 2.0
-    atr_stop_mult: float = 1.25
-    min_confluence: int = 3
+    risk_pct: float = 0.0075
+    rr: float = 3.0
+    atr_stop_mult: float = 1.4
+    min_confluence: int = 2
     require_killzone: bool = False
     swing_left: int = 3
     swing_right: int = 3
+    signal_mode: str = "smc_plus"
     history: dict[str, pd.DataFrame] = field(default_factory=dict)
     warmup_bars: int = 80
 
@@ -97,12 +98,11 @@ class LiveSMCEngine:
         if len(hist) < self.warmup_bars:
             return None
 
-        feats = build_smc_features(
-            hist, swing_left=self.swing_left, swing_right=self.swing_right
-        )
-        sig = generate_smc_signals(
+        sig, feats = generate_signals(
             hist,
-            feats,
+            mode=self.signal_mode,
+            swing_left=self.swing_left,
+            swing_right=self.swing_right,
             require_killzone=self.require_killzone,
             min_confluence=self.min_confluence,
         )
@@ -121,5 +121,5 @@ class LiveSMCEngine:
             stop_mult=self.atr_stop_mult,
             rr=self.rr,
             risk_pct=self.risk_pct,
-            confluence_note="smc_sweep_confluence",
+            confluence_note=f"{self.signal_mode}_confluence",
         )

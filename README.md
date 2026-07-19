@@ -27,6 +27,35 @@ PYTHONPATH=. python scripts/run_cli.py --strategy donchian --source synthetic \
   --insample-perms 40 --walkforward-perms 20 --train-years 2
 ```
 
+## Forex funded strategy (The5ers-style card)
+
+Rules modeled from the challenge checkout card:
+- $100k · 10% evaluation target · **$6k max loss** · **3% daily loss** · **50% consistency**
+- Funded: weekly withdraw of equity above $100k (min $250, cap $2,000)
+
+Locked research winner (`data/research/best_strategy.json`):
+
+| Field | Value |
+|-------|--------|
+| Pairs | EURUSD, USDJPY, USDCHF, AUDUSD |
+| Mode | `smc_plus` (ICT-style sweep/BOS confluence) |
+| Risk / RR | 0.75% · 3R · ATR stop 1.4 · 1 position · 1 entry/day |
+| MCPT | **p ≈ 0.007 (pass)** |
+| 2018–2023 | ~**$5.0k/yr** avg · PF ≈ 1.96 · not blown · consistency OK |
+| Challenge split | evaluation **passed** · funded survived · funded ~**$4.4k/yr** |
+
+```bash
+# Replay locked strategy
+PYTHONPATH=. python scripts/run_funded_strategy.py
+
+# Fast research hunters (optional)
+PYTHONPATH=. python scripts/research/lightning_hunt.py
+PYTHONPATH=. python scripts/research/recover_best.py
+```
+
+Live bridge stub: `mcpt.forex.strategy_funded.make_live_engine()` / `mcpt.forex.live.LiveSMCEngine`  
+(causal: signal on closed bar → enter next open). Concepts: `knowledge/smc_ict_concepts.md`.
+
 ## Strategies included
 
 | ID | Name | Notes |
@@ -34,6 +63,7 @@ PYTHONPATH=. python scripts/run_cli.py --strategy donchian --source synthetic \
 | `donchian` | Donchian breakout | Full 4-step pipeline including walk-forward MCPT |
 | `ma_crossover` | Moving-average crossover | In-sample optimize + MCPT |
 | `tree` | Decision tree | Intentionally overfit demo — usually fails in-sample MCPT |
+| `smc_plus` (forex) | ICT/SMC confluence | Locked funded candidate above |
 
 ## Data sources
 

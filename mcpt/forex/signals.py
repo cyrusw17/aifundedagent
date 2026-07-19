@@ -33,6 +33,14 @@ def generate_signals(ohlc: pd.DataFrame, mode: str = "smc", **kwargs) -> tuple[p
         sig = _combo(ohlc, feats)
     elif mode == "smc_plus":
         sig = _smc_plus(ohlc, feats)
+    elif mode == "weekly_smc":
+        sig = _weekly_smc(ohlc, feats)
+    elif mode == "asia_sweep":
+        sig = _asia_style_daily(ohlc, feats)
+    elif mode == "active_smc":
+        sig = _active_smc(ohlc, feats)
+    elif mode == "donchian_smc":
+        sig = _donchian_smc(ohlc, feats)
     else:
         sig = generate_smc_signals(ohlc, feats, min_confluence=2)
     return sig.astype(int), feats
@@ -91,24 +99,21 @@ def _sweep_then_bos(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
 
 
 def _trend_pullback(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
-    """EMA trend with RSI pullback in discount/premium — higher trade count."""
+    """EMA trend with RSI pullback — higher trade count (light filters)."""
     c = ohlc["close"]
     ema21 = f["ema_fast"]
-    # Pullback touch: low pierces ema while trend up, close back above
     long_ok = (
         (f["trend_up"] == 1)
         & (ohlc["low"] <= ema21)
         & (c > ema21)
-        & (f["rsi"] < 45)
-        & (f["in_discount"] == 1)
+        & (f["rsi"] < 48)
         & (f["good_day"] == 1)
     )
     short_ok = (
         (f["trend_dn"] == 1)
         & (ohlc["high"] >= ema21)
         & (c < ema21)
-        & (f["rsi"] > 55)
-        & (f["in_premium"] == 1)
+        & (f["rsi"] > 52)
         & (f["good_day"] == 1)
     )
     sig = pd.Series(0, index=f.index, dtype=int)
@@ -167,3 +172,69 @@ def _smc_plus(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
     sig = sig.mask((sig == 0) & long_add, 1)
     sig = sig.mask((sig == 0) & short_add, -1)
     return sig
+
+
+def _weekly_smc(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Daily SMC entries filtered by completed prior-week trend (causal)."""
+    weekly_close = ohlc["close"].resample("W-FRI").last()
+    w_ema = weekly_close.ewm(span=10, adjust=False).mean()
+    # Prior completed week bias only
+    w_bias = (weekly_close > w_ema).astype(int) - (weekly_close < w_ema).astype(int)
+    w_bias = w_bias.shift(1)  # use last completed week
+    daily_bias = w_bias.reindex(ohlc.index, method="ffill").fillna(0)
+
+    base = generate_smc_signals(ohlc, f, min_confluence=2)
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    long_ok = (base == 1) & (daily_bias >= 0) & (f["trend_up"] == 1)
+    short_ok = (base == -1) & (daily_bias <= 0) & (f["trend_dn"] == 1)
+    return sig.mask(long_ok, 1).mask(short_ok, -1)
+
+
+def _active_smc(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """High-frequency SMC: sweep OR BOS with light trend filter."""
+    long_ok = (
+        ((f["sweep_low"] == 1) | ((f["bos_up"] == 1) & (f["in_discount"] == 1)))
+        & (f["trend_up"] == 1)
+        & (f["rsi"] < 55)
+        & (f["good_day"] == 1)
+    )
+    short_ok = (
+        ((f["sweep_high"] == 1) | ((f["bos_dn"] == 1) & (f["in_premium"] == 1)))
+        & (f["trend_dn"] == 1)
+        & (f["rsi"] > 45)
+        & (f["good_day"] == 1)
+    )
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _donchian_smc(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """20-day breakout confirmed by trend + not extreme RSI."""
+    hh = ohlc["high"].rolling(20).max().shift(1)
+    ll = ohlc["low"].rolling(20).min().shift(1)
+    long_ok = (ohlc["close"] > hh) & (f["trend_up"] == 1) & (f["rsi"] < 70) & (f["good_day"] == 1)
+    short_ok = (ohlc["close"] < ll) & (f["trend_dn"] == 1) & (f["rsi"] > 30) & (f["good_day"] == 1)
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)
+
+
+def _asia_style_daily(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
+    """Proxy for Asia range sweep → continuation: prior 3-day range break with sweep."""
+    hh = ohlc["high"].rolling(3).max().shift(1)
+    ll = ohlc["low"].rolling(3).min().shift(1)
+    long_ok = (
+        (f["sweep_low"] == 1)
+        & (ohlc["close"] > hh)
+        & (f["trend_up"] == 1)
+        & (f["in_discount"] == 1)
+        & (f["good_day"] == 1)
+    )
+    short_ok = (
+        (f["sweep_high"] == 1)
+        & (ohlc["close"] < ll)
+        & (f["trend_dn"] == 1)
+        & (f["in_premium"] == 1)
+        & (f["good_day"] == 1)
+    )
+    sig = pd.Series(0, index=ohlc.index, dtype=int)
+    return sig.mask(long_ok, 1).mask(short_ok & ~long_ok, -1)

@@ -1,0 +1,105 @@
+Lightning workers=4
+
+=== Round 1 n=200 ===
+  top $4158 tr=85 pf=1.77 majors4|weekly_smc
+  validate majors4|weekly_smc $4158
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+
+=== Round 2 n=350 ===
+  240/350 hits=77 top=$4297
+  320/350 hits=129 top=$4297
+  top $4297 tr=84 pf=1.82 majors4|weekly_smc
+  validate majors4|weekly_smc $4297
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+
+=== Round 3 n=350 ===
+  160/350 hits=43 top=$3260
+  320/350 hits=108 top=$4044
+  top $3832 tr=71 pf=1.62 all7|smc_plus
+  validate core5|smc_plus $4044
+    p=0.008 full=$567 oos=$4218 fund=$4350 eval=True pr=0.13
+
+=== Round 4 n=350 ===
+  80/350 hits=13 top=$3560
+  320/350 hits=110 top=$5031
+  top $5031 tr=73 pf=1.95 majors4|smc
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|weekly_smc $4297
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+  validate majors4|weekly_smc $4158
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+  validate all7|smc_plus $4097
+    p=0.008 full=$3959 oos=$-366 fund=$-1528 eval=True pr=0.33
+  validate core5|smc_plus $4044
+    p=0.008 full=$567 oos=$4218 fund=$4350 eval=True pr=0.13
+  validate core5|smc_plus $4044
+    p=0.008 full=$567 oos=$4218 fund=$4350 eval=True pr=0.13
+
+=== Round 5 n=350 ===
+  160/350 hits=34 top=$3304
+  240/350 hits=65 top=$5031
+  320/350 hits=117 top=$5031
+  top $5031 tr=73 pf=1.95 majors4|smc
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|weekly_smc $4297
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+  validate core5|weekly_smc $4187
+    p=0.008 full=$4063 oos=$2718 fund=$3497 eval=True pr=0.07
+  validate majors4|weekly_smc $4158
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+  validate majors4|weekly_smc $4158
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+  validate majors4|weekly_smc $4158
+    p=0.008 full=$3913 oos=$2323 fund=$2283 eval=True pr=0.20
+
+=== Round 6 n=350 ===
+  top $5406 tr=74 pf=2.03 majors4|smc
+  validate majors4|smc $5406
+    p=0.008 full=$5415 oos=$3547 fund=$4432 eval=True pr=0.13
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+
+=== Round 7 n=350 ===
+  80/350 hits=26 top=$2931
+  160/350 hits=53 top=$2931
+  240/350 hits=79 top=$5406
+  top $5406 tr=74 pf=2.03 majors4|smc
+  validate majors4|smc $5406
+    p=0.008 full=$5415 oos=$3547 fund=$4432 eval=True pr=0.13
+  validate majors4|smc $5406
+    p=0.008 full=$5415 oos=$3547 fund=$4432 eval=True pr=0.13
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+  validate majors4|smc $5031
+    p=0.008 full=$5043 oos=$3234 fund=$4432 eval=True pr=0.20
+
+=== Round 8 n=350 ===
+  80/350 hits=18 top=$4014
+  top $5406 tr=74 pf=2.03 majors4|smc
+  validate majors4|smc $5406

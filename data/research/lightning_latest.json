@@ -7,7 +7,7 @@
     "AUDUSD"
   ],
   "params": {
-    "signal_mode": "smc_plus",
+    "signal_mode": "smc",
     "risk_pct": 0.0075,
     "rr": 3.0,
     "atr_stop_mult": 1.4,
@@ -19,12 +19,11 @@
     "weekly_withdraw": true,
     "move_be_at_r": 0.0,
     "skip_mondays": true,
-    "daily_halt_loss_pct": 0.02,
+    "daily_halt_loss_pct": 0.015,
     "daily_halt_profit_pct": 0.03,
-    "cooldown_losses": 2,
-    "one_entry_per_day": true
+    "cooldown_losses": 2
   },
-  "mcpt_p": 0.006666666666666667,
+  "mcpt_p": 0.008333333333333333,
   "mcpt_pass": true,
   "full_stats": {
     "n_trades": 73,

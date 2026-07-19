@@ -1,0 +1,36 @@
+full=$898 oos=$-2098 fund=$-1317 eval=False risk=0.0075 rr=2.5 dhalt=0.015 tr=41
+full=$898 oos=$-2098 fund=$-1317 eval=False risk=0.0075 rr=2.5 dhalt=0.02 tr=41
+full=$898 oos=$-2098 fund=$-1317 eval=False risk=0.0075 rr=2.5 dhalt=0.025 tr=41
+full=$5043 oos=$3234 fund=$4432 eval=True risk=0.0075 rr=3.0 dhalt=0.015 tr=73
+full=$5043 oos=$3234 fund=$4432 eval=True risk=0.0075 rr=3.0 dhalt=0.02 tr=73
+full=$5043 oos=$3234 fund=$4432 eval=True risk=0.0075 rr=3.0 dhalt=0.025 tr=73
+full=$453 oos=$-2302 fund=$1635 eval=False risk=0.0075 rr=3.5 dhalt=0.015 tr=38
+full=$453 oos=$-2302 fund=$1635 eval=False risk=0.0075 rr=3.5 dhalt=0.02 tr=38
+full=$453 oos=$-2302 fund=$1635 eval=False risk=0.0075 rr=3.5 dhalt=0.025 tr=38
+full=$1257 oos=$-2308 fund=$-1175 eval=False risk=0.009 rr=2.5 dhalt=0.015 tr=40
+full=$1257 oos=$-2308 fund=$-1175 eval=False risk=0.009 rr=2.5 dhalt=0.02 tr=40
+full=$1257 oos=$-2308 fund=$-1175 eval=False risk=0.009 rr=2.5 dhalt=0.025 tr=40
+full=$745 oos=$-2308 fund=$2398 eval=False risk=0.009 rr=3.5 dhalt=0.015 tr=23
+full=$745 oos=$-2308 fund=$2398 eval=False risk=0.009 rr=3.5 dhalt=0.02 tr=23
+full=$745 oos=$-2308 fund=$2398 eval=False risk=0.009 rr=3.5 dhalt=0.025 tr=23
+full=$925 oos=$-2320 fund=$2881 eval=False risk=0.01 rr=3.5 dhalt=0.015 tr=23
+full=$925 oos=$-2320 fund=$2881 eval=False risk=0.01 rr=3.5 dhalt=0.02 tr=23
+full=$925 oos=$-2320 fund=$2881 eval=False risk=0.01 rr=3.5 dhalt=0.025 tr=23
+full=$1242 oos=$-2302 fund=$3858 eval=False risk=0.012 rr=3.5 dhalt=0.015 tr=23
+full=$1242 oos=$-2302 fund=$3858 eval=False risk=0.012 rr=3.5 dhalt=0.02 tr=23
+full=$1242 oos=$-2302 fund=$3858 eval=False risk=0.012 rr=3.5 dhalt=0.025 tr=23
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.015 rr=3.5 dhalt=0.015 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.015 rr=3.5 dhalt=0.02 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.015 rr=3.5 dhalt=0.025 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.018 rr=3.5 dhalt=0.015 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.018 rr=3.5 dhalt=0.02 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.018 rr=3.5 dhalt=0.025 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.02 rr=3.5 dhalt=0.015 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.02 rr=3.5 dhalt=0.02 tr=22
+full=$1380 oos=$-2315 fund=$4394 eval=False risk=0.02 rr=3.5 dhalt=0.025 tr=22
+Traceback (most recent call last):
+  File "/workspace/scripts/research/scale_winner.py", line 155, in <module>
+    main()
+  File "/workspace/scripts/research/scale_winner.py", line 87, in main
+    rows.sort(reverse=True)
+TypeError: '<' not supported between instances of 'dict' and 'dict'
