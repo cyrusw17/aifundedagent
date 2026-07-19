@@ -298,18 +298,41 @@ def fast_backtest(
                 risk = min(equity * risk_pct, max(room * 0.45, 0.0), max(daily_room * 0.5, 0.0))
                 if risk < equity * 0.001:
                     continue
-                opens.append(
-                    {
-                        "pi": pi,
-                        "dir": direction,
-                        "entry": entry,
-                        "stop": stop,
-                        "target": target,
-                        "dist": dist,
-                        "risk": risk,
-                        "be": False,
-                    }
-                )
+                tr = {
+                    "pi": pi,
+                    "dir": direction,
+                    "entry": entry,
+                    "stop": stop,
+                    "target": target,
+                    "dist": dist,
+                    "risk": risk,
+                    "be": False,
+                }
+                # Same-bar realism after open fill (conservative: stop wins conflicts)
+                hi, lo = d["high"][bar_i], d["low"][bar_i]
+                hit_stop = (lo <= stop) if direction == 1 else (hi >= stop)
+                hit_tp = (hi >= target) if direction == 1 else (lo <= target)
+                if hit_stop or hit_tp:
+                    exit_px = stop if hit_stop else target
+                    r_mult = direction * (exit_px - entry) / dist
+                    pnl = r_mult * risk
+                    balance += pnl
+                    equity = balance
+                    pnls.append(pnl)
+                    daily_pnl[day] = daily_pnl.get(day, 0.0) + pnl
+                    if pnl < 0:
+                        consec_loss += 1
+                        if cooldown_losses and consec_loss >= cooldown_losses:
+                            cooldown = 2
+                            consec_loss = 0
+                    else:
+                        consec_loss = 0
+                    if equity <= floor:
+                        blown, blow_reason = True, "max_loss"
+                    if day_start - equity >= daily_lim:
+                        blown, blow_reason = True, "daily_loss"
+                else:
+                    opens.append(tr)
                 room -= risk
                 daily_room -= risk
                 entries_today += 1

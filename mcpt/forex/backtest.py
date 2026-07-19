@@ -291,21 +291,54 @@ def run_backtest(
                 if risk_amt <= 0:
                     continue
 
-                open_trades.append(
-                    Trade(
-                        pair=pair,
-                        direction=direction,
-                        entry_time=t,
-                        entry=entry,
-                        stop=stop,
-                        target=target,
-                        risk_amount=risk_amt,
-                        stop_dist=stop_dist,
-                    )
+                tr = Trade(
+                    pair=pair,
+                    direction=direction,
+                    entry_time=t,
+                    entry=entry,
+                    stop=stop,
+                    target=target,
+                    risk_amount=risk_amt,
+                    stop_dist=stop_dist,
                 )
+                # Same-bar realism: after fill at open, stop/target can hit on this bar's range.
+                # Conservative: if both hit, take stop. BE move not applied on entry bar.
+                bar = ohlc.loc[t]
+                if direction == 1:
+                    hit_stop = bar["low"] <= stop
+                    hit_tp = bar["high"] >= target
+                else:
+                    hit_stop = bar["high"] >= stop
+                    hit_tp = bar["low"] <= target
+                if hit_stop and hit_tp:
+                    exit_px, reason = stop, "stop_conflict"
+                elif hit_stop:
+                    exit_px, reason = stop, "stop"
+                elif hit_tp:
+                    exit_px, reason = target, "target"
+                else:
+                    open_trades.append(tr)
+                    room_to_floor -= risk_amt
+                    daily_room -= risk_amt
+                    entries_today += 1
+                    continue
+
+                pnl = _pnl_usd(direction, entry, exit_px, stop_dist, risk_amt)
+                tr.exit, tr.exit_time, tr.pnl, tr.reason = exit_px, t, pnl, reason
+                account.realize_pnl(pnl, day)
+                closed.append(tr)
                 room_to_floor -= risk_amt
                 daily_room -= risk_amt
                 entries_today += 1
+                if pnl < 0:
+                    consec_losses += 1
+                    if cooldown_losses and consec_losses >= cooldown_losses:
+                        cooldown_left = 2
+                        consec_losses = 0
+                else:
+                    consec_losses = 0
+                if account.blown:
+                    break
 
         if cooldown_left > 0:
             cooldown_left -= 1
