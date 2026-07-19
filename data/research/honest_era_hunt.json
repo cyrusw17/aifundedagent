@@ -1,0 +1,19 @@
+{
+  "protocol": {
+    "train": [
+      "2020-01-01",
+      "2022-03-04"
+    ],
+    "hold": [
+      "2016-01-01",
+      "2019-12-31"
+    ],
+    "n_perm": 40,
+    "grid_size": 40,
+    "screened": 0,
+    "note": "Fixed discrete grid; holdout never used for tuning; MCPT on train only after dual-era screen."
+  },
+  "accepted": null,
+  "top_mcpt": [],
+  "top_screened": []
+}

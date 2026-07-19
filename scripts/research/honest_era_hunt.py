@@ -40,23 +40,24 @@ PAIRSETS = {
     "majors6": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "USDCAD"],
 }
 
-# Fixed discrete grid — economically motivated, NOT a free search space
+# Fixed discrete grid — economically motivated, NOT a free search space.
+# Centered on modes that dual-era screened (killzone_smc / h1_sweep_bos).
 MODES = [
-    "kz_fvg",
     "killzone_smc",
-    "london_asia_sweep",
     "h1_sweep_bos",
+    "kz_fvg",
+    "london_asia_sweep",
     "kz_active",
     "smc_plus",
 ]
-RISKS = [0.005, 0.0075, 0.01]
-RRS = [2.0, 2.5, 3.0]
-ATRS = [0.7, 1.0, 1.25]
+RISKS = [0.005, 0.0075]
+RRS = [1.8, 2.0, 2.5]
+ATRS = [1.0, 1.25, 1.5]
 SKIP_MON = [True, False]
-DAILY_HALTS = [0.015, 0.02]
+DAILY_HALTS = [0.015, 0.02, 0.025]
 ONE_PER_DAY = [True, False]
 # Small fixed risk-management variants (not random)
-COOLDOWNS = [0, 2]
+COOLDOWNS = [0, 2, 3]
 MOVE_BE = [0.0]
 
 
