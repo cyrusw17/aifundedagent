@@ -1,0 +1,270 @@
+{
+  "window": [
+    "2024-01-01",
+    "2025-12-31"
+  ],
+  "data": "yahoo_h1_parquet",
+  "warmup": [
+    "2023-10-02",
+    "2024-01-01"
+  ],
+  "strategy": {
+    "name": "aggressive_ob_10k_winner",
+    "pairs": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "AUDUSD",
+      "USDCHF",
+      "USDCAD"
+    ],
+    "params": {
+      "signal_mode": "sweep_bos_ob",
+      "risk_pct": 0.0065,
+      "rr": 1.8,
+      "atr_stop_mult": 1.5,
+      "max_positions": 1,
+      "min_confluence": 2,
+      "swing_left": 3,
+      "swing_right": 3,
+      "require_killzone": false,
+      "weekly_withdraw": false,
+      "move_be_at_r": 0.0,
+      "skip_mondays": false,
+      "daily_halt_loss_pct": 0.025,
+      "daily_halt_profit_pct": 0.04,
+      "cooldown_losses": 2,
+      "one_entry_per_day": false
+    }
+  },
+  "summary": {
+    "total_payouts_usd": 3337.74,
+    "avg_monthly_payout_usd": 139.07,
+    "median_monthly_payout_usd": 0.0,
+    "months_with_payout": 1,
+    "months_total": 24,
+    "paying_months_avg_usd": 3337.74,
+    "compounding_final_balance": 94198.66,
+    "compounding_peak_equity": 105722.19,
+    "compounding_peak_time": "2024-01-23 16:00:00",
+    "days_to_plus_10pct": null,
+    "hit_eval_target": false,
+    "trading_froze_near_floor_around": "2024-02-14 07:00:00",
+    "n_trades_compounding": 58,
+    "n_trades_withdraw": 47
+  },
+  "monthly": [
+    {
+      "month": "2024-01",
+      "payout_usd": 3337.74,
+      "closed_pnl_usd": -2208.1,
+      "n_trades": 37
+    },
+    {
+      "month": "2024-02",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": -3593.24,
+      "n_trades": 21
+    },
+    {
+      "month": "2024-03",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-04",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-05",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-06",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-07",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-08",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-09",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-10",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-11",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2024-12",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-01",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-02",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-03",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-04",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-05",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-06",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-07",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-08",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-09",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-10",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-11",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    },
+    {
+      "month": "2025-12",
+      "payout_usd": 0.0,
+      "closed_pnl_usd": 0.0,
+      "n_trades": 0
+    }
+  ],
+  "withdrawals": [
+    {
+      "date": "2024-01-08",
+      "amount": 2000.0
+    },
+    {
+      "date": "2024-01-22",
+      "amount": 1337.74
+    }
+  ],
+  "funded_stats": {
+    "n_trades": 47,
+    "win_rate": 0.3191489361702128,
+    "profit_factor": 0.8555025038906218,
+    "total_pnl": -2474.759227021021,
+    "total_withdrawn": 3337.744436801644,
+    "net_wealth_gain": -2474.75922702103,
+    "avg_annual_pnl": -1238.2271337937414,
+    "max_dd": 9325.997415094782,
+    "blown": false,
+    "blow_reason": "",
+    "consistency_ratio": 0.22270204180466965,
+    "consistency_ok": true,
+    "years": 1.998631074606434,
+    "final_balance": 94187.49633617733,
+    "hit_eval_target": false
+  },
+  "compounding_stats": {
+    "n_trades": 58,
+    "win_rate": 0.29310344827586204,
+    "profit_factor": 0.7540032680909886,
+    "total_pnl": -5801.344544264785,
+    "total_withdrawn": 0.0,
+    "net_wealth_gain": -5801.344544264764,
+    "avg_annual_pnl": -2902.65903396261,
+    "max_dd": 11523.530842570224,
+    "blown": false,
+    "blow_reason": "",
+    "consistency_ratio": 0.20265199474455992,
+    "consistency_ok": true,
+    "years": 1.998631074606434,
+    "final_balance": 94198.65545573524,
+    "hit_eval_target": false
+  },
+  "buffer": {
+    "avg_monthly_payout": 139.07268486673516,
+    "median_monthly_payout": 0.0,
+    "p25_monthly_payout": 0.0,
+    "worst_month_payout": 0.0,
+    "avg_nonzero_month": 3337.744436801644,
+    "prop_max_loss": 6000.0,
+    "prop_weekly_cap": 2000.0,
+    "prop_weekly_min": 250.0,
+    "recommended_personal_cash_buffer_usd": 6700.0,
+    "recommended_keep_on_account_above_initial_usd": 4000.0,
+    "rationale": "Personal buffer \u2248 3\u00d7 average monthly payout (or 2\u00d7 avg paying month), stressed for zero-payout streaks. Account buffer keeps equity above initial so weekly drains do not sit on the $6k max-loss floor; also sized off ~half observed max drawdown, capped near $5k.",
+    "blown_in_test": false,
+    "max_dd_observed": 9325.997415094782,
+    "note_2024_2025": "On 2024-2025 Yahoo H1 the locked sweep_bos_ob edge did not hold: early profit + two weekly payouts in Jan 2024, then drawdown to the max-loss floor band (~$94k) froze new risk (room_to_floor too small). Most months show $0 payout. Treat this era as a failed OOS check for payout planning."
+  },
+  "prop_rules": {
+    "initial": 100000,
+    "weekly_cap": 2000,
+    "weekly_min": 250,
+    "max_loss": 6000,
+    "daily_loss": 3000
+  },
+  "note": "No retune on 2024-2025; locked params from hist dual-era research."
+}
