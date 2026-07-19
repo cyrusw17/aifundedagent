@@ -1,0 +1,32 @@
+{
+  "protocol": {
+    "train": ["2016-01-01", "2020-12-31"],
+    "hold": ["2021-01-01", "2023-12-31"],
+    "oos_report": ["2024-01-01", "2025-12-31"],
+    "data": "dukascopy_h1_2016_2023",
+    "note": "Fixed two-phase grid; holdout unused for tuning; MCPT on train; no look-ahead"
+  },
+  "winner": {
+    "signal_mode": "h1_sweep_bos",
+    "pairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+    "risk_pct": 0.005,
+    "rr": 1.8,
+    "atr_stop_mult": 1.25,
+    "mcpt_p": 0.005,
+    "mcpt_pass": true,
+    "train_fund_ann": 8232.07,
+    "hold_fund_ann": 10981.96,
+    "train_blown": false,
+    "hold_blown": false,
+    "roll_survival_train": 1.0,
+    "roll_survival_hold": 1.0,
+    "challenge_eval_passed": true,
+    "challenge_eval_days": 30,
+    "challenge_funded_survived": true,
+    "oos_2024_2025_blown": false,
+    "oos_2024_2025_fund_ann": -2496.64,
+    "oos_2024_2025_eval_hit": false,
+    "scale_biweekly_2024_2025_payouts": 9462.15,
+    "scale_funded_blown": 0
+  }
+}

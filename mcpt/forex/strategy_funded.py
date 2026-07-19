@@ -17,27 +17,27 @@ ROOT = Path(__file__).resolve().parents[2]
 BEST_PATH = ROOT / "data" / "research" / "best_strategy.json"
 DAILY_BACKUP = ROOT / "data" / "research" / "best_strategy_daily.json"
 
-# Fallback if research artifact missing (OB-confluence aggressive dual-era + MCPT winner)
+# Fallback if research artifact missing (survival MCPT winner on Dukascopy 2016–2023)
 DEFAULT_PARAMS: dict[str, Any] = {
-    "signal_mode": "sweep_bos_ob",
-    "risk_pct": 0.0065,
+    "signal_mode": "h1_sweep_bos",
+    "risk_pct": 0.005,
     "rr": 1.8,
-    "atr_stop_mult": 1.5,
+    "atr_stop_mult": 1.25,
     "max_positions": 1,
     "min_confluence": 2,
     "swing_left": 3,
     "swing_right": 3,
     "require_killzone": False,
-    "weekly_withdraw": False,
+    "weekly_withdraw": True,
     "move_be_at_r": 0.0,
     "skip_mondays": False,
-    "daily_halt_loss_pct": 0.025,
-    "daily_halt_profit_pct": 0.04,
+    "daily_halt_loss_pct": 0.02,
+    "daily_halt_profit_pct": 0.03,
     "cooldown_losses": 2,
-    "one_entry_per_day": False,
+    "one_entry_per_day": True,
 }
 
-DEFAULT_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "USDCAD"]
+DEFAULT_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
 
 
 def load_best() -> dict[str, Any]:
