@@ -1,0 +1,11 @@
+{
+  "hard": true,
+  "validated": 1,
+  "elapsed_s": 519.8452548980713,
+  "best_ann": 12938.902234503052,
+  "best_mcpt": 0.008333333333333333,
+  "best_pass": true,
+  "best_mode": "h1_sweep_bos",
+  "best_fund": 6890.400650282442,
+  "oos": 6890.400650282442
+}

@@ -37,23 +37,25 @@ Locked research winner (`data/research/best_strategy.json`):
 
 | Field | Value |
 |-------|--------|
-| Pairs | EURUSD, USDJPY, USDCHF, AUDUSD |
-| Mode | `smc_plus` (ICT-style sweep/BOS confluence) |
-| Risk / RR | 0.75% · 3R · ATR stop 1.4 · 1 position · 1 entry/day |
-| MCPT | **p ≈ 0.007 (pass)** |
-| 2018–2023 | ~**$5.0k/yr** avg · PF ≈ 1.96 · not blown · consistency OK |
-| Challenge split | evaluation **passed** · funded survived · funded ~**$4.4k/yr** |
+| Timeframe | **H1** (contiguous hist **2018-01 → 2022-03**; Yahoo gap after) |
+| Pairs | EURUSD, GBPUSD, USDJPY, AUDUSD, USDCHF |
+| Mode | `h1_sweep_bos` (liquidity sweep → BOS within 8 bars) |
+| Risk / RR | 0.65% · 2R · ATR×0.8 · max 2 positions · BE at 1R |
+| MCPT | **p ≈ 0.008 (pass)** |
+| Research window | ~**$12.9k/yr** · PF ≈ 1.28 · 667 trades · not blown · consistency OK |
+| OOS (after 2020-06) | ~**$6.9k/yr** · funded survived |
+| Daily MCPT backup | `data/research/best_strategy_daily.json` (~$5.0k/yr `smc_plus`) |
 
 ```bash
-# Replay locked strategy
+# Replay locked strategy (auto-selects H1 vs daily from artifact)
 PYTHONPATH=. python scripts/run_funded_strategy.py
 
-# Fast research hunters (optional)
-PYTHONPATH=. python scripts/research/lightning_hunt.py
-PYTHONPATH=. python scripts/research/recover_best.py
+# H1 research hunters
+PYTHONPATH=. python scripts/research/h1_lean_grid.py
+PYTHONPATH=. python scripts/research/h1_validate_hits.py
 ```
 
-Live bridge stub: `mcpt.forex.strategy_funded.make_live_engine()` / `mcpt.forex.live.LiveSMCEngine`  
+Live bridge: `mcpt.forex.strategy_funded.make_live_engine()` wires `LiveSMCEngine` + `FundedRiskGuard`  
 (causal: signal on closed bar → enter next open). Concepts: `knowledge/smc_ict_concepts.md`.
 
 ## Strategies included
@@ -63,7 +65,8 @@ Live bridge stub: `mcpt.forex.strategy_funded.make_live_engine()` / `mcpt.forex.
 | `donchian` | Donchian breakout | Full 4-step pipeline including walk-forward MCPT |
 | `ma_crossover` | Moving-average crossover | In-sample optimize + MCPT |
 | `tree` | Decision tree | Intentionally overfit demo — usually fails in-sample MCPT |
-| `smc_plus` (forex) | ICT/SMC confluence | Locked funded candidate above |
+| `h1_sweep_bos` (forex H1) | Sweep → BOS | Locked funded candidate above |
+| `smc_plus` (forex daily) | ICT/SMC confluence | Backup in `best_strategy_daily.json` |
 
 ## Data sources
 

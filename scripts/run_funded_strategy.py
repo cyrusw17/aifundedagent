@@ -41,7 +41,12 @@ def main() -> None:
     rules = FundedRules()
 
     bt = run_backtest(book, rules=rules, **params)
-    ch = simulate_challenge(book, rules=rules, **params)
+    # Align challenge windows to available data (H1 hist ends early 2022)
+    data_end = str(min(v.index.max() for v in book.values()).date())
+    eval_end = best.get("challenge_eval_end") or ("2020-06-30" if tf == "1h" else "2020-12-31")
+    ch = simulate_challenge(
+        book, eval_end=eval_end, funded_end=data_end, rules=rules, **params
+    )
     out = {
         "pairs": pairs,
         "timeframe": tf,
@@ -54,6 +59,8 @@ def main() -> None:
             "funded_survived": ch.funded_survived,
             "funded_annual_pnl": ch.funded_annual_pnl,
             "consistency_ok": ch.consistency_ok,
+            "eval_end": eval_end,
+            "funded_end": data_end,
         },
         "total_withdrawn": bt.account.total_withdrawn,
         "final_balance": bt.account.balance,

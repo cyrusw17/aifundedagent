@@ -174,7 +174,5 @@
     }
   },
   "pass_rate": null,
-  "data_end": "2022-03-04",
-  "challenge_eval_end": "2020-06-30",
-  "notes": "H1 hist contiguous 2018-01..2022-03. Yahoo H1 gap Mar2022-Oct2023. Full-period avg annual ~$12.9k under funded rules; MCPT p~0.008 on train<=2020-06. Eval target not hit on that fixed split (rolling eval pass_rate ~0.29). Recent yfinance H1 (2023-10+) much weaker (~$0.5k/yr) \u2014 treat as live caution."
+  "data_end": "2022-03-04"
 }

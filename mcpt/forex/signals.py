@@ -332,32 +332,26 @@ def _kz_fvg(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
 
 
 def _h1_sweep_bos(ohlc: pd.DataFrame, f: pd.DataFrame) -> pd.Series:
-    """H1: liquidity sweep then BOS within a few bars (no weekday filter)."""
-    n = len(f)
-    sig = np.zeros(n, dtype=int)
-    sweep_low = f["sweep_low"].to_numpy()
-    sweep_high = f["sweep_high"].to_numpy()
-    bos_up = f["bos_up"].to_numpy()
-    bos_dn = f["bos_dn"].to_numpy()
-    discount = f["in_discount"].to_numpy()
-    premium = f["in_premium"].to_numpy()
-    pending = 0
-    age = 0
-    for i in range(n):
-        if pending != 0:
-            age += 1
-            if age > 8:
-                pending = 0
-            elif pending == 1 and bos_up[i] == 1:
-                sig[i] = 1
-                pending = 0
-            elif pending == -1 and bos_dn[i] == 1:
-                sig[i] = -1
-                pending = 0
-        if sweep_low[i] == 1 and discount[i] == 1:
-            pending, age = 1, 0
-        elif sweep_high[i] == 1 and premium[i] == 1:
-            pending, age = -1, 0
+    """H1: liquidity sweep then BOS within a few bars (no weekday filter).
+
+    Vectorized approximation: BOS within 1..8 bars after a discount/premium sweep.
+    """
+    sweep_long = ((f["sweep_low"] == 1) & (f["in_discount"] == 1)).to_numpy()
+    sweep_short = ((f["sweep_high"] == 1) & (f["in_premium"] == 1)).to_numpy()
+    bos_up = (f["bos_up"] == 1).to_numpy()
+    bos_dn = (f["bos_dn"] == 1).to_numpy()
+    recent_long = np.zeros(len(f), dtype=bool)
+    recent_short = np.zeros(len(f), dtype=bool)
+    for k in range(1, 9):
+        recent_long |= np.roll(sweep_long, k)
+        recent_short |= np.roll(sweep_short, k)
+    recent_long[:9] = False
+    recent_short[:9] = False
+    long_ok = recent_long & bos_up
+    short_ok = recent_short & bos_dn & ~long_ok
+    sig = np.zeros(len(f), dtype=int)
+    sig[long_ok] = 1
+    sig[short_ok] = -1
     return pd.Series(sig, index=ohlc.index)
 
 

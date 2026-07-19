@@ -29,10 +29,10 @@ PAIRSETS = {
     "h1_all6": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF", "USDCAD"],
 }
 MODES = ["kz_fvg", "kz_active", "h1_sweep_bos", "active_smc", "london_asia_sweep", "killzone_smc"]
+SWING = 3
 
 
 def sample_params(rng: random.Random) -> dict:
-    swing = rng.choice([2, 3, 4])
     return dict(
         signal_mode=rng.choice(MODES),
         risk_pct=rng.choice([0.0065, 0.0075, 0.009, 0.01, 0.012, 0.015]),
@@ -40,8 +40,8 @@ def sample_params(rng: random.Random) -> dict:
         atr_stop_mult=rng.choice([0.8, 1.0, 1.2, 1.4]),
         max_positions=rng.choice([1, 2, 3]),
         min_confluence=2,
-        swing_left=swing,
-        swing_right=swing,
+        swing_left=SWING,
+        swing_right=SWING,
         require_killzone=False,
         weekly_withdraw=True,
         move_be_at_r=rng.choice([0.0, 1.0]),
@@ -56,7 +56,7 @@ def sample_params(rng: random.Random) -> dict:
 def main():
     t0 = time.time()
     rng = random.Random(42)
-    n_screen = 5000
+    n_screen = 4000
     books = {ps: load_h1(pairs) for ps, pairs in PAIRSETS.items()}
     for ps, b in books.items():
         print(f"loaded {ps}: {{{', '.join(f'{k}:{len(v)}' for k,v in b.items())}}}", flush=True)
@@ -64,9 +64,8 @@ def main():
     prep_cache = {}
     for ps, book in books.items():
         for mode in MODES:
-            for swing in (2, 3, 4):
-                print(f"prepare {ps}|{mode}|sw{swing}...", flush=True)
-                prep_cache[(ps, mode, swing)] = prepare_book(book, mode, swing, 2)
+            print(f"prepare {ps}|{mode}...", flush=True)
+            prep_cache[(ps, mode)] = prepare_book(book, mode, SWING, 2)
 
     hits = []
     for i in range(n_screen):
@@ -76,7 +75,7 @@ def main():
         if p["risk_pct"] >= 0.012 and p["max_positions"] >= 3 and not p["one_entry_per_day"]:
             p["one_entry_per_day"] = True
         st = fast_backtest(
-            prep_cache[(ps, p["signal_mode"], p["swing_left"])],
+            prep_cache[(ps, p["signal_mode"])],
             risk_pct=p["risk_pct"],
             rr=p["rr"],
             atr_stop_mult=p["atr_stop_mult"],
@@ -90,7 +89,7 @@ def main():
             one_entry_per_day=p["one_entry_per_day"],
         )
         s = st.as_dict()
-        if (i + 1) % 250 == 0:
+        if (i + 1) % 200 == 0:
             top = max((h[0] for h in hits), default=0)
             print(
                 f"  screened {i+1}/{n_screen} hits={len(hits)} top=${top:.0f} "
@@ -139,13 +138,8 @@ def main():
         cands.append(h)
         if len(cands) >= 20:
             break
-    # always try a few lower-threshold near-misses if few hits
+
     if len(cands) < 8:
-        near = []
-        for i in range(min(n_screen, 500)):
-            pass
-        # re-scan stored nothing; lower bar from existing mid hits by re-running quick top from all screened via second pass not available
-        # instead validate whatever we have plus force a few high-trade templates
         templates = [
             dict(
                 signal_mode="kz_fvg",
@@ -154,8 +148,8 @@ def main():
                 atr_stop_mult=1.0,
                 max_positions=2,
                 min_confluence=2,
-                swing_left=3,
-                swing_right=3,
+                swing_left=SWING,
+                swing_right=SWING,
                 require_killzone=False,
                 weekly_withdraw=True,
                 move_be_at_r=1.0,
@@ -172,8 +166,8 @@ def main():
                 atr_stop_mult=1.2,
                 max_positions=2,
                 min_confluence=2,
-                swing_left=3,
-                swing_right=3,
+                swing_left=SWING,
+                swing_right=SWING,
                 require_killzone=False,
                 weekly_withdraw=True,
                 move_be_at_r=1.0,
@@ -183,11 +177,29 @@ def main():
                 cooldown_losses=0,
                 one_entry_per_day=False,
             ),
+            dict(
+                signal_mode="kz_active",
+                risk_pct=0.015,
+                rr=2.0,
+                atr_stop_mult=1.0,
+                max_positions=1,
+                min_confluence=2,
+                swing_left=SWING,
+                swing_right=SWING,
+                require_killzone=False,
+                weekly_withdraw=True,
+                move_be_at_r=1.0,
+                skip_mondays=True,
+                daily_halt_loss_pct=0.02,
+                daily_halt_profit_pct=0.03,
+                cooldown_losses=2,
+                one_entry_per_day=True,
+            ),
         ]
         for ps, pairs in PAIRSETS.items():
             for p in templates:
                 st = fast_backtest(
-                    prep_cache[(ps, p["signal_mode"], p["swing_left"])],
+                    prep_cache[(ps, p["signal_mode"])],
                     risk_pct=p["risk_pct"],
                     rr=p["rr"],
                     atr_stop_mult=p["atr_stop_mult"],
@@ -201,6 +213,11 @@ def main():
                     one_entry_per_day=p["one_entry_per_day"],
                 )
                 s = st.as_dict()
+                print(
+                    f"template {ps}|{p['signal_mode']} ann=${s['avg_annual_pnl']:.0f} "
+                    f"tr={s['n_trades']} blown={s['blown']} cons={s['consistency_ok']}",
+                    flush=True,
+                )
                 if not s["blown"] and s["consistency_ok"] and s["n_trades"] >= 80:
                     cands.append((s["avg_annual_pnl"], ps, pairs, p, s))
         cands.sort(reverse=True)
