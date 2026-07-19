@@ -57,7 +57,32 @@ def prepare_pair(ohlc: pd.DataFrame, mode: str, swing: int, min_conf: int):
 
 
 def prepare_book(book: dict[str, pd.DataFrame], mode: str, swing: int = 3, min_conf: int = 3):
-    return {p: prepare_pair(df, mode, swing, min_conf) for p, df in book.items()}
+    prepared = {p: prepare_pair(df, mode, swing, min_conf) for p, df in book.items()}
+    # Cache shared timeline once — rebuilding it dominated H1 hunt runtime.
+    pairs = list(prepared.keys())
+    time_map: dict = {}
+    entry_times = set()
+    for pi, p in enumerate(pairs):
+        times = prepared[p]["times"]
+        sig = prepared[p]["sig"]
+        for bi, t in enumerate(times):
+            time_map.setdefault(t, []).append((pi, bi))
+            if bi > 0 and sig[bi - 1] != 0:
+                entry_times.add(t)
+    timeline = sorted(time_map.keys())
+    next_entry_from = {}
+    nxt = None
+    for t in reversed(timeline):
+        if t in entry_times:
+            nxt = t
+        next_entry_from[t] = nxt
+    prepared["__meta__"] = {
+        "pairs": pairs,
+        "time_map": time_map,
+        "timeline": timeline,
+        "next_entry_from": next_entry_from,
+    }
+    return prepared
 
 
 def fast_backtest(
@@ -76,14 +101,42 @@ def fast_backtest(
     rules: FundedRules | None = None,
 ) -> FastStats:
     rules = rules or FundedRules()
-    # Build unified timeline of (time, pair_idx)
-    pairs = list(prepared.keys())
-    # Map time -> list of (pair_i, bar_i)
-    time_map: dict = {}
-    for pi, p in enumerate(pairs):
-        for bi, t in enumerate(prepared[p]["times"]):
-            time_map.setdefault(t, []).append((pi, bi))
-    timeline = sorted(time_map.keys())
+    meta = prepared.get("__meta__")
+    if meta is None:
+        # backward compatible: rebuild timeline once for ad-hoc prepared dicts
+        tmp = {k: v for k, v in prepared.items() if k != "__meta__"}
+        pairs = list(tmp.keys())
+        time_map: dict = {}
+        entry_times = set()
+        for pi, p in enumerate(pairs):
+            times = tmp[p]["times"]
+            sig = tmp[p]["sig"]
+            for bi, t in enumerate(times):
+                time_map.setdefault(t, []).append((pi, bi))
+                if bi > 0 and sig[bi - 1] != 0:
+                    entry_times.add(t)
+        timeline = sorted(time_map.keys())
+        next_entry_from = {}
+        nxt = None
+        for t in reversed(timeline):
+            if t in entry_times:
+                nxt = t
+            next_entry_from[t] = nxt
+        prepared = dict(tmp)
+        prepared["__meta__"] = {
+            "pairs": pairs,
+            "time_map": time_map,
+            "timeline": timeline,
+            "next_entry_from": next_entry_from,
+        }
+        meta = prepared["__meta__"]
+
+    pairs = meta["pairs"]
+    time_map = meta["time_map"]
+    timeline = meta["timeline"]
+    next_entry_from = meta["next_entry_from"]
+    # pair data lookups must ignore meta key
+    prepared_pairs = {k: v for k, v in prepared.items() if k != "__meta__"}
 
     balance = rules.initial_balance
     equity = balance
@@ -104,8 +157,11 @@ def fast_backtest(
     consec_loss = 0
     cooldown = 0
     peak_eq = balance
+    ti = 0
+    n_tl = len(timeline)
 
-    for t in timeline:
+    while ti < n_tl:
+        t = timeline[ti]
         # numpy datetime64
         ts = pd.Timestamp(t)
         day = ts.date()
@@ -126,6 +182,7 @@ def fast_backtest(
 
         if blown:
             equity_series.append(equity)
+            ti += 1
             continue
 
         # manage opens
@@ -260,6 +317,42 @@ def fast_backtest(
         if cooldown > 0:
             cooldown -= 1
         equity_series.append(equity)
+
+        # skip idle bars while flat (no open risk / no pending entry)
+        if not opens and not blown and cooldown <= 0:
+            nxt = next_entry_from.get(t)
+            if nxt is not None and nxt != t:
+                lo_i, hi_i = ti + 1, n_tl - 1
+                target_i = None
+                while lo_i <= hi_i:
+                    mid = (lo_i + hi_i) // 2
+                    if timeline[mid] < nxt:
+                        lo_i = mid + 1
+                    elif timeline[mid] > nxt:
+                        hi_i = mid - 1
+                    else:
+                        target_i = mid
+                        break
+                if target_i is not None and target_i > ti:
+                    # apply weekly withdrawals for each ISO week crossed during jump
+                    if weekly_withdraw and current_week is not None:
+                        end_ts = pd.Timestamp(timeline[target_i])
+                        end_week = (end_ts.isocalendar().year, end_ts.isocalendar().week)
+                        # approximate week distance; apply at most one withdraw per crossed week
+                        y0, w0 = current_week
+                        y1, w1 = end_week
+                        weeks = max(0, (y1 - y0) * 52 + (w1 - w0))
+                        for _ in range(weeks):
+                            excess = balance - rules.initial_balance
+                            if excess >= rules.withdraw_min:
+                                amt = min(excess, rules.withdraw_cap)
+                                balance -= amt
+                                equity = balance
+                                total_withdrawn += amt
+                        current_week = end_week
+                    ti = target_i
+                    continue
+        ti += 1
 
     # flatten opens at end
     if opens and timeline:
