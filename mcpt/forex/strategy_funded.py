@@ -17,27 +17,27 @@ ROOT = Path(__file__).resolve().parents[2]
 BEST_PATH = ROOT / "data" / "research" / "best_strategy.json"
 DAILY_BACKUP = ROOT / "data" / "research" / "best_strategy_daily.json"
 
-# Fallback if research artifact missing (H1 sweep→BOS winner)
+# Fallback if research artifact missing (month-speed kz_fvg winner)
 DEFAULT_PARAMS: dict[str, Any] = {
-    "signal_mode": "h1_sweep_bos",
-    "risk_pct": 0.0065,
-    "rr": 2.0,
-    "atr_stop_mult": 0.8,
-    "max_positions": 2,
+    "signal_mode": "kz_fvg",
+    "risk_pct": 0.0075,
+    "rr": 3.0,
+    "atr_stop_mult": 0.7,
+    "max_positions": 1,
     "min_confluence": 2,
     "swing_left": 3,
     "swing_right": 3,
     "require_killzone": False,
     "weekly_withdraw": True,
-    "move_be_at_r": 1.0,
-    "skip_mondays": False,
+    "move_be_at_r": 0.0,
+    "skip_mondays": True,
     "daily_halt_loss_pct": 0.015,
     "daily_halt_profit_pct": 0.03,
-    "cooldown_losses": 3,
+    "cooldown_losses": 2,
     "one_entry_per_day": False,
 }
 
-DEFAULT_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF"]
+DEFAULT_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
 
 
 def load_best() -> dict[str, Any]:

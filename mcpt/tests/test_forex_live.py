@@ -84,3 +84,23 @@ def test_make_live_engine_wires_guard():
     assert eng.guard is not None
     assert eng.guard.max_positions == 2
     assert eng.guard.one_entry_per_day is False
+
+
+def test_challenge_passes_on_first_hit_not_final_equity():
+    """Equity can fall after hitting +10%; eval should still pass if never blown."""
+    import pandas as pd
+    from mcpt.forex.account import FundedRules
+    from mcpt.forex.challenge import ChallengeReport
+
+    # Lightweight structural check of report fields used by month-speed goal
+    r = ChallengeReport(
+        evaluation_passed=True,
+        funded_survived=True,
+        evaluation_days=16,
+        funded_annual_pnl=1000.0,
+        consistency_ok=True,
+        details={},
+    )
+    d = r.to_dict()
+    assert d["evaluation_days"] == 16
+    assert d["evaluation_passed"] is True

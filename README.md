@@ -33,26 +33,28 @@ Rules modeled from the challenge checkout card:
 - $100k · 10% evaluation target · **$6k max loss** · **3% daily loss** · **50% consistency**
 - Funded: weekly withdraw of equity above $100k (min $250, cap $2,000)
 
-Locked research winner (`data/research/best_strategy.json`):
+Locked research winner (`data/research/best_strategy.json`) — **month-speed challenge**:
 
 | Field | Value |
 |-------|--------|
-| Timeframe | **H1** (contiguous hist **2018-01 → 2022-03**; Yahoo gap after) |
-| Pairs | EURUSD, GBPUSD, USDJPY, AUDUSD, USDCHF |
-| Mode | `h1_sweep_bos` (liquidity sweep → BOS within 8 bars) |
-| Risk / RR | 0.65% · 2R · ATR×0.8 · max 2 positions · BE at 1R |
-| MCPT | **p ≈ 0.008 (pass)** |
-| Research window | ~**$12.9k/yr** · PF ≈ 1.28 · 667 trades · not blown · consistency OK |
-| OOS (after 2020-06) | ~**$6.9k/yr** · funded survived |
-| Daily MCPT backup | `data/research/best_strategy_daily.json` (~$5.0k/yr `smc_plus`) |
+| Goal | Hit The5ers-style **+10% eval within ~35 days**, then survive funded |
+| Timeframe | **H1** (contiguous hist **2018-01 → 2022-03**) |
+| Pairs | EURUSD, GBPUSD, USDJPY, AUDUSD |
+| Mode | `kz_fvg` (killzone FVG / displacement) |
+| Risk / RR | 0.75% · 3R · ATR×0.7 · 1 position |
+| Rolling month-pass | **~50%** of 35d windows · median **~16d** · p90 **~30d** · 0 blown windows |
+| Challenge split | eval **passed in 30d** · funded survived · funded ~**$18.7k/yr** |
+| Full window | ~**$4.1k/yr** · not blown · consistency OK |
+| MCPT | p ≈ 0.067 (borderline; does not clear 0.05) |
+| Backups | `best_strategy_daily.json` (daily `smc_plus`) · `best_strategy_h1_annual.json` (~$12.9k/yr `h1_sweep_bos`) |
 
 ```bash
 # Replay locked strategy (auto-selects H1 vs daily from artifact)
 PYTHONPATH=. python scripts/run_funded_strategy.py
 
-# H1 research hunters
-PYTHONPATH=. python scripts/research/h1_lean_grid.py
-PYTHONPATH=. python scripts/research/h1_validate_hits.py
+# Month-speed research
+PYTHONPATH=. python scripts/research/month_pass_hunt.py
+PYTHONPATH=. python scripts/research/validate_month_candidates.py
 ```
 
 Live bridge: `mcpt.forex.strategy_funded.make_live_engine()` wires `LiveSMCEngine` + `FundedRiskGuard`  
@@ -65,7 +67,8 @@ Live bridge: `mcpt.forex.strategy_funded.make_live_engine()` wires `LiveSMCEngin
 | `donchian` | Donchian breakout | Full 4-step pipeline including walk-forward MCPT |
 | `ma_crossover` | Moving-average crossover | In-sample optimize + MCPT |
 | `tree` | Decision tree | Intentionally overfit demo — usually fails in-sample MCPT |
-| `h1_sweep_bos` (forex H1) | Sweep → BOS | Locked funded candidate above |
+| `kz_fvg` (forex H1) | Killzone FVG | Locked month-speed challenge candidate |
+| `h1_sweep_bos` (forex H1) | Sweep → BOS | Annual-PnL backup (`best_strategy_h1_annual.json`) |
 | `smc_plus` (forex daily) | ICT/SMC confluence | Backup in `best_strategy_daily.json` |
 
 ## Data sources

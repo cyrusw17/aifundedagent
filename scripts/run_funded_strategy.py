@@ -82,9 +82,16 @@ def main() -> None:
         f"trades={bt.stats['n_trades']} blown={bt.stats['blown']} cons={bt.stats['consistency_ok']}"
     )
     print(
-        f"Challenge: eval={ch.evaluation_passed} funded_survived={ch.funded_survived} "
-        f"funded_ann=${ch.funded_annual_pnl:.0f}"
+        f"Challenge: eval={ch.evaluation_passed} days={ch.evaluation_days} "
+        f"funded_survived={ch.funded_survived} funded_ann=${ch.funded_annual_pnl:.0f}"
     )
+    mp = best.get("month_pass") or {}
+    if mp:
+        print(
+            f"Month-pass: rate={mp.get('pass_rate'):.2f} "
+            f"median_days={mp.get('median_days')} p90={mp.get('p90_days')} "
+            f"windows={mp.get('n_passed')}/{mp.get('n_windows')}"
+        )
     if "recent_h1_stats" in out:
         rs = out["recent_h1_stats"]
         print(

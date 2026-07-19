@@ -1,0 +1,14 @@
+{
+  "hard": true,
+  "validated": 1,
+  "elapsed_s": 418.71436834335327,
+  "month_rate": 0.45794392523364486,
+  "median_days": 14.0,
+  "eval_days": 6,
+  "eval": true,
+  "surv": true,
+  "ann": 4848.732948853272,
+  "mcpt": 0.1,
+  "mode": "kz_fvg",
+  "post90": 0.7346938775510204
+}

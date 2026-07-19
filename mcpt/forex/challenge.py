@@ -49,13 +49,7 @@ def simulate_challenge(
     eval_kwargs["rules"] = rules
     eval_bt = run_backtest(eval_data, **eval_kwargs)
 
-    eval_passed = (
-        not eval_bt.account.blown
-        and eval_bt.account.equity >= rules.evaluation_target
-        and eval_bt.account.consistency_ok()
-    )
-
-    # Find when target hit
+    # Prop-style: pass on first hit of +10% without blowing (not final equity).
     eq = eval_bt.equity_curve
     hit_idx = None
     for t, v in eq.items():
@@ -63,6 +57,11 @@ def simulate_challenge(
             hit_idx = t
             break
     evaluation_days = int((hit_idx - eq.index[0]).days) if hit_idx is not None and len(eq) else -1
+    eval_passed = (
+        hit_idx is not None
+        and not eval_bt.account.blown
+        and eval_bt.account.consistency_ok()
+    )
 
     funded_data = {
         p: df[(df.index > pd.Timestamp(eval_end)) & (df.index <= pd.Timestamp(funded_end))].copy()
