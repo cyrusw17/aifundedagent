@@ -1,5 +1,5 @@
 {
-  "name": "retail_timeless_1k",
+  "name": "retail_real_edge_1k",
   "account": {
     "initial_balance": 1000,
     "leverage": 50,
@@ -13,14 +13,14 @@
     "AUDUSD"
   ],
   "params": {
-    "signal_mode": "h1_sweep_bos",
+    "signal_mode": "sweep_bos_ob",
     "risk_pct": 0.005,
-    "rr": 1.1,
-    "atr_stop_mult": 2.25,
+    "rr": 1.5,
+    "atr_stop_mult": 1.25,
     "max_positions": 1,
     "min_confluence": 2,
-    "swing_left": 4,
-    "swing_right": 4,
+    "swing_left": 3,
+    "swing_right": 3,
     "require_killzone": false,
     "weekly_withdraw": false,
     "move_be_at_r": 0.0,
@@ -43,72 +43,81 @@
     "data_end"
   ],
   "train": {
-    "n_trades": 1791,
-    "win_rate": 0.5187046342825238,
-    "profit_factor": 1.1654005407541586,
-    "avg_annual_pnl": 146.08507942758018,
-    "net_wealth_gain": 1166.6808396721462,
+    "n_trades": 3305,
+    "win_rate": 0.43116490166414523,
+    "profit_factor": 1.1233832183505374,
+    "avg_annual_pnl": 297.70117333231576,
+    "net_wealth_gain": 2377.534079699836,
     "total_withdrawn": 0.0,
-    "max_dd": 168.61222219422643,
+    "max_dd": 527.5051129843291,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.007286032578997663,
+    "consistency_ratio": 0.005096720861682308,
     "hit_eval_target": true,
     "years": 7.98631074606434,
-    "final_balance": 2166.6808396721462,
-    "max_dd_pct": 0.08610001024735137
+    "final_balance": 3377.534079699836,
+    "max_dd_pct": 0.1654623844753434
   },
   "hold": {
-    "n_trades": 472,
-    "win_rate": 0.4915254237288136,
-    "profit_factor": 1.055492145059291,
-    "avg_annual_pnl": 34.48903594080846,
-    "net_wealth_gain": 68.93085896451794,
+    "n_trades": 875,
+    "win_rate": 0.41485714285714287,
+    "profit_factor": 1.0577440053673453,
+    "avg_annual_pnl": 76.20291290000559,
+    "net_wealth_gain": 152.30150969747865,
     "total_withdrawn": 0.0,
-    "max_dd": 114.94746720138926,
+    "max_dd": 147.67021224856228,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.022743101748171554,
+    "consistency_ratio": 0.029127769345891272,
     "hit_eval_target": false,
     "years": 1.998631074606434,
-    "final_balance": 1068.930858964518,
-    "max_dd_pct": 0.10437036197890827
+    "final_balance": 1152.3015096974787,
+    "max_dd_pct": 0.14046238314386794
   },
   "future_2026": {
-    "n_trades": 107,
-    "win_rate": 0.5046728971962616,
-    "profit_factor": 1.1164668836395002,
-    "avg_annual_pnl": 57.46119013161092,
-    "net_wealth_gain": 30.99207243238152,
+    "n_trades": 220,
+    "win_rate": 0.4318181818181818,
+    "profit_factor": 1.1295249926854716,
+    "avg_annual_pnl": 161.00519595776834,
+    "net_wealth_gain": 86.83921588961084,
     "total_withdrawn": 0.0,
-    "max_dd": 48.93752260241388,
+    "max_dd": 89.02594565821346,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.06590197666568401,
+    "consistency_ratio": 0.08852807234031194,
     "hit_eval_target": false,
     "years": 0.5393566050650239,
-    "final_balance": 1030.9920724323815,
-    "max_dd_pct": 0.04844046999758351
+    "final_balance": 1086.8392158896108,
+    "max_dd_pct": 0.0820457584719934
   },
-  "mcpt_p": 0.008,
-  "mcpt_p_full_2016_2025": 0.01,
+  "edge": {
+    "rr": 1.5,
+    "breakeven_wr": 0.4,
+    "expectancy_r_train": 0.07791225416036307,
+    "expectancy_r_hold": 0.037142857142857144,
+    "expectancy_r_future": 0.07954545454545459,
+    "wr_above_breakeven_train": 0.031164901664145206,
+    "wr_above_breakeven_hold": 0.014857142857142847,
+    "why_not_roulette": "Asymmetric 1.5:1 payoff. Breakeven WR is 40%; we run ~42% both eras. Not a 50/50 even-money bet. Risk $1 to make $1.50."
+  },
+  "mcpt_p": 0.013,
+  "mcpt_p_full_2016_2025": 0.017,
   "mcpt_pass": true,
-  "baseline_comparison": {
-    "prior_rr": 1.0,
-    "prior_wr_train_hold": [
-      0.54,
-      0.515
-    ],
-    "new_rr": 1.1,
-    "new_wr_train_hold": [
-      0.5187046342825238,
-      0.4915254237288136
-    ],
-    "wr_gap_sum": 0.04476994198866269,
-    "note": "Raised RR 1.0\u21921.1 while keeping WR near prior lock. rr=1.2 sweep_bos_ob failed MCPT (p=0.075). rr=1.25/1.3 passed MCPT but dropped hold WR to ~45\u201346%."
+  "rejects_coin_flip": true,
+  "how_to_trade": {
+    "account": "$1000, 50:1 leverage, stop trading if peak DD hits 20% ($ from peak or floor $800)",
+    "pairs": "EURUSD, GBPUSD, USDJPY, AUDUSD",
+    "timeframe": "1H",
+    "setup": "sweep_bos_ob \u2014 liquidity sweep + break of structure + order block",
+    "entry": "signal on closed H1 bar \u2192 enter next open",
+    "stop": "1.25 \u00d7 ATR",
+    "target": "1.5R (1.5 \u00d7 stop distance)",
+    "risk_per_trade": "0.5% of equity (~$5 on $1k)",
+    "filters": "skip Mondays, max 1 entry/day, cooldown after 2 losses, daily halt \u00b13%/5%",
+    "same_bar_conflict": "stop wins"
   },
   "protocol": {
     "train": [
@@ -120,37 +129,9 @@
       "2025-12-31"
     ],
     "future": "2026-01-01",
-    "note": "Higher-RR WR-preserving; HOLD unused for tuning; FUTURE never trained"
+    "note": "Asymmetric RR remake; HOLD unused for tuning; FUTURE never trained"
   },
   "no_curve_fitting": true,
   "no_lookahead": true,
-  "never_trained_on_2026": true,
-  "alternatives": [
-    {
-      "rr": 1.2,
-      "signal_mode": "sweep_bos_ob",
-      "mcpt_p": 0.075,
-      "train_wr": 0.482,
-      "hold_wr": 0.494,
-      "note": "failed train MCPT"
-    },
-    {
-      "rr": 1.25,
-      "signal_mode": "h1_sweep_bos",
-      "mcpt_p": 0.008,
-      "mcpt_p_full": 0.01,
-      "train_wr": 0.489,
-      "hold_wr": 0.463,
-      "note": "passed MCPT but hold WR further from baseline"
-    },
-    {
-      "rr": 1.3,
-      "signal_mode": "h1_sweep_bos",
-      "mcpt_p": 0.008,
-      "mcpt_p_full": 0.01,
-      "train_wr": 0.475,
-      "hold_wr": 0.451,
-      "note": "passed MCPT but larger WR gap"
-    }
-  ]
+  "never_trained_on_2026": true
 }

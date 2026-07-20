@@ -19,16 +19,16 @@ BEST_PATH = ROOT / "data" / "research" / "best_strategy.json"
 RETAIL_PATH = ROOT / "data" / "research" / "best_strategy_retail_1k.json"
 DAILY_BACKUP = ROOT / "data" / "research" / "best_strategy_daily.json"
 
-# Fallback if research artifact missing (retail timeless MCPT winner, higher-RR)
+# Fallback if research artifact missing (retail real-edge asymmetric RR)
 DEFAULT_PARAMS: dict[str, Any] = {
-    "signal_mode": "h1_sweep_bos",
+    "signal_mode": "sweep_bos_ob",
     "risk_pct": 0.005,
-    "rr": 1.1,
-    "atr_stop_mult": 2.25,
+    "rr": 1.5,
+    "atr_stop_mult": 1.25,
     "max_positions": 1,
     "min_confluence": 2,
-    "swing_left": 4,
-    "swing_right": 4,
+    "swing_left": 3,
+    "swing_right": 3,
     "require_killzone": False,
     "weekly_withdraw": False,
     "move_be_at_r": 0.0,
