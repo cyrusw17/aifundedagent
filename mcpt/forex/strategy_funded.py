@@ -1,7 +1,8 @@
-"""Locked funded-challenge strategy config + helpers for live trading.
+"""Locked strategy config + helpers for live trading.
 
 Default parameters come from MCPT-validated research
-(`data/research/best_strategy.json`). Signals are causal (bar close → next open).
+(`data/research/best_strategy.json`). Current lock: retail $1k / 50:1 / 20% DD.
+Signals are causal (bar close → next open).
 """
 
 from __future__ import annotations
@@ -10,29 +11,30 @@ import json
 from pathlib import Path
 from typing import Any
 
-from mcpt.forex.account import FundedRules
+from mcpt.forex.account import FundedRules, retail_rules
 from mcpt.forex.live import FundedRiskGuard, LiveSMCEngine, Signal
 
 ROOT = Path(__file__).resolve().parents[2]
 BEST_PATH = ROOT / "data" / "research" / "best_strategy.json"
+RETAIL_PATH = ROOT / "data" / "research" / "best_strategy_retail_1k.json"
 DAILY_BACKUP = ROOT / "data" / "research" / "best_strategy_daily.json"
 
-# Fallback if research artifact missing (survival MCPT winner on Dukascopy 2016–2023)
+# Fallback if research artifact missing (retail timeless MCPT winner)
 DEFAULT_PARAMS: dict[str, Any] = {
     "signal_mode": "h1_sweep_bos",
     "risk_pct": 0.005,
-    "rr": 1.8,
-    "atr_stop_mult": 1.25,
+    "rr": 1.0,
+    "atr_stop_mult": 1.75,
     "max_positions": 1,
     "min_confluence": 2,
-    "swing_left": 3,
-    "swing_right": 3,
+    "swing_left": 2,
+    "swing_right": 2,
     "require_killzone": False,
-    "weekly_withdraw": True,
+    "weekly_withdraw": False,
     "move_be_at_r": 0.0,
-    "skip_mondays": False,
-    "daily_halt_loss_pct": 0.02,
-    "daily_halt_profit_pct": 0.03,
+    "skip_mondays": True,
+    "daily_halt_loss_pct": 0.03,
+    "daily_halt_profit_pct": 0.05,
     "cooldown_losses": 2,
     "one_entry_per_day": True,
 }
@@ -43,6 +45,8 @@ DEFAULT_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
 def load_best() -> dict[str, Any]:
     if BEST_PATH.exists():
         return json.loads(BEST_PATH.read_text())
+    if RETAIL_PATH.exists():
+        return json.loads(RETAIL_PATH.read_text())
     if DAILY_BACKUP.exists():
         return json.loads(DAILY_BACKUP.read_text())
     return {
@@ -50,6 +54,7 @@ def load_best() -> dict[str, Any]:
         "pairs": DEFAULT_PAIRS,
         "params": DEFAULT_PARAMS,
         "mcpt_pass": None,
+        "account": {"initial_balance": 1000, "leverage": 50, "max_dd_pct": 0.20},
     }
 
 
@@ -86,6 +91,19 @@ def funded_rules() -> FundedRules:
     return FundedRules()
 
 
+def account_rules():
+    """Prefer retail $1k rules when the locked strategy is retail."""
+    best = load_best()
+    acct = best.get("account") or {}
+    if float(acct.get("initial_balance", 0)) <= 5000 or best.get("name") == "retail_timeless_1k":
+        return retail_rules(
+            initial_balance=float(acct.get("initial_balance", 1000)),
+            leverage=float(acct.get("leverage", 50)),
+            max_dd_pct=float(acct.get("max_dd_pct", 0.20)),
+        )
+    return FundedRules()
+
+
 def position_risk_usd(equity: float, params: dict[str, Any] | None = None) -> float:
     p = params or load_best().get("params", DEFAULT_PARAMS)
     return equity * float(p["risk_pct"])
@@ -94,9 +112,12 @@ def position_risk_usd(equity: float, params: dict[str, Any] | None = None) -> fl
 __all__ = [
     "DEFAULT_PARAMS",
     "DEFAULT_PAIRS",
+    "BEST_PATH",
+    "RETAIL_PATH",
     "load_best",
     "make_live_engine",
     "funded_rules",
+    "account_rules",
     "position_risk_usd",
     "Signal",
     "FundedRiskGuard",
