@@ -27,6 +27,7 @@ class FastStats:
     hit_eval_target: bool
     years: float
     final_balance: float
+    max_dd_pct: float = 0.0
 
     def as_dict(self) -> dict:
         d = self.__dict__.copy()
@@ -157,8 +158,20 @@ def fast_backtest(
     consec_loss = 0
     cooldown = 0
     peak_eq = balance
+    max_dd_pct_seen = 0.0
     ti = 0
     n_tl = len(timeline)
+    lev = float(getattr(rules, "leverage", 100) or 100)
+    dd_kill = getattr(rules, "max_dd_pct", None)
+
+    def _check_dd(eq_now: float) -> None:
+        nonlocal blown, blow_reason, peak_eq, max_dd_pct_seen
+        peak_eq = max(peak_eq, eq_now)
+        if peak_eq > 0:
+            max_dd_pct_seen = max(max_dd_pct_seen, (peak_eq - eq_now) / peak_eq)
+        if dd_kill is not None and peak_eq > 0:
+            if (peak_eq - eq_now) / peak_eq >= dd_kill - 1e-12:
+                blown, blow_reason = True, "max_dd"
 
     while ti < n_tl:
         t = timeline[ti]
@@ -239,6 +252,7 @@ def fast_backtest(
             day_loss = day_start - equity
             if day_loss >= daily_lim:
                 blown, blow_reason = True, "daily_loss"
+            _check_dd(equity)
         opens = still
 
         # mtm
@@ -255,11 +269,11 @@ def fast_backtest(
             px = prepared[p]["close"][bar_i]
             floating += tr["dir"] * (px - tr["entry"]) / tr["dist"] * tr["risk"]
         equity = balance + floating
-        peak_eq = max(peak_eq, equity)
         if equity <= floor:
             blown, blow_reason = True, "max_loss"
         if day_start - equity >= daily_lim:
             blown, blow_reason = True, "daily_loss"
+        _check_dd(equity)
 
         day_pnl_now = equity - day_start
         if day_pnl_now <= -rules.initial_balance * daily_halt_loss_pct:
@@ -296,6 +310,10 @@ def fast_backtest(
                 stop = entry - dist if direction == 1 else entry + dist
                 target = entry + rr * dist if direction == 1 else entry - rr * dist
                 risk = min(equity * risk_pct, max(room * 0.45, 0.0), max(daily_room * 0.5, 0.0))
+                # Leverage cap: notional ≈ risk * entry / dist <= equity * leverage
+                if entry > 0 and dist > 0 and lev > 0:
+                    max_risk_lev = equity * lev * dist / entry
+                    risk = min(risk, max_risk_lev)
                 if risk < equity * 0.001:
                     continue
                 tr = {
@@ -331,6 +349,7 @@ def fast_backtest(
                         blown, blow_reason = True, "max_loss"
                     if day_start - equity >= daily_lim:
                         blown, blow_reason = True, "daily_loss"
+                    _check_dd(equity)
                 else:
                     opens.append(tr)
                 room -= risk
@@ -403,6 +422,10 @@ def fast_backtest(
     eq = np.array(equity_series, dtype=float) if equity_series else np.array([balance])
     peak = np.maximum.accumulate(eq)
     max_dd = float((peak - eq).max()) if len(eq) else 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dd_pcts = np.where(peak > 0, (peak - eq) / peak, 0.0)
+    max_dd_pct = float(np.nanmax(dd_pcts)) if len(dd_pcts) else float(max_dd_pct_seen)
+    max_dd_pct = max(max_dd_pct, float(max_dd_pct_seen))
     pos = [v for v in daily_pnl.values() if v > 0]
     cons_ratio = (max(pos) / sum(pos)) if pos else 0.0
     hit = (float(eq.max()) >= rules.evaluation_target) and not blown
@@ -422,4 +445,5 @@ def fast_backtest(
         hit_eval_target=bool(hit),
         years=float(years),
         final_balance=float(balance),
+        max_dd_pct=max_dd_pct,
     )

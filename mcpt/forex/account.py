@@ -1,4 +1,4 @@
-"""Prop / funded account rules from The5ers challenge card."""
+"""Prop / funded account rules from The5ers challenge card + retail helper."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class FundedRules:
-    """Rules matching the challenge checkout card (100K)."""
+    """Rules matching the challenge checkout card (100K) — also usable for retail."""
 
     initial_balance: float = 100_000.0
     profit_target_pct: float = 0.10  # evaluation 10%
@@ -19,6 +19,8 @@ class FundedRules:
     withdraw_cap: float = 2_000.0  # per weekly withdraw
     # User operating rule: withdraw equity above initial at week end
     weekly_withdraw_above_initial: bool = True
+    # Optional peak-to-trough drawdown kill (e.g. 0.20 = 20%). None = disabled.
+    max_dd_pct: float | None = None
 
     @property
     def daily_loss_limit(self) -> float:
@@ -31,6 +33,29 @@ class FundedRules:
     @property
     def evaluation_target(self) -> float:
         return self.initial_balance * (1.0 + self.profit_target_pct)
+
+
+def retail_rules(
+    *,
+    initial_balance: float = 1_000.0,
+    leverage: int = 50,
+    max_dd_pct: float = 0.20,
+    daily_loss_pct: float = 0.10,
+) -> FundedRules:
+    """$1k-style retail book: 50:1 leverage, hard 20% DD floor from initial + peak DD kill."""
+    max_loss = initial_balance * max_dd_pct
+    return FundedRules(
+        initial_balance=initial_balance,
+        profit_target_pct=0.20,  # soft growth target for reporting only
+        max_loss=max_loss,
+        daily_loss_pct=daily_loss_pct,
+        consistency_pct=1.0,  # not a prop consistency gate
+        leverage=leverage,
+        withdraw_min=1e12,  # effectively disable weekly withdraw
+        withdraw_cap=0.0,
+        weekly_withdraw_above_initial=False,
+        max_dd_pct=max_dd_pct,
+    )
 
 
 @dataclass
@@ -76,6 +101,12 @@ class PropAccount:
             self.blown = True
             self.blow_reason = "max_loss"
             return
+        if self.rules.max_dd_pct is not None and self.peak_equity > 0:
+            dd = (self.peak_equity - self.equity) / self.peak_equity
+            if dd >= self.rules.max_dd_pct - 1e-12:
+                self.blown = True
+                self.blow_reason = "max_dd"
+                return
         day_loss = self.day_start_equity - self.equity
         if day_loss >= self.rules.daily_loss_limit:
             self.blown = True
