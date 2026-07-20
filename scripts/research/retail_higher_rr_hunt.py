@@ -120,11 +120,8 @@ def main() -> None:
         "h1_sweep_bos",
         "sweep_bos_ob",
         "sweep_bos_ob_kz",
-        "london_asia_sweep",
-        "kz_ob_fvg",
-        "triple_confirm",
     ]
-    swings = [(2, 2), (3, 2), (4, 2), (3, 3)]
+    swings = [(2, 2), (3, 2), (4, 2)]
     risks = [0.003, 0.004, 0.005]
     atrs = [1.5, 1.75, 2.0, 2.25]
     cools = [2, 3, 4]

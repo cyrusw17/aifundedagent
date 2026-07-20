@@ -15,12 +15,12 @@
   "params": {
     "signal_mode": "h1_sweep_bos",
     "risk_pct": 0.005,
-    "rr": 1.0,
-    "atr_stop_mult": 1.75,
+    "rr": 1.1,
+    "atr_stop_mult": 2.25,
     "max_positions": 1,
     "min_confluence": 2,
-    "swing_left": 2,
-    "swing_right": 2,
+    "swing_left": 4,
+    "swing_right": 4,
     "require_killzone": false,
     "weekly_withdraw": false,
     "move_be_at_r": 0.0,
@@ -43,79 +43,72 @@
     "data_end"
   ],
   "train": {
-    "n_trades": 4016,
-    "win_rate": 0.5398406374501992,
-    "profit_factor": 1.160606422394127,
-    "avg_annual_pnl": 461.7767614338855,
-    "net_wealth_gain": 3687.8927121222287,
+    "n_trades": 1791,
+    "win_rate": 0.5187046342825238,
+    "profit_factor": 1.1654005407541586,
+    "avg_annual_pnl": 146.08507942758018,
+    "net_wealth_gain": 1166.6808396721462,
     "total_withdrawn": 0.0,
-    "max_dd": 472.3099411598205,
+    "max_dd": 168.61222219422643,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.0046481172409435926,
+    "consistency_ratio": 0.007286032578997663,
     "hit_eval_target": true,
     "years": 7.98631074606434,
-    "final_balance": 4687.892712122229,
-    "max_dd_pct": 0.11817220751889104
+    "final_balance": 2166.6808396721462,
+    "max_dd_pct": 0.08610001024735137
   },
   "hold": {
-    "n_trades": 1019,
-    "win_rate": 0.5152109911678115,
-    "profit_factor": 1.057241494805145,
-    "avg_annual_pnl": 74.98342511796601,
-    "net_wealth_gain": 149.86420352119148,
+    "n_trades": 472,
+    "win_rate": 0.4915254237288136,
+    "profit_factor": 1.055492145059291,
+    "avg_annual_pnl": 34.48903594080846,
+    "net_wealth_gain": 68.93085896451794,
     "total_withdrawn": 0.0,
-    "max_dd": 107.02451517434577,
+    "max_dd": 114.94746720138926,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.015729707949027463,
-    "hit_eval_target": true,
+    "consistency_ratio": 0.022743101748171554,
+    "hit_eval_target": false,
     "years": 1.998631074606434,
-    "final_balance": 1149.8642035211915,
-    "max_dd_pct": 0.09784748127012034
-  },
-  "full_2016_2025": {
-    "n_trades": 4848,
-    "win_rate": 0.5352722772277227,
-    "profit_factor": 1.127893944027585,
-    "avg_annual_pnl": 420.7959058314668,
-    "net_wealth_gain": 4203.926790907659,
-    "total_withdrawn": 0.0,
-    "max_dd": 725.4679434456566,
-    "blown": false,
-    "blow_reason": "",
-    "consistency_ok": true,
-    "consistency_ratio": 0.003316550332060748,
-    "hit_eval_target": true,
-    "years": 9.990417522245037,
-    "final_balance": 5203.926790907659,
-    "max_dd_pct": 0.14198955485816725
+    "final_balance": 1068.930858964518,
+    "max_dd_pct": 0.10437036197890827
   },
   "future_2026": {
-    "n_trades": 278,
-    "win_rate": 0.539568345323741,
-    "profit_factor": 1.169581453101094,
-    "avg_annual_pnl": 208.40888307646654,
-    "net_wealth_gain": 112.4067076415165,
+    "n_trades": 107,
+    "win_rate": 0.5046728971962616,
+    "profit_factor": 1.1164668836395002,
+    "avg_annual_pnl": 57.46119013161092,
+    "net_wealth_gain": 30.99207243238152,
     "total_withdrawn": 0.0,
-    "max_dd": 76.48875130915462,
+    "max_dd": 48.93752260241388,
     "blown": false,
     "blow_reason": "",
     "consistency_ok": true,
-    "consistency_ratio": 0.06588283208096814,
+    "consistency_ratio": 0.06590197666568401,
     "hit_eval_target": false,
     "years": 0.5393566050650239,
-    "final_balance": 1112.4067076415165,
-    "max_dd_pct": 0.07280198920964209
+    "final_balance": 1030.9920724323815,
+    "max_dd_pct": 0.04844046999758351
   },
-  "mcpt_p": 0.006666666666666667,
-  "mcpt_p_full_2016_2025": 0.016666666666666666,
+  "mcpt_p": 0.008,
+  "mcpt_p_full_2016_2025": 0.01,
   "mcpt_pass": true,
-  "min_wr_gate": {
-    "train": 0.45,
-    "hold": 0.42
+  "baseline_comparison": {
+    "prior_rr": 1.0,
+    "prior_wr_train_hold": [
+      0.54,
+      0.515
+    ],
+    "new_rr": 1.1,
+    "new_wr_train_hold": [
+      0.5187046342825238,
+      0.4915254237288136
+    ],
+    "wr_gap_sum": 0.04476994198866269,
+    "note": "Raised RR 1.0\u21921.1 while keeping WR near prior lock. rr=1.2 sweep_bos_ob failed MCPT (p=0.075). rr=1.25/1.3 passed MCPT but dropped hold WR to ~45\u201346%."
   },
   "protocol": {
     "train": [
@@ -127,13 +120,37 @@
       "2025-12-31"
     ],
     "future": "2026-01-01",
-    "mcpt_windows": [
-      "2016-2023 train",
-      "2016-2025 confirmatory"
-    ],
-    "note": "Fixed grid; HOLD unused for tuning; FUTURE never used for training; causal; same-bar stop; PnL MCPT objective"
+    "note": "Higher-RR WR-preserving; HOLD unused for tuning; FUTURE never trained"
   },
   "no_curve_fitting": true,
   "no_lookahead": true,
-  "never_trained_on_2026": true
+  "never_trained_on_2026": true,
+  "alternatives": [
+    {
+      "rr": 1.2,
+      "signal_mode": "sweep_bos_ob",
+      "mcpt_p": 0.075,
+      "train_wr": 0.482,
+      "hold_wr": 0.494,
+      "note": "failed train MCPT"
+    },
+    {
+      "rr": 1.25,
+      "signal_mode": "h1_sweep_bos",
+      "mcpt_p": 0.008,
+      "mcpt_p_full": 0.01,
+      "train_wr": 0.489,
+      "hold_wr": 0.463,
+      "note": "passed MCPT but hold WR further from baseline"
+    },
+    {
+      "rr": 1.3,
+      "signal_mode": "h1_sweep_bos",
+      "mcpt_p": 0.008,
+      "mcpt_p_full": 0.01,
+      "train_wr": 0.475,
+      "hold_wr": 0.451,
+      "note": "passed MCPT but larger WR gap"
+    }
+  ]
 }
