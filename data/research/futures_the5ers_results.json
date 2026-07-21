@@ -1,0 +1,351 @@
+{
+  "accepted": 5,
+  "winner": {
+    "name": "futures_the5ers",
+    "market": "futures",
+    "account": {
+      "style": "the5ers_funded",
+      "initial_balance": 100000.0,
+      "max_loss": 6000.0,
+      "daily_loss_pct": 0.03,
+      "leverage": 100,
+      "weekly_withdraw": true
+    },
+    "timeframe": "1h",
+    "symbols": [
+      "ES",
+      "NQ",
+      "YM",
+      "CL",
+      "GC"
+    ],
+    "params": {
+      "signal_mode": "h1_sweep_bos",
+      "risk_pct": 0.0075,
+      "rr": 2.0,
+      "atr_stop_mult": 1.25,
+      "max_positions": 1,
+      "min_confluence": 2,
+      "swing_left": 2,
+      "swing_right": 2,
+      "require_killzone": false,
+      "weekly_withdraw": true,
+      "move_be_at_r": 0.0,
+      "skip_mondays": true,
+      "daily_halt_loss_pct": 0.03,
+      "daily_halt_profit_pct": 0.05,
+      "cooldown_losses": 2,
+      "one_entry_per_day": true
+    },
+    "train_era": [
+      "2024-03-01",
+      "2025-06-30"
+    ],
+    "hold_era": [
+      "2025-07-01",
+      "2025-12-31"
+    ],
+    "future_era": [
+      "2026-01-01",
+      "data_end"
+    ],
+    "train": {
+      "n_trades": 701,
+      "win_rate": 0.3751783166904422,
+      "profit_factor": 1.197792144745493,
+      "avg_annual_pnl": 60336.41259939155,
+      "net_wealth_gain": 80283.3580377941,
+      "total_withdrawn": 0.0,
+      "max_dd": 27072.754008471355,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.0246720315403615,
+      "hit_eval_target": true,
+      "years": 1.3305954825462012,
+      "final_balance": 180283.3580377941,
+      "max_dd_pct": 0.19322059290098986
+    },
+    "hold": {
+      "n_trades": 250,
+      "win_rate": 0.376,
+      "profit_factor": 1.1383896463969239,
+      "avg_annual_pnl": 36511.81711023189,
+      "net_wealth_gain": 18293.39502032152,
+      "total_withdrawn": 0.0,
+      "max_dd": 17251.561463129663,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.058229679831079885,
+      "hit_eval_target": true,
+      "years": 0.5010266940451745,
+      "final_balance": 118293.39502032152,
+      "max_dd_pct": 0.1304734493034208
+    },
+    "challenge": {
+      "evaluation_passed": true,
+      "funded_survived": true,
+      "evaluation_days": 19,
+      "funded_annual_pnl": 40942.51090149543,
+      "consistency_ok": true,
+      "details": {
+        "eval": {
+          "stats": {
+            "n_trades": 701,
+            "win_rate": 0.3723252496433666,
+            "profit_factor": 1.1988048318364972,
+            "total_pnl": 78624.01334297557,
+            "total_withdrawn": 0.0,
+            "net_wealth_gain": 78624.01334297555,
+            "avg_annual_pnl": 59089.34336115601,
+            "max_dd": 26618.098478271,
+            "blown": false,
+            "blow_reason": "",
+            "consistency_ratio": 0.025255720112973192,
+            "consistency_ok": true,
+            "years": 1.3305954825462012,
+            "final_balance": 178624.01334297555,
+            "hit_eval_target": true
+          },
+          "n_trades": 701,
+          "total_withdrawn": 0.0,
+          "final_balance": 178624.01334297555,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ok": true
+        },
+        "eval_stats": {
+          "n_trades": 701,
+          "win_rate": 0.3723252496433666,
+          "profit_factor": 1.1988048318364972,
+          "total_pnl": 78624.01334297557,
+          "total_withdrawn": 0.0,
+          "net_wealth_gain": 78624.01334297555,
+          "avg_annual_pnl": 59089.34336115601,
+          "max_dd": 26618.098478271,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ratio": 0.025255720112973192,
+          "consistency_ok": true,
+          "years": 1.3305954825462012,
+          "final_balance": 178624.01334297555,
+          "hit_eval_target": true
+        },
+        "funded": {
+          "stats": {
+            "n_trades": 187,
+            "win_rate": 0.3850267379679144,
+            "profit_factor": 1.2444468764444747,
+            "total_pnl": 20513.290882884812,
+            "total_withdrawn": 26316.829415972927,
+            "net_wealth_gain": 20513.290882884772,
+            "avg_annual_pnl": 40942.51090149543,
+            "max_dd": 24365.221038083488,
+            "blown": false,
+            "blow_reason": "",
+            "consistency_ratio": 0.07637533062415973,
+            "consistency_ok": true,
+            "years": 0.5010266940451745,
+            "final_balance": 94196.46146691185,
+            "hit_eval_target": true
+          },
+          "n_trades": 187,
+          "total_withdrawn": 26316.829415972927,
+          "final_balance": 94196.46146691185,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ok": true
+        },
+        "funded_stats": {
+          "n_trades": 187,
+          "win_rate": 0.3850267379679144,
+          "profit_factor": 1.2444468764444747,
+          "total_pnl": 20513.290882884812,
+          "total_withdrawn": 26316.829415972927,
+          "net_wealth_gain": 20513.290882884772,
+          "avg_annual_pnl": 40942.51090149543,
+          "max_dd": 24365.221038083488,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ratio": 0.07637533062415973,
+          "consistency_ok": true,
+          "years": 0.5010266940451745,
+          "final_balance": 94196.46146691185,
+          "hit_eval_target": true
+        }
+      }
+    },
+    "future_2026": {
+      "n_trades": 245,
+      "win_rate": 0.363265306122449,
+      "profit_factor": 1.1664767350342484,
+      "avg_annual_pnl": 33687.61430529897,
+      "net_wealth_gain": 18354.10060713072,
+      "total_withdrawn": 24179.4053766758,
+      "max_dd": 17303.75396317907,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.07102530786711951,
+      "hit_eval_target": true,
+      "years": 0.5448323066392882,
+      "final_balance": 94174.69523045492,
+      "max_dd_pct": 0.15570939157681393
+    },
+    "mcpt_p": 0.0125,
+    "mcpt_pass": true,
+    "edge": {
+      "rr": 2.0,
+      "breakeven_wr": 0.3333333333333333,
+      "expectancy_r_train": 0.12553495007132665,
+      "expectancy_r_hold": 0.128
+    },
+    "selection": "h1_sweep_bos_index_comm_r75_rr2.0",
+    "iteration": 2,
+    "selection_notes": "Re-ranked iteration-2 survivors requiring: MCPT p<=0.05, challenge eval+funded survive, 2026+ future not blown with positive ann PnL and >=40 trades. Prefer lower p then expectancy.",
+    "quality_survivors": [
+      {
+        "selection": "h1_sweep_bos_index_comm_r75_rr2.0",
+        "mcpt_p": 0.0125,
+        "future_ann": 33687.61430529897,
+        "funded_ann": 40942.51090149543,
+        "symbols": [
+          "ES",
+          "NQ",
+          "YM",
+          "CL",
+          "GC"
+        ]
+      },
+      {
+        "selection": "sweep_bos_ob_index4_r100_rr2.5",
+        "mcpt_p": 0.0125,
+        "future_ann": 29635.416805592344,
+        "funded_ann": 18248.19263732864,
+        "symbols": [
+          "ES",
+          "NQ",
+          "YM",
+          "RTY"
+        ]
+      },
+      {
+        "selection": "sweep_bos_ob_index4_r50_rr2.5",
+        "mcpt_p": 0.025,
+        "future_ann": 19359.483832029386,
+        "funded_ann": 25248.403765605177,
+        "symbols": [
+          "ES",
+          "NQ",
+          "YM",
+          "RTY"
+        ]
+      },
+      {
+        "selection": "sweep_bos_ob_index4_r75_rr2.0",
+        "mcpt_p": 0.0375,
+        "future_ann": 35741.74691196413,
+        "funded_ann": 14141.980034597802,
+        "symbols": [
+          "ES",
+          "NQ",
+          "YM",
+          "RTY"
+        ]
+      },
+      {
+        "selection": "sweep_bos_ob_index4_r100_rr2.0",
+        "mcpt_p": 0.04375,
+        "future_ann": 13504.476658102523,
+        "funded_ann": 20320.758019465065,
+        "symbols": [
+          "ES",
+          "NQ",
+          "YM",
+          "RTY"
+        ]
+      }
+    ],
+    "protocol": {
+      "train": [
+        "2024-03-01",
+        "2025-06-30"
+      ],
+      "hold": [
+        "2025-07-01",
+        "2025-12-31"
+      ],
+      "future": "2026-01-01",
+      "note": "Futures under The5ers; never train 2026+; future survival + positive ann required"
+    },
+    "no_curve_fitting": true,
+    "no_lookahead": true,
+    "never_trained_on_2026": true,
+    "saved_at": "2026-07-21T01:10:59.281806+00:00"
+  },
+  "quality_survivors": [
+    {
+      "selection": "h1_sweep_bos_index_comm_r75_rr2.0",
+      "mcpt_p": 0.0125,
+      "future_ann": 33687.61430529897,
+      "funded_ann": 40942.51090149543,
+      "symbols": [
+        "ES",
+        "NQ",
+        "YM",
+        "CL",
+        "GC"
+      ]
+    },
+    {
+      "selection": "sweep_bos_ob_index4_r100_rr2.5",
+      "mcpt_p": 0.0125,
+      "future_ann": 29635.416805592344,
+      "funded_ann": 18248.19263732864,
+      "symbols": [
+        "ES",
+        "NQ",
+        "YM",
+        "RTY"
+      ]
+    },
+    {
+      "selection": "sweep_bos_ob_index4_r50_rr2.5",
+      "mcpt_p": 0.025,
+      "future_ann": 19359.483832029386,
+      "funded_ann": 25248.403765605177,
+      "symbols": [
+        "ES",
+        "NQ",
+        "YM",
+        "RTY"
+      ]
+    },
+    {
+      "selection": "sweep_bos_ob_index4_r75_rr2.0",
+      "mcpt_p": 0.0375,
+      "future_ann": 35741.74691196413,
+      "funded_ann": 14141.980034597802,
+      "symbols": [
+        "ES",
+        "NQ",
+        "YM",
+        "RTY"
+      ]
+    },
+    {
+      "selection": "sweep_bos_ob_index4_r100_rr2.0",
+      "mcpt_p": 0.04375,
+      "future_ann": 13504.476658102523,
+      "funded_ann": 20320.758019465065,
+      "symbols": [
+        "ES",
+        "NQ",
+        "YM",
+        "RTY"
+      ]
+    }
+  ],
+  "all_mcp_future_survivors": 11
+}

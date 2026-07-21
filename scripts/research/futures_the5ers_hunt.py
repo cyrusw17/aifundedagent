@@ -138,6 +138,13 @@ def main() -> None:
     print(f"TRAIN {TRAIN} HOLD {HOLD} FUTURE {FUTURE[0]}+", flush=True)
 
     hits = []
+    # Lean grid first (iterate); expand if empty
+    swings = [2, 3]
+    risks = [0.005, 0.0075]
+    rrs = [1.5, 1.8, 2.0]
+    atrs = [1.25, 1.5]
+    cools = [2]
+
     for pset_name, symbols in PAIRSETS.items():
         bt = load_futures(symbols, *TRAIN, "1h")
         bh = load_futures(symbols, *HOLD, "1h")
@@ -150,50 +157,79 @@ def main() -> None:
             flush=True,
         )
         for mode in MODES:
-            print(f"  mode {mode}", flush=True)
-            for sl, risk, rr, atr, cool in product(
-                [2, 3, 4],
-                [0.003, 0.005, 0.0075],
-                [1.5, 1.8, 2.0],
-                [1.25, 1.5, 1.75],
-                [2, 3],
-            ):
-                params = {
-                    "signal_mode": mode,
-                    "pairset": pset_name,
-                    "pairs": list(bt.keys()),
-                    "risk_pct": risk,
-                    "rr": rr,
-                    "atr_stop_mult": atr,
-                    "swing_left": sl,
-                    "swing_right": sl,
-                    "min_confluence": 2,
-                    "max_positions": 1,
-                    "require_killzone": False,
-                    "weekly_withdraw": False,  # eval-style for edge screen
-                    "move_be_at_r": 0.0,
-                    "skip_mondays": True,
-                    "one_entry_per_day": True,
-                    "cooldown_losses": cool,
-                    "daily_halt_loss_pct": 0.03,
-                    "daily_halt_profit_pct": 0.05,
-                }
-                st_t = run(bt, params, weekly=False)
-                if not era_ok(st_t, train=True, rr=rr):
-                    continue
-                st_h = run(bh, params, weekly=False)
-                if not era_ok(st_h, train=False, rr=rr):
-                    continue
-                hits.append(
-                    {
-                        "params": params,
-                        "train": st_t.as_dict(),
-                        "hold": st_h.as_dict(),
-                        "score": score(st_t, st_h, params),
-                        "exp_t": exp_r(st_t.win_rate, rr),
-                        "exp_h": exp_r(st_h.win_rate, rr),
+            for sl in swings:
+                print(f"  prep {mode} sw={sl}", flush=True)
+                pt = prepare_book(bt, mode, sl, 2)
+                ph = prepare_book(bh, mode, sl, 2)
+                local = 0
+                for risk, rr, atr, cool in product(risks, rrs, atrs, cools):
+                    params = {
+                        "signal_mode": mode,
+                        "pairset": pset_name,
+                        "pairs": list(bt.keys()),
+                        "risk_pct": risk,
+                        "rr": rr,
+                        "atr_stop_mult": atr,
+                        "swing_left": sl,
+                        "swing_right": sl,
+                        "min_confluence": 2,
+                        "max_positions": 1,
+                        "require_killzone": False,
+                        "weekly_withdraw": False,  # eval-style for edge screen
+                        "move_be_at_r": 0.0,
+                        "skip_mondays": True,
+                        "one_entry_per_day": True,
+                        "cooldown_losses": cool,
+                        "daily_halt_loss_pct": 0.03,
+                        "daily_halt_profit_pct": 0.05,
                     }
-                )
+                    st_t = fast_backtest(
+                        pt,
+                        risk_pct=risk,
+                        rr=rr,
+                        atr_stop_mult=atr,
+                        max_positions=1,
+                        move_be_at_r=0.0,
+                        skip_mondays=True,
+                        daily_halt_loss_pct=0.03,
+                        daily_halt_profit_pct=0.05,
+                        cooldown_losses=cool,
+                        weekly_withdraw=False,
+                        one_entry_per_day=True,
+                        rules=RULES,
+                    )
+                    if not era_ok(st_t, train=True, rr=rr):
+                        continue
+                    st_h = fast_backtest(
+                        ph,
+                        risk_pct=risk,
+                        rr=rr,
+                        atr_stop_mult=atr,
+                        max_positions=1,
+                        move_be_at_r=0.0,
+                        skip_mondays=True,
+                        daily_halt_loss_pct=0.03,
+                        daily_halt_profit_pct=0.05,
+                        cooldown_losses=cool,
+                        weekly_withdraw=False,
+                        one_entry_per_day=True,
+                        rules=RULES,
+                    )
+                    if not era_ok(st_h, train=False, rr=rr):
+                        continue
+                    local += 1
+                    hits.append(
+                        {
+                            "params": params,
+                            "train": st_t.as_dict(),
+                            "hold": st_h.as_dict(),
+                            "score": score(st_t, st_h, params),
+                            "exp_t": exp_r(st_t.win_rate, rr),
+                            "exp_h": exp_r(st_h.win_rate, rr),
+                        }
+                    )
+                if local:
+                    print(f"    +{local}", flush=True)
 
     hits.sort(key=lambda h: -h["score"])
     print(f"hits={len(hits)}", flush=True)
