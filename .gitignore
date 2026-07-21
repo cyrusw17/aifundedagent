@@ -6,5 +6,5 @@ venv/
 data/raw/*.zip
 data/raw/*.csv
 data/raw/*.txt
-results/*.csv
+results/trades_*.csv
 .DS_Store
