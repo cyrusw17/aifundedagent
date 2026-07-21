@@ -1,38 +1,42 @@
-# S6 Equal Liquidity Fade — MT5 EA
+# S6 Equal Liquidity Fade — MT5 EA (v1.40)
 
-Port of the backtested **S6_eq_liquidity_fade** strategy for MetaTrader 5.
-**Strategy Tester ready** (v1.30+).
+## Why earlier tester runs lost ~$7k
 
-## If Strategy Tester lost money / took zero trades
+Python **EURUSD 2024** ≈ **+$18k** with **limit fills on a retest of the equal**.
 
-Python **EURUSD-only 2024-01→2025-01** ≈ **+$18k**. Multi-pair book is larger.
-
-| Version | Issue |
+| Build | Bug |
 | --- | --- |
-| v1.20 | Nudged limits far off equals → bad fills / losses |
-| v1.30 | Skipped every “too close” equal → **0 trades** |
-| **v1.31** | Exact limit → tiny stops-pad → **market if already through** |
+| v1.20–1.31 | Entered **offside** (short while still below equal / long above) via nudge or “market if near” |
+| **v1.40** | Arms a setup → **SellLimit/BuyLimit at the equal** → market **only** when price **revisits** the equal |
 
-Re-download **v1.31**, F7, Journal must say `v1.31`. On stop, Journal prints `signals= / limits= / markets= / skipped=`.
+If Journal does not say **`S6 v1.40 PYTHON-RETEST`**, you are still on an old compile.
 
-## Strategy Tester (drop-in)
+## Strategy Tester
 
-1. Copy `S6_EqLiquidityFade.mq5` → `MQL5/Experts/` → **F7**
-2. Tester: **EURUSD · M15 · Every tick · Deposit 100000 · 1:100**
-3. Defaults: `InpTesterServerIsUTC=true`, `InpMarketIfThrough=true`, `InpMaxEntrySlipAtr=0.25`
+1. Copy `S6_EqLiquidityFade.mq5` → `MQL5/Experts/` → **F7** (0 errors)
+2. Ctrl+R:
 
-## Live install
+| Field | Value |
+| --- | --- |
+| Expert | S6_EqLiquidityFade |
+| Symbol | EURUSD |
+| Period | **M15** |
+| Model | **Every tick** (not “Open prices only”) |
+| Dates | 2024.01.01 – 2025.01.01 |
+| Deposit | **100000** |
+| Leverage | 1:100 |
 
-1. Same copy + compile.
-2. Drag onto chart; enable **Algo Trading**.
-3. The5ers: `InpInitialBalance=100000`; unique `InpMagic` per symbol.
+3. Inputs: `InpInitialBalance=100000`, `InpTesterServerIsUTC=true`, `InpRiskPercent=0.40` (that is **0.4%**, not 40)
+4. Start → Journal: `S6 v1.40 PYTHON-RETEST`
+5. End → stats: `armed= / limits= / retestMkt= / expired=`
 
-## What it does
+Expect **many** `LIMIT` and some `RETEST-MKT` lines. If you only see hole-style markets, wrong file.
 
-1. Closed M15 killzone: confirmed swing equals → sweep fade → H1 bias
-2. **Exact** Buy/Sell limit at the equal level (skip if broker stops-level blocks it)
-3. BE after +1R; flatten 20:00 UTC; daily pause / hard floor (closes all)
+## Live
 
-## Disclaimer
+Same compile; attach chart; Algo Trading on; `InpInitialBalance=100000`.
 
-Past backtests ≠ live results. Broker ticks ≠ HistData.
+## Research baseline
+
+- EURUSD-only Python 2024 ≈ +$18k  
+- 8-pair Python book is much larger — do not compare one-symbol tester to that
