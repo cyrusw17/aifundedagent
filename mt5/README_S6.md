@@ -3,39 +3,23 @@
 Port of the backtested **S6_eq_liquidity_fade** strategy for MetaTrader 5.
 **Strategy Tester ready** (v1.30+).
 
-## If Strategy Tester lost money (important)
+## If Strategy Tester lost money / took zero trades
 
-Python research for **EURUSD only, 2024-01 → 2025-01** is about **+$18k** (PF ~1.9, max DD ~$4k).  
-The big multi-pair Python number (~+$161k / 2024–25) is **8 pairs**, not one chart.
+Python **EURUSD-only 2024-01→2025-01** ≈ **+$18k**. Multi-pair book is larger.
 
-If your tester showed ~**−$7k**, that was **not** matching research. Common causes fixed in **v1.30**:
+| Version | Issue |
+| --- | --- |
+| v1.20 | Nudged limits far off equals → bad fills / losses |
+| v1.30 | Skipped every “too close” equal → **0 trades** |
+| **v1.31** | Exact limit → tiny stops-pad → **market if already through** |
 
-1. **Entry nudging** (v1.20) moved limit prices off the equal level when stops-level blocked them → wrong trades. **v1.30 skips** those setups instead.
-2. Hard floor cancelled pendings but **left positions open** past −6%. Now it **closes all**.
-3. Wrong model/timezone: use **Every tick**, `InpTesterServerIsUTC=true`.
-
-Re-download **v1.30**, recompile (F7), re-run the same dates. Journal must say `v1.30`.
+Re-download **v1.31**, F7, Journal must say `v1.31`. On stop, Journal prints `signals= / limits= / markets= / skipped=`.
 
 ## Strategy Tester (drop-in)
 
-1. Open **MetaEditor** (F4) → `File → Open Data Folder` → `MQL5/Experts/`
-2. Copy `S6_EqLiquidityFade.mq5` there → open it → **F7** (0 errors)
-3. In MT5: **View → Strategy Tester** (Ctrl+R)
-4. Settings:
-
-| Field | Value |
-| --- | --- |
-| Expert | `S6_EqLiquidityFade` |
-| Symbol | `EURUSD` (start here) |
-| Period | **M15** |
-| Dates | e.g. 2024.01.01 – 2025.01.01 |
-| Deposit | **100000** |
-| Leverage | **1:100** |
-| Model | **Every tick** (avoid “Open prices only”) |
-| Optimization | Off |
-
-5. Inputs: leave defaults (`InpTesterServerIsUTC=true`, `InpInitialBalance=0` or `100000`)
-6. Start — Journal: `S6 EqLiquidityFade v1.30 | tester=YES`
+1. Copy `S6_EqLiquidityFade.mq5` → `MQL5/Experts/` → **F7**
+2. Tester: **EURUSD · M15 · Every tick · Deposit 100000 · 1:100**
+3. Defaults: `InpTesterServerIsUTC=true`, `InpMarketIfThrough=true`, `InpMaxEntrySlipAtr=0.25`
 
 ## Live install
 

@@ -11,7 +11,7 @@
 //+------------------------------------------------------------------+
 #property copyright "aifundedagent"
 #property link      "https://github.com/cyrusw17/aifundedagent"
-#property version   "1.30"
+#property version   "1.31"
 #property description "S6 Equal H/L sweep fade — Strategy Tester + live"
 
 #include <Trade/Trade.mqh>
@@ -43,6 +43,8 @@ input int    InpH1SwingLeft        = 2;
 input int    InpH1SwingRight       = 2;
 input int    InpLimitExpiryBars    = 16;      // Cancel pending after N M15 bars (~4h)
 input bool   InpRequireH1Bias      = true;    // Match backtest bias filter
+input double InpMaxEntrySlipAtr    = 0.25;    // Max pad from equal to satisfy stops-level
+input bool   InpMarketIfThrough    = true;    // Market if price already at/through equal
 
 input group "=== Sessions (UTC — matches Python research) ==="
 input int    InpKZ1Start           = 7;       // Killzone 1 start hour UTC
@@ -80,6 +82,10 @@ bool     g_isTester       = false;
 bool     g_isOptimize     = false;
 bool     g_doLog          = true;
 ENUM_ORDER_TYPE_FILLING g_filling = ORDER_FILLING_FOK;
+int      g_sigSeen        = 0;
+int      g_sigPlaced      = 0;
+int      g_sigMarket      = 0;
+int      g_sigSkipped     = 0;
 
 #define M15_BARS  400
 #define H1_BARS   200
@@ -437,16 +443,13 @@ int H1BiasAt(datetime m15BarTime)
 }
 
 //----------------------- order / manage -------------------------------
-bool PlaceLimit(int side, double entry, double sl, double tp, string comment)
+bool SendPendingOrMarket(int side, double entry, double sl, double tp,
+                         string comment, bool asMarket)
 {
-   // CRITICAL: never nudge entry away from the equal level.
-   // v1.20 nudged limits toward/away from market when stops-level blocked
-   // the exact price — that destroyed the fade-at-equals edge and caused
-   // large Strategy Tester losses vs the Python research book.
    double lots = LotsForRisk(entry, sl);
    if(lots <= 0)
    {
-      LogMsg("S6: lot size 0 — check stops / symbol tick value");
+      LogMsg("S6: lot size 0 — check stops / tick value");
       return false;
    }
 
@@ -454,81 +457,201 @@ bool PlaceLimit(int side, double entry, double sl, double tp, string comment)
    sl    = NormalizeDouble(sl, _Digits);
    tp    = NormalizeDouble(tp, _Digits);
 
-   long stopsLvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   long freeze   = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   double point  = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   if(point <= 0) point = _Point;
-   double minDist = MathMax((double)stopsLvl, (double)freeze) * point;
-
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-
-   // Exact equal-level must be a valid limit vs market + stops level
-   if(side > 0)
-   {
-      // BuyLimit: entry must be below Ask by at least stops level
-      if(entry >= ask - minDist)
-      {
-         LogMsg(StringFormat("S6: skip buy limit — equal %.5f too close to Ask %.5f (minDist=%.5f)",
-                             entry, ask, minDist));
-         return false;
-      }
-      if(sl >= entry || tp <= entry)
-         return false;
-      if(minDist > 0 && MathAbs(entry - sl) < minDist)
-         sl = NormalizeDouble(entry - minDist, _Digits);
-      if(minDist > 0 && MathAbs(tp - entry) < minDist)
-         tp = NormalizeDouble(entry + minDist, _Digits);
-      if(sl >= entry || tp <= entry)
-         return false;
-   }
-   else
-   {
-      // SellLimit: entry must be above Bid by at least stops level
-      if(entry <= bid + minDist)
-      {
-         LogMsg(StringFormat("S6: skip sell limit — equal %.5f too close to Bid %.5f (minDist=%.5f)",
-                             entry, bid, minDist));
-         return false;
-      }
-      if(sl <= entry || tp >= entry)
-         return false;
-      if(minDist > 0 && MathAbs(entry - sl) < minDist)
-         sl = NormalizeDouble(entry + minDist, _Digits);
-      if(minDist > 0 && MathAbs(entry - tp) < minDist)
-         tp = NormalizeDouble(entry - minDist, _Digits);
-      if(sl <= entry || tp >= entry)
-         return false;
-   }
-
-   // Recalc lots after any SL pad so risk stays ~InpRiskPercent
-   lots = LotsForRisk(entry, sl);
-   if(lots <= 0)
-      return false;
+   if(side > 0 && (sl >= entry || tp <= entry)) return false;
+   if(side < 0 && (sl <= entry || tp >= entry)) return false;
 
    ConfigureTrade();
-
    bool ok = false;
-   if(side > 0)
-      ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+
+   if(asMarket)
+   {
+      if(side > 0)
+         ok = g_trade.Buy(lots, _Symbol, 0, sl, tp, comment);
+      else
+         ok = g_trade.Sell(lots, _Symbol, 0, sl, tp, comment);
+   }
    else
-      ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+   {
+      if(side > 0)
+         ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+      else
+         ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+   }
 
    if(!ok)
    {
       ENUM_ORDER_TYPE_FILLING alt = (g_filling == ORDER_FILLING_FOK ? ORDER_FILLING_IOC : ORDER_FILLING_FOK);
       g_trade.SetTypeFilling(alt);
-      if(side > 0)
-         ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+      if(asMarket)
+      {
+         if(side > 0) ok = g_trade.Buy(lots, _Symbol, 0, sl, tp, comment);
+         else         ok = g_trade.Sell(lots, _Symbol, 0, sl, tp, comment);
+      }
       else
-         ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
-      if(ok)
-         g_filling = alt;
+      {
+         if(side > 0) ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+         else         ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+      }
+      if(ok) g_filling = alt;
       else
          Print("S6: order failed ", g_trade.ResultRetcode(), " ", g_trade.ResultRetcodeDescription());
    }
    else if(g_doLog)
-      PrintFormat("S6: %s limit %.5f SL %.5f TP %.5f lots %.2f", comment, entry, sl, tp, lots);
+      PrintFormat("S6: %s %s %.5f SL %.5f TP %.5f lots %.2f",
+                  comment, asMarket ? "MARKET" : "limit", entry, sl, tp, lots);
+   return ok;
+}
+
+// Place fade at equal level (Python parity):
+// 1) exact limit if broker allows
+// 2) else minimal stops-level pad if still within InpMaxEntrySlipAtr of equal
+// 3) else market if price already at/through equal (InpMarketIfThrough)
+bool PlaceFadeEntry(int side, double equalLevel, double sl, string comment, double atr)
+{
+   g_sigSeen++;
+
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(point <= 0) point = _Point;
+   long stopsLvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   long freeze   = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double minDist = MathMax((double)stopsLvl, (double)freeze) * point;
+
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double ideal = NormalizeDouble(equalLevel, _Digits);
+   double maxSlip = (atr > 0 ? InpMaxEntrySlipAtr * atr : 20 * point);
+
+   double entry = ideal;
+   bool asMarket = false;
+
+   if(side > 0)
+   {
+      // BuyLimit needs entry <= Ask - minDist
+      if(ideal <= ask - minDist - (minDist > 0 ? 0 : point))
+      {
+         entry = ideal; // exact
+      }
+      else if(ask > ideal)
+      {
+         // Price still above equal (correct for buy limit wait) but too close for stops
+         double valid = NormalizeDouble(ask - minDist - point, _Digits);
+         if(valid < ideal && MathAbs(ideal - valid) <= maxSlip)
+         {
+            entry = valid; // slight pad toward market-away (better buy)
+            LogMsg(StringFormat("S6: buy pad equal %.5f -> %.5f (stops)", ideal, entry));
+         }
+         else if(InpMarketIfThrough && (ask - ideal) <= maxSlip)
+         {
+            asMarket = true;
+            entry = ask;
+            LogMsg("S6: buy MARKET — ask near equal");
+         }
+         else
+         {
+            g_sigSkipped++;
+            LogMsg(StringFormat("S6: skip buy — equal %.5f ask %.5f minDist %.5f", ideal, ask, minDist));
+            return false;
+         }
+      }
+      else
+      {
+         // Ask already at/below equal — retest happening now
+         if(InpMarketIfThrough)
+         {
+            asMarket = true;
+            entry = ask;
+            LogMsg("S6: buy MARKET — through equal");
+         }
+         else
+         {
+            g_sigSkipped++;
+            return false;
+         }
+      }
+   }
+   else
+   {
+      // SellLimit needs entry >= Bid + minDist
+      if(ideal >= bid + minDist + (minDist > 0 ? 0 : point))
+      {
+         entry = ideal;
+      }
+      else if(bid < ideal)
+      {
+         double valid = NormalizeDouble(bid + minDist + point, _Digits);
+         if(valid > ideal && MathAbs(valid - ideal) <= maxSlip)
+         {
+            entry = valid;
+            LogMsg(StringFormat("S6: sell pad equal %.5f -> %.5f (stops)", ideal, entry));
+         }
+         else if(InpMarketIfThrough && (ideal - bid) <= maxSlip)
+         {
+            asMarket = true;
+            entry = bid;
+            LogMsg("S6: sell MARKET — bid near equal");
+         }
+         else
+         {
+            g_sigSkipped++;
+            LogMsg(StringFormat("S6: skip sell — equal %.5f bid %.5f minDist %.5f", ideal, bid, minDist));
+            return false;
+         }
+      }
+      else
+      {
+         if(InpMarketIfThrough)
+         {
+            asMarket = true;
+            entry = bid;
+            LogMsg("S6: sell MARKET — through equal");
+         }
+         else
+         {
+            g_sigSkipped++;
+            return false;
+         }
+      }
+   }
+
+   // Keep planned R from equal→SL; TP from actual entry
+   double risk = MathAbs(ideal - sl); // risk vs structure stop
+   if(risk <= 0) return false;
+   // If entry padded/market, keep same SL; TP from entry with same R distance
+   double riskUse = MathAbs(entry - sl);
+   if(riskUse <= 0) return false;
+   // Prefer structural risk for sizing; use entry-sl for TP geometry
+   double tp;
+   if(side > 0)
+      tp = entry + InpRewardRisk * riskUse;
+   else
+      tp = entry - InpRewardRisk * riskUse;
+
+   // Stops-level pad on SL/TP if needed
+   if(minDist > 0)
+   {
+      if(side > 0)
+      {
+         if(MathAbs(entry - sl) < minDist) sl = NormalizeDouble(entry - minDist, _Digits);
+         if(MathAbs(tp - entry) < minDist) tp = NormalizeDouble(entry + minDist, _Digits);
+      }
+      else
+      {
+         if(MathAbs(entry - sl) < minDist) sl = NormalizeDouble(entry + minDist, _Digits);
+         if(MathAbs(entry - tp) < minDist) tp = NormalizeDouble(entry - minDist, _Digits);
+      }
+      riskUse = MathAbs(entry - sl);
+      if(side > 0) tp = entry + InpRewardRisk * riskUse;
+      else         tp = entry - InpRewardRisk * riskUse;
+   }
+
+   bool ok = SendPendingOrMarket(side, entry, sl, tp, comment, asMarket);
+   if(ok)
+   {
+      if(asMarket) g_sigMarket++;
+      else         g_sigPlaced++;
+   }
+   else
+      g_sigSkipped++;
    return ok;
 }
 
@@ -706,8 +829,7 @@ void EvaluateClosedBar()
          dist = MathAbs(entry - stop);
          if(dist <= InpMaxStopAtr * atr)
          {
-            double tp = entry - InpRewardRisk * dist;
-            if(PlaceLimit(-1, entry, stop, tp, "S6_eqh_fade"))
+            if(PlaceFadeEntry(-1, entry, stop, "S6_eqh_fade", atr))
             {
                g_usedEqHighDay = true;
                return;
@@ -728,8 +850,7 @@ void EvaluateClosedBar()
          dist = MathAbs(entry - stop);
          if(dist <= InpMaxStopAtr * atr)
          {
-            double tp = entry + InpRewardRisk * dist;
-            if(PlaceLimit(1, entry, stop, tp, "S6_eql_fade"))
+            if(PlaceFadeEntry(1, entry, stop, "S6_eql_fade", atr))
                g_usedEqLowDay = true;
          }
       }
@@ -756,6 +877,7 @@ int OnInit()
    g_hardStopped    = false;
    g_usedEqHighDay  = false;
    g_usedEqLowDay   = false;
+   g_sigSeen = g_sigPlaced = g_sigMarket = g_sigSkipped = 0;
 
    g_filling = ResolveFilling();
    ConfigureTrade();
@@ -770,10 +892,9 @@ int OnInit()
    if(got < 50 && !g_isTester)
    {
       Print("S6: waiting for M15 history (", got, " bars)");
-      // still allow init; OnTick will no-op until enough bars
    }
 
-   PrintFormat("S6 EqLiquidityFade v1.30 | bal=%.2f | %s | magic=%d | tester=%s | fill=%d | UTC-mode=%s",
+   PrintFormat("S6 EqLiquidityFade v1.31 | bal=%.2f | %s | magic=%d | tester=%s | fill=%d | UTC-mode=%s",
                g_initialBalance, _Symbol, InpMagic,
                g_isTester ? "YES" : "no",
                (int)g_filling,
@@ -781,15 +902,16 @@ int OnInit()
 
    if(g_isTester)
    {
-      Print("S6 Tester tips: Period=M15 | Model=Every tick | Deposit=100000 | Leverage=1:100");
-      Print("S6: InpTesterServerIsUTC=true assumes history timestamps are UTC.");
-      Print("S6: v1.30 skips trades if equal-level limit is invalid (no entry nudging).");
+      Print("S6 Tester: M15 | Every tick | Deposit=100000 | 1:100 | InpMarketIfThrough=", InpMarketIfThrough);
+      Print("S6: v1.31 exact limit → stops-pad ≤ MaxEntrySlipAtr → market if through");
    }
    return INIT_SUCCEEDED;
 }
 
 void OnDeinit(const int reason)
 {
+   PrintFormat("S6 stats: signals=%d limits=%d markets=%d skipped=%d",
+               g_sigSeen, g_sigPlaced, g_sigMarket, g_sigSkipped);
 }
 
 void OnTick()
