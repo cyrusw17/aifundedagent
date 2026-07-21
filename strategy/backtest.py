@@ -93,11 +93,14 @@ def _simulate_limit_entry_and_exit(
     signal: Signal,
     params: StrategyParams,
 ) -> Optional[Tuple[pd.Timestamp, float, pd.Timestamp, float, str]]:
-    # Causal: signal is known only after the M15 bar *closes*.
-    # signal.time is the bar open; first valid fill is the next M1 at/after close.
-    # (Older code searched from bar open and filled during the sweep — look-ahead.)
-    bar_close = signal.time + pd.Timedelta(minutes=15)
-    pos = m1.index.searchsorted(bar_close, side="left")
+    # HARD RULE: no fill before the signal is knowable (bar close).
+    # signal.time = bar open; knowable_at = bar close. Searching from bar open
+    # filled during the sweep wick and was look-ahead (see LOOKAHEAD_FILL_BUG.md).
+    not_before = signal.knowable_at
+    if not_before is None:
+        not_before = signal.time + pd.Timedelta(minutes=getattr(signal, "signal_tf_minutes", 15))
+
+    pos = m1.index.searchsorted(not_before, side="left")
     if pos >= len(m1):
         return None
 
@@ -135,6 +138,13 @@ def _simulate_limit_entry_and_exit(
         return None
 
     entry_time = times[entry_i]
+    # Structural ban on look-ahead fills — raises if a future refactor regresses.
+    if entry_time < not_before:
+        raise RuntimeError(
+            f"LOOK-AHEAD FILL BLOCKED: entry {entry_time} < knowable_at {not_before} "
+            f"({signal.pair} {signal.reason})"
+        )
+
     if side == 1:
         risk = entry_px - stop
         if risk <= 0:

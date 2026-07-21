@@ -13,7 +13,7 @@ from .config import StrategyParams
 
 @dataclass
 class Signal:
-    time: pd.Timestamp
+    time: pd.Timestamp  # M15 bar *open* time where the setup completed
     pair: str
     side: int
     entry: float
@@ -22,7 +22,10 @@ class Signal:
     sweep_extreme: float
     reason: str
     reward_risk: float = 1.5
-    marketable: bool = False  # if True, fill at next M1 open after signal
+    marketable: bool = False  # if True, fill at next M1 open after knowable_at
+    # Earliest moment the signal is knowable (= bar close). Fills before this = look-ahead.
+    knowable_at: Optional[pd.Timestamp] = None
+    signal_tf_minutes: int = 15
 
 
 def atr(df: pd.DataFrame, period: int) -> pd.Series:
@@ -175,13 +178,17 @@ def pack_signal(
     rr: float,
     reason: str,
     marketable: bool = False,
+    signal_tf_minutes: int = 15,
 ) -> Optional[Signal]:
     risk = abs(entry - stop)
     if risk <= 0:
         return None
     take = entry + rr * risk if side == 1 else entry - rr * risk
+    ts = pd.Timestamp(time)
+    # Signal features use the closed bar; it is only knowable at bar close.
+    knowable = ts + pd.Timedelta(minutes=signal_tf_minutes)
     return Signal(
-        time=time,
+        time=ts,
         pair=pair,
         side=side,
         entry=float(entry),
@@ -191,4 +198,6 @@ def pack_signal(
         reason=reason,
         reward_risk=float(rr),
         marketable=marketable,
+        knowable_at=knowable,
+        signal_tf_minutes=signal_tf_minutes,
     )
