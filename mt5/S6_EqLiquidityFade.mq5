@@ -18,8 +18,8 @@
 //+------------------------------------------------------------------+
 #property copyright "aifundedagent"
 #property link      "https://github.com/cyrusw17/aifundedagent"
-#property version   "1.40"
-#property description "S6 equal fade — Python retest-limit parity"
+#property version   "1.50"
+#property description "S6 equal fade — Python parity (M15 H1, M1 retest)"
 
 #include <Trade/Trade.mqh>
 #include <Trade/PositionInfo.mqh>
@@ -362,20 +362,49 @@ int CollectSwings(const MqlRates &r[], int left, int right, bool highs, Swing &o
 
 int H1BiasAt(datetime m15BarTime)
 {
-   // Python: compute bias on each closed H1, shift(1), ffill to M15; carry mixed.
-   MqlRates h1[];
-   if(!CopyRatesChrono(PERIOD_H1, H1_BARS, h1)) return g_prevH1Bias;
-   int n = ArraySize(h1);
-   if(n < 30) return g_prevH1Bias;
+   // Python builds H1 by resampling M15 (not broker PERIOD_H1) then shift(1).
+   MqlRates m15[];
+   if(!CopyRatesChrono(PERIOD_M15, M15_BARS, m15)) return g_prevH1Bias;
+   int n = ArraySize(m15);
+   if(n < 80) return g_prevH1Bias;
 
-   int lastClosed = -1;
+   // Aggregate M15 → H1 (label=left, closed=left): bucket start = time - (time % 3600)
+   MqlRates h1[];
+   int nh = 0;
+   datetime bucket = -1;
    for(int i = 0; i < n; i++)
    {
-      if(h1[i].time + PeriodSeconds(PERIOD_H1) <= m15BarTime)
+      datetime t = m15[i].time;
+      datetime b = t - (t % 3600);
+      if(b != bucket)
+      {
+         ArrayResize(h1, nh + 1);
+         h1[nh].time = b;
+         h1[nh].open = m15[i].open;
+         h1[nh].high = m15[i].high;
+         h1[nh].low  = m15[i].low;
+         h1[nh].close= m15[i].close;
+         nh++;
+         bucket = b;
+      }
+      else
+      {
+         int j = nh - 1;
+         if(m15[i].high > h1[j].high) h1[j].high = m15[i].high;
+         if(m15[i].low  < h1[j].low)  h1[j].low  = m15[i].low;
+         h1[j].close = m15[i].close;
+      }
+   }
+   if(nh < 30) return g_prevH1Bias;
+
+   // Last H1 fully closed before/at m15BarTime, then shift(1)
+   int lastClosed = -1;
+   for(int i = 0; i < nh; i++)
+   {
+      if(h1[i].time + 3600 <= m15BarTime)
          lastClosed = i;
       else break;
    }
-   // shift(1): use prior closed H1 as end of known structure
    int use = lastClosed - 1;
    if(use < 20) return g_prevH1Bias;
 
@@ -401,7 +430,6 @@ int H1BiasAt(datetime m15BarTime)
    int b = g_prevH1Bias;
    if(hh && hl) b = 1;
    else if(lh && ll) b = -1;
-   // else carry forward (Python mixed keeps prior)
    g_prevH1Bias = b;
    return b;
 }
@@ -477,6 +505,34 @@ double BrokerMinDist()
 }
 
 //----------------------- retest arm manager ---------------------------
+bool M1TouchedLevel(int side, double level)
+{
+   // Python fill: M1 high >= limit (sell) / M1 low <= limit (buy)
+   double hi[], lo[];
+   ArraySetAsSeries(hi, true);
+   ArraySetAsSeries(lo, true);
+   int n = CopyHigh(_Symbol, PERIOD_M1, 0, 8, hi);
+   int n2 = CopyLow(_Symbol, PERIOD_M1, 0, 8, lo);
+   if(n < 1 || n2 < 1) return false;
+   int m = MathMin(n, n2);
+   for(int i = 0; i < m; i++)
+   {
+      if(side < 0 && hi[i] >= level) return true;
+      if(side > 0 && lo[i] <= level) return true;
+   }
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   if(side < 0 && bid >= level) return true;
+   if(side > 0 && ask <= level) return true;
+   return false;
+}
+
+void MarkUsedFromComment(const string comment)
+{
+   if(StringFind(comment, "eqh") >= 0) g_usedEqHighDay = true;
+   if(StringFind(comment, "eql") >= 0) g_usedEqLowDay  = true;
+}
+
 void ManageArm()
 {
    if(g_armSide == 0)
@@ -486,21 +542,25 @@ void ManageArm()
    {
       CancelOurPendings();
       g_statExpired++;
+      // Do NOT burn day-flags on expiry — Python can still take a later setup
       ClearArm("expired");
       return;
    }
 
-   // Already have our pending
    if(CountOurPendings() > 0)
    {
       g_armOrderOn = true;
       return;
    }
-   // Pending gone but we thought it was on → filled or cancelled
+
    if(g_armOrderOn)
    {
+      // Pending filled or cancelled externally
       if(CountOurPositions() > 0)
+      {
+         MarkUsedFromComment(g_armComment);
          ClearArm("filled");
+      }
       else
          ClearArm("pending gone");
       return;
@@ -511,87 +571,47 @@ void ManageArm()
 
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double minDist = BrokerMinDist();
    double equal = g_armEqual;
-   double sl = g_armSL;
+   double sl = g_armSL;           // NEVER mutate structural SL toward market
    int side = g_armSide;
 
-   // Stop hunted before entry → abort
-   if(side < 0 && bid >= sl) { ClearArm("price hit SL before entry"); return; }
-   if(side > 0 && ask <= sl) { ClearArm("price hit SL before entry"); return; }
+   if(side < 0 && bid >= sl) { ClearArm("through SL before entry"); return; }
+   if(side > 0 && ask <= sl) { ClearArm("through SL before entry"); return; }
 
-   // --- SHORT fade: wait for retest UP to equal ---
-   if(side < 0)
+   double tp = TpFrom(side, equal, sl);
+
+   // 1) Try exact limit at equal whenever price is on the correct side
+   if(side < 0 && equal > bid)
    {
-      // Retest happening now: price back at/above equal → fill like Python limit
-      if(bid >= equal)
-      {
-         double entry = equal; // geometry at equal (Python)
-         double tp = TpFrom(side, entry, sl);
-         // Actual market sell at bid; keep SL/TP from equal geometry
-         // Adjust if broker requires distance from current price
-         if(minDist > 0)
-         {
-            if(sl < bid + minDist) sl = NormalizeDouble(bid + minDist, _Digits);
-            if(tp > bid - minDist) tp = NormalizeDouble(bid - minDist, _Digits);
-         }
-         if(SendOrder(side, bid, sl, tp, g_armComment, true))
-         {
-            g_statRetests++;
-            if(StringFind(g_armComment, "eqh") >= 0) g_usedEqHighDay = true;
-            ClearArm("retest market");
-         }
-         return;
-      }
-
-      // Still below equal: place SellLimit at EXACT equal when far enough
-      if(equal >= bid + minDist + _Point)
-      {
-         double tp = TpFrom(side, equal, sl);
-         if(minDist > 0 && MathAbs(equal - sl) < minDist)
-            sl = NormalizeDouble(equal + minDist, _Digits);
-         tp = TpFrom(side, equal, sl);
-         if(SendOrder(side, equal, sl, tp, g_armComment, false))
-         {
-            g_statLimits++;
-            g_armOrderOn = true;
-            if(StringFind(g_armComment, "eqh") >= 0) g_usedEqHighDay = true;
-         }
-      }
-      // else: too close — WAIT (do not market below equal)
-      return;
-   }
-
-   // --- LONG fade: wait for retest DOWN to equal ---
-   if(ask <= equal)
-   {
-      double entry = equal;
-      double tp = TpFrom(side, entry, sl);
-      if(minDist > 0)
-      {
-         if(sl > ask - minDist) sl = NormalizeDouble(ask - minDist, _Digits);
-         if(tp < ask + minDist) tp = NormalizeDouble(ask + minDist, _Digits);
-      }
-      if(SendOrder(side, ask, sl, tp, g_armComment, true))
-      {
-         g_statRetests++;
-         if(StringFind(g_armComment, "eql") >= 0) g_usedEqLowDay = true;
-         ClearArm("retest market");
-      }
-      return;
-   }
-
-   if(equal <= ask - minDist - _Point)
-   {
-      double tp = TpFrom(side, equal, sl);
-      if(minDist > 0 && MathAbs(equal - sl) < minDist)
-         sl = NormalizeDouble(equal - minDist, _Digits);
-      tp = TpFrom(side, equal, sl);
       if(SendOrder(side, equal, sl, tp, g_armComment, false))
       {
          g_statLimits++;
          g_armOrderOn = true;
-         if(StringFind(g_armComment, "eql") >= 0) g_usedEqLowDay = true;
+         // day-flag only on FILL (not here)
+         return;
+      }
+   }
+   if(side > 0 && equal < ask)
+   {
+      if(SendOrder(side, equal, sl, tp, g_armComment, false))
+      {
+         g_statLimits++;
+         g_armOrderOn = true;
+         return;
+      }
+   }
+
+   // 2) Python-style fill: M1 wick touched equal → market at structure geometry
+   if(M1TouchedLevel(side, equal))
+   {
+      // Keep TP/SL from equal; market executes at bid/ask
+      if(side < 0 && sl <= bid) { ClearArm("SL <= bid on retest"); return; }
+      if(side > 0 && sl >= ask) { ClearArm("SL >= ask on retest"); return; }
+      if(SendOrder(side, (side < 0 ? bid : ask), sl, tp, g_armComment, true))
+      {
+         g_statRetests++;
+         MarkUsedFromComment(g_armComment);
+         ClearArm("retest M1 touch");
       }
    }
 }
@@ -810,12 +830,12 @@ int OnInit()
    ConfigureTrade();
    SymbolSelect(_Symbol, true);
 
-   PrintFormat("S6 v1.40 PYTHON-RETEST | bal=%.2f | %s | tester=%s | UTC=%s",
+   PrintFormat("S6 v1.50 PARITY | bal=%.2f | %s | tester=%s | UTC=%s",
                g_initialBalance, _Symbol,
                g_isTester ? "YES" : "no",
                (g_isTester && InpTesterServerIsUTC) ? "tester-as-UTC" : "gmt/offset");
-   Print("S6: Arms limit at equal; markets ONLY on retest touch. Never hole-entries.");
-   Print("S6 Tester: M15 | Every tick | Deposit=100000 | set InpInitialBalance=100000");
+   Print("S6 v1.50: H1 from M15 resample; M1 wick retest; day-flag only on FILL");
+   Print("S6 Tester: M15 | Every tick | Deposit=100000 | InpInitialBalance=100000");
    return INIT_SUCCEEDED;
 }
 
@@ -879,7 +899,11 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    if((int)HistoryDealGetInteger(trans.deal, DEAL_MAGIC) != InpMagic) return;
 
    long entry = HistoryDealGetInteger(trans.deal, DEAL_ENTRY);
-   if(entry == DEAL_ENTRY_IN) g_tradesToday++;
+   if(entry == DEAL_ENTRY_IN)
+   {
+      g_tradesToday++;
+      MarkUsedFromComment(HistoryDealGetString(trans.deal, DEAL_COMMENT));
+   }
    if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_INOUT)
       g_dayRealized += HistoryDealGetDouble(trans.deal, DEAL_PROFIT)
                      + HistoryDealGetDouble(trans.deal, DEAL_SWAP)
