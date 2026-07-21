@@ -495,15 +495,6 @@ double TpFrom(int side, double entry, double sl)
    return entry - InpRewardRisk * risk;
 }
 
-double BrokerMinDist()
-{
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   if(point <= 0) point = _Point;
-   long stops = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   long freeze = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   return MathMax((double)stops, (double)freeze) * point;
-}
-
 //----------------------- retest arm manager ---------------------------
 bool M1TouchedLevel(int side, double level)
 {
