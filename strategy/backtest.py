@@ -160,6 +160,7 @@ def _simulate_limit_entry_and_exit(
     be_level = entry_px
     be_armed = False
     one_r = abs(entry_px - stop)
+    use_be = getattr(params, "move_to_be", True)
 
     j = entry_i + 1
     while j < len(m1):
@@ -170,7 +171,7 @@ def _simulate_limit_entry_and_exit(
             return entry_time, float(entry_px), ts, float(opens[j]), "flatten_next"
 
         if side == 1:
-            if not be_armed and highs[j] >= entry_px + one_r:
+            if use_be and not be_armed and highs[j] >= entry_px + one_r:
                 be_armed = True
                 stop = be_level
             if lows[j] <= stop:
@@ -178,7 +179,7 @@ def _simulate_limit_entry_and_exit(
             if highs[j] >= take:
                 return entry_time, float(entry_px), ts, float(take), "tp"
         else:
-            if not be_armed and lows[j] <= entry_px - one_r:
+            if use_be and not be_armed and lows[j] <= entry_px - one_r:
                 be_armed = True
                 stop = be_level
             if highs[j] >= stop:

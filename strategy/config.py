@@ -44,6 +44,7 @@ class StrategyParams:
     max_trades_per_pair_day: int = 3
     daily_profit_cap: float = 4_500.0
     cooldown_bars_after_trade: int = 1
+    move_to_be: bool = True  # False = let TP/SL/flatten manage (no early BE)
 
     spreads: Dict[str, float] = field(
         default_factory=lambda: {
