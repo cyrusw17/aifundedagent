@@ -11,7 +11,7 @@
 //+------------------------------------------------------------------+
 #property copyright "aifundedagent"
 #property link      "https://github.com/cyrusw17/aifundedagent"
-#property version   "1.20"
+#property version   "1.30"
 #property description "S6 Equal H/L sweep fade — Strategy Tester + live"
 
 #include <Trade/Trade.mqh>
@@ -257,6 +257,17 @@ void CancelOurPendings()
    }
 }
 
+void CloseOurPositions()
+{
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(!g_pos.SelectByIndex(i)) continue;
+      if(g_pos.Symbol() != _Symbol) continue;
+      if(g_pos.Magic() != InpMagic) continue;
+      g_trade.PositionClose(g_pos.Ticket());
+   }
+}
+
 // Tester-safe expiry: GTC orders + cancel when older than N M15 bars
 void CancelExpiredPendings()
 {
@@ -428,6 +439,10 @@ int H1BiasAt(datetime m15BarTime)
 //----------------------- order / manage -------------------------------
 bool PlaceLimit(int side, double entry, double sl, double tp, string comment)
 {
+   // CRITICAL: never nudge entry away from the equal level.
+   // v1.20 nudged limits toward/away from market when stops-level blocked
+   // the exact price — that destroyed the fade-at-equals edge and caused
+   // large Strategy Tester losses vs the Python research book.
    double lots = LotsForRisk(entry, sl);
    if(lots <= 0)
    {
@@ -439,54 +454,68 @@ bool PlaceLimit(int side, double entry, double sl, double tp, string comment)
    sl    = NormalizeDouble(sl, _Digits);
    tp    = NormalizeDouble(tp, _Digits);
 
-   long stops = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   long stopsLvl = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   long freeze   = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double point  = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    if(point <= 0) point = _Point;
-   double minDist = stops * point;
-   if(minDist <= 0)
-      minDist = 10 * point; // tester / ECN often reports 0
-
-   // Freeze level
-   long freeze = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   if(freeze > stops)
-      minDist = freeze * point;
+   double minDist = MathMax((double)stopsLvl, (double)freeze) * point;
 
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 
-   ConfigureTrade();
-
-   // GTC — Strategy Tester often rejects ORDER_TIME_SPECIFIED expiries
-   bool ok = false;
+   // Exact equal-level must be a valid limit vs market + stops level
    if(side > 0)
    {
+      // BuyLimit: entry must be below Ask by at least stops level
       if(entry >= ask - minDist)
-         entry = NormalizeDouble(ask - MathMax(minDist, 10 * point), _Digits);
+      {
+         LogMsg(StringFormat("S6: skip buy limit — equal %.5f too close to Ask %.5f (minDist=%.5f)",
+                             entry, ask, minDist));
+         return false;
+      }
       if(sl >= entry || tp <= entry)
          return false;
-      // Validate SL/TP distance from entry
-      if(MathAbs(entry - sl) < minDist)
+      if(minDist > 0 && MathAbs(entry - sl) < minDist)
          sl = NormalizeDouble(entry - minDist, _Digits);
-      if(MathAbs(tp - entry) < minDist)
+      if(minDist > 0 && MathAbs(tp - entry) < minDist)
          tp = NormalizeDouble(entry + minDist, _Digits);
-      ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+      if(sl >= entry || tp <= entry)
+         return false;
    }
    else
    {
+      // SellLimit: entry must be above Bid by at least stops level
       if(entry <= bid + minDist)
-         entry = NormalizeDouble(bid + MathMax(minDist, 10 * point), _Digits);
+      {
+         LogMsg(StringFormat("S6: skip sell limit — equal %.5f too close to Bid %.5f (minDist=%.5f)",
+                             entry, bid, minDist));
+         return false;
+      }
       if(sl <= entry || tp >= entry)
          return false;
-      if(MathAbs(entry - sl) < minDist)
+      if(minDist > 0 && MathAbs(entry - sl) < minDist)
          sl = NormalizeDouble(entry + minDist, _Digits);
-      if(MathAbs(entry - tp) < minDist)
+      if(minDist > 0 && MathAbs(entry - tp) < minDist)
          tp = NormalizeDouble(entry - minDist, _Digits);
-      ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+      if(sl <= entry || tp >= entry)
+         return false;
    }
+
+   // Recalc lots after any SL pad so risk stays ~InpRiskPercent
+   lots = LotsForRisk(entry, sl);
+   if(lots <= 0)
+      return false;
+
+   ConfigureTrade();
+
+   bool ok = false;
+   if(side > 0)
+      ok = g_trade.BuyLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
+   else
+      ok = g_trade.SellLimit(lots, entry, _Symbol, sl, tp, ORDER_TIME_GTC, 0, comment);
 
    if(!ok)
    {
-      // Retry once with alternate filling (common tester issue)
       ENUM_ORDER_TYPE_FILLING alt = (g_filling == ORDER_FILLING_FOK ? ORDER_FILLING_IOC : ORDER_FILLING_FOK);
       g_trade.SetTypeFilling(alt);
       if(side > 0)
@@ -532,15 +561,18 @@ void ManageOpenPositions()
       if(!InpMoveToBE || tp == 0 || sl == 0)
          continue;
 
-      double risk = MathAbs(open - sl);
-      if(risk <= 0) continue;
+      // Initial risk from open→TP (1.5R) ⇒ 1R = |tp-open|/RR
+      double oneR = MathAbs(tp - open) / MathMax(InpRewardRisk, 0.1);
+      if(oneR <= 0) continue;
       double beOff = InpBEOffsetPoints * _Point;
       double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
       double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 
       if(type == POSITION_TYPE_BUY)
       {
-         if(bid >= open + risk)
+         // Already at/above BE?
+         if(sl >= open) continue;
+         if(bid >= open + oneR)
          {
             double newSL = NormalizeDouble(open + beOff, _Digits);
             if(sl < newSL)
@@ -549,10 +581,11 @@ void ManageOpenPositions()
       }
       else if(type == POSITION_TYPE_SELL)
       {
-         if(ask <= open - risk)
+         if(sl <= open && sl != 0) continue;
+         if(ask <= open - oneR)
          {
             double newSL = NormalizeDouble(open - beOff, _Digits);
-            if(sl > newSL || sl == 0)
+            if(sl == 0 || sl > newSL)
                g_trade.PositionModify(ticket, newSL, tp);
          }
       }
@@ -740,7 +773,7 @@ int OnInit()
       // still allow init; OnTick will no-op until enough bars
    }
 
-   PrintFormat("S6 EqLiquidityFade v1.20 | bal=%.2f | %s | magic=%d | tester=%s | fill=%d | UTC-mode=%s",
+   PrintFormat("S6 EqLiquidityFade v1.30 | bal=%.2f | %s | magic=%d | tester=%s | fill=%d | UTC-mode=%s",
                g_initialBalance, _Symbol, InpMagic,
                g_isTester ? "YES" : "no",
                (int)g_filling,
@@ -748,8 +781,9 @@ int OnInit()
 
    if(g_isTester)
    {
-      Print("S6 Tester tips: Period=M15 | Model=Every tick (or 1-min OHLC) | Deposit=100000 | Leverage=1:100");
-      Print("S6: InpTesterServerIsUTC=true assumes history timestamps are UTC (MetaQuotes/most demos).");
+      Print("S6 Tester tips: Period=M15 | Model=Every tick | Deposit=100000 | Leverage=1:100");
+      Print("S6: InpTesterServerIsUTC=true assumes history timestamps are UTC.");
+      Print("S6: v1.30 skips trades if equal-level limit is invalid (no entry nudging).");
    }
    return INIT_SUCCEEDED;
 }
@@ -762,6 +796,13 @@ void OnTick()
 {
    ResetDayIfNeeded();
 
+   // Always manage / expire first (flatten, BE) unless already hard-stopped flat
+   if(!g_hardStopped)
+   {
+      ManageOpenPositions();
+      CancelExpiredPendings();
+   }
+
    if(g_hardStopped)
       return;
 
@@ -769,12 +810,11 @@ void OnTick()
    {
       g_hardStopped = true;
       CancelOurPendings();
-      Print("S6: HARD STOP — max loss floor reached. EA paused.");
+      CloseOurPositions();
+      PrintFormat("S6: HARD STOP — equity %.2f <= floor %.2f. Closed all.",
+                  Equity(), g_initialBalance * (1.0 - InpMaxLossPct / 100.0));
       return;
    }
-
-   ManageOpenPositions();
-   CancelExpiredPendings();
 
    if(DailyLossBreached())
    {
@@ -782,7 +822,7 @@ void OnTick()
       {
          g_dayPaused = true;
          CancelOurPendings();
-         Print("S6: daily loss pause active");
+         Print("S6: daily loss pause active (new entries blocked)");
       }
       return;
    }
@@ -795,7 +835,6 @@ void OnTick()
    if(g_tradesToday >= InpMaxTradesPerDay)
       return;
 
-   // Still allow expiry management above; block new signals if pending exists
    if(CountOurPendings() > 0)
       return;
 
