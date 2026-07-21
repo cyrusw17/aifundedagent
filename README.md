@@ -44,3 +44,12 @@ python -m strategy.run_backtest          # writes results/
 ## Disclaimer
 
 Research / education only. Past backtests do not guarantee live or funded-account results. Follow your firm’s current official rules before trading.
+
+
+## Multi-strategy comparison (5 winners)
+
+See [`results/COMPARISON.md`](results/COMPARISON.md) for side-by-side eval days, 2026 holdout, and funded weekly withdrawals above $101k.
+
+```bash
+python -m strategy.run_comparison
+```
