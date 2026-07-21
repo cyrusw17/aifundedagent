@@ -1,0 +1,1523 @@
+{
+  "protocol": {
+    "train": [
+      "2016-01-01",
+      "2020-12-31"
+    ],
+    "hold": [
+      "2021-01-01",
+      "2023-12-31"
+    ]
+  },
+  "phase_a_hits": [
+    {
+      "mode": "h1_sweep_bos",
+      "pairset": "majors4",
+      "train_ann": 4907.111217482349,
+      "hold_ann": 6646.848731250911
+    }
+  ],
+  "n_hits": 134,
+  "top": [
+    {
+      "score": 14103.720543302374,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 8232.068896585206,
+      "hold_fund_ann": 10981.9556390941
+    },
+    {
+      "score": 13254.5690735456,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 7139.347877373371,
+      "hold_fund_ann": 7811.158864225376
+    },
+    {
+      "score": 13175.457652910962,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 7218.943009840082,
+      "hold_fund_ann": 7060.236456738733
+    },
+    {
+      "score": 13145.309141935319,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 7030.087945763092,
+      "hold_fund_ann": 7122.37828766536
+    },
+    {
+      "score": 12879.450811772083,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 6742.470520397163,
+      "hold_fund_ann": 9643.443304145538
+    },
+    {
+      "score": 12771.534011460237,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 6633.813652875213,
+      "hold_fund_ann": 7680.964730491449
+    },
+    {
+      "score": 12760.192705964222,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 6501.304007947273,
+      "hold_fund_ann": 6602.256027779832
+    },
+    {
+      "score": 12703.618392235036,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 6573.234794634365,
+      "hold_fund_ann": 8538.68893330527
+    },
+    {
+      "score": 12626.218602624249,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 6377.24920911665,
+      "hold_fund_ann": 7105.4015614768305
+    },
+    {
+      "score": 12533.455210209046,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 6510.517241359863,
+      "hold_fund_ann": 9858.474944053416
+    },
+    {
+      "score": 12505.438825742101,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 6289.267483852736,
+      "hold_fund_ann": 6246.550127725154
+    },
+    {
+      "score": 12354.764566446609,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 6084.101540549713,
+      "hold_fund_ann": 7885.720909895596
+    },
+    {
+      "score": 12107.281116664719,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5959.442463338041,
+      "hold_fund_ann": 6147.706244616298
+    },
+    {
+      "score": 12069.161100954096,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5798.498240037201,
+      "hold_fund_ann": 7857.66191124455
+    },
+    {
+      "score": 11801.035350723985,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 5668.741164186167,
+      "hold_fund_ann": 9110.888891355624
+    },
+    {
+      "score": 11730.543978543583,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 5564.286564962099,
+      "hold_fund_ann": 7797.508264970732
+    },
+    {
+      "score": 11708.269343543581,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5537.528102722961,
+      "hold_fund_ann": 8397.19165089892
+    },
+    {
+      "score": 11486.954000912738,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 5287.728081454808,
+      "hold_fund_ann": 5200.293393715206
+    },
+    {
+      "score": 11377.94799343731,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5159.663875373748,
+      "hold_fund_ann": 5090.531219853224
+    },
+    {
+      "score": 11210.997134517585,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4907.111217482349,
+      "hold_fund_ann": 6646.848731250911
+    },
+    {
+      "score": 11176.059625689892,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5039.122894048236,
+      "hold_fund_ann": 4888.642852105805
+    },
+    {
+      "score": 11173.344796603093,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 5018.579667452672,
+      "hold_fund_ann": 4885.928023019006
+    },
+    {
+      "score": 11148.935395260733,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4862.276206561468,
+      "hold_fund_ann": 5400.147624442122
+    },
+    {
+      "score": 11114.561505610247,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4810.67520367933,
+      "hold_fund_ann": 6570.187158761397
+    },
+    {
+      "score": 11009.251954059535,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.0,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4722.59276536027,
+      "hold_fund_ann": 5193.991237794852
+    },
+    {
+      "score": 10974.42964807227,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4632.921216441456,
+      "hold_fund_ann": 6509.735475327619
+    },
+    {
+      "score": 10878.88035346789,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4681.916764887156,
+      "hold_fund_ann": 6107.509057208987
+    },
+    {
+      "score": 10654.875969050037,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4370.253138076139,
+      "hold_fund_ann": 4320.250520309867
+    },
+    {
+      "score": 10642.435513223225,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4765.973499392185,
+      "hold_fund_ann": 10885.820254223685
+    },
+    {
+      "score": 10559.431389610627,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4335.762349797287,
+      "hold_fund_ann": 4256.423973567695
+    },
+    {
+      "score": 10522.248457946105,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4257.21285251518,
+      "hold_fund_ann": 4187.623009205933
+    },
+    {
+      "score": 10409.469395797898,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4106.462004208063,
+      "hold_fund_ann": 5013.4275296918995
+    },
+    {
+      "score": 10409.186475043922,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4341.1130783454155,
+      "hold_fund_ann": 6151.20562774631
+    },
+    {
+      "score": 10330.376507366831,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4307.703849659881,
+      "hold_fund_ann": 5047.152041203239
+    },
+    {
+      "score": 10301.284935846132,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 4370.253138076139,
+      "hold_fund_ann": 3966.659487105961
+    },
+    {
+      "score": 10296.509825030553,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3993.5024358196197,
+      "hold_fund_ann": 4809.621013649454
+    },
+    {
+      "score": 10294.71994272545,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4077.990629988923,
+      "hold_fund_ann": 6395.155487741941
+    },
+    {
+      "score": 10288.181330283789,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4208.493336807595,
+      "hold_fund_ann": 6829.475623666601
+    },
+    {
+      "score": 10276.896715650295,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 0,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3871.370489612338,
+      "hold_fund_ann": 4714.301148256265
+    },
+    {
+      "score": 10130.829947854845,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 4097.607486152071,
+      "hold_fund_ann": 6540.444958664473
+    },
+    {
+      "score": 10058.30388363417,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 2.0,
+        "atr_stop_mult": 1.5,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3901.6167423109246,
+      "hold_fund_ann": 6097.0770725233115
+    },
+    {
+      "score": 10055.631608952728,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 2.0,
+        "atr_stop_mult": 1.5,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3902.8956146798355,
+      "hold_fund_ann": 6766.600778021932
+    },
+    {
+      "score": 9988.537198991698,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3875.079093220307,
+      "hold_fund_ann": 5940.8246686504635
+    },
+    {
+      "score": 9973.88793460729,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.004,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3861.0289012044204,
+      "hold_fund_ann": 5262.966475588802
+    },
+    {
+      "score": 9881.751281896124,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3665.0219691595953,
+      "hold_fund_ann": 6859.379251355032
+    },
+    {
+      "score": 9864.162505899976,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.0035,
+        "rr": 2.5,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3672.2145298707346,
+      "hold_fund_ann": 4605.375406155869
+    },
+    {
+      "score": 9863.73396894848,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.025,
+        "daily_halt_profit_pct": 0.035,
+        "cooldown_losses": 0,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3427.855129957437,
+      "hold_fund_ann": 4284.5290111397035
+    },
+    {
+      "score": 9863.581946054861,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.003,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.02,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 0,
+        "one_entry_per_day": true
+      },
+      "train_fund_ann": 3456.659042561406,
+      "hold_fund_ann": 4835.569999698963
+    },
+    {
+      "score": 9810.50239064147,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 2.0,
+        "atr_stop_mult": 1.5,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3605.1126853034457,
+      "hold_fund_ann": 3673.7709581834047
+    },
+    {
+      "score": 9798.198325585,
+      "params": {
+        "signal_mode": "h1_sweep_bos",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": true,
+        "risk_pct": 0.005,
+        "rr": 1.8,
+        "atr_stop_mult": 1.25,
+        "move_be_at_r": 0.0,
+        "skip_mondays": false,
+        "daily_halt_loss_pct": 0.015,
+        "daily_halt_profit_pct": 0.03,
+        "cooldown_losses": 2,
+        "one_entry_per_day": false
+      },
+      "train_fund_ann": 3995.673885186618,
+      "hold_fund_ann": 12079.912101257492
+    }
+  ]
+}

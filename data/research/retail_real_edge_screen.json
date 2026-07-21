@@ -1,0 +1,133 @@
+{
+  "n_hits": 2,
+  "top": [
+    {
+      "params": {
+        "signal_mode": "sweep_bos_ob",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": false,
+        "risk_pct": 0.005,
+        "rr": 1.5,
+        "atr_stop_mult": 1.25,
+        "cooldown_losses": 2,
+        "move_be_at_r": 0.0,
+        "skip_mondays": true,
+        "one_entry_per_day": true,
+        "daily_halt_loss_pct": 0.03,
+        "daily_halt_profit_pct": 0.05
+      },
+      "train": {
+        "n_trades": 3305,
+        "win_rate": 0.43116490166414523,
+        "profit_factor": 1.1233832183505374,
+        "avg_annual_pnl": 297.70117333231576,
+        "net_wealth_gain": 2377.534079699836,
+        "total_withdrawn": 0.0,
+        "max_dd": 527.5051129843291,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true,
+        "consistency_ratio": 0.005096720861682308,
+        "hit_eval_target": true,
+        "years": 7.98631074606434,
+        "final_balance": 3377.534079699836,
+        "max_dd_pct": 0.1654623844753434
+      },
+      "hold": {
+        "n_trades": 875,
+        "win_rate": 0.41485714285714287,
+        "profit_factor": 1.0577440053673453,
+        "avg_annual_pnl": 76.20291290000559,
+        "net_wealth_gain": 152.30150969747865,
+        "total_withdrawn": 0.0,
+        "max_dd": 147.67021224856228,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true,
+        "consistency_ratio": 0.029127769345891272,
+        "hit_eval_target": false,
+        "years": 1.998631074606434,
+        "final_balance": 1152.3015096974787,
+        "max_dd_pct": 0.14046238314386794
+      },
+      "exp_t": 0.07791225416036307,
+      "exp_h": 0.037142857142857144,
+      "score": 3048.533206665309
+    },
+    {
+      "params": {
+        "signal_mode": "sweep_bos_ob",
+        "pairset": "majors4",
+        "pairs": [
+          "EURUSD",
+          "GBPUSD",
+          "USDJPY",
+          "AUDUSD"
+        ],
+        "max_positions": 1,
+        "min_confluence": 2,
+        "swing_left": 3,
+        "swing_right": 3,
+        "require_killzone": false,
+        "weekly_withdraw": false,
+        "risk_pct": 0.003,
+        "rr": 1.5,
+        "atr_stop_mult": 1.25,
+        "cooldown_losses": 2,
+        "move_be_at_r": 0.0,
+        "skip_mondays": true,
+        "one_entry_per_day": true,
+        "daily_halt_loss_pct": 0.03,
+        "daily_halt_profit_pct": 0.05
+      },
+      "train": {
+        "n_trades": 3458,
+        "win_rate": 0.4271255060728745,
+        "profit_factor": 1.1050464620074287,
+        "avg_annual_pnl": 120.8368885813846,
+        "net_wealth_gain": 965.0409417984911,
+        "total_withdrawn": 0.0,
+        "max_dd": 252.0972640501841,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true,
+        "consistency_ratio": 0.007858761887360564,
+        "hit_eval_target": true,
+        "years": 7.98631074606434,
+        "final_balance": 1965.040941798491,
+        "max_dd_pct": 0.1234816246089159
+      },
+      "hold": {
+        "n_trades": 875,
+        "win_rate": 0.41485714285714287,
+        "profit_factor": 1.059456857739473,
+        "avg_annual_pnl": 46.58663606400655,
+        "net_wealth_gain": 93.10949849890426,
+        "total_withdrawn": 0.0,
+        "max_dd": 89.19949473658164,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true,
+        "consistency_ratio": 0.028150181677472297,
+        "hit_eval_target": false,
+        "years": 1.998631074606434,
+        "final_balance": 1093.1094984989043,
+        "max_dd_pct": 0.08654814861352711
+      },
+      "exp_t": 0.06781376518218618,
+      "exp_h": 0.037142857142857144,
+      "score": 3021.486208387502
+    }
+  ]
+}
