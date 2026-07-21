@@ -1,7 +1,20 @@
 # S6 Equal Liquidity Fade — MT5 EA
 
 Port of the backtested **S6_eq_liquidity_fade** strategy for MetaTrader 5.
-**Strategy Tester ready** (v1.20+).
+**Strategy Tester ready** (v1.30+).
+
+## If Strategy Tester lost money (important)
+
+Python research for **EURUSD only, 2024-01 → 2025-01** is about **+$18k** (PF ~1.9, max DD ~$4k).  
+The big multi-pair Python number (~+$161k / 2024–25) is **8 pairs**, not one chart.
+
+If your tester showed ~**−$7k**, that was **not** matching research. Common causes fixed in **v1.30**:
+
+1. **Entry nudging** (v1.20) moved limit prices off the equal level when stops-level blocked them → wrong trades. **v1.30 skips** those setups instead.
+2. Hard floor cancelled pendings but **left positions open** past −6%. Now it **closes all**.
+3. Wrong model/timezone: use **Every tick**, `InpTesterServerIsUTC=true`.
+
+Re-download **v1.30**, recompile (F7), re-run the same dates. Journal must say `v1.30`.
 
 ## Strategy Tester (drop-in)
 
@@ -15,64 +28,27 @@ Port of the backtested **S6_eq_liquidity_fade** strategy for MetaTrader 5.
 | Expert | `S6_EqLiquidityFade` |
 | Symbol | `EURUSD` (start here) |
 | Period | **M15** |
-| Dates | e.g. 2024.01.01 – 2025.12.31 |
-| Forward | No (or optional) |
+| Dates | e.g. 2024.01.01 – 2025.01.01 |
 | Deposit | **100000** |
 | Leverage | **1:100** |
-| Model | **Every tick** (best) or **1 minute OHLC** |
-| Optimization | Disabled for first run |
+| Model | **Every tick** (avoid “Open prices only”) |
+| Optimization | Off |
 
-5. Inputs: **leave defaults**. Confirm:
-   - `InpUseGMT` = true
-   - `InpTesterServerIsUTC` = **true** (MetaQuotes / most demo history)
-   - `InpInitialBalance` = **0** (uses tester deposit) or **100000**
-6. Click **Start**. Journal should show: `S6 EqLiquidityFade v1.20 | tester=YES`
-
-If killzones look wrong (no trades in London/NY windows), set `InpTesterServerIsUTC=false` and set `InpServerToUtcOffset` so server+offset = UTC.
+5. Inputs: leave defaults (`InpTesterServerIsUTC=true`, `InpInitialBalance=0` or `100000`)
+6. Start — Journal: `S6 EqLiquidityFade v1.30 | tester=YES`
 
 ## Live install
 
-1. Same copy + compile as above.
-2. Drag EA onto a chart (any TF; EA reads M15+H1 internally).
-3. Enable **Algo Trading**.
-4. For The5ers: `InpInitialBalance=100000`, unique `InpMagic` per symbol chart.
-
-## Critical settings
-
-| Input | Recommended | Notes |
-| --- | --- | --- |
-| `InpUseGMT` | true | Killzones match research UTC |
-| `InpTesterServerIsUTC` | true | Tester: treat bar times as UTC |
-| `InpKZ1Start/End` | 7 / 11 | London UTC |
-| `InpKZ2Start/End` | 12 / 17 | NY UTC |
-| `InpFlattenHourUTC` | 20 | Flat late session |
-| `InpRiskPercent` | 0.40 | 0.4% of initial |
-| `InpRewardRisk` | 1.5 | TP distance |
-| `InpDailyLossLimitPct` | 3.0 | Day pause |
-| `InpMaxLossPct` | 6.0 | Hard floor |
+1. Same copy + compile.
+2. Drag onto chart; enable **Algo Trading**.
+3. The5ers: `InpInitialBalance=100000`; unique `InpMagic` per symbol.
 
 ## What it does
 
-1. On each **closed M15** bar in a killzone:
-   - Confirmed swing equals (0.15 ATR)
-   - Sweep beyond equals that closes back inside
-   - H1 structure bias filter
-2. Places a **Buy/Sell limit** at the equal level (GTC; auto-cancel after ~16 M15 bars)
-3. Moves SL to breakeven after +1R
-4. Flattens from 20:00 UTC
-5. Pauses on daily loss / hard max-loss floor
-
-## Tester vs Python research
-
-Same *rules*, not identical PnL: broker ticks ≠ HistData, spreads/slippage differ, one symbol vs multi-pair book.
-
-## Demo checklist before The5ers eval
-
-1. Strategy Tester sanity check (trades fire, no order errors).
-2. Demo 1–2 weeks; journal fills vs research.
-3. Confirm killzone hours in Journal prints.
-4. Confirm lot risk ≈ 0.4% of $100k.
+1. Closed M15 killzone: confirmed swing equals → sweep fade → H1 bias
+2. **Exact** Buy/Sell limit at the equal level (skip if broker stops-level blocks it)
+3. BE after +1R; flatten 20:00 UTC; daily pause / hard floor (closes all)
 
 ## Disclaimer
 
-Past backtests ≠ live results. You are responsible for prop-firm rules, news risk, and compliance.
+Past backtests ≠ live results. Broker ticks ≠ HistData.
