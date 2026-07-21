@@ -93,7 +93,11 @@ def _simulate_limit_entry_and_exit(
     signal: Signal,
     params: StrategyParams,
 ) -> Optional[Tuple[pd.Timestamp, float, pd.Timestamp, float, str]]:
-    pos = m1.index.searchsorted(signal.time, side="right")
+    # Causal: signal is known only after the M15 bar *closes*.
+    # signal.time is the bar open; first valid fill is the next M1 at/after close.
+    # (Older code searched from bar open and filled during the sweep — look-ahead.)
+    bar_close = signal.time + pd.Timedelta(minutes=15)
+    pos = m1.index.searchsorted(bar_close, side="left")
     if pos >= len(m1):
         return None
 

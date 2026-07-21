@@ -18,8 +18,8 @@
 //+------------------------------------------------------------------+
 #property copyright "aifundedagent"
 #property link      "https://github.com/cyrusw17/aifundedagent"
-#property version   "1.50"
-#property description "S6 equal fade — Python parity (M15 H1, M1 retest)"
+#property version   "1.60"
+#property description "S6 equal fade — causal retest after signal close"
 
 #include <Trade/Trade.mqh>
 #include <Trade/PositionInfo.mqh>
@@ -94,6 +94,7 @@ int      g_armSide        = 0;      // 0 flat, +1 buy fade, -1 sell fade
 double   g_armEqual       = 0.0;
 double   g_armSL          = 0.0;
 datetime g_armExpire      = 0;
+datetime g_armAfter       = 0;      // only M1 bars AFTER this (not the sweep bar)
 bool     g_armOrderOn     = false;
 string   g_armComment     = "";
 
@@ -263,6 +264,7 @@ void ClearArm(const string why)
    g_armEqual = 0;
    g_armSL = 0;
    g_armExpire = 0;
+   g_armAfter = 0;
    g_armOrderOn = false;
    g_armComment = "";
 }
@@ -496,25 +498,28 @@ double TpFrom(int side, double entry, double sl)
 }
 
 //----------------------- retest arm manager ---------------------------
-bool M1TouchedLevel(int side, double level)
+bool M1TouchedLevel(int side, double level, datetime afterTime)
 {
-   // Python fill: M1 high >= limit (sell) / M1 low <= limit (buy)
-   double hi[], lo[];
-   ArraySetAsSeries(hi, true);
-   ArraySetAsSeries(lo, true);
-   int n = CopyHigh(_Symbol, PERIOD_M1, 0, 8, hi);
-   int n2 = CopyLow(_Symbol, PERIOD_M1, 0, 8, lo);
-   if(n < 1 || n2 < 1) return false;
-   int m = MathMin(n, n2);
-   for(int i = 0; i < m; i++)
+   // Only bars STRICTLY after the signal bar close — never the sweep itself.
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int n = CopyRates(_Symbol, PERIOD_M1, 0, 240, rates);
+   if(n < 1) return false;
+   for(int i = 0; i < n; i++)
    {
-      if(side < 0 && hi[i] >= level) return true;
-      if(side > 0 && lo[i] <= level) return true;
+      if(rates[i].time <= afterTime)
+         break; // older than arm (series: increasing age)
+      if(side < 0 && rates[i].high >= level) return true;
+      if(side > 0 && rates[i].low <= level) return true;
    }
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   if(side < 0 && bid >= level) return true;
-   if(side > 0 && ask <= level) return true;
+   // Live touch after arm only
+   if(TimeCurrent() > afterTime)
+   {
+      if(side < 0 && bid >= level) return true;
+      if(side > 0 && ask <= level) return true;
+   }
    return false;
 }
 
@@ -592,10 +597,9 @@ void ManageArm()
       }
    }
 
-   // 2) Python-style fill: M1 wick touched equal → market at structure geometry
-   if(M1TouchedLevel(side, equal))
+   // 2) Retest only on M1 AFTER signal close (never the sweep wick)
+   if(M1TouchedLevel(side, equal, g_armAfter))
    {
-      // Keep TP/SL from equal; market executes at bid/ask
       if(side < 0 && sl <= bid) { ClearArm("SL <= bid on retest"); return; }
       if(side > 0 && sl >= ask) { ClearArm("SL >= ask on retest"); return; }
       if(SendOrder(side, (side < 0 ? bid : ask), sl, tp, g_armComment, true))
@@ -613,12 +617,13 @@ void ArmSetup(int side, double equal, double sl, string comment)
    g_armSide    = side;
    g_armEqual   = NormalizeDouble(equal, _Digits);
    g_armSL      = NormalizeDouble(sl, _Digits);
+   g_armAfter   = TimeCurrent(); // arm on new bar ⇒ signal bar already closed
    g_armExpire  = TimeCurrent() + InpLimitExpiryBars * PeriodSeconds(PERIOD_M15);
    g_armOrderOn = false;
    g_armComment = comment;
    g_statSignals++;
-   LogMsg(StringFormat("S6: ARM %s equal=%.5f SL=%.5f (wait retest)",
-                       comment, g_armEqual, g_armSL));
+   LogMsg(StringFormat("S6: ARM %s equal=%.5f SL=%.5f after=%s",
+                       comment, g_armEqual, g_armSL, TimeToString(g_armAfter)));
 }
 
 //----------------------- manage open ----------------------------------
@@ -821,12 +826,10 @@ int OnInit()
    ConfigureTrade();
    SymbolSelect(_Symbol, true);
 
-   PrintFormat("S6 v1.50 PARITY | bal=%.2f | %s | tester=%s | UTC=%s",
-               g_initialBalance, _Symbol,
-               g_isTester ? "YES" : "no",
-               (g_isTester && InpTesterServerIsUTC) ? "tester-as-UTC" : "gmt/offset");
-   Print("S6 v1.50: H1 from M15 resample; M1 wick retest; day-flag only on FILL");
-   Print("S6 Tester: M15 | Every tick | Deposit=100000 | InpInitialBalance=100000");
+   PrintFormat("S6 v1.60 CAUSAL | bal=%.2f | %s | tester=%s",
+               g_initialBalance, _Symbol, g_isTester ? "YES" : "no");
+   Print("S6: Fills only AFTER signal bar close (no sweep look-ahead).");
+   Print("S6 NOTE: Causal S6 EURUSD 2024 ≈ flat/red in research; old +PnL was look-ahead.");
    return INIT_SUCCEEDED;
 }
 

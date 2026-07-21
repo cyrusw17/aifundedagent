@@ -1,31 +1,22 @@
-# S6 Equal Liquidity Fade — MT5 EA (v1.50)
+# S6 MT5 EA (v1.60) — read this first
 
-## Zero-spread losses are logic/data parity — not “spread”
+## Your −$7k tester result is expected
 
-Python EURUSD 2024 with **0 spread** ≈ **+$27k–$35k** (engine/limit book).  
-If the EA still loses with spread=0, it was **not** taking the same fills as research.
+Corrected Python (causal fills, after signal bar close):
 
-### Bugs fixed in v1.50
-1. **H1 bias** now from **M15→H1 resample** (Python), not broker `PERIOD_H1`
-2. **Retest fill** uses **M1 high/low wick** (Python), not only Bid/Ask
-3. **Day flag** set only on **FILL** — expired pendings no longer burn the day
-4. Structural SL/TP no longer mutated toward the market on retest
+- S6 EURUSD 2024 ≈ **−$6k to −$14k**
+- Old “+$18k / +$161k” reports used **look-ahead fills** (filled during the sweep before the signal was knowable)
 
-Journal must say: **`S6 v1.50 PARITY`**
+Details: [`../results/LOOKAHEAD_FILL_BUG.md`](../results/LOOKAHEAD_FILL_BUG.md)
 
-## Strategy Tester
+**Do not use this EA on The5ers** until strategies are rebuilt under causal fills.
 
-| Field | Value |
-| --- | --- |
-| Expert | S6_EqLiquidityFade |
-| Symbol | EURUSD |
-| Period | M15 |
-| Model | **Every tick** |
-| Deposit | 100000 |
-| `InpInitialBalance` | 100000 |
+## What v1.60 does
 
-End stats: `armed= / limits= / retestMkt= / expired=`
+Causal equal-fade: arm after M15 close → limit at equal → retest only on M1 **after** the signal (never the sweep wick).
 
-## Still not identical to Python
+Journal: `S6 v1.60 CAUSAL`
 
-Broker M1/M15 history ≠ HistData used in research. Even with correct logic, PnL will differ. Direction should no longer be a steady multi-thousand loser if parity holds.
+## Tester
+
+EURUSD · M15 · Every tick · Deposit 100000 · `InpInitialBalance=100000`
