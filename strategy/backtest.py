@@ -161,14 +161,21 @@ def _simulate_limit_entry_and_exit(
     be_armed = False
     one_r = abs(entry_px - stop)
     use_be = getattr(params, "move_to_be", True)
+    max_hold_days = int(getattr(params, "max_hold_days", 0) or 0)
 
     j = entry_i + 1
     while j < len(m1):
         ts = times[j]
-        if ts.normalize() == day and hours[j] >= params.flatten_hour_utc:
-            return entry_time, float(entry_px), ts, float(closes[j]), "flatten"
-        if ts.normalize() > day:
-            return entry_time, float(entry_px), ts, float(opens[j]), "flatten_next"
+        held_days = (ts.normalize() - day).days
+        if max_hold_days <= 0:
+            # Day-trader mode: flatten at session hour or next calendar day open
+            if ts.normalize() == day and hours[j] >= params.flatten_hour_utc:
+                return entry_time, float(entry_px), ts, float(closes[j]), "flatten"
+            if ts.normalize() > day:
+                return entry_time, float(entry_px), ts, float(opens[j]), "flatten_next"
+        else:
+            if held_days >= max_hold_days:
+                return entry_time, float(entry_px), ts, float(opens[j]), "time_exit"
 
         if side == 1:
             if use_be and not be_armed and highs[j] >= entry_px + one_r:

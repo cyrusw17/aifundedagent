@@ -41,10 +41,16 @@ W1/W4 at 1% risk: green late, **red early**; full CAGR only **~2–3%**.
 3. At 1% risk: \(0.2R × 100 trades/yr × $1k ≈ $20k\) is an upper sketch; live PF in hard years (2020–22) is often **&lt; 1**.  
 4. Scaling risk to hit 25% would need **~4–5% risk/trade** on the stable sleeve (or huge DD), which breaks a 1% risk budget and The5ers $6k floor (stable best already shows ~$15–20k DD on $100k).
 
+## Retail / indicator follow-up
+
+Also tested EMA/RSI/BB/MACD/Donchian/Supertrend/VWAP, ADX filters, daily swing, and H1 turtle-style Donchian (see `RETAIL_EXPANSION.md`).
+
+- M15 retail: no early PF≥1.05 grid hit worth keeping  
+- H1 Donchian can print **~25%+ in 2020–22** then **dies in 2023–25** (same regime trap)  
+- Soft best retail full CAGR ~**7%** with ~$75k DD — not stable, not 25%
+
 ## Verdict
 
-I do **not** believe a **stable ~25%/year** strategy is available from this knowledge-base family under **no look-ahead** on 2020–2025 HistData at **1% risk**.  
+I do **not** believe a **stable ~25%/year** strategy is available from ICT/SMC **or** common retail indicator families under **no look-ahead** on 2020–2025 HistData at **1% risk**.  
 
-Best honest number: **~5% CAGR** (Asia Silver Bullet, stricter filters, 1% risk), positive in 2020–22, 2023–25, and 2026 H1 — far from 25%.  
-
-A **~25% print on 2024–25 alone** exists but **fails** when required to work in 2020–22.
+Best honest durable number remains **~5% CAGR** (Asia Silver Bullet). Fragile windows can print 25% but do not survive the other half of the sample.

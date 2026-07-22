@@ -45,6 +45,8 @@ class StrategyParams:
     daily_profit_cap: float = 4_500.0
     cooldown_bars_after_trade: int = 1
     move_to_be: bool = True  # False = let TP/SL/flatten manage (no early BE)
+    # 0 = day-trader mode (flatten same/next session day). >0 = hold up to N calendar days.
+    max_hold_days: int = 0
 
     spreads: Dict[str, float] = field(
         default_factory=lambda: {
