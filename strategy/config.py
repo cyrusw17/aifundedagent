@@ -50,6 +50,12 @@ class StrategyParams:
     # Soft halt: stop new trades when peak-equity >= this (keep buffer above prop floor).
     # 0 = disabled. The5ers static floor is $6k; use ~$4.5–5.5k with small risk/trade.
     dd_halt: float = 0.0
+    # Soft halt on absolute equity: stop new trades when equity <= this level (0 = off).
+    # Use e.g. 95_000 to keep a buffer above the $94k static floor while allowing
+    # trailing drawdown from peak to exceed $6k after equity has grown.
+    equity_halt_floor: float = 0.0
+    # If True, size risk from current equity (compounds). If False, from initial balance.
+    risk_from_equity: bool = False
 
     spreads: Dict[str, float] = field(
         default_factory=lambda: {

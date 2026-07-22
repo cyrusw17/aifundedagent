@@ -328,6 +328,10 @@ def run_period(
         if dd_halt > 0 and (peak - equity) >= dd_halt:
             i += 1
             continue
+        eq_halt = float(getattr(params, "equity_halt_floor", 0.0) or 0.0)
+        if eq_halt > 0 and equity <= eq_halt:
+            i += 1
+            continue
 
         fill = _simulate_limit_entry_and_exit(m1_map[sig.pair], sig, params)
         if fill is None:
@@ -342,8 +346,12 @@ def run_period(
             if j >= 0:
                 usdjpy_px = float(u["close"].iloc[j])
 
+        if getattr(params, "risk_from_equity", False):
+            risk_cash = max(equity, 1.0) * params.risk_pct
+        else:
+            risk_cash = risk_amount
         lots = _lots_for_risk(
-            sig.pair, entry_px, sig.stop, risk_amount, params, usdjpy=usdjpy_px
+            sig.pair, entry_px, sig.stop, risk_cash, params, usdjpy=usdjpy_px
         )
         if lots <= 0:
             i += 1
