@@ -1,0 +1,24 @@
+{
+  "target_cagr_pct": 25,
+  "causal": true,
+  "risk_note": "up to 1% of initial balance per trade; fixed (non-compounding) risk",
+  "periods": {
+    "full": [
+      "2020-01-01",
+      "2025-12-31"
+    ],
+    "early": [
+      "2020-01-01",
+      "2022-12-31"
+    ],
+    "late": [
+      "2023-01-01",
+      "2025-12-31"
+    ]
+  },
+  "screened": 120,
+  "deep_n": 0,
+  "near_25": [],
+  "best15": [],
+  "top_dev_screen": []
+}

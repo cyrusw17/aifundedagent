@@ -79,7 +79,7 @@ def edge(universe, fn, period, cfg):
         "pf": pf(r.trades_df),
         "trades": r.trades,
         "wr": round(r.win_rate, 4),
-        "max_dd": round(r.max_drawdown, 2),
+        "max_dd": round(r.max_dd, 2),
         "years": round(years, 3),
         "cagr_pct": round(cagr * 100, 2),
         "simple_ann_pct": round(simple_ann * 100, 2),
