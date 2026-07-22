@@ -1,0 +1,7 @@
+strategy,edge_pnl,edge_pf,trades,eval_pass,funded_made,chart
+S6_eq_liquidity_fade,35746.11,1.804,326,True,25155.14,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S6_eq_liquidity_fade.png
+S4_asia_break_go,26633.55,2.407,176,True,16442.92,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S4_asia_break_go.png
+S5_dual_liquidity_book,26073.13,1.362,454,True,15797.54,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S5_dual_liquidity_book.png
+S3_turtle_soup,21787.46,1.405,339,True,11697.77,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S3_turtle_soup.png
+S1_session_break_retest,8465.85,1.167,279,True,-1824.34,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S1_session_break_retest.png
+S2_ny_london_turtle,6991.58,1.431,107,False,,/opt/cursor/artifacts/strategy-equity-2026/equity_2026_S2_ny_london_turtle.png
