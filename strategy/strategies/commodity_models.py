@@ -206,11 +206,183 @@ def gen_atr_break(pair, m15, params, cfg: CmdCfg) -> List:
     return out
 
 
+def gen_macd(pair, m15, params, cfg: CmdCfg) -> List:
+    """MACD cross with slow-EMA filter on closed HTF bar."""
+    df = _resample(m15, cfg.tf)
+    c = df["close"].to_numpy()
+    idx = df.index
+    atr_v = _atr_arr(df, cfg.atr_len)
+    ef = _ema(c, cfg.ema_fast)
+    es = _ema(c, cfg.ema_slow)
+    line = ef - es
+    sig = _ema(line, 9)
+    et = _ema(c, max(cfg.ema_slow, 50))
+    tfm = _tf_minutes(cfg.tf)
+    out, used = [], set()
+    for i in range(2, len(df)):
+        if np.isnan(atr_v[i]) or np.isnan(line[i]) or np.isnan(sig[i]) or np.isnan(et[i]):
+            continue
+        if not _session_ok(idx[i], cfg):
+            continue
+        day = idx[i].normalize()
+        if day in used:
+            continue
+        bull = line[i - 1] <= sig[i - 1] and line[i] > sig[i] and c[i] > et[i]
+        bear = line[i - 1] >= sig[i - 1] and line[i] < sig[i] and c[i] < et[i]
+        if bull and not cfg.short_only:
+            entry = float(c[i])
+            stop = entry - cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+        elif bear and not cfg.long_only:
+            entry = float(c[i])
+            stop = entry + cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+    return out
+
+
+def gen_supertrend(pair, m15, params, cfg: CmdCfg) -> List:
+    """Supertrend flip on closed HTF bar (causal band update)."""
+    df = _resample(m15, cfg.tf)
+    h, l, c = df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
+    idx = df.index
+    atr_v = _atr_arr(df, cfg.atr_len)
+    mult = float(cfg.pullback_atr) if cfg.pullback_atr >= 1.0 else 3.0
+    n = len(df)
+    upper = np.full(n, np.nan)
+    lower = np.full(n, np.nan)
+    direction = np.ones(n)
+    hl2 = (h + l) / 2.0
+    for i in range(n):
+        if np.isnan(atr_v[i]) or atr_v[i] <= 0:
+            continue
+        bu = hl2[i] + mult * atr_v[i]
+        bl = hl2[i] - mult * atr_v[i]
+        if i == 0 or np.isnan(upper[i - 1]):
+            upper[i], lower[i] = bu, bl
+            direction[i] = 1
+            continue
+        upper[i] = bu if (bu < upper[i - 1] or c[i - 1] > upper[i - 1]) else upper[i - 1]
+        lower[i] = bl if (bl > lower[i - 1] or c[i - 1] < lower[i - 1]) else lower[i - 1]
+        if direction[i - 1] >= 0:
+            direction[i] = -1 if c[i] < lower[i] else 1
+        else:
+            direction[i] = 1 if c[i] > upper[i] else -1
+    tfm = _tf_minutes(cfg.tf)
+    out, used = [], set()
+    for i in range(2, n):
+        if np.isnan(atr_v[i]) or atr_v[i] <= 0:
+            continue
+        if not _session_ok(idx[i], cfg):
+            continue
+        day = idx[i].normalize()
+        if day in used:
+            continue
+        if direction[i - 1] <= 0 < direction[i] and not cfg.short_only:
+            entry = float(c[i])
+            stop = entry - cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+        elif direction[i - 1] >= 0 > direction[i] and not cfg.long_only:
+            entry = float(c[i])
+            stop = entry + cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+    return out
+
+
+def gen_bb_fade(pair, m15, params, cfg: CmdCfg) -> List:
+    """Bollinger + RSI fade on closed HTF bar."""
+    df = _resample(m15, cfg.tf)
+    h, l, c = df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
+    idx = df.index
+    atr_v = _atr_arr(df, cfg.atr_len)
+    mid = pd.Series(c).rolling(cfg.don_len).mean()
+    sd = pd.Series(c).rolling(cfg.don_len).std(ddof=0)
+    up = (mid + 2.0 * sd).to_numpy()
+    lo = (mid - 2.0 * sd).to_numpy()
+    r = _rsi(c, 14)
+    tfm = _tf_minutes(cfg.tf)
+    out, used = [], set()
+    for i in range(cfg.don_len + 2, len(df)):
+        if np.isnan(atr_v[i]) or np.isnan(up[i]) or np.isnan(r[i]):
+            continue
+        if not _session_ok(idx[i], cfg):
+            continue
+        day = idx[i].normalize()
+        if day in used:
+            continue
+        if (not cfg.short_only) and l[i] < lo[i] and c[i] > lo[i] and r[i] <= cfg.rsi_lo:
+            entry = float(c[i])
+            stop = min(float(l[i]), entry - cfg.stop_atr * atr_v[i])
+            s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+        elif (not cfg.long_only) and h[i] > up[i] and c[i] < up[i] and r[i] >= cfg.rsi_hi:
+            entry = float(c[i])
+            stop = max(float(h[i]), entry + cfg.stop_atr * atr_v[i])
+            s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+    return out
+
+
+def gen_regime_don(pair, m15, params, cfg: CmdCfg) -> List:
+    """Donchian breakout only with trend regime (close vs slow EMA)."""
+    df = _resample(m15, cfg.tf)
+    h, l, c = df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
+    idx = df.index
+    atr_v = _atr_arr(df, cfg.atr_len)
+    hh = pd.Series(h).rolling(cfg.don_len).max().shift(1).to_numpy()
+    ll = pd.Series(l).rolling(cfg.don_len).min().shift(1).to_numpy()
+    et = _ema(c, cfg.ema_slow)
+    tfm = _tf_minutes(cfg.tf)
+    out, used = [], set()
+    for i in range(cfg.don_len + 1, len(df)):
+        if np.isnan(atr_v[i]) or atr_v[i] <= 0 or np.isnan(hh[i]) or np.isnan(et[i]):
+            continue
+        if not _session_ok(idx[i], cfg):
+            continue
+        day = idx[i].normalize()
+        if day in used:
+            continue
+        if c[i] > hh[i] and c[i] > et[i] and not cfg.short_only:
+            entry = float(c[i])
+            stop = entry - cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+        elif c[i] < ll[i] and c[i] < et[i] and not cfg.long_only:
+            entry = float(c[i])
+            stop = entry + cfg.stop_atr * atr_v[i]
+            s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=tfm)
+            if s:
+                out.append(s)
+                used.add(day)
+    return out
+
+
 GEN = {
     "don": gen_don,
     "ema": gen_ema,
     "ema_pb": gen_ema_pullback,
     "atr_brk": gen_atr_break,
+    "macd": gen_macd,
+    "supertrend": gen_supertrend,
+    "bb_fade": gen_bb_fade,
+    "regime_don": gen_regime_don,
 }
 
 

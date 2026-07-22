@@ -1,0 +1,525 @@
+{
+  "winners": [
+    {
+      "id": "F1_XAU_DON4h_n40_rr1p8_L",
+      "train_ok": true,
+      "hold_ok": true,
+      "years": {
+        "2021": {
+          "profit": -5840.78,
+          "ann": -5.86,
+          "pf": 0.0,
+          "trades": 3,
+          "max_dd": 5840.78,
+          "min_eq": 94159.22,
+          "floor_ok": true,
+          "worst_day": -1987.02,
+          "end_eq": 94159.22
+        },
+        "2022": {
+          "profit": 5363.13,
+          "ann": 5.38,
+          "pf": 1.329,
+          "trades": 18,
+          "max_dd": 9084.61,
+          "min_eq": 95883.67,
+          "floor_ok": true,
+          "worst_day": -2137.49,
+          "end_eq": 105363.13
+        },
+        "2023": {
+          "profit": 7446.09,
+          "ann": 7.47,
+          "pf": 1.355,
+          "trades": 24,
+          "max_dd": 6954.15,
+          "min_eq": 98018.4,
+          "floor_ok": true,
+          "worst_day": -2225.79,
+          "end_eq": 107446.09
+        },
+        "2024": {
+          "profit": 34950.32,
+          "ann": 34.97,
+          "pf": 2.868,
+          "trades": 24,
+          "max_dd": 5406.43,
+          "min_eq": 96932.0,
+          "floor_ok": true,
+          "worst_day": -2733.57,
+          "end_eq": 134950.32
+        },
+        "2025": {
+          "profit": 35934.54,
+          "ann": 36.06,
+          "pf": 2.479,
+          "trades": 32,
+          "max_dd": 5671.26,
+          "min_eq": 98004.25,
+          "floor_ok": true,
+          "worst_day": -2715.97,
+          "end_eq": 135934.54
+        }
+      },
+      "hold_2026": {
+        "profit": 10808.45,
+        "ann": 21.93,
+        "pf": 2.397,
+        "trades": 10,
+        "max_dd": 4487.86,
+        "min_eq": 103515.7,
+        "floor_ok": true,
+        "worst_day": -2252.15,
+        "end_eq": 110808.45
+      },
+      "challenge": {
+        "2024": {
+          "passed": true,
+          "days": 100,
+          "fail": "",
+          "profit": 11038.34,
+          "min_eq": 96932.0,
+          "worst_day": -1999.52
+        },
+        "2025": {
+          "passed": true,
+          "days": 245,
+          "fail": "",
+          "profit": 11459.46,
+          "min_eq": 98004.25,
+          "worst_day": -2135.45
+        },
+        "2026": {
+          "passed": true,
+          "days": 22,
+          "fail": "",
+          "profit": 10895.5,
+          "min_eq": 103515.7,
+          "worst_day": 3515.7
+        }
+      },
+      "funded_withdraw": {
+        "2024_2025_total": 62080.92,
+        "2026H1_total": 11151.29,
+        "fail_2425": ""
+      }
+    },
+    {
+      "id": "F2_XAU_DON4h_n40_rr2_L",
+      "train_ok": true,
+      "hold_ok": true,
+      "years": {
+        "2021": {
+          "profit": -5840.78,
+          "ann": -5.86,
+          "pf": 0.0,
+          "trades": 3,
+          "max_dd": 5840.78,
+          "min_eq": 94159.22,
+          "floor_ok": true,
+          "worst_day": -1987.02,
+          "end_eq": 94159.22
+        },
+        "2022": {
+          "profit": 4654.76,
+          "ann": 4.67,
+          "pf": 1.267,
+          "trades": 18,
+          "max_dd": 8993.24,
+          "min_eq": 95051.74,
+          "floor_ok": true,
+          "worst_day": -2118.06,
+          "end_eq": 104654.76
+        },
+        "2023": {
+          "profit": 10347.47,
+          "ann": 10.38,
+          "pf": 1.484,
+          "trades": 24,
+          "max_dd": 7147.37,
+          "min_eq": 98018.4,
+          "floor_ok": true,
+          "worst_day": -2285.94,
+          "end_eq": 110347.47
+        },
+        "2024": {
+          "profit": 22764.4,
+          "ann": 22.78,
+          "pf": 2.123,
+          "trades": 24,
+          "max_dd": 4903.7,
+          "min_eq": 96932.0,
+          "floor_ok": true,
+          "worst_day": -2482.99,
+          "end_eq": 122764.4
+        },
+        "2025": {
+          "profit": 38512.73,
+          "ann": 38.64,
+          "pf": 2.587,
+          "trades": 32,
+          "max_dd": 5626.81,
+          "min_eq": 98004.25,
+          "floor_ok": true,
+          "worst_day": -2783.87,
+          "end_eq": 138512.73
+        }
+      },
+      "hold_2026": {
+        "profit": 11421.86,
+        "ann": 23.18,
+        "pf": 2.473,
+        "trades": 10,
+        "max_dd": 4487.86,
+        "min_eq": 103906.33,
+        "floor_ok": true,
+        "worst_day": -2252.15,
+        "end_eq": 111421.86
+      },
+      "challenge": {
+        "2024": {
+          "passed": true,
+          "days": 130,
+          "fail": "",
+          "profit": 12540.39,
+          "min_eq": 96932.0,
+          "worst_day": -1999.52
+        },
+        "2025": {
+          "passed": true,
+          "days": 245,
+          "fail": "",
+          "profit": 12131.93,
+          "min_eq": 98004.25,
+          "worst_day": -2135.45
+        },
+        "2026": {
+          "passed": true,
+          "days": 22,
+          "fail": "",
+          "profit": 10674.72,
+          "min_eq": 103906.33,
+          "worst_day": 2627.6
+        }
+      },
+      "funded_withdraw": {
+        "2024_2025_total": 54317.77,
+        "2026H1_total": 11584.27,
+        "fail_2425": ""
+      }
+    },
+    {
+      "id": "F3_XAU_DON4h_n35_rr1p8_L",
+      "train_ok": true,
+      "hold_ok": true,
+      "years": {
+        "2021": {
+          "profit": -5358.84,
+          "ann": -5.38,
+          "pf": 0.087,
+          "trades": 6,
+          "max_dd": 5358.84,
+          "min_eq": 94641.16,
+          "floor_ok": true,
+          "worst_day": -1495.0,
+          "end_eq": 94641.16
+        },
+        "2022": {
+          "profit": 1660.41,
+          "ann": 1.67,
+          "pf": 1.097,
+          "trades": 23,
+          "max_dd": 7212.53,
+          "min_eq": 96103.06,
+          "floor_ok": true,
+          "worst_day": -1554.76,
+          "end_eq": 101660.41
+        },
+        "2023": {
+          "profit": 4091.61,
+          "ann": 4.11,
+          "pf": 1.241,
+          "trades": 25,
+          "max_dd": 6648.1,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "worst_day": -1624.22,
+          "end_eq": 104091.61
+        },
+        "2024": {
+          "profit": 26718.08,
+          "ann": 26.74,
+          "pf": 2.744,
+          "trades": 26,
+          "max_dd": 3804.67,
+          "min_eq": 97696.08,
+          "floor_ok": true,
+          "worst_day": -1913.5,
+          "end_eq": 126718.08
+        },
+        "2025": {
+          "profit": 25180.53,
+          "ann": 25.27,
+          "pf": 2.312,
+          "trades": 34,
+          "max_dd": 5658.48,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "worst_day": -1901.18,
+          "end_eq": 125180.53
+        }
+      },
+      "hold_2026": {
+        "profit": 12887.3,
+        "ann": 26.15,
+        "pf": 4.162,
+        "trades": 10,
+        "max_dd": 2437.14,
+        "min_eq": 102611.66,
+        "floor_ok": true,
+        "worst_day": -1680.48,
+        "end_eq": 112887.3
+      },
+      "challenge": {
+        "2024": {
+          "passed": true,
+          "days": 100,
+          "fail": "",
+          "profit": 11078.41,
+          "min_eq": 97696.08,
+          "worst_day": -1495.14
+        },
+        "2025": {
+          "passed": true,
+          "days": 272,
+          "fail": "",
+          "profit": 10681.12,
+          "min_eq": 98513.8,
+          "worst_day": -1621.79
+        },
+        "2026": {
+          "passed": true,
+          "days": 28,
+          "fail": "",
+          "profit": 11054.94,
+          "min_eq": 102611.66,
+          "worst_day": 2611.66
+        }
+      },
+      "funded_withdraw": {
+        "2024_2025_total": 47118.64,
+        "2026H1_total": 12242.47,
+        "fail_2425": ""
+      }
+    },
+    {
+      "id": "F4_XAU_DON4h_n30_rr1p8_L",
+      "train_ok": true,
+      "hold_ok": true,
+      "years": {
+        "2021": {
+          "profit": -5273.47,
+          "ann": -5.29,
+          "pf": 0.0,
+          "trades": 3,
+          "max_dd": 5273.47,
+          "min_eq": 94726.53,
+          "floor_ok": true,
+          "worst_day": -1797.78,
+          "end_eq": 94726.53
+        },
+        "2022": {
+          "profit": -5161.19,
+          "ann": -5.18,
+          "pf": 0.709,
+          "trades": 18,
+          "max_dd": 7276.28,
+          "min_eq": 94838.81,
+          "floor_ok": true,
+          "worst_day": -1811.88,
+          "end_eq": 94838.81
+        },
+        "2023": {
+          "profit": 2905.75,
+          "ann": 2.92,
+          "pf": 1.131,
+          "trades": 26,
+          "max_dd": 7929.9,
+          "min_eq": 98221.07,
+          "floor_ok": true,
+          "worst_day": -1945.06,
+          "end_eq": 102905.75
+        },
+        "2024": {
+          "profit": 34833.25,
+          "ann": 34.86,
+          "pf": 2.813,
+          "trades": 26,
+          "max_dd": 4855.7,
+          "min_eq": 97252.04,
+          "floor_ok": true,
+          "worst_day": -2460.21,
+          "end_eq": 134833.25
+        },
+        "2025": {
+          "profit": 36282.47,
+          "ann": 36.41,
+          "pf": 2.51,
+          "trades": 35,
+          "max_dd": 7196.46,
+          "min_eq": 98216.56,
+          "floor_ok": true,
+          "worst_day": -2444.37,
+          "end_eq": 136282.47
+        }
+      },
+      "hold_2026": {
+        "profit": 9065.97,
+        "ann": 18.4,
+        "pf": 2.054,
+        "trades": 12,
+        "max_dd": 4888.89,
+        "min_eq": 99243.06,
+        "floor_ok": true,
+        "worst_day": -2032.88,
+        "end_eq": 109065.97
+      },
+      "challenge": {
+        "2024": {
+          "passed": true,
+          "days": 100,
+          "fail": "",
+          "profit": 13395.72,
+          "min_eq": 97252.04,
+          "worst_day": -1783.36
+        },
+        "2025": {
+          "passed": true,
+          "days": 106,
+          "fail": "",
+          "profit": 11480.91,
+          "min_eq": 98216.56,
+          "worst_day": -1890.0
+        },
+        "2026": {
+          "passed": true,
+          "days": 51,
+          "fail": "",
+          "profit": 10384.04,
+          "min_eq": 99243.06,
+          "worst_day": -1945.04
+        }
+      },
+      "funded_withdraw": {
+        "2024_2025_total": 35154.56,
+        "2026H1_total": 9050.74,
+        "fail_2425": ""
+      }
+    },
+    {
+      "id": "F5_XAU_DON1D_n30_rr2p5_B",
+      "train_ok": true,
+      "hold_ok": true,
+      "years": {
+        "2021": {
+          "profit": 6625.86,
+          "ann": 6.65,
+          "pf": 2.233,
+          "trades": 10,
+          "max_dd": 2116.07,
+          "min_eq": 98041.54,
+          "floor_ok": true,
+          "worst_day": -2116.07,
+          "end_eq": 106625.86
+        },
+        "2022": {
+          "profit": -4395.19,
+          "ann": -4.41,
+          "pf": 0.578,
+          "trades": 12,
+          "max_dd": 5390.69,
+          "min_eq": 95604.81,
+          "floor_ok": true,
+          "worst_day": -1990.03,
+          "end_eq": 95604.81
+        },
+        "2023": {
+          "profit": 7041.04,
+          "ann": 7.07,
+          "pf": 2.166,
+          "trades": 13,
+          "max_dd": 3490.26,
+          "min_eq": 97486.74,
+          "floor_ok": true,
+          "worst_day": -1962.59,
+          "end_eq": 107041.04
+        },
+        "2024": {
+          "profit": 10891.75,
+          "ann": 10.9,
+          "pf": 2.128,
+          "trades": 13,
+          "max_dd": 4546.16,
+          "min_eq": 98002.47,
+          "floor_ok": true,
+          "worst_day": -2285.65,
+          "end_eq": 110891.75
+        },
+        "2025": {
+          "profit": 11975.48,
+          "ann": 12.02,
+          "pf": 1.966,
+          "trades": 15,
+          "max_dd": 5955.1,
+          "min_eq": 98523.52,
+          "floor_ok": true,
+          "worst_day": -2190.64,
+          "end_eq": 111975.48
+        }
+      },
+      "hold_2026": {
+        "profit": 14555.29,
+        "ann": 29.54,
+        "pf": 16.309,
+        "trades": 5,
+        "max_dd": 950.74,
+        "min_eq": 104879.69,
+        "floor_ok": true,
+        "worst_day": -844.14,
+        "end_eq": 114555.29
+      },
+      "challenge": {
+        "2024": {
+          "passed": true,
+          "days": 256,
+          "fail": "",
+          "profit": 12349.5,
+          "min_eq": 98002.47,
+          "worst_day": -2109.15
+        },
+        "2025": {
+          "passed": true,
+          "days": 278,
+          "fail": "",
+          "profit": 14701.99,
+          "min_eq": 98523.52,
+          "worst_day": -2077.04
+        },
+        "2026": {
+          "passed": true,
+          "days": 77,
+          "fail": "",
+          "profit": 15506.02,
+          "min_eq": 104879.69,
+          "worst_day": 4879.69
+        }
+      },
+      "funded_withdraw": {
+        "2024_2025_total": 22158.11,
+        "2026H1_total": 13552.02,
+        "fail_2425": ""
+      }
+    }
+  ],
+  "failed": []
+}
