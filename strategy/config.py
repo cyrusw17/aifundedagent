@@ -63,6 +63,9 @@ class StrategyParams:
             "GBPUSD": 0.00015,
             "USDJPY": 0.015,
             "XAUUSD": 0.25,
+            "XAGUSD": 0.03,
+            "WTIUSD": 0.04,
+            "BCOUSD": 0.04,
             "AUDUSD": 0.00014,
             "USDCAD": 0.00016,
             "EURJPY": 0.018,
@@ -76,6 +79,9 @@ class StrategyParams:
             "GBPUSD": 100_000.0,
             "USDJPY": 100_000.0,
             "XAUUSD": 100.0,
+            "XAGUSD": 5_000.0,
+            "WTIUSD": 100.0,
+            "BCOUSD": 100.0,
             "AUDUSD": 100_000.0,
             "USDCAD": 100_000.0,
             "EURJPY": 100_000.0,
@@ -92,6 +98,13 @@ class StrategyParams:
         "USDCAD",
         "EURJPY",
         "GBPJPY",
+    )
+
+    # Commodity research universe (no FX). WTI HistData stops ~2023 so omit from primary.
+    commodity_pairs: Tuple[str, ...] = (
+        "XAUUSD",
+        "XAGUSD",
+        "BCOUSD",
     )
 
 

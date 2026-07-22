@@ -27,6 +27,8 @@ class H1Cfg:
     stop_atr: float = 2.0
     atr_len: int = 14
     session_only: bool = False  # if True, only signal in killzone hours on H1
+    long_only: bool = False
+    short_only: bool = False
 
 
 def _to_h1(m15: pd.DataFrame) -> pd.DataFrame:
@@ -61,6 +63,8 @@ def gen_don_h1(pair, m15, params, cfg: H1Cfg) -> List:
         if day in used:
             continue
         if c[i] > hh[i]:
+            if cfg.short_only:
+                continue
             entry = float(c[i])
             stop = entry - cfg.stop_atr * atr_v[i]
             s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=60)
@@ -68,6 +72,8 @@ def gen_don_h1(pair, m15, params, cfg: H1Cfg) -> List:
                 out.append(s)
                 used.add(day)
         elif c[i] < ll[i]:
+            if cfg.long_only:
+                continue
             entry = float(c[i])
             stop = entry + cfg.stop_atr * atr_v[i]
             s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=60)
@@ -93,6 +99,8 @@ def gen_ema_h1(pair, m15, params, cfg: H1Cfg) -> List:
         if day in used:
             continue
         if ef[i - 1] <= es[i - 1] and ef[i] > es[i]:
+            if cfg.short_only:
+                continue
             entry = float(c[i])
             stop = entry - cfg.stop_atr * atr_v[i]
             s = pack_signal(idx[i], pair, 1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=60)
@@ -100,6 +108,8 @@ def gen_ema_h1(pair, m15, params, cfg: H1Cfg) -> List:
                 out.append(s)
                 used.add(day)
         elif ef[i - 1] >= es[i - 1] and ef[i] < es[i]:
+            if cfg.long_only:
+                continue
             entry = float(c[i])
             stop = entry + cfg.stop_atr * atr_v[i]
             s = pack_signal(idx[i], pair, -1, entry, stop, cfg.rr, cfg.tag, True, signal_tf_minutes=60)
