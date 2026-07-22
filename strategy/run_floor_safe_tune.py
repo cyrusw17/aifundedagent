@@ -135,9 +135,9 @@ def tune_ict(universe, base: Cfg, name: str):
     print(f"\n=== Tune {name} ===", flush=True)
     best = None
     tested = []
-    for risk in (0.0020, 0.0025, 0.0030, 0.0035, 0.0040, 0.0050, 0.0060):
-        for body in (0.22, 0.35, 0.45):
-            for halt in (4500.0, 5000.0, 5500.0):
+    for risk in (0.0025, 0.0030, 0.0035, 0.0040, 0.0050):
+        for body in (0.22, 0.35):
+            for halt in (4500.0, 5000.0):
                 cfg = replace(base, risk_pct=risk, min_body_atr=body, tag=f"{name}_r{risk}_b{body}")
                 fn = make_ict(cfg)
                 full = run_prop(

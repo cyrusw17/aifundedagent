@@ -1,27 +1,20 @@
-# Five strategies above 10% annual return (causal)
+# Five strategies — prop-floor-safe edition
 
-**Window:** 2020-01-01 → 2025-12-31 (6 years).
-**Metric:** simple annualized return = total PnL / $100k / 6.
-**Fills:** no look-ahead (`knowable_at` = bar close).
+**Prop rules:** static max loss $6,000 · daily loss $3,000 · soft `dd_halt`  
+**Fills:** no look-ahead (`knowable_at` = bar close)  
+**Window:** 2020–2025 (and checked on early/late/2026 H1)
 
-| # | Strategy | Full ann | CAGR | PF | Trades | Max DD | 2020-22 ann | 2023-25 ann |
-|---|----------|----------|------|----|--------|--------|-------------|-------------|
-| 1 | **A1_H1Don_n35_rr5** | **14.3%** | 10.9% | 1.094 | 1172 | $97,642 | 35.0% | -6.5% |
-| 2 | **A2_H1Don_n30_rr4** | **13.1%** | 10.1% | 1.1 | 1219 | $62,636 | 22.0% | 3.9% |
-| 3 | **A3_H1Don_n40_rr4** | **10.9%** | 8.8% | 1.073 | 1177 | $87,282 | 19.3% | 2.4% |
-| 4 | **A4_ICT_MSB_PA** | **11.2%** | 8.9% | 1.138 | 996 | $32,810 | -2.3% | 24.6% |
-| 5 | **A5_ICT_MSB_ASIA** | **10.2%** | 8.2% | 1.174 | 666 | $23,387 | 6.1% | 14.2% |
+| # | Strategy | Max DD | Full ann | Risk | Halt |
+|---|----------|--------|----------|------|------|
+| 1 | **A1** H1 Donchian 35 RR5 | **$5.1k** | 3.0% | 0.35% | $5.0k |
+| 2 | **A2** H1 Donchian 30 RR4 | **$4.7k** | 1.5% | 0.40% | $4.5k |
+| 3 | **A3** H1 Donchian 40 RR4 | **$4.6k** | 2.2% | 0.40% | $4.5k |
+| 4 | **A4** SB14 PDH+Asia | **$4.7k** | 1.4% | 0.50% | $4.5k |
+| 5 | **A5** SB14 Asia | **$4.2k** | 1.8% | 0.50% | $4.0k |
 
-## What they are
+All five: **never hit $94k floor**, **max_dd ≤ $6k**.
 
-1. **A1–A3** — H1 Donchian breakouts (session 07–17 UTC), multi-day hold ≤3, ATR stop.
-2. **A4–A5** — ICT multi Silver Bullet (07–08 + 14–15 + 15–16 UTC) → FVG CE, risk 2%.
+See `FLOOR_SAFE.md` for the unconstrained → floor-safe trade-off (was >10% ann with $20k–$90k DD).
 
-Registry: `strategy/strategies/ann10_winners.py`
-
-## Caveats
-
-- Full-sample average >10%; **subperiods diverge** (H1 strong 2020–22 / weak 2023–25; ICT often the reverse).
-- Drawdowns can exceed **$60k–$90k** on $100k — not The5ers floor-safe.
-- Causal fills only; HistData ≠ live broker.
-
+Registry: `strategy/strategies/ann10_winners.py`  
+Confirm: `python3 scripts/confirm_ann10_winners.py`
