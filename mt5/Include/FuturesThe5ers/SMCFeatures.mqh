@@ -2,6 +2,9 @@
 //| SMCFeatures.mqh                                                  |
 //| Causal SMC helpers matching mcpt/forex/smc.py + h1_sweep_bos.    |
 //| Features at bar-close i → execute on bar i+1 open.               |
+//|                                                                  |
+//| CRITICAL: rates[] is AsSeries (0=forming). Signal uses bar>=1.   |
+//| Swing windows must NEVER read rates[0] (lookahead).              |
 //+------------------------------------------------------------------+
 #property copyright "aifundedagent"
 
@@ -10,10 +13,12 @@
 
 //+------------------------------------------------------------------+
 //| ATR as SMA of True Range (matches pandas rolling mean).          |
+//| Uses only closed bars: bar, bar+1, ... (AsSeries).               |
 //+------------------------------------------------------------------+
 double SMC_ATR_SMA(const MqlRates &rates[], const int bar, const int period, const int copied)
 {
-   if(bar + period >= copied)
+   // Need bar .. bar+period-1 and prior closes at bar+1 .. bar+period
+   if(bar < 1 || bar + period >= copied)
       return 0.0;
    double sum = 0.0;
    for(int k = 0; k < period; k++)
@@ -28,8 +33,14 @@ double SMC_ATR_SMA(const MqlRates &rates[], const int bar, const int period, con
 }
 
 //+------------------------------------------------------------------+
-//| Build forward-filled last confirmed swing high/low arrays.       |
-//| Series rates: index 0 = newest. Confirmation uses left/right.    |
+//| Build forward-filled last confirmed swing high/low (AsSeries).   |
+//|                                                                   |
+//| Python (chrono, 0=oldest): at confirm i, pivot c=i-right,        |
+//| window [c-left, c+right] = [i-left-right, i] — no future bars.   |
+//|                                                                   |
+//| AsSeries (0=newest): confirm series index j (>=1),               |
+//| pivot = j+right (older), window w = j .. j+left+right.           |
+//| j=0 (forming) never confirms a swing — only carries prior level. |
 //+------------------------------------------------------------------+
 void SMC_BuildSwingLevels(
    const MqlRates &rates[],
@@ -45,24 +56,30 @@ void SMC_BuildSwingLevels(
    double sh = EMPTY_VALUE;
    double sl = EMPTY_VALUE;
 
+   // Oldest → newest so ffill matches Python
    for(int j = copied - 1; j >= 0; j--)
    {
-      const int c = j - swing_right;
-      if(c - swing_left >= 0 && j >= swing_left + swing_right)
+      // Forming bar: never confirm (would use incomplete OHLC)
+      if(j >= 1)
       {
-         bool is_sh = true;
-         bool is_sl = true;
-         for(int w = c - swing_left; w <= c + swing_right; w++)
+         const int pivot = j + swing_right; // older than confirm
+         const int oldest = j + swing_left + swing_right;
+         if(pivot < copied && oldest < copied)
          {
-            if(rates[w].high > rates[c].high)
-               is_sh = false;
-            if(rates[w].low < rates[c].low)
-               is_sl = false;
+            bool is_sh = true;
+            bool is_sl = true;
+            for(int w = j; w <= oldest; w++)
+            {
+               if(rates[w].high > rates[pivot].high)
+                  is_sh = false;
+               if(rates[w].low < rates[pivot].low)
+                  is_sl = false;
+            }
+            if(is_sh)
+               sh = rates[pivot].high;
+            if(is_sl)
+               sl = rates[pivot].low;
          }
-         if(is_sh)
-            sh = rates[c].high;
-         if(is_sl)
-            sl = rates[c].low;
       }
       last_sh[j] = sh;
       last_sl[j] = sl;
@@ -70,8 +87,86 @@ void SMC_BuildSwingLevels(
 }
 
 //+------------------------------------------------------------------+
+//| True if sweep-low + discount at closed bar idx (AsSeries).       |
+//| Sweep level = last_sl[idx+1]  (== Python shift(1)).              |
+//| EQ from last swings at idx (same-bar ffill, like Python).        |
+//+------------------------------------------------------------------+
+bool SMC_SweepLongAt(
+   const MqlRates &rates[],
+   const double   &last_sh[],
+   const double   &last_sl[],
+   const int       idx,
+   const int       copied
+)
+{
+   if(idx < 1 || idx + 1 >= copied)
+      return false;
+   const double lvl = last_sl[idx + 1];
+   const double eq_hi = last_sh[idx];
+   const double eq_lo = last_sl[idx];
+   if(lvl == EMPTY_VALUE || eq_hi == EMPTY_VALUE || eq_lo == EMPTY_VALUE)
+      return false;
+   const double eq = 0.5 * (eq_hi + eq_lo);
+   const bool sweep = (rates[idx].low < lvl && rates[idx].close > lvl);
+   return (sweep && rates[idx].close < eq);
+}
+
+bool SMC_SweepShortAt(
+   const MqlRates &rates[],
+   const double   &last_sh[],
+   const double   &last_sl[],
+   const int       idx,
+   const int       copied
+)
+{
+   if(idx < 1 || idx + 1 >= copied)
+      return false;
+   const double lvl = last_sh[idx + 1];
+   const double eq_hi = last_sh[idx];
+   const double eq_lo = last_sl[idx];
+   if(lvl == EMPTY_VALUE || eq_hi == EMPTY_VALUE || eq_lo == EMPTY_VALUE)
+      return false;
+   const double eq = 0.5 * (eq_hi + eq_lo);
+   const bool sweep = (rates[idx].high > lvl && rates[idx].close < lvl);
+   return (sweep && rates[idx].close > eq);
+}
+
+bool SMC_BosUpAt(
+   const MqlRates &rates[],
+   const double   &last_sh[],
+   const int       idx,
+   const int       copied
+)
+{
+   if(idx < 1 || idx + 1 >= copied)
+      return false;
+   const double lvl = last_sh[idx + 1];
+   if(lvl == EMPTY_VALUE)
+      return false;
+   return (rates[idx].close > lvl);
+}
+
+bool SMC_BosDnAt(
+   const MqlRates &rates[],
+   const double   &last_sl[],
+   const int       idx,
+   const int       copied
+)
+{
+   if(idx < 1 || idx + 1 >= copied)
+      return false;
+   const double lvl = last_sl[idx + 1];
+   if(lvl == EMPTY_VALUE)
+      return false;
+   return (rates[idx].close < lvl);
+}
+
+//+------------------------------------------------------------------+
 //| h1_sweep_bos on last closed bar (index 1).                       |
 //| Returns +1 long, -1 short, 0 flat. out_atr = ATR at signal bar.  |
+//|                                                                   |
+//| Lookback: sweeps on bars 2..9 only (prior 1..8), BOS on bar 1.   |
+//| Never reads rates[0] OHLC for the signal decision.               |
 //+------------------------------------------------------------------+
 int H1SweepBosSignal(
    const string          symbol,
@@ -83,7 +178,7 @@ int H1SweepBosSignal(
 )
 {
    out_atr = 0.0;
-   const int bar = 1;
+   const int bar = 1; // last fully closed H1
    const int need = 150;
 
    MqlRates rates[];
@@ -99,49 +194,20 @@ int H1SweepBosSignal(
    double last_sh[], last_sl[];
    SMC_BuildSwingLevels(rates, copied, swing_left, swing_right, last_sh, last_sl);
 
+   // recent sweep on prior bars only (k=1..8 → series idx = bar+k = 2..9)
    bool recent_long  = false;
    bool recent_short = false;
-
    for(int k = 1; k <= 8; k++)
    {
       const int idx = bar + k;
-      if(idx + 1 >= copied)
-         continue;
-
-      const double sl_prev = last_sl[idx + 1];
-      const double sh_prev = last_sh[idx + 1];
-      const double eq_hi   = last_sh[idx];
-      const double eq_lo   = last_sl[idx];
-      if(eq_hi == EMPTY_VALUE || eq_lo == EMPTY_VALUE)
-         continue;
-
-      const double eq = 0.5 * (eq_hi + eq_lo);
-
-      if(sl_prev != EMPTY_VALUE)
-      {
-         const bool sweep_l = (rates[idx].low < sl_prev && rates[idx].close > sl_prev);
-         if(sweep_l && rates[idx].close < eq)
-            recent_long = true;
-      }
-      if(sh_prev != EMPTY_VALUE)
-      {
-         const bool sweep_h = (rates[idx].high > sh_prev && rates[idx].close < sh_prev);
-         if(sweep_h && rates[idx].close > eq)
-            recent_short = true;
-      }
+      if(SMC_SweepLongAt(rates, last_sh, last_sl, idx, copied))
+         recent_long = true;
+      if(SMC_SweepShortAt(rates, last_sh, last_sl, idx, copied))
+         recent_short = true;
    }
 
-   bool bos_up = false;
-   bool bos_dn = false;
-   if(bar + 1 < copied)
-   {
-      const double sh_prev = last_sh[bar + 1];
-      const double sl_prev = last_sl[bar + 1];
-      if(sh_prev != EMPTY_VALUE)
-         bos_up = (rates[bar].close > sh_prev);
-      if(sl_prev != EMPTY_VALUE)
-         bos_dn = (rates[bar].close < sl_prev);
-   }
+   const bool bos_up = SMC_BosUpAt(rates, last_sh, bar, copied);
+   const bool bos_dn = SMC_BosDnAt(rates, last_sl, bar, copied);
 
    if(recent_long && bos_up)
       return 1;
