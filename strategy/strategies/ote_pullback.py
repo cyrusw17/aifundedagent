@@ -26,6 +26,7 @@ def generate_signals(
     last_t = None
     last_side = 0
     for s in merged:
+        # Preserve causality fields — stripping knowable_at / tf was a look-ahead hygiene bug.
         s = Signal(
             time=s.time,
             pair=s.pair,
@@ -36,6 +37,9 @@ def generate_signals(
             sweep_extreme=s.sweep_extreme,
             reason="dual_" + s.reason,
             reward_risk=s.reward_risk,
+            marketable=s.marketable,
+            knowable_at=s.knowable_at,
+            signal_tf_minutes=s.signal_tf_minutes,
         )
         if last_t is not None and s.side == last_side:
             if (s.time - last_t).total_seconds() < 4 * 15 * 60:

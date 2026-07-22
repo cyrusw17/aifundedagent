@@ -96,9 +96,21 @@ def _simulate_limit_entry_and_exit(
     # HARD RULE: no fill before the signal is knowable (bar close).
     # signal.time = bar open; knowable_at = bar close. Searching from bar open
     # filled during the sweep wick and was look-ahead (see LOOKAHEAD_FILL_BUG.md).
-    not_before = signal.knowable_at
-    if not_before is None:
-        not_before = signal.time + pd.Timedelta(minutes=getattr(signal, "signal_tf_minutes", 15))
+    # Refuse missing / forged knowable_at — never silently trust a too-early stamp.
+    tf_min = int(getattr(signal, "signal_tf_minutes", 15) or 15)
+    expected = signal.time + pd.Timedelta(minutes=tf_min)
+    if signal.knowable_at is None:
+        raise RuntimeError(
+            f"LOOK-AHEAD GUARD: signal missing knowable_at "
+            f"({signal.pair} {signal.reason} time={signal.time})"
+        )
+    # Allow tiny timestamp float noise; reject any early forge.
+    if signal.knowable_at < expected - pd.Timedelta(seconds=1):
+        raise RuntimeError(
+            f"LOOK-AHEAD GUARD: knowable_at {signal.knowable_at} earlier than "
+            f"bar close {expected} ({signal.pair} {signal.reason})"
+        )
+    not_before = max(signal.knowable_at, expected)
 
     pos = m1.index.searchsorted(not_before, side="left")
     if pos >= len(m1):
