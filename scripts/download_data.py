@@ -15,11 +15,14 @@ PAIRS = [
     "audusd",
     "usdjpy",
     "xauusd",
+    "xagusd",
+    "bcousd",
     "usdcad",
     "eurjpy",
     "gbpjpy",
 ]
-YEARS = ["2023", "2024", "2025"]
+# Research years only — never download 2026+ for strategy selection.
+YEARS = ["2020", "2021", "2022", "2023", "2024", "2025"]
 
 
 def main() -> None:
