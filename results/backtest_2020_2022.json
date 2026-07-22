@@ -1,0 +1,278 @@
+{
+  "S6_eq_liquidity_fade": {
+    "description": "Equal highs/lows sweep fade",
+    "edge": {
+      "profit": 250269.76,
+      "pf": 1.86,
+      "win_rate": 0.4298,
+      "trades": 2166,
+      "avg_trades_per_day": 2.846,
+      "max_dd": 5281.56
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 79,
+      "profit": 10234.14,
+      "max_dd": 1439.18,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 239436.57,
+      "weekly_withdrawals": 109,
+      "total_made": 240436.57,
+      "end_equity": 101000.0,
+      "max_dd": 11015.28
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 74677.76,
+        "pf": 1.795,
+        "trades": 697,
+        "max_dd": 5281.56
+      },
+      "2021": {
+        "profit": 58182.47,
+        "pf": 1.517,
+        "trades": 748,
+        "max_dd": 3838.86
+      },
+      "2022": {
+        "profit": 117409.53,
+        "pf": 2.387,
+        "trades": 721,
+        "max_dd": 3579.94
+      }
+    }
+  },
+  "S4_asia_break_go": {
+    "description": "Asia range break-and-go (momentum, no retest)",
+    "edge": {
+      "profit": 299863.99,
+      "pf": 3.353,
+      "win_rate": 0.5562,
+      "trades": 1424,
+      "avg_trades_per_day": 2.011,
+      "max_dd": 1990.57
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 44,
+      "profit": 10055.15,
+      "max_dd": 962.85,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 288888.01,
+      "weekly_withdrawals": 141,
+      "total_made": 289888.01,
+      "end_equity": 101000.0,
+      "max_dd": 6035.46
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 100515.64,
+        "pf": 3.27,
+        "trades": 486,
+        "max_dd": 1554.41
+      },
+      "2021": {
+        "profit": 93231.75,
+        "pf": 3.179,
+        "trades": 479,
+        "max_dd": 1459.48
+      },
+      "2022": {
+        "profit": 106116.6,
+        "pf": 3.629,
+        "trades": 459,
+        "max_dd": 1990.57
+      }
+    }
+  },
+  "S5_dual_liquidity_book": {
+    "description": "Combined Turtle Soup + Equal H/L fade book",
+    "edge": {
+      "profit": 282047.5,
+      "pf": 1.665,
+      "win_rate": 0.4167,
+      "trades": 2976,
+      "avg_trades_per_day": 3.835,
+      "max_dd": 5756.92
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 72,
+      "profit": 10392.12,
+      "max_dd": 1885.78,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 271635.7,
+      "weekly_withdrawals": 111,
+      "total_made": 272053.77,
+      "end_equity": 100418.07,
+      "max_dd": 13621.08
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 80957.06,
+        "pf": 1.578,
+        "trades": 961,
+        "max_dd": 4276.43
+      },
+      "2021": {
+        "profit": 77397.18,
+        "pf": 1.507,
+        "trades": 1011,
+        "max_dd": 4531.73
+      },
+      "2022": {
+        "profit": 123693.26,
+        "pf": 1.939,
+        "trades": 1004,
+        "max_dd": 5756.92
+      }
+    }
+  },
+  "S3_turtle_soup": {
+    "description": "Failed PDH/PDL or Asia break fade",
+    "edge": {
+      "profit": 178987.7,
+      "pf": 1.522,
+      "win_rate": 0.4084,
+      "trades": 2255,
+      "avg_trades_per_day": 2.925,
+      "max_dd": 5170.21
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 73,
+      "profit": 10402.03,
+      "max_dd": 3083.33,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 167075.46,
+      "weekly_withdrawals": 85,
+      "total_made": 167984.43,
+      "end_equity": 100908.97,
+      "max_dd": 9650.13
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 53590.74,
+        "pf": 1.474,
+        "trades": 735,
+        "max_dd": 4794.84
+      },
+      "2021": {
+        "profit": 51221.05,
+        "pf": 1.425,
+        "trades": 773,
+        "max_dd": 5170.21
+      },
+      "2022": {
+        "profit": 74175.91,
+        "pf": 1.68,
+        "trades": 747,
+        "max_dd": 4193.71
+      }
+    }
+  },
+  "S1_session_break_retest": {
+    "description": "Asia/London range break + retest (Power of 3)",
+    "edge": {
+      "profit": 145004.23,
+      "pf": 1.502,
+      "win_rate": 0.4113,
+      "trades": 1855,
+      "avg_trades_per_day": 2.467,
+      "max_dd": 4192.07
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 93,
+      "profit": 10018.76,
+      "max_dd": 1972.06,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 133784.9,
+      "weekly_withdrawals": 78,
+      "total_made": 134985.47,
+      "end_equity": 101200.57,
+      "max_dd": 8237.65
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 44995.15,
+        "pf": 1.473,
+        "trades": 604,
+        "max_dd": 3395.73
+      },
+      "2021": {
+        "profit": 40969.96,
+        "pf": 1.412,
+        "trades": 625,
+        "max_dd": 4192.07
+      },
+      "2022": {
+        "profit": 59039.12,
+        "pf": 1.626,
+        "trades": 626,
+        "max_dd": 3194.87
+      }
+    }
+  },
+  "S2_ny_london_turtle": {
+    "description": "NY fade of failed London high/low breaks",
+    "edge": {
+      "profit": 72157.93,
+      "pf": 1.759,
+      "win_rate": 0.475,
+      "trades": 701,
+      "avg_trades_per_day": 1.333,
+      "max_dd": 2993.54
+    },
+    "evaluation": {
+      "passed": true,
+      "days_to_target": 217,
+      "profit": 10160.15,
+      "max_dd": 2100.62,
+      "fail_reason": ""
+    },
+    "funded": {
+      "passed": true,
+      "total_withdrawn": 61395.66,
+      "weekly_withdrawals": 57,
+      "total_made": 62395.66,
+      "end_equity": 101000.0,
+      "max_dd": 5320.4
+    },
+    "yearly_edge": {
+      "2020": {
+        "profit": 17758.41,
+        "pf": 1.573,
+        "trades": 226,
+        "max_dd": 2869.58
+      },
+      "2021": {
+        "profit": 23193.26,
+        "pf": 1.701,
+        "trades": 239,
+        "max_dd": 2993.54
+      },
+      "2022": {
+        "profit": 31206.26,
+        "pf": 2.008,
+        "trades": 236,
+        "max_dd": 2275.06
+      }
+    }
+  }
+}

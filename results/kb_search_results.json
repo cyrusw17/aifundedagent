@@ -1,0 +1,331 @@
+{
+  "causal": true,
+  "criteria": "DEV/2023/2026 edge PF>=1.05 & profit>0; prefer eval pass DEV+2023",
+  "winners": [
+    {
+      "tag": "W_SB14_rr3.0_b0.35_L_r0.006_f0.15_P",
+      "model": "sb_fvg",
+      "rr": 3.0,
+      "risk_pct": 0.006,
+      "strict_bias": false,
+      "min_body_atr": 0.35,
+      "min_fvg_atr": 0.15,
+      "use_pdh": true,
+      "use_asia": false,
+      "sb_start": 14.0,
+      "sb_end": 15.0,
+      "sb_windows": [
+        [
+          7.0,
+          8.0
+        ],
+        [
+          14.0,
+          15.0
+        ],
+        [
+          15.0,
+          16.0
+        ]
+      ],
+      "move_to_be": false,
+      "flatten_hour_utc": 22,
+      "dev": {
+        "profit": 11729.86,
+        "pf": 1.387,
+        "trades": 89,
+        "wr": 0.3371
+      },
+      "oos_2023": {
+        "profit": 1747.88,
+        "pf": 1.113,
+        "trades": 42,
+        "wr": 0.3571
+      },
+      "hold_2026": {
+        "profit": 3127.51,
+        "pf": 1.753,
+        "trades": 14,
+        "wr": 0.4286
+      },
+      "eval_dev": {
+        "passed": true,
+        "fail_reason": "",
+        "days_to_target": 263,
+        "profit": 10538.51
+      },
+      "eval_2023": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 1747.88
+      },
+      "eval_2026": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 3127.51
+      }
+    },
+    {
+      "tag": "W_SB14_rr3.0_b0.35_L_r0.007_f0.15_P",
+      "model": "sb_fvg",
+      "rr": 3.0,
+      "risk_pct": 0.007,
+      "strict_bias": false,
+      "min_body_atr": 0.35,
+      "min_fvg_atr": 0.15,
+      "use_pdh": true,
+      "use_asia": false,
+      "sb_start": 14.0,
+      "sb_end": 15.0,
+      "sb_windows": [
+        [
+          7.0,
+          8.0
+        ],
+        [
+          14.0,
+          15.0
+        ],
+        [
+          15.0,
+          16.0
+        ]
+      ],
+      "move_to_be": false,
+      "flatten_hour_utc": 22,
+      "dev": {
+        "profit": 12647.74,
+        "pf": 1.379,
+        "trades": 89,
+        "wr": 0.3371
+      },
+      "oos_2023": {
+        "profit": 1899.85,
+        "pf": 1.112,
+        "trades": 42,
+        "wr": 0.3571
+      },
+      "hold_2026": {
+        "profit": 2976.16,
+        "pf": 1.669,
+        "trades": 14,
+        "wr": 0.4286
+      },
+      "eval_dev": {
+        "passed": true,
+        "fail_reason": "",
+        "days_to_target": 253,
+        "profit": 11048.01
+      },
+      "eval_2023": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 1899.85
+      },
+      "eval_2026": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 2976.16
+      }
+    },
+    {
+      "tag": "W_SB14_rr3.0_b0.35_L_r0.005_f0.15_P",
+      "model": "sb_fvg",
+      "rr": 3.0,
+      "risk_pct": 0.005,
+      "strict_bias": false,
+      "min_body_atr": 0.35,
+      "min_fvg_atr": 0.15,
+      "use_pdh": true,
+      "use_asia": false,
+      "sb_start": 14.0,
+      "sb_end": 15.0,
+      "sb_windows": [
+        [
+          7.0,
+          8.0
+        ],
+        [
+          14.0,
+          15.0
+        ],
+        [
+          15.0,
+          16.0
+        ]
+      ],
+      "move_to_be": false,
+      "flatten_hour_utc": 22,
+      "dev": {
+        "profit": 9921.74,
+        "pf": 1.369,
+        "trades": 89,
+        "wr": 0.3371
+      },
+      "oos_2023": {
+        "profit": 1409.11,
+        "pf": 1.106,
+        "trades": 42,
+        "wr": 0.3571
+      },
+      "hold_2026": {
+        "profit": 3426.0,
+        "pf": 1.931,
+        "trades": 14,
+        "wr": 0.4286
+      },
+      "eval_dev": {
+        "passed": true,
+        "fail_reason": "",
+        "days_to_target": 289,
+        "profit": 10054.71
+      },
+      "eval_2023": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 1409.11
+      },
+      "eval_2026": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 3426.0
+      }
+    },
+    {
+      "tag": "W_SB14_rr3.0_b0.35_L_r0.006_f0.1_A",
+      "model": "sb_fvg",
+      "rr": 3.0,
+      "risk_pct": 0.006,
+      "strict_bias": false,
+      "min_body_atr": 0.35,
+      "min_fvg_atr": 0.1,
+      "use_pdh": false,
+      "use_asia": true,
+      "sb_start": 14.0,
+      "sb_end": 15.0,
+      "sb_windows": [
+        [
+          7.0,
+          8.0
+        ],
+        [
+          14.0,
+          15.0
+        ],
+        [
+          15.0,
+          16.0
+        ]
+      ],
+      "move_to_be": false,
+      "flatten_hour_utc": 22,
+      "dev": {
+        "profit": 13624.45,
+        "pf": 1.324,
+        "trades": 119,
+        "wr": 0.3193
+      },
+      "oos_2023": {
+        "profit": 7050.38,
+        "pf": 1.363,
+        "trades": 53,
+        "wr": 0.3585
+      },
+      "hold_2026": {
+        "profit": 1588.29,
+        "pf": 1.19,
+        "trades": 23,
+        "wr": 0.3043
+      },
+      "eval_dev": {
+        "passed": true,
+        "fail_reason": "",
+        "days_to_target": 198,
+        "profit": 10794.96
+      },
+      "eval_2023": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 7050.38
+      },
+      "eval_2026": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 1588.29
+      }
+    },
+    {
+      "tag": "W_SB14_rr3.0_b0.35_L_r0.005_f0.1_A",
+      "model": "sb_fvg",
+      "rr": 3.0,
+      "risk_pct": 0.005,
+      "strict_bias": false,
+      "min_body_atr": 0.35,
+      "min_fvg_atr": 0.1,
+      "use_pdh": false,
+      "use_asia": true,
+      "sb_start": 14.0,
+      "sb_end": 15.0,
+      "sb_windows": [
+        [
+          7.0,
+          8.0
+        ],
+        [
+          14.0,
+          15.0
+        ],
+        [
+          15.0,
+          16.0
+        ]
+      ],
+      "move_to_be": false,
+      "flatten_hour_utc": 22,
+      "dev": {
+        "profit": 12029.32,
+        "pf": 1.324,
+        "trades": 119,
+        "wr": 0.3193
+      },
+      "oos_2023": {
+        "profit": 6082.33,
+        "pf": 1.369,
+        "trades": 53,
+        "wr": 0.3585
+      },
+      "hold_2026": {
+        "profit": 1609.48,
+        "pf": 1.213,
+        "trades": 23,
+        "wr": 0.3043
+      },
+      "eval_dev": {
+        "passed": true,
+        "fail_reason": "",
+        "days_to_target": 241,
+        "profit": 10660.42
+      },
+      "eval_2023": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 6082.33
+      },
+      "eval_2026": {
+        "passed": false,
+        "fail_reason": "target_not_reached",
+        "days_to_target": null,
+        "profit": 1609.48
+      }
+    }
+  ]
+}

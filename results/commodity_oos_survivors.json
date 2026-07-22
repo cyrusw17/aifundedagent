@@ -1,0 +1,70 @@
+{
+  "method": "train_2024_2025_then_blind_2026",
+  "research_max_end": "2025-12-31",
+  "holdout": ["2026-01-01", "2026-06-30"],
+  "note": "Selection used only 2021-2025. 2026 evaluated one-shot after train pass; failures discarded as curve-fit (never retuned on 2026).",
+  "prior_c1_c5": "Previous long-only 4h Donchian C1-C5 cleared 2024/25 but FAILED 2026 H1 (flat/negative) — discarded under this protocol.",
+  "xau_hunt": {
+    "n_ideas": 240,
+    "n_survivors_xau": 25,
+    "n_fail26_xau_approx": 112
+  },
+  "holdout_gates": {
+    "ann_min": 5.0,
+    "pf_min": 1.0,
+    "trades_min": 3,
+    "floor": true
+  },
+  "selected": [
+    {
+      "id": "O1_XAU_DON1D_n25_rr2p5_B",
+      "logic": "daily Donchian 25 RR2.5 both-side",
+      "risk": 0.025,
+      "y2024": 11.37,
+      "y2025": 12.35,
+      "y2026H1_ann": 35.46,
+      "pf26": 14.816,
+      "n26": 5
+    },
+    {
+      "id": "O2_XAU_DON1D_n15_rr3_L",
+      "logic": "daily Donchian 15 RR3 long",
+      "risk": 0.02,
+      "y2024": 23.44,
+      "y2025": 13.33,
+      "y2026H1_ann": 21.22,
+      "pf26": 99.0,
+      "n26": 3
+    },
+    {
+      "id": "O3_XAU_ATRB1D_k035_rr5_L",
+      "logic": "daily ATR-break 0.35 RR5 long",
+      "risk": 0.01,
+      "y2024": 10.55,
+      "y2025": 11.39,
+      "y2026H1_ann": 7.73,
+      "pf26": 2.777,
+      "n26": 7
+    },
+    {
+      "id": "O4_XAU_DON4h_n40_rr2_L",
+      "logic": "4h Donchian 40 RR2 long",
+      "risk": 0.01,
+      "y2024": 10.94,
+      "y2025": 17.73,
+      "y2026H1_ann": 11.19,
+      "pf26": 2.555,
+      "n26": 10
+    },
+    {
+      "id": "O5_XAU_DON1D_n30_rr2p5_B",
+      "logic": "daily Donchian 30 RR2.5 both-side",
+      "risk": 0.02,
+      "y2024": 10.9,
+      "y2025": 12.02,
+      "y2026H1_ann": 29.54,
+      "pf26": 16.309,
+      "n26": 5
+    }
+  ]
+}
