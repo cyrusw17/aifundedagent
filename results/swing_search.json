@@ -1,0 +1,581 @@
+{
+  "causal": true,
+  "family": "swing_daily_retail",
+  "screened": 18,
+  "early_ok": 0,
+  "stable": 0,
+  "near_25": [],
+  "best": [
+    {
+      "tag": "DOND_rr4.0_n20",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr4.0_n20",
+        "model": "don_daily",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": 263.01,
+        "pf": 1.008,
+        "trades": 88,
+        "wr": 0.5114,
+        "max_dd": 5709.62,
+        "cagr_pct": 0.09,
+        "simple_ann_pct": 0.09
+      },
+      "late": {
+        "profit": 11006.6,
+        "pf": 1.355,
+        "trades": 93,
+        "wr": 0.5161,
+        "max_dd": 5933.32,
+        "cagr_pct": 3.54,
+        "simple_ann_pct": 3.67
+      },
+      "full": {
+        "profit": 9914.8,
+        "pf": 1.149,
+        "trades": 182,
+        "wr": 0.5,
+        "max_dd": 6692.85,
+        "cagr_pct": 1.59,
+        "simple_ann_pct": 1.65
+      },
+      "hold": {
+        "profit": 808.67,
+        "pf": 1.148,
+        "trades": 15,
+        "wr": 0.5333,
+        "max_dd": 1620.0,
+        "cagr_pct": 1.65,
+        "simple_ann_pct": 1.64
+      }
+    },
+    {
+      "tag": "DOND_rr3.0_n20",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr3.0_n20",
+        "model": "don_daily",
+        "rr": 3.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": 1556.34,
+        "pf": 1.045,
+        "trades": 88,
+        "wr": 0.5114,
+        "max_dd": 5093.25,
+        "cagr_pct": 0.52,
+        "simple_ann_pct": 0.52
+      },
+      "late": {
+        "profit": 8250.98,
+        "pf": 1.238,
+        "trades": 96,
+        "wr": 0.4896,
+        "max_dd": 6819.02,
+        "cagr_pct": 2.68,
+        "simple_ann_pct": 2.75
+      },
+      "full": {
+        "profit": 8452.51,
+        "pf": 1.12,
+        "trades": 185,
+        "wr": 0.4865,
+        "max_dd": 6819.02,
+        "cagr_pct": 1.36,
+        "simple_ann_pct": 1.41
+      },
+      "hold": {
+        "profit": 808.67,
+        "pf": 1.148,
+        "trades": 15,
+        "wr": 0.5333,
+        "max_dd": 1620.0,
+        "cagr_pct": 1.65,
+        "simple_ann_pct": 1.64
+      }
+    },
+    {
+      "tag": "DOND_rr2.0_n20",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr2.0_n20",
+        "model": "don_daily",
+        "rr": 2.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": 1415.3,
+        "pf": 1.039,
+        "trades": 91,
+        "wr": 0.4615,
+        "max_dd": 5101.52,
+        "cagr_pct": 0.47,
+        "simple_ann_pct": 0.47
+      },
+      "late": {
+        "profit": 4584.1,
+        "pf": 1.138,
+        "trades": 96,
+        "wr": 0.4792,
+        "max_dd": 6578.32,
+        "cagr_pct": 1.51,
+        "simple_ann_pct": 1.53
+      },
+      "full": {
+        "profit": 4644.59,
+        "pf": 1.066,
+        "trades": 188,
+        "wr": 0.4574,
+        "max_dd": 6578.32,
+        "cagr_pct": 0.76,
+        "simple_ann_pct": 0.77
+      },
+      "hold": {
+        "profit": 4064.71,
+        "pf": 1.912,
+        "trades": 15,
+        "wr": 0.6,
+        "max_dd": 1604.24,
+        "cagr_pct": 8.42,
+        "simple_ann_pct": 8.25
+      }
+    },
+    {
+      "tag": "DOND_rr3.0_n55",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr3.0_n55",
+        "model": "don_daily",
+        "rr": 3.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 55,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -5422.66,
+        "pf": 0.82,
+        "trades": 72,
+        "wr": 0.4306,
+        "max_dd": 10287.21,
+        "cagr_pct": -1.84,
+        "simple_ann_pct": -1.81
+      },
+      "late": {
+        "profit": 7535.79,
+        "pf": 1.238,
+        "trades": 78,
+        "wr": 0.4872,
+        "max_dd": 6973.59,
+        "cagr_pct": 2.45,
+        "simple_ann_pct": 2.51
+      },
+      "full": {
+        "profit": 83.46,
+        "pf": 1.001,
+        "trades": 154,
+        "wr": 0.4481,
+        "max_dd": 12455.42,
+        "cagr_pct": 0.01,
+        "simple_ann_pct": 0.01
+      },
+      "hold": {
+        "profit": 501.63,
+        "pf": 1.265,
+        "trades": 7,
+        "wr": 0.5714,
+        "max_dd": 1895.08,
+        "cagr_pct": 1.02,
+        "simple_ann_pct": 1.02
+      }
+    },
+    {
+      "tag": "DOND_rr4.0_n55",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr4.0_n55",
+        "model": "don_daily",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 55,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -4498.62,
+        "pf": 0.85,
+        "trades": 72,
+        "wr": 0.4306,
+        "max_dd": 10287.21,
+        "cagr_pct": -1.52,
+        "simple_ann_pct": -1.5
+      },
+      "late": {
+        "profit": 3883.39,
+        "pf": 1.119,
+        "trades": 78,
+        "wr": 0.4744,
+        "max_dd": 6973.59,
+        "cagr_pct": 1.28,
+        "simple_ann_pct": 1.3
+      },
+      "full": {
+        "profit": -2644.91,
+        "pf": 0.959,
+        "trades": 154,
+        "wr": 0.4416,
+        "max_dd": 11531.38,
+        "cagr_pct": -0.45,
+        "simple_ann_pct": -0.44
+      },
+      "hold": {
+        "profit": 501.63,
+        "pf": 1.265,
+        "trades": 7,
+        "wr": 0.5714,
+        "max_dd": 1895.08,
+        "cagr_pct": 1.02,
+        "simple_ann_pct": 1.02
+      }
+    },
+    {
+      "tag": "EMAD_rr2.0_20_50",
+      "model": "ema_daily",
+      "cfg": {
+        "tag": "EMAD_rr2.0_20_50",
+        "model": "ema_daily",
+        "rr": 2.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.5,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -4165.88,
+        "pf": 0.81,
+        "trades": 56,
+        "wr": 0.3929,
+        "max_dd": 7066.53,
+        "cagr_pct": -1.41,
+        "simple_ann_pct": -1.39
+      },
+      "late": {
+        "profit": 2068.62,
+        "pf": 1.137,
+        "trades": 57,
+        "wr": 0.5439,
+        "max_dd": 6408.35,
+        "cagr_pct": 0.69,
+        "simple_ann_pct": 0.69
+      },
+      "full": {
+        "profit": -2951.88,
+        "pf": 0.921,
+        "trades": 111,
+        "wr": 0.4595,
+        "max_dd": 7066.53,
+        "cagr_pct": -0.5,
+        "simple_ann_pct": -0.49
+      },
+      "hold": {
+        "profit": 304.99,
+        "pf": 1.1,
+        "trades": 11,
+        "wr": 0.3636,
+        "max_dd": 1830.08,
+        "cagr_pct": 0.62,
+        "simple_ann_pct": 0.62
+      }
+    },
+    {
+      "tag": "DOND_rr2.0_n55",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr2.0_n55",
+        "model": "don_daily",
+        "rr": 2.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 55,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -7640.36,
+        "pf": 0.763,
+        "trades": 75,
+        "wr": 0.4133,
+        "max_dd": 12877.51,
+        "cagr_pct": -2.62,
+        "simple_ann_pct": -2.55
+      },
+      "late": {
+        "profit": 5898.12,
+        "pf": 1.184,
+        "trades": 79,
+        "wr": 0.4937,
+        "max_dd": 5034.67,
+        "cagr_pct": 1.93,
+        "simple_ann_pct": 1.97
+      },
+      "full": {
+        "profit": -3771.92,
+        "pf": 0.943,
+        "trades": 158,
+        "wr": 0.443,
+        "max_dd": 16307.94,
+        "cagr_pct": -0.64,
+        "simple_ann_pct": -0.63
+      },
+      "hold": {
+        "profit": 501.63,
+        "pf": 1.265,
+        "trades": 7,
+        "wr": 0.5714,
+        "max_dd": 1895.08,
+        "cagr_pct": 1.02,
+        "simple_ann_pct": 1.02
+      }
+    },
+    {
+      "tag": "DOND_rr4.0_n10",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr4.0_n10",
+        "model": "don_daily",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 10,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -3250.6,
+        "pf": 0.918,
+        "trades": 94,
+        "wr": 0.4574,
+        "max_dd": 8153.95,
+        "cagr_pct": -1.1,
+        "simple_ann_pct": -1.08
+      },
+      "late": {
+        "profit": -3098.12,
+        "pf": 0.927,
+        "trades": 102,
+        "wr": 0.4706,
+        "max_dd": 12829.98,
+        "cagr_pct": -1.04,
+        "simple_ann_pct": -1.03
+      },
+      "full": {
+        "profit": -6304.22,
+        "pf": 0.923,
+        "trades": 196,
+        "wr": 0.4643,
+        "max_dd": 13629.21,
+        "cagr_pct": -1.08,
+        "simple_ann_pct": -1.05
+      },
+      "hold": {
+        "profit": 1410.73,
+        "pf": 1.219,
+        "trades": 16,
+        "wr": 0.4375,
+        "max_dd": 4510.95,
+        "cagr_pct": 2.88,
+        "simple_ann_pct": 2.86
+      }
+    },
+    {
+      "tag": "DOND_rr3.0_n10",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr3.0_n10",
+        "model": "don_daily",
+        "rr": 3.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 10,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -3250.6,
+        "pf": 0.918,
+        "trades": 94,
+        "wr": 0.4574,
+        "max_dd": 8153.95,
+        "cagr_pct": -1.1,
+        "simple_ann_pct": -1.08
+      },
+      "late": {
+        "profit": -3368.82,
+        "pf": 0.92,
+        "trades": 102,
+        "wr": 0.4706,
+        "max_dd": 12829.98,
+        "cagr_pct": -1.14,
+        "simple_ann_pct": -1.12
+      },
+      "full": {
+        "profit": -6574.92,
+        "pf": 0.92,
+        "trades": 196,
+        "wr": 0.4643,
+        "max_dd": 13629.21,
+        "cagr_pct": -1.13,
+        "simple_ann_pct": -1.1
+      },
+      "hold": {
+        "profit": -577.4,
+        "pf": 0.922,
+        "trades": 17,
+        "wr": 0.4118,
+        "max_dd": 4510.95,
+        "cagr_pct": -1.17,
+        "simple_ann_pct": -1.17
+      }
+    },
+    {
+      "tag": "DOND_rr2.0_n10",
+      "model": "don_daily",
+      "cfg": {
+        "tag": "DOND_rr2.0_n10",
+        "model": "don_daily",
+        "rr": 2.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 23,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 10,
+        "ema_fast": 20,
+        "ema_slow": 50,
+        "rsi_len": 14,
+        "rsi_lo": 30.0,
+        "rsi_hi": 70.0,
+        "stop_atr_mult": 2.0,
+        "atr_len": 14
+      },
+      "early": {
+        "profit": -2235.85,
+        "pf": 0.946,
+        "trades": 98,
+        "wr": 0.4286,
+        "max_dd": 7534.22,
+        "cagr_pct": -0.75,
+        "simple_ann_pct": -0.75
+      },
+      "late": {
+        "profit": -6330.13,
+        "pf": 0.859,
+        "trades": 105,
+        "wr": 0.4667,
+        "max_dd": 14902.93,
+        "cagr_pct": -2.16,
+        "simple_ann_pct": -2.11
+      },
+      "full": {
+        "profit": -8426.78,
+        "pf": 0.902,
+        "trades": 203,
+        "wr": 0.4532,
+        "max_dd": 16068.32,
+        "cagr_pct": -1.46,
+        "simple_ann_pct": -1.4
+      },
+      "hold": {
+        "profit": 146.64,
+        "pf": 1.02,
+        "trades": 18,
+        "wr": 0.4444,
+        "max_dd": 4510.95,
+        "cagr_pct": 0.3,
+        "simple_ann_pct": 0.3
+      }
+    }
+  ],
+  "stable_top": []
+}
