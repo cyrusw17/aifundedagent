@@ -266,55 +266,18 @@ def build_candidates() -> List[Dict[str, Any]]:
     return uniq
 
 
-def tune_candidate(universe, cand: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Try risk/halt grid; return best floor-safe winner or None."""
+def tune_candidate(universe, cand: Dict[str, Any], screen_uni=None) -> Optional[Dict[str, Any]]:
+    """Try risk/halt; return best floor-safe winner or None.
+
+    Screen on a smaller pair set when provided; always validate winners on full universe.
+    """
     hold = int(cand.get("hold", 0))
     screen_risk = float(cand.get("seed_risk", 0.004))
     screen_halt = float(cand.get("seed_halt", 4500.0))
-    params = prop_params(screen_risk, hold, screen_halt)
-    full = run_prop(universe, cand["fn"], FULL_2020_2025, params)
+    scr = screen_uni or universe
 
-    # Hopeless: skip grid
-    if full["max_dd"] > 10_000 or full["profit"] < -4_000:
-        return None
-
-    trials = [(screen_risk, screen_halt, full)]
-    promising = (
-        full["profit"] > -500
-        and full["pf"] >= 0.95
-        and full["max_dd"] <= 8_000
-    )
-    if promising or cand.get("seed_risk"):
-        risks = sorted(set([screen_risk, *RISKS]))
-        halts = sorted(set([screen_halt, *HALTS]))
-        for risk in risks:
-            for halt in halts:
-                if abs(risk - screen_risk) < 1e-9 and abs(halt - screen_halt) < 1e-9:
-                    continue
-                # Prefer lower risk when screen DD is high
-                if full["max_dd"] > 6000 and risk > screen_risk:
-                    continue
-                p = prop_params(risk, hold, halt)
-                row = run_prop(universe, cand["fn"], FULL_2020_2025, p)
-                trials.append((risk, halt, row))
-    elif full["max_dd"] > 6000 and full["profit"] > 0:
-        # One shot at lower risk
-        for risk in (0.0025, 0.0035):
-            if risk >= screen_risk:
-                continue
-            p = prop_params(risk, hold, 4000.0)
-            trials.append((risk, 4000.0, run_prop(universe, cand["fn"], FULL_2020_2025, p)))
-
-    best = None
-    for risk, halt, row in trials:
-        if not is_winner(row):
-            continue
-        p = prop_params(risk, hold, halt)
-        early = run_prop(universe, cand["fn"], TRAIN_EARLY, p)
-        late = run_prop(universe, cand["fn"], TEST_LATE, p)
-        if not (early["floor_ok"] and early["dd_ok"] and late["floor_ok"] and late["dd_ok"]):
-            continue
-        packed = {
+    def pack(risk, halt, row, early, late):
+        return {
             "id": cand["id"],
             "family": cand["family"],
             "kind": cand["kind"],
@@ -326,7 +289,52 @@ def tune_candidate(universe, cand: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             "early": {k: early[k] for k in ("floor_ok", "dd_ok", "max_dd", "profit", "pf", "trades", "simple_ann_pct")},
             "late": {k: late[k] for k in ("floor_ok", "dd_ok", "max_dd", "profit", "pf", "trades", "simple_ann_pct")},
         }
-        if best is None or score(row) > score(best["full"]):
+
+    def validate_full(risk, halt):
+        """Final gate always on full universe + early/late."""
+        p = prop_params(risk, hold, halt)
+        row = run_prop(universe, cand["fn"], FULL_2020_2025, p)
+        if not is_winner(row):
+            return None
+        early = run_prop(universe, cand["fn"], TRAIN_EARLY, p)
+        late = run_prop(universe, cand["fn"], TEST_LATE, p)
+        if not (early["floor_ok"] and early["dd_ok"] and late["floor_ok"] and late["dd_ok"]):
+            return None
+        return pack(risk, halt, row, early, late)
+
+    # Cheap screen
+    screen = run_prop(scr, cand["fn"], FULL_2020_2025, prop_params(screen_risk, hold, screen_halt))
+    if screen["max_dd"] > 10_000 or screen["profit"] < -4_000:
+        return None
+
+    candidates_rh = [(screen_risk, screen_halt)]
+    if is_winner(screen) or (screen["profit"] > 0 and screen["pf"] >= 0.95 and screen["max_dd"] <= 7000):
+        # Promote screen params; optionally nudge risk once
+        if screen["max_dd"] > 5500:
+            candidates_rh.append((max(0.0025, screen_risk * 0.75), 4000.0))
+        elif screen["pf"] >= 1.05 and screen["profit"] > 0:
+            # try slight risk bump for better ann if DD headroom
+            bump = min(0.005, screen_risk + 0.001)
+            if bump > screen_risk + 1e-9:
+                candidates_rh.append((bump, screen_halt))
+    elif screen["profit"] > -500 and screen["pf"] >= 1.0 and screen["max_dd"] <= 8000:
+        for risk in (0.0025, 0.0035, 0.005):
+            if abs(risk - screen_risk) > 1e-9:
+                candidates_rh.append((risk, 4000.0 if screen["max_dd"] > 5000 else screen_halt))
+    else:
+        return None
+
+    best = None
+    seen = set()
+    for risk, halt in candidates_rh:
+        key = (round(risk, 5), round(halt, 1))
+        if key in seen:
+            continue
+        seen.add(key)
+        packed = validate_full(risk, halt)
+        if packed is None:
+            continue
+        if best is None or score(packed["full"]) > score(best["full"]):
             best = packed
     return best
 
@@ -336,7 +344,6 @@ def diversify(winners: List[Dict[str, Any]], n: int = 20) -> List[Dict[str, Any]
     winners = sorted(winners, key=lambda w: score(w["full"]), reverse=True)
     selected: List[Dict[str, Any]] = []
     family_count: Dict[str, int] = {}
-    # Prefer keeping seeded ANN10 ids
     seeds = [w for w in winners if w["id"].startswith("A")]
     rest = [w for w in winners if not w["id"].startswith("A")]
 
@@ -344,7 +351,6 @@ def diversify(winners: List[Dict[str, Any]], n: int = 20) -> List[Dict[str, Any]
         fam = w["family"]
         if family_count.get(fam, 0) >= 4 and not w["id"].startswith("A"):
             return False
-        # Avoid near-duplicates: same family + very similar ann/dd already taken
         for s in selected:
             if s["family"] == fam and abs(s["full"]["simple_ann_pct"] - w["full"]["simple_ann_pct"]) < 0.15:
                 if abs(s["full"]["max_dd"] - w["full"]["max_dd"]) < 150:
@@ -361,7 +367,6 @@ def diversify(winners: List[Dict[str, Any]], n: int = 20) -> List[Dict[str, Any]
         if len(selected) >= n:
             break
         try_add(w)
-    # If still short, relax family cap
     if len(selected) < n:
         for w in winners:
             if len(selected) >= n:
@@ -380,15 +385,18 @@ def main() -> int:
         return 1
 
     universe = load_universe(PARAMS.pairs)
+    # Faster screen universe (majors); full universe for final validation
+    screen_pairs = ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD")
+    screen_uni = {k: universe[k] for k in screen_pairs if k in universe}
     cands = build_candidates()
-    print(f"Candidates: {len(cands)}", flush=True)
+    print(f"Candidates: {len(cands)}  screen_pairs={screen_pairs}", flush=True)
 
     winners: List[Dict[str, Any]] = []
     tested = []
     for i, cand in enumerate(cands, 1):
         print(f"[{i}/{len(cands)}] {cand['id']} ({cand['family']})...", flush=True)
         try:
-            best = tune_candidate(universe, cand)
+            best = tune_candidate(universe, cand, screen_uni=screen_uni)
         except Exception as e:
             print(f"  ERROR: {e}", flush=True)
             continue

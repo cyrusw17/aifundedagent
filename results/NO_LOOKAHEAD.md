@@ -15,7 +15,9 @@ The bug that inflated S6: limits searched M1 from bar open and filled on the swe
 
 ### 3. Hard assert (crash on regression)
 ```text
-if entry_time < signal.knowable_at: raise RuntimeError
+if knowable_at is None: raise RuntimeError          # required field
+if knowable_at < time + tf: raise RuntimeError     # reject forged-early
+if entry_time < knowable_at: raise RuntimeError
 ```
 In `strategy/backtest.py`. A silent wrong fill is worse than a crash.
 
@@ -23,7 +25,9 @@ In `strategy/backtest.py`. A silent wrong fill is worse than a crash.
 ```bash
 python scripts/assert_no_lookahead.py
 ```
-Fails CI if any fill is before `knowable_at`.
+Covers M15 equal-fade, H1 (60m), daily (1440m), ANN10 sample, S5 dual merge
+(preserves `knowable_at`), missing/forged-early rejection, and a ban on raw
+`Signal(` outside `pack_signal`. Fails CI if any fill is before `knowable_at`.
 
 ### 5. Same rules for indicators
 | Feature | Causal form |
