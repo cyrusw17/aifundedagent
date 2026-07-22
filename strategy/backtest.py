@@ -311,6 +311,11 @@ def run_period(
         if equity <= floor:
             fail_reason = "max_loss"
             break
+        # Soft prop-floor buffer: pause new entries before hard $6k static floor
+        dd_halt = float(getattr(params, "dd_halt", 0.0) or 0.0)
+        if dd_halt > 0 and (peak - equity) >= dd_halt:
+            i += 1
+            continue
 
         fill = _simulate_limit_entry_and_exit(m1_map[sig.pair], sig, params)
         if fill is None:

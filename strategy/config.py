@@ -47,6 +47,9 @@ class StrategyParams:
     move_to_be: bool = True  # False = let TP/SL/flatten manage (no early BE)
     # 0 = day-trader mode (flatten same/next session day). >0 = hold up to N calendar days.
     max_hold_days: int = 0
+    # Soft halt: stop new trades when peak-equity >= this (keep buffer above prop floor).
+    # 0 = disabled. The5ers static floor is $6k; use ~$4.5–5.5k with small risk/trade.
+    dd_halt: float = 0.0
 
     spreads: Dict[str, float] = field(
         default_factory=lambda: {
