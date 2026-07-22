@@ -1,10 +1,10 @@
 """Five commodity winners (gold/silver) — no 2026+ data used in research.
 
-Gates (calendar years, simple ann on \$100k, static floor, causal fills):
-- 2024 ≥ 10%, 2025 ≥ 10%
-- 2023 ≥ 0%
-- no year 2021–2025 < −8%
-- PF(2024–2025) ≥ 1.05
+Gates (calendar years, simple ann on $100k, static floor, causal fills):
+- 2024 >= 10%, 2025 >= 10%
+- 2023 >= 0%
+- no year 2021-2025 < -8%
+- PF(2024-2025) >= 1.05
 
 All long-biased Donchian breakouts on commodity CFDs (distinct TF / length / universe).
 """
