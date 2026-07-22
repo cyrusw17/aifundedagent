@@ -1,0 +1,844 @@
+{
+  "prop": {
+    "initial_balance": 100000.0,
+    "profit_target": 10000.0,
+    "max_loss": 6000.0,
+    "daily_loss_limit": 3000.0,
+    "consistency_pct": 0.5,
+    "leverage": 100,
+    "funded_retain": 101000.0,
+    "min_weekly_withdraw": 250.0,
+    "withdraw_cap": 2000.0
+  },
+  "causality": {
+    "m15_closed_bars_only": true,
+    "swing_confirm_delay": "pivot+right",
+    "h1_bias_shift": "1h",
+    "london_range_used_only_after_12utc": true,
+    "fills_after_signal_time_on_m1": true,
+    "same_bar_sl_before_tp": true,
+    "no_optimizer": true
+  },
+  "funded_rule": "Each week, all equity above $101,000 is withdrawn (min $250).",
+  "all_strategies": [
+    {
+      "name": "S1_session_break_retest",
+      "description": "Asia/London range break + retest (Power of 3)",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 45939.03,
+            "pf": 1.237,
+            "win_rate": 0.3725,
+            "trades": 1141,
+            "avg_trades_per_day": 2.338,
+            "max_dd": 8202.16
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10388.51,
+            "end_equity": 110388.51,
+            "max_dd": 5294.78,
+            "trades": 386,
+            "win_rate": 0.3497,
+            "avg_trades_per_day": 2.383,
+            "days_to_target": 240,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1493,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10388.51,
+            "pf": 1.157
+          },
+          "funded": {
+            "passed": false,
+            "fail_reason": "max_loss",
+            "profit": -6398.66,
+            "end_equity": 93601.34,
+            "max_dd": 11392.09,
+            "trades": 755,
+            "win_rate": 0.3841,
+            "avg_trades_per_day": 2.316,
+            "days_to_target": null,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.0,
+            "total_withdrawn": 41949.17,
+            "weekly_withdrawals": 35,
+            "total_made": 35550.52,
+            "pf": 1.278
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 60355.59,
+            "pf": 1.322,
+            "win_rate": 0.3847,
+            "trades": 1136,
+            "avg_trades_per_day": 2.377,
+            "max_dd": 5294.78
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10423.21,
+            "end_equity": 110423.21,
+            "max_dd": 3393.63,
+            "trades": 106,
+            "win_rate": 0.4245,
+            "avg_trades_per_day": 2.163,
+            "days_to_target": 69,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.115,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10423.21,
+            "pf": 1.63
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 8006.35,
+            "trades": 1030,
+            "win_rate": 0.3806,
+            "avg_trades_per_day": 2.401,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.7992,
+            "total_withdrawn": 48932.38,
+            "weekly_withdrawals": 42,
+            "total_made": 49932.38,
+            "pf": 1.292
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 8465.85,
+            "pf": 1.167,
+            "win_rate": 0.3728,
+            "trades": 279,
+            "avg_trades_per_day": 2.345,
+            "max_dd": 4504.71
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10290.19,
+            "end_equity": 110290.19,
+            "max_dd": 4355.56,
+            "trades": 142,
+            "win_rate": 0.4296,
+            "avg_trades_per_day": 2.448,
+            "days_to_target": 86,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.2913,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10290.19,
+            "pf": 1.427
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": -1824.34,
+            "end_equity": 98175.66,
+            "max_dd": 4504.71,
+            "trades": 137,
+            "win_rate": 0.3139,
+            "avg_trades_per_day": 2.246,
+            "days_to_target": null,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.0,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": -1824.34,
+            "pf": 0.931
+          }
+        }
+      }
+    },
+    {
+      "name": "S2_ny_london_turtle",
+      "description": "NY fade of failed London high/low breaks",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 54671.04,
+            "pf": 1.976,
+            "win_rate": 0.4614,
+            "trades": 466,
+            "avg_trades_per_day": 1.32,
+            "max_dd": 2594.38
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10173.37,
+            "end_equity": 110173.37,
+            "max_dd": 2399.26,
+            "trades": 103,
+            "win_rate": 0.4078,
+            "avg_trades_per_day": 1.304,
+            "days_to_target": 162,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1179,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10173.37,
+            "pf": 1.834
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1069.74,
+            "end_equity": 101069.74,
+            "max_dd": 4588.64,
+            "trades": 363,
+            "win_rate": 0.4766,
+            "avg_trades_per_day": 1.325,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.1219,
+            "total_withdrawn": 43427.93,
+            "weekly_withdrawals": 41,
+            "total_made": 44497.67,
+            "pf": 2.015
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 63551.56,
+            "pf": 2.177,
+            "win_rate": 0.4967,
+            "trades": 449,
+            "avg_trades_per_day": 1.279,
+            "max_dd": 2399.26
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10024.27,
+            "end_equity": 110024.27,
+            "max_dd": 1885.73,
+            "trades": 59,
+            "win_rate": 0.5254,
+            "avg_trades_per_day": 1.255,
+            "days_to_target": 116,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1196,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10024.27,
+            "pf": 2.403
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 3983.49,
+            "trades": 389,
+            "win_rate": 0.491,
+            "avg_trades_per_day": 1.28,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.7986,
+            "total_withdrawn": 51929.32,
+            "weekly_withdrawals": 48,
+            "total_made": 52929.32,
+            "pf": 2.13
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 6991.58,
+            "pf": 1.431,
+            "win_rate": 0.4112,
+            "trades": 107,
+            "avg_trades_per_day": 1.274,
+            "max_dd": 4213.36
+          },
+          "evaluation": {
+            "passed": false,
+            "fail_reason": "target_not_reached",
+            "profit": 6991.58,
+            "end_equity": 106991.58,
+            "max_dd": 4213.36,
+            "trades": 107,
+            "win_rate": 0.4112,
+            "avg_trades_per_day": 1.274,
+            "days_to_target": null,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1716,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 6991.58,
+            "pf": 1.431
+          },
+          "funded": null
+        }
+      }
+    },
+    {
+      "name": "S3_turtle_soup",
+      "description": "Failed PDH/PDL or Asia break fade",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 103548.2,
+            "pf": 1.495,
+            "win_rate": 0.3976,
+            "trades": 1406,
+            "avg_trades_per_day": 2.746,
+            "max_dd": 5057.57
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10403.39,
+            "end_equity": 110403.39,
+            "max_dd": 2276.51,
+            "trades": 139,
+            "win_rate": 0.3741,
+            "avg_trades_per_day": 2.673,
+            "days_to_target": 73,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1727,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10403.39,
+            "pf": 1.563
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 9253.36,
+            "trades": 1264,
+            "win_rate": 0.3995,
+            "avg_trades_per_day": 2.748,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.845,
+            "total_withdrawn": 91362.6,
+            "weekly_withdrawals": 46,
+            "total_made": 92362.6,
+            "pf": 1.486
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 105209.97,
+            "pf": 1.485,
+            "win_rate": 0.4016,
+            "trades": 1412,
+            "avg_trades_per_day": 2.731,
+            "max_dd": 5057.57
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10206.11,
+            "end_equity": 110206.11,
+            "max_dd": 4052.9,
+            "trades": 180,
+            "win_rate": 0.4,
+            "avg_trades_per_day": 2.571,
+            "days_to_target": 100,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1621,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10206.11,
+            "pf": 1.326
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": -1528.04,
+            "end_equity": 98471.96,
+            "max_dd": 9986.06,
+            "trades": 1230,
+            "win_rate": 0.4008,
+            "avg_trades_per_day": 2.752,
+            "days_to_target": null,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.0,
+            "total_withdrawn": 95333.25,
+            "weekly_withdrawals": 48,
+            "total_made": 93805.21,
+            "pf": 1.506
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 21787.46,
+            "pf": 1.405,
+            "win_rate": 0.3864,
+            "trades": 339,
+            "avg_trades_per_day": 2.734,
+            "max_dd": 6601.61
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10089.7,
+            "end_equity": 110089.7,
+            "max_dd": 1598.73,
+            "trades": 77,
+            "win_rate": 0.4805,
+            "avg_trades_per_day": 2.75,
+            "days_to_target": 41,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1783,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10089.7,
+            "pf": 1.852
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 922.16,
+            "end_equity": 100922.16,
+            "max_dd": 9446.96,
+            "trades": 262,
+            "win_rate": 0.3588,
+            "avg_trades_per_day": 2.729,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.9506,
+            "total_withdrawn": 10775.61,
+            "weekly_withdrawals": 7,
+            "total_made": 11697.77,
+            "pf": 1.279
+          }
+        }
+      }
+    },
+    {
+      "name": "S4_asia_break_go",
+      "description": "Asia range break-and-go (momentum, no retest)",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 173192.52,
+            "pf": 3.421,
+            "win_rate": 0.5552,
+            "trades": 834,
+            "avg_trades_per_day": 1.904,
+            "max_dd": 2519.52
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10350.93,
+            "end_equity": 110350.93,
+            "max_dd": 431.94,
+            "trades": 35,
+            "win_rate": 0.6571,
+            "avg_trades_per_day": 1.842,
+            "days_to_target": 30,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1614,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10350.93,
+            "pf": 5.01
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 958.24,
+            "end_equity": 100958.24,
+            "max_dd": 6677.72,
+            "trades": 798,
+            "win_rate": 0.5501,
+            "avg_trades_per_day": 1.905,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.5004,
+            "total_withdrawn": 161327.28,
+            "weekly_withdrawals": 83,
+            "total_made": 162285.52,
+            "pf": 3.354
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 200344.82,
+            "pf": 3.413,
+            "win_rate": 0.563,
+            "trades": 936,
+            "avg_trades_per_day": 2.017,
+            "max_dd": 2519.52
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10140.53,
+            "end_equity": 110140.53,
+            "max_dd": 797.77,
+            "trades": 34,
+            "win_rate": 0.6765,
+            "avg_trades_per_day": 1.7,
+            "days_to_target": 27,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1543,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10140.53,
+            "pf": 5.044
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1060.01,
+            "end_equity": 101060.01,
+            "max_dd": 7200.32,
+            "trades": 902,
+            "win_rate": 0.5588,
+            "avg_trades_per_day": 2.032,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.2624,
+            "total_withdrawn": 189144.27,
+            "weekly_withdrawals": 87,
+            "total_made": 190204.29,
+            "pf": 3.362
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 26633.55,
+            "pf": 2.407,
+            "win_rate": 0.4773,
+            "trades": 176,
+            "avg_trades_per_day": 1.709,
+            "max_dd": 1598.35
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10190.63,
+            "end_equity": 110190.63,
+            "max_dd": 1598.35,
+            "trades": 59,
+            "win_rate": 0.5085,
+            "avg_trades_per_day": 1.735,
+            "days_to_target": 61,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.2107,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10190.63,
+            "pf": 2.577
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1122.18,
+            "end_equity": 101122.18,
+            "max_dd": 4241.52,
+            "trades": 117,
+            "win_rate": 0.4615,
+            "avg_trades_per_day": 1.696,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.5745,
+            "total_withdrawn": 15320.74,
+            "weekly_withdrawals": 12,
+            "total_made": 16442.92,
+            "pf": 2.318
+          }
+        }
+      }
+    },
+    {
+      "name": "S5_dual_liquidity_book",
+      "description": "Combined Turtle Soup + Equal H/L fade book",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 176407.15,
+            "pf": 1.667,
+            "win_rate": 0.4125,
+            "trades": 1891,
+            "avg_trades_per_day": 3.637,
+            "max_dd": 4780.87
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10321.36,
+            "end_equity": 110321.36,
+            "max_dd": 1598.88,
+            "trades": 88,
+            "win_rate": 0.4318,
+            "avg_trades_per_day": 3.259,
+            "days_to_target": 38,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.163,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10321.36,
+            "pf": 1.912
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 11543.89,
+            "trades": 1801,
+            "win_rate": 0.4109,
+            "avg_trades_per_day": 3.653,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.9972,
+            "total_withdrawn": 163886.16,
+            "weekly_withdrawals": 65,
+            "total_made": 164886.16,
+            "pf": 1.651
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 188563.82,
+            "pf": 1.706,
+            "win_rate": 0.4269,
+            "trades": 1874,
+            "avg_trades_per_day": 3.604,
+            "max_dd": 4951.06
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10563.46,
+            "end_equity": 110563.46,
+            "max_dd": 1598.83,
+            "trades": 94,
+            "win_rate": 0.4362,
+            "avg_trades_per_day": 4.476,
+            "days_to_target": 30,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1891,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10563.46,
+            "pf": 1.796
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 11543.89,
+            "trades": 1780,
+            "win_rate": 0.4264,
+            "avg_trades_per_day": 3.567,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.9972,
+            "total_withdrawn": 177000.36,
+            "weekly_withdrawals": 70,
+            "total_made": 178000.36,
+            "pf": 1.701
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 26073.13,
+            "pf": 1.362,
+            "win_rate": 0.3744,
+            "trades": 454,
+            "avg_trades_per_day": 3.603,
+            "max_dd": 4751.43
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10275.59,
+            "end_equity": 110275.59,
+            "max_dd": 1767.74,
+            "trades": 79,
+            "win_rate": 0.481,
+            "avg_trades_per_day": 3.95,
+            "days_to_target": 29,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.2915,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10275.59,
+            "pf": 1.853
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 8622.26,
+            "trades": 375,
+            "win_rate": 0.352,
+            "avg_trades_per_day": 3.538,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.2944,
+            "total_withdrawn": 14797.54,
+            "weekly_withdrawals": 9,
+            "total_made": 15797.54,
+            "pf": 1.264
+          }
+        }
+      }
+    },
+    {
+      "name": "S6_eq_liquidity_fade",
+      "description": "Equal highs/lows sweep fade",
+      "windows": {
+        "dev_2024_2025": {
+          "edge": {
+            "profit": 161345.93,
+            "pf": 1.92,
+            "win_rate": 0.4342,
+            "trades": 1352,
+            "avg_trades_per_day": 2.688,
+            "max_dd": 6218.75
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10213.24,
+            "end_equity": 110213.24,
+            "max_dd": 1798.0,
+            "trades": 73,
+            "win_rate": 0.4384,
+            "avg_trades_per_day": 2.517,
+            "days_to_target": 43,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.176,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10213.24,
+            "pf": 2.225
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 949.52,
+            "end_equity": 100949.52,
+            "max_dd": 10662.57,
+            "trades": 1279,
+            "win_rate": 0.4339,
+            "avg_trades_per_day": 2.698,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.5247,
+            "total_withdrawn": 150183.16,
+            "weekly_withdrawals": 74,
+            "total_made": 151132.68,
+            "pf": 1.904
+          }
+        },
+        "val_2023_2024": {
+          "edge": {
+            "profit": 183465.37,
+            "pf": 2.06,
+            "win_rate": 0.4591,
+            "trades": 1344,
+            "avg_trades_per_day": 2.656,
+            "max_dd": 6218.75
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10181.21,
+            "end_equity": 110181.21,
+            "max_dd": 1198.86,
+            "trades": 48,
+            "win_rate": 0.5208,
+            "avg_trades_per_day": 3.2,
+            "days_to_target": 20,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.1767,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10181.21,
+            "pf": 3.124
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 11329.17,
+            "trades": 1296,
+            "win_rate": 0.4568,
+            "avg_trades_per_day": 2.64,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 2.3972,
+            "total_withdrawn": 172284.16,
+            "weekly_withdrawals": 76,
+            "total_made": 173284.16,
+            "pf": 2.03
+          }
+        },
+        "hold_2026": {
+          "edge": {
+            "profit": 35746.11,
+            "pf": 1.804,
+            "win_rate": 0.4356,
+            "trades": 326,
+            "avg_trades_per_day": 2.608,
+            "max_dd": 3763.61
+          },
+          "evaluation": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 10590.97,
+            "end_equity": 110590.97,
+            "max_dd": 1195.96,
+            "trades": 53,
+            "win_rate": 0.5472,
+            "avg_trades_per_day": 2.65,
+            "days_to_target": 29,
+            "consistency_ok": true,
+            "max_day_profit_share": 0.2261,
+            "total_withdrawn": 0.0,
+            "weekly_withdrawals": 0,
+            "total_made": 10590.97,
+            "pf": 2.695
+          },
+          "funded": {
+            "passed": true,
+            "fail_reason": "",
+            "profit": 1000.0,
+            "end_equity": 101000.0,
+            "max_dd": 8321.23,
+            "trades": 273,
+            "win_rate": 0.4139,
+            "avg_trades_per_day": 2.6,
+            "days_to_target": null,
+            "consistency_ok": false,
+            "max_day_profit_share": 1.9977,
+            "total_withdrawn": 24155.14,
+            "weekly_withdrawals": 12,
+            "total_made": 25155.14,
+            "pf": 1.659
+          }
+        }
+      }
+    }
+  ],
+  "reported_winners": [
+    "S1_session_break_retest",
+    "S3_turtle_soup",
+    "S4_asia_break_go",
+    "S5_dual_liquidity_book",
+    "S6_eq_liquidity_fade"
+  ]
+}
