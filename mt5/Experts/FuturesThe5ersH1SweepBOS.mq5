@@ -327,6 +327,7 @@ void OnNewBar()
       return;
 
    // Scan symbols in order; take first valid signal (max 1 position).
+   // Signal is computed on closed bar 1 only; entry is market on this new bar open.
    for(int i = 0; i < ArraySize(g_symbols); i++)
    {
       const string sym = g_symbols[i];
@@ -336,6 +337,7 @@ void OnNewBar()
          continue;
 
       double atr = 0.0;
+      // H1SweepBosSignal never uses forming bar OHLC (rates[0]) for the decision.
       const int sig = H1SweepBosSignal(sym, InpTF, InpSwingLeft, InpSwingRight, InpAtrPeriod, atr);
       if(sig == 0)
          continue;
