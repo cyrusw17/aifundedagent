@@ -1,0 +1,1010 @@
+{
+  "research_max_end": "2025-12-31",
+  "n_winners": 6,
+  "n_selected": 5,
+  "selected": [
+    {
+      "id": "XAU__DON_4h_n30_rr5_L",
+      "scope": "XAU",
+      "name": "DON_4h_n30_rr5_L",
+      "risk_pct": 0.02,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n30_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 30,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5842.6,
+          "ann": -5.86,
+          "pf": 0.0,
+          "trades": 3,
+          "max_dd": 5842.6,
+          "min_eq": 94157.4,
+          "floor_ok": true,
+          "end_eq": 94157.4
+        },
+        "2022": {
+          "profit": 202.5,
+          "ann": 0.2,
+          "pf": 1.007,
+          "trades": 25,
+          "max_dd": 9248.72,
+          "min_eq": 95531.4,
+          "floor_ok": true,
+          "end_eq": 100202.5
+        },
+        "2023": {
+          "profit": 9143.49,
+          "ann": 9.17,
+          "pf": 1.399,
+          "trades": 25,
+          "max_dd": 8719.96,
+          "min_eq": 98018.4,
+          "floor_ok": true,
+          "end_eq": 109143.49
+        },
+        "2024": {
+          "profit": 28271.22,
+          "ann": 28.29,
+          "pf": 2.175,
+          "trades": 25,
+          "max_dd": 5026.18,
+          "min_eq": 96932.0,
+          "floor_ok": true,
+          "end_eq": 128271.22
+        },
+        "2025": {
+          "profit": 34985.38,
+          "ann": 35.11,
+          "pf": 2.456,
+          "trades": 32,
+          "max_dd": 7993.17,
+          "min_eq": 98004.25,
+          "floor_ok": true,
+          "end_eq": 134985.38
+        }
+      },
+      "w2425": {
+        "profit": 73411.17,
+        "ann": 36.73,
+        "pf": 2.337,
+        "trades": 57,
+        "max_dd": 10326.43,
+        "min_eq": 96932.0,
+        "floor_ok": true,
+        "end_eq": 173411.17
+      },
+      "min_year_ann": -5.86
+    },
+    {
+      "id": "XAU__DON_4h_n20_rr5_L",
+      "scope": "XAU",
+      "name": "DON_4h_n20_rr5_L",
+      "risk_pct": 0.015,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5825.89,
+          "ann": -5.85,
+          "pf": 0.0,
+          "trades": 4,
+          "max_dd": 5825.89,
+          "min_eq": 94174.11,
+          "floor_ok": true,
+          "end_eq": 94174.11
+        },
+        "2022": {
+          "profit": -2803.37,
+          "ann": -2.81,
+          "pf": 0.89,
+          "trades": 31,
+          "max_dd": 12044.5,
+          "min_eq": 97196.63,
+          "floor_ok": true,
+          "end_eq": 97196.63
+        },
+        "2023": {
+          "profit": 2193.29,
+          "ann": 2.2,
+          "pf": 1.097,
+          "trades": 31,
+          "max_dd": 12099.78,
+          "min_eq": 95388.5,
+          "floor_ok": true,
+          "end_eq": 102193.29
+        },
+        "2024": {
+          "profit": 15876.12,
+          "ann": 15.89,
+          "pf": 1.65,
+          "trades": 32,
+          "max_dd": 4968.76,
+          "min_eq": 97029.36,
+          "floor_ok": true,
+          "end_eq": 115876.12
+        },
+        "2025": {
+          "profit": 31158.73,
+          "ann": 31.27,
+          "pf": 2.894,
+          "trades": 35,
+          "max_dd": 4797.0,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "end_eq": 131158.73
+        }
+      },
+      "w2425": {
+        "profit": 51948.41,
+        "ann": 25.99,
+        "pf": 2.194,
+        "trades": 67,
+        "max_dd": 5593.1,
+        "min_eq": 97029.36,
+        "floor_ok": true,
+        "end_eq": 151948.41
+      },
+      "min_year_ann": -5.85
+    },
+    {
+      "id": "XAU__DON_1D_n20_rr4_L",
+      "scope": "XAU",
+      "name": "DON_1D_n20_rr4_L",
+      "risk_pct": 0.02,
+      "hold": 10,
+      "cfg": {
+        "tag": "DON_1D_n20_rr4_L",
+        "model": "don",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": false,
+        "tf": "1D",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": 961.69,
+          "ann": 0.96,
+          "pf": 1.236,
+          "trades": 7,
+          "max_dd": 4077.65,
+          "min_eq": 99414.52,
+          "floor_ok": true,
+          "end_eq": 100961.69
+        },
+        "2022": {
+          "profit": -3521.36,
+          "ann": -3.53,
+          "pf": 0.548,
+          "trades": 7,
+          "max_dd": 3871.89,
+          "min_eq": 96157.54,
+          "floor_ok": true,
+          "end_eq": 96478.64
+        },
+        "2023": {
+          "profit": 3702.08,
+          "ann": 3.71,
+          "pf": 1.514,
+          "trades": 9,
+          "max_dd": 4066.68,
+          "min_eq": 98917.91,
+          "floor_ok": true,
+          "end_eq": 103702.08
+        },
+        "2024": {
+          "profit": 16137.36,
+          "ann": 16.15,
+          "pf": 4.551,
+          "trades": 10,
+          "max_dd": 2338.8,
+          "min_eq": 104489.2,
+          "floor_ok": true,
+          "end_eq": 116137.36
+        },
+        "2025": {
+          "profit": 13244.5,
+          "ann": 13.29,
+          "pf": 2.025,
+          "trades": 17,
+          "max_dd": 6290.96,
+          "min_eq": 100094.87,
+          "floor_ok": true,
+          "end_eq": 113244.5
+        }
+      },
+      "w2425": {
+        "profit": 31648.23,
+        "ann": 15.83,
+        "pf": 2.635,
+        "trades": 27,
+        "max_dd": 7155.79,
+        "min_eq": 104489.2,
+        "floor_ok": true,
+        "end_eq": 131648.23
+      },
+      "min_year_ann": -3.53
+    },
+    {
+      "id": "XAUXAG__DON_4h_n20_rr5_L",
+      "scope": "XAUXAG",
+      "name": "DON_4h_n20_rr5_L",
+      "risk_pct": 0.01,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5359.31,
+          "ann": -5.38,
+          "pf": 0.522,
+          "trades": 19,
+          "max_dd": 5873.98,
+          "min_eq": 94640.69,
+          "floor_ok": true,
+          "end_eq": 94640.69
+        },
+        "2022": {
+          "profit": 4842.44,
+          "ann": 4.86,
+          "pf": 1.273,
+          "trades": 36,
+          "max_dd": 4812.3,
+          "min_eq": 100366.52,
+          "floor_ok": true,
+          "end_eq": 104842.44
+        },
+        "2023": {
+          "profit": 2297.65,
+          "ann": 2.31,
+          "pf": 1.16,
+          "trades": 35,
+          "max_dd": 7510.6,
+          "min_eq": 95415.43,
+          "floor_ok": true,
+          "end_eq": 102297.65
+        },
+        "2024": {
+          "profit": 12231.09,
+          "ann": 12.24,
+          "pf": 1.577,
+          "trades": 38,
+          "max_dd": 5718.61,
+          "min_eq": 97018.3,
+          "floor_ok": true,
+          "end_eq": 112231.09
+        },
+        "2025": {
+          "profit": 12835.93,
+          "ann": 12.88,
+          "pf": 1.678,
+          "trades": 45,
+          "max_dd": 6260.1,
+          "min_eq": 99002.12,
+          "floor_ok": true,
+          "end_eq": 112835.93
+        }
+      },
+      "w2425": {
+        "profit": 26627.61,
+        "ann": 13.32,
+        "pf": 1.626,
+        "trades": 83,
+        "max_dd": 7041.52,
+        "min_eq": 97018.3,
+        "floor_ok": true,
+        "end_eq": 126627.61
+      },
+      "min_year_ann": -5.38
+    },
+    {
+      "id": "XAU__DON_4h_n20_rr4_L",
+      "scope": "XAU",
+      "name": "DON_4h_n20_rr4_L",
+      "risk_pct": 0.015,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr4_L",
+        "model": "don",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5825.89,
+          "ann": -5.85,
+          "pf": 0.0,
+          "trades": 4,
+          "max_dd": 5825.89,
+          "min_eq": 94174.11,
+          "floor_ok": true,
+          "end_eq": 94174.11
+        },
+        "2022": {
+          "profit": -1567.31,
+          "ann": -1.57,
+          "pf": 0.939,
+          "trades": 31,
+          "max_dd": 12202.09,
+          "min_eq": 98432.69,
+          "floor_ok": true,
+          "end_eq": 98432.69
+        },
+        "2023": {
+          "profit": 2021.72,
+          "ann": 2.03,
+          "pf": 1.09,
+          "trades": 31,
+          "max_dd": 12099.78,
+          "min_eq": 95388.5,
+          "floor_ok": true,
+          "end_eq": 102021.72
+        },
+        "2024": {
+          "profit": 14246.95,
+          "ann": 14.26,
+          "pf": 1.59,
+          "trades": 32,
+          "max_dd": 4897.92,
+          "min_eq": 97029.36,
+          "floor_ok": true,
+          "end_eq": 114246.95
+        },
+        "2025": {
+          "profit": 31158.73,
+          "ann": 31.27,
+          "pf": 2.894,
+          "trades": 35,
+          "max_dd": 4797.0,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "end_eq": 131158.73
+        }
+      },
+      "w2425": {
+        "profit": 49963.26,
+        "ann": 25.0,
+        "pf": 2.165,
+        "trades": 67,
+        "max_dd": 5528.06,
+        "min_eq": 97029.36,
+        "floor_ok": true,
+        "end_eq": 149963.26
+      },
+      "min_year_ann": -5.85
+    }
+  ],
+  "all_winners": [
+    {
+      "id": "XAU__DON_4h_n30_rr5_L",
+      "scope": "XAU",
+      "name": "DON_4h_n30_rr5_L",
+      "risk_pct": 0.02,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n30_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 30,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5842.6,
+          "ann": -5.86,
+          "pf": 0.0,
+          "trades": 3,
+          "max_dd": 5842.6,
+          "min_eq": 94157.4,
+          "floor_ok": true,
+          "end_eq": 94157.4
+        },
+        "2022": {
+          "profit": 202.5,
+          "ann": 0.2,
+          "pf": 1.007,
+          "trades": 25,
+          "max_dd": 9248.72,
+          "min_eq": 95531.4,
+          "floor_ok": true,
+          "end_eq": 100202.5
+        },
+        "2023": {
+          "profit": 9143.49,
+          "ann": 9.17,
+          "pf": 1.399,
+          "trades": 25,
+          "max_dd": 8719.96,
+          "min_eq": 98018.4,
+          "floor_ok": true,
+          "end_eq": 109143.49
+        },
+        "2024": {
+          "profit": 28271.22,
+          "ann": 28.29,
+          "pf": 2.175,
+          "trades": 25,
+          "max_dd": 5026.18,
+          "min_eq": 96932.0,
+          "floor_ok": true,
+          "end_eq": 128271.22
+        },
+        "2025": {
+          "profit": 34985.38,
+          "ann": 35.11,
+          "pf": 2.456,
+          "trades": 32,
+          "max_dd": 7993.17,
+          "min_eq": 98004.25,
+          "floor_ok": true,
+          "end_eq": 134985.38
+        }
+      },
+      "w2425": {
+        "profit": 73411.17,
+        "ann": 36.73,
+        "pf": 2.337,
+        "trades": 57,
+        "max_dd": 10326.43,
+        "min_eq": 96932.0,
+        "floor_ok": true,
+        "end_eq": 173411.17
+      },
+      "min_year_ann": -5.86
+    },
+    {
+      "id": "XAU__DON_4h_n20_rr5_L",
+      "scope": "XAU",
+      "name": "DON_4h_n20_rr5_L",
+      "risk_pct": 0.015,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5825.89,
+          "ann": -5.85,
+          "pf": 0.0,
+          "trades": 4,
+          "max_dd": 5825.89,
+          "min_eq": 94174.11,
+          "floor_ok": true,
+          "end_eq": 94174.11
+        },
+        "2022": {
+          "profit": -2803.37,
+          "ann": -2.81,
+          "pf": 0.89,
+          "trades": 31,
+          "max_dd": 12044.5,
+          "min_eq": 97196.63,
+          "floor_ok": true,
+          "end_eq": 97196.63
+        },
+        "2023": {
+          "profit": 2193.29,
+          "ann": 2.2,
+          "pf": 1.097,
+          "trades": 31,
+          "max_dd": 12099.78,
+          "min_eq": 95388.5,
+          "floor_ok": true,
+          "end_eq": 102193.29
+        },
+        "2024": {
+          "profit": 15876.12,
+          "ann": 15.89,
+          "pf": 1.65,
+          "trades": 32,
+          "max_dd": 4968.76,
+          "min_eq": 97029.36,
+          "floor_ok": true,
+          "end_eq": 115876.12
+        },
+        "2025": {
+          "profit": 31158.73,
+          "ann": 31.27,
+          "pf": 2.894,
+          "trades": 35,
+          "max_dd": 4797.0,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "end_eq": 131158.73
+        }
+      },
+      "w2425": {
+        "profit": 51948.41,
+        "ann": 25.99,
+        "pf": 2.194,
+        "trades": 67,
+        "max_dd": 5593.1,
+        "min_eq": 97029.36,
+        "floor_ok": true,
+        "end_eq": 151948.41
+      },
+      "min_year_ann": -5.85
+    },
+    {
+      "id": "XAU__DON_4h_n20_rr4_L",
+      "scope": "XAU",
+      "name": "DON_4h_n20_rr4_L",
+      "risk_pct": 0.015,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr4_L",
+        "model": "don",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5825.89,
+          "ann": -5.85,
+          "pf": 0.0,
+          "trades": 4,
+          "max_dd": 5825.89,
+          "min_eq": 94174.11,
+          "floor_ok": true,
+          "end_eq": 94174.11
+        },
+        "2022": {
+          "profit": -1567.31,
+          "ann": -1.57,
+          "pf": 0.939,
+          "trades": 31,
+          "max_dd": 12202.09,
+          "min_eq": 98432.69,
+          "floor_ok": true,
+          "end_eq": 98432.69
+        },
+        "2023": {
+          "profit": 2021.72,
+          "ann": 2.03,
+          "pf": 1.09,
+          "trades": 31,
+          "max_dd": 12099.78,
+          "min_eq": 95388.5,
+          "floor_ok": true,
+          "end_eq": 102021.72
+        },
+        "2024": {
+          "profit": 14246.95,
+          "ann": 14.26,
+          "pf": 1.59,
+          "trades": 32,
+          "max_dd": 4897.92,
+          "min_eq": 97029.36,
+          "floor_ok": true,
+          "end_eq": 114246.95
+        },
+        "2025": {
+          "profit": 31158.73,
+          "ann": 31.27,
+          "pf": 2.894,
+          "trades": 35,
+          "max_dd": 4797.0,
+          "min_eq": 98513.8,
+          "floor_ok": true,
+          "end_eq": 131158.73
+        }
+      },
+      "w2425": {
+        "profit": 49963.26,
+        "ann": 25.0,
+        "pf": 2.165,
+        "trades": 67,
+        "max_dd": 5528.06,
+        "min_eq": 97029.36,
+        "floor_ok": true,
+        "end_eq": 149963.26
+      },
+      "min_year_ann": -5.85
+    },
+    {
+      "id": "XAU__DON_1D_n20_rr4_L",
+      "scope": "XAU",
+      "name": "DON_1D_n20_rr4_L",
+      "risk_pct": 0.02,
+      "hold": 10,
+      "cfg": {
+        "tag": "DON_1D_n20_rr4_L",
+        "model": "don",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 10,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": false,
+        "tf": "1D",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": 961.69,
+          "ann": 0.96,
+          "pf": 1.236,
+          "trades": 7,
+          "max_dd": 4077.65,
+          "min_eq": 99414.52,
+          "floor_ok": true,
+          "end_eq": 100961.69
+        },
+        "2022": {
+          "profit": -3521.36,
+          "ann": -3.53,
+          "pf": 0.548,
+          "trades": 7,
+          "max_dd": 3871.89,
+          "min_eq": 96157.54,
+          "floor_ok": true,
+          "end_eq": 96478.64
+        },
+        "2023": {
+          "profit": 3702.08,
+          "ann": 3.71,
+          "pf": 1.514,
+          "trades": 9,
+          "max_dd": 4066.68,
+          "min_eq": 98917.91,
+          "floor_ok": true,
+          "end_eq": 103702.08
+        },
+        "2024": {
+          "profit": 16137.36,
+          "ann": 16.15,
+          "pf": 4.551,
+          "trades": 10,
+          "max_dd": 2338.8,
+          "min_eq": 104489.2,
+          "floor_ok": true,
+          "end_eq": 116137.36
+        },
+        "2025": {
+          "profit": 13244.5,
+          "ann": 13.29,
+          "pf": 2.025,
+          "trades": 17,
+          "max_dd": 6290.96,
+          "min_eq": 100094.87,
+          "floor_ok": true,
+          "end_eq": 113244.5
+        }
+      },
+      "w2425": {
+        "profit": 31648.23,
+        "ann": 15.83,
+        "pf": 2.635,
+        "trades": 27,
+        "max_dd": 7155.79,
+        "min_eq": 104489.2,
+        "floor_ok": true,
+        "end_eq": 131648.23
+      },
+      "min_year_ann": -3.53
+    },
+    {
+      "id": "XAUXAG__DON_4h_n20_rr5_L",
+      "scope": "XAUXAG",
+      "name": "DON_4h_n20_rr5_L",
+      "risk_pct": 0.01,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr5_L",
+        "model": "don",
+        "rr": 5.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5359.31,
+          "ann": -5.38,
+          "pf": 0.522,
+          "trades": 19,
+          "max_dd": 5873.98,
+          "min_eq": 94640.69,
+          "floor_ok": true,
+          "end_eq": 94640.69
+        },
+        "2022": {
+          "profit": 4842.44,
+          "ann": 4.86,
+          "pf": 1.273,
+          "trades": 36,
+          "max_dd": 4812.3,
+          "min_eq": 100366.52,
+          "floor_ok": true,
+          "end_eq": 104842.44
+        },
+        "2023": {
+          "profit": 2297.65,
+          "ann": 2.31,
+          "pf": 1.16,
+          "trades": 35,
+          "max_dd": 7510.6,
+          "min_eq": 95415.43,
+          "floor_ok": true,
+          "end_eq": 102297.65
+        },
+        "2024": {
+          "profit": 12231.09,
+          "ann": 12.24,
+          "pf": 1.577,
+          "trades": 38,
+          "max_dd": 5718.61,
+          "min_eq": 97018.3,
+          "floor_ok": true,
+          "end_eq": 112231.09
+        },
+        "2025": {
+          "profit": 12835.93,
+          "ann": 12.88,
+          "pf": 1.678,
+          "trades": 45,
+          "max_dd": 6260.1,
+          "min_eq": 99002.12,
+          "floor_ok": true,
+          "end_eq": 112835.93
+        }
+      },
+      "w2425": {
+        "profit": 26627.61,
+        "ann": 13.32,
+        "pf": 1.626,
+        "trades": 83,
+        "max_dd": 7041.52,
+        "min_eq": 97018.3,
+        "floor_ok": true,
+        "end_eq": 126627.61
+      },
+      "min_year_ann": -5.38
+    },
+    {
+      "id": "XAUXAG__DON_4h_n20_rr4_L",
+      "scope": "XAUXAG",
+      "name": "DON_4h_n20_rr4_L",
+      "risk_pct": 0.01,
+      "hold": 5,
+      "cfg": {
+        "tag": "DON_4h_n20_rr4_L",
+        "model": "don",
+        "rr": 4.0,
+        "risk_pct": 0.01,
+        "flatten_hour_utc": 22,
+        "move_to_be": false,
+        "max_hold_days": 5,
+        "don_len": 20,
+        "ema_fast": 12,
+        "ema_slow": 48,
+        "stop_atr": 2.0,
+        "atr_len": 14,
+        "long_only": true,
+        "short_only": false,
+        "session_only": true,
+        "tf": "4h",
+        "rsi_lo": 40.0,
+        "rsi_hi": 60.0,
+        "pullback_atr": 0.5
+      },
+      "years": {
+        "2021": {
+          "profit": -5361.06,
+          "ann": -5.38,
+          "pf": 0.628,
+          "trades": 24,
+          "max_dd": 7160.78,
+          "min_eq": 94638.94,
+          "floor_ok": true,
+          "end_eq": 94638.94
+        },
+        "2022": {
+          "profit": 5746.96,
+          "ann": 5.77,
+          "pf": 1.321,
+          "trades": 36,
+          "max_dd": 4828.19,
+          "min_eq": 100366.52,
+          "floor_ok": true,
+          "end_eq": 105746.96
+        },
+        "2023": {
+          "profit": 2387.81,
+          "ann": 2.4,
+          "pf": 1.166,
+          "trades": 35,
+          "max_dd": 7510.6,
+          "min_eq": 95415.43,
+          "floor_ok": true,
+          "end_eq": 102387.81
+        },
+        "2024": {
+          "profit": 10190.38,
+          "ann": 10.2,
+          "pf": 1.49,
+          "trades": 38,
+          "max_dd": 5512.49,
+          "min_eq": 97018.3,
+          "floor_ok": true,
+          "end_eq": 110190.38
+        },
+        "2025": {
+          "profit": 12835.93,
+          "ann": 12.88,
+          "pf": 1.678,
+          "trades": 45,
+          "max_dd": 6260.1,
+          "min_eq": 99002.12,
+          "floor_ok": true,
+          "end_eq": 112835.93
+        }
+      },
+      "w2425": {
+        "profit": 24064.22,
+        "ann": 12.04,
+        "pf": 1.577,
+        "trades": 83,
+        "max_dd": 6942.82,
+        "min_eq": 97018.3,
+        "floor_ok": true,
+        "end_eq": 124064.22
+      },
+      "min_year_ann": -5.38
+    }
+  ]
+}

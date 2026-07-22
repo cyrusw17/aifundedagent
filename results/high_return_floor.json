@@ -1,0 +1,13 @@
+{
+  "champion": "HR_Don35_rr5_h3",
+  "simple_ann_pct": 11.94,
+  "cagr_pct": 9.42,
+  "end_equity": 171614,
+  "min_equity": 94977,
+  "max_dd_trailing": 118339,
+  "risk_pct": 0.009,
+  "equity_halt_floor": 94500,
+  "rules": "static floor equity>4k; compound risk; trailing DD may exceed $6k",
+  "early_ann_pct": 34.78,
+  "late_ann_pct": -1.92
+}

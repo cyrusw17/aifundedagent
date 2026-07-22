@@ -1,0 +1,349 @@
+{
+  "prop": {
+    "initial_balance": 100000.0,
+    "profit_target": 10000.0,
+    "max_loss": 6000.0,
+    "daily_loss_limit": 3000.0,
+    "consistency_pct": 0.5,
+    "leverage": 100,
+    "withdraw_target": 250.0,
+    "withdraw_cap": 2000.0
+  },
+  "params": {
+    "swing_left": 3,
+    "swing_right": 3,
+    "atr_period": 14,
+    "min_stop_atr": 0.8,
+    "max_stop_atr": 2.2,
+    "mss_confirm_bars": 8,
+    "fvg_max_age_bars": 8,
+    "min_fvg_atr_frac": 0.12,
+    "killzones_utc": [
+      [
+        7,
+        11
+      ],
+      [
+        12,
+        17
+      ]
+    ],
+    "flatten_hour_utc": 20,
+    "reward_risk": 1.5,
+    "risk_pct": 0.004,
+    "max_trades_per_day": 10,
+    "max_open_positions": 3,
+    "max_trades_per_pair_day": 3,
+    "daily_profit_cap": 4500.0,
+    "cooldown_bars_after_trade": 1,
+    "pairs": [
+      "EURUSD",
+      "GBPUSD",
+      "AUDUSD",
+      "USDJPY",
+      "XAUUSD",
+      "USDCAD",
+      "EURJPY",
+      "GBPJPY"
+    ]
+  },
+  "spreads": {
+    "EURUSD": 0.00012,
+    "GBPUSD": 0.00015,
+    "USDJPY": 0.015,
+    "XAUUSD": 0.25,
+    "AUDUSD": 0.00014,
+    "USDCAD": 0.00016,
+    "EURJPY": 0.018,
+    "GBPJPY": 0.025
+  },
+  "methodology": {
+    "no_lookahead": true,
+    "no_curve_fit": true,
+    "signal_tf": "M15",
+    "fill_tf": "M1",
+    "model": "ICT sweep -> MSS -> FVG limit mid, RR=2, killzones London/NY",
+    "dev_period": [
+      "2024-01-01",
+      "2025-12-31"
+    ],
+    "val_period": [
+      "2023-01-01",
+      "2024-12-31"
+    ],
+    "pure_oos": [
+      "2023-01-01",
+      "2023-12-31"
+    ]
+  },
+  "edge_dev": {
+    "phase": "edge_dev",
+    "passed": false,
+    "fail_reason": "target_not_reached",
+    "start_equity": 100000.0,
+    "end_equity": 145939.0252392944,
+    "profit": 45939.03,
+    "max_dd": 8202.16,
+    "trades": 1141,
+    "win_rate": 0.3725,
+    "avg_trades_per_day": 2.338,
+    "trading_days": 488,
+    "days_to_target": null,
+    "consistency_ok": true,
+    "max_day_profit_share": 0.0392,
+    "daily_pauses": 0,
+    "total_pnl": 45939.03,
+    "avg_pnl": 40.26,
+    "median_pnl": 0.0,
+    "profit_factor": 1.237,
+    "avg_r": 0.097,
+    "by_pair": {
+      "count": {
+        "AUDUSD": 106,
+        "EURJPY": 103,
+        "EURUSD": 198,
+        "GBPJPY": 122,
+        "GBPUSD": 178,
+        "USDCAD": 202,
+        "USDJPY": 94,
+        "XAUUSD": 138
+      },
+      "sum": {
+        "AUDUSD": 769.58,
+        "EURJPY": 6975.93,
+        "EURUSD": 6807.88,
+        "GBPJPY": 2129.39,
+        "GBPUSD": 4582.11,
+        "USDCAD": 12983.17,
+        "USDJPY": 1180.15,
+        "XAUUSD": 10510.81
+      },
+      "mean": {
+        "AUDUSD": 7.26,
+        "EURJPY": 67.73,
+        "EURUSD": 34.38,
+        "GBPJPY": 17.45,
+        "GBPUSD": 25.74,
+        "USDCAD": 64.27,
+        "USDJPY": 12.55,
+        "XAUUSD": 76.17
+      }
+    }
+  },
+  "challenge_dev": {
+    "evaluation": {
+      "phase": "evaluation",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110388.51007929945,
+      "profit": 10388.51,
+      "max_dd": 5294.78,
+      "trades": 386,
+      "win_rate": 0.3497,
+      "avg_trades_per_day": 2.383,
+      "trading_days": 162,
+      "days_to_target": 240,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.1493,
+      "daily_pauses": 0
+    },
+    "funded": {
+      "phase": "funded",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110428.69215658268,
+      "profit": 10428.69,
+      "max_dd": 3771.52,
+      "trades": 130,
+      "win_rate": 0.4231,
+      "avg_trades_per_day": 2.5,
+      "trading_days": 52,
+      "days_to_target": 84,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.1725,
+      "daily_pauses": 0
+    }
+  },
+  "edge_val": {
+    "phase": "edge_val",
+    "passed": false,
+    "fail_reason": "target_not_reached",
+    "start_equity": 100000.0,
+    "end_equity": 160355.5873570431,
+    "profit": 60355.59,
+    "max_dd": 5294.78,
+    "trades": 1136,
+    "win_rate": 0.3847,
+    "avg_trades_per_day": 2.377,
+    "trading_days": 478,
+    "days_to_target": null,
+    "consistency_ok": true,
+    "max_day_profit_share": 0.0298,
+    "daily_pauses": 0,
+    "total_pnl": 60355.59,
+    "avg_pnl": 53.13,
+    "median_pnl": 0.0,
+    "profit_factor": 1.322,
+    "avg_r": 0.13,
+    "by_pair": {
+      "count": {
+        "AUDUSD": 101,
+        "EURJPY": 110,
+        "EURUSD": 191,
+        "GBPJPY": 120,
+        "GBPUSD": 185,
+        "USDCAD": 188,
+        "USDJPY": 92,
+        "XAUUSD": 149
+      },
+      "sum": {
+        "AUDUSD": 2245.3,
+        "EURJPY": 7343.73,
+        "EURUSD": 7245.98,
+        "GBPJPY": 10132.22,
+        "GBPUSD": 13610.16,
+        "USDCAD": 6103.52,
+        "USDJPY": 7220.59,
+        "XAUUSD": 6454.11
+      },
+      "mean": {
+        "AUDUSD": 22.23,
+        "EURJPY": 66.76,
+        "EURUSD": 37.94,
+        "GBPJPY": 84.44,
+        "GBPUSD": 73.57,
+        "USDCAD": 32.47,
+        "USDJPY": 78.48,
+        "XAUUSD": 43.32
+      }
+    }
+  },
+  "challenge_val": {
+    "evaluation": {
+      "phase": "evaluation",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110423.21031762063,
+      "profit": 10423.21,
+      "max_dd": 3393.63,
+      "trades": 106,
+      "win_rate": 0.4245,
+      "avg_trades_per_day": 2.163,
+      "trading_days": 49,
+      "days_to_target": 69,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.115,
+      "daily_pauses": 0
+    },
+    "funded": {
+      "phase": "funded",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110263.07483780046,
+      "profit": 10263.07,
+      "max_dd": 3822.46,
+      "trades": 126,
+      "win_rate": 0.4286,
+      "avg_trades_per_day": 2.066,
+      "trading_days": 61,
+      "days_to_target": 97,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.117,
+      "daily_pauses": 0
+    }
+  },
+  "edge_pure_oos_2023": {
+    "phase": "edge_oos_2023",
+    "passed": false,
+    "fail_reason": "target_not_reached",
+    "start_equity": 100000.0,
+    "end_equity": 134406.14785418467,
+    "profit": 34406.15,
+    "max_dd": 3822.46,
+    "trades": 560,
+    "win_rate": 0.3946,
+    "avg_trades_per_day": 2.333,
+    "trading_days": 240,
+    "days_to_target": null,
+    "consistency_ok": true,
+    "max_day_profit_share": 0.0523,
+    "daily_pauses": 0,
+    "total_pnl": 34406.15,
+    "avg_pnl": 61.44,
+    "median_pnl": 0.0,
+    "profit_factor": 1.367,
+    "avg_r": 0.155,
+    "by_pair": {
+      "count": {
+        "AUDUSD": 52,
+        "EURJPY": 52,
+        "EURUSD": 96,
+        "GBPJPY": 62,
+        "GBPUSD": 93,
+        "USDCAD": 84,
+        "USDJPY": 49,
+        "XAUUSD": 72
+      },
+      "sum": {
+        "AUDUSD": 2214.36,
+        "EURJPY": 5054.57,
+        "EURUSD": 3189.11,
+        "GBPJPY": 7130.71,
+        "GBPUSD": 7267.63,
+        "USDCAD": 4593.24,
+        "USDJPY": 4946.63,
+        "XAUUSD": 9.9
+      },
+      "mean": {
+        "AUDUSD": 42.58,
+        "EURJPY": 97.2,
+        "EURUSD": 33.22,
+        "GBPJPY": 115.01,
+        "GBPUSD": 78.15,
+        "USDCAD": 54.68,
+        "USDJPY": 100.95,
+        "XAUUSD": 0.14
+      }
+    }
+  },
+  "challenge_pure_oos_2023": {
+    "evaluation": {
+      "phase": "evaluation",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110423.21031762063,
+      "profit": 10423.21,
+      "max_dd": 3393.63,
+      "trades": 106,
+      "win_rate": 0.4245,
+      "avg_trades_per_day": 2.163,
+      "trading_days": 49,
+      "days_to_target": 69,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.115,
+      "daily_pauses": 0
+    },
+    "funded": {
+      "phase": "funded",
+      "passed": true,
+      "fail_reason": "",
+      "start_equity": 100000.0,
+      "end_equity": 110263.07483780046,
+      "profit": 10263.07,
+      "max_dd": 3822.46,
+      "trades": 126,
+      "win_rate": 0.4286,
+      "avg_trades_per_day": 2.066,
+      "trading_days": 61,
+      "days_to_target": 97,
+      "consistency_ok": true,
+      "max_day_profit_share": 0.117,
+      "daily_pauses": 0
+    }
+  }
+}
