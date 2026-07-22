@@ -1,0 +1,1639 @@
+{
+  "window": [
+    "2016-01-01",
+    "2019-12-31"
+  ],
+  "params": {
+    "signal_mode": "sweep_bos_ob",
+    "risk_pct": 0.0065,
+    "rr": 1.8,
+    "atr_stop_mult": 1.5,
+    "max_positions": 1,
+    "min_confluence": 2,
+    "swing_left": 3,
+    "swing_right": 3,
+    "require_killzone": false,
+    "weekly_withdraw": false,
+    "move_be_at_r": 0.0,
+    "skip_mondays": false,
+    "daily_halt_loss_pct": 0.025,
+    "daily_halt_profit_pct": 0.04,
+    "cooldown_losses": 2,
+    "one_entry_per_day": false
+  },
+  "pairs": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCHF",
+    "USDCAD"
+  ],
+  "eval_max_days": 90,
+  "summary": {
+    "accounts_started": 48,
+    "evals_passed": 19,
+    "eval_pass_rate": 0.3958333333333333,
+    "eval_failed": 29,
+    "funded_blown": 1,
+    "funded_survived_to_end": 18,
+    "total_payouts_usd": 93445.55,
+    "avg_monthly_portfolio_payout_usd": 1946.78,
+    "median_monthly_portfolio_payout_usd": 0.0,
+    "peak_funded_active": 19,
+    "median_eval_days": 50.0,
+    "mean_eval_days": 45.8421052631579,
+    "notional_peak_usd": 1900000.0,
+    "recommended_personal_buffer_usd": 38000.0,
+    "recommended_keep_per_account_above_initial_usd": 4000.0,
+    "note": "One new $100k eval on the 1st of each month. Funded books use weekly withdraw (min $250, cap $2000). Eval must hit +10% within 90 days without blowing. Challenge fees not deducted."
+  },
+  "monthly": [
+    {
+      "month": "2016-01",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 0,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 0,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-02",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 1,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 1,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-03",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 1,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 2,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-04",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 1,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 3,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-05",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 1,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 3,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-06",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 2,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 0.0,
+      "eval_failed_to_date": 3,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-07",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 2,
+      "payout_usd": 2000.0,
+      "cumulative_payout_usd": 2000.0,
+      "eval_failed_to_date": 3,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-08",
+      "accounts_started": 1,
+      "evals_passed": 2,
+      "funded_active": 4,
+      "payout_usd": 14935.99,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 4,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-09",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 4,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 5,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-10",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 4,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 6,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-11",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 4,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2016-12",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 4,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-01",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 4,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 16935.99,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-02",
+      "accounts_started": 1,
+      "evals_passed": 3,
+      "funded_active": 7,
+      "payout_usd": 1914.35,
+      "cumulative_payout_usd": 18850.34,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-03",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 7,
+      "payout_usd": 9098.55,
+      "cumulative_payout_usd": 27948.89,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-04",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 7,
+      "payout_usd": 11910.41,
+      "cumulative_payout_usd": 39859.3,
+      "eval_failed_to_date": 7,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-05",
+      "accounts_started": 1,
+      "evals_passed": 2,
+      "funded_active": 9,
+      "payout_usd": 16573.13,
+      "cumulative_payout_usd": 56432.43,
+      "eval_failed_to_date": 8,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-06",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 9,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 56432.43,
+      "eval_failed_to_date": 9,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-07",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 9,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 56432.43,
+      "eval_failed_to_date": 10,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-08",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 9,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 56432.43,
+      "eval_failed_to_date": 10,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-09",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 9,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 56432.43,
+      "eval_failed_to_date": 10,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-10",
+      "accounts_started": 1,
+      "evals_passed": 2,
+      "funded_active": 11,
+      "payout_usd": 5207.45,
+      "cumulative_payout_usd": 61639.88,
+      "eval_failed_to_date": 11,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-11",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 11,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 61639.88,
+      "eval_failed_to_date": 12,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2017-12",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 11,
+      "payout_usd": 6854.25,
+      "cumulative_payout_usd": 68494.13,
+      "eval_failed_to_date": 13,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-01",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 11,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 68494.13,
+      "eval_failed_to_date": 14,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-02",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 11,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 68494.13,
+      "eval_failed_to_date": 14,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-03",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 12,
+      "payout_usd": 819.44,
+      "cumulative_payout_usd": 69313.57,
+      "eval_failed_to_date": 14,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-04",
+      "accounts_started": 1,
+      "evals_passed": 2,
+      "funded_active": 14,
+      "payout_usd": 4885.03,
+      "cumulative_payout_usd": 74198.6,
+      "eval_failed_to_date": 14,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-05",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 14,
+      "payout_usd": 1590.89,
+      "cumulative_payout_usd": 75789.49,
+      "eval_failed_to_date": 15,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-06",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 14,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 75789.49,
+      "eval_failed_to_date": 15,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-07",
+      "accounts_started": 1,
+      "evals_passed": 2,
+      "funded_active": 16,
+      "payout_usd": 4000.0,
+      "cumulative_payout_usd": 79789.49,
+      "eval_failed_to_date": 15,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-08",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 2843.92,
+      "cumulative_payout_usd": 82633.41,
+      "eval_failed_to_date": 16,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-09",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 920.24,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 17,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-10",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 18,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-11",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 19,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2018-12",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 20,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-01",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 21,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-02",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 22,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-03",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 23,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-04",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 24,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-05",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 16,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 24,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-06",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 17,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 83553.65,
+      "eval_failed_to_date": 24,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-07",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 18,
+      "payout_usd": 8114.01,
+      "cumulative_payout_usd": 91667.66,
+      "eval_failed_to_date": 25,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-08",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 18,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 91667.66,
+      "eval_failed_to_date": 26,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-09",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 18,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 91667.66,
+      "eval_failed_to_date": 26,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-10",
+      "accounts_started": 1,
+      "evals_passed": 1,
+      "funded_active": 19,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 91667.66,
+      "eval_failed_to_date": 27,
+      "funded_blown_to_date": 0
+    },
+    {
+      "month": "2019-11",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 19,
+      "payout_usd": 1777.9,
+      "cumulative_payout_usd": 93445.56,
+      "eval_failed_to_date": 28,
+      "funded_blown_to_date": 1
+    },
+    {
+      "month": "2019-12",
+      "accounts_started": 1,
+      "evals_passed": 0,
+      "funded_active": 18,
+      "payout_usd": 0.0,
+      "cumulative_payout_usd": 93445.56,
+      "eval_failed_to_date": 29,
+      "funded_blown_to_date": 1
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "A01_201601",
+      "start": "2016-01-04",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2016-02-08 18:00:00",
+      "eval_days": 35,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 94212.96,
+      "funded_n_trades": 20,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A02_201602",
+      "start": "2016-02-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A03_201603",
+      "start": "2016-03-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A04_201604",
+      "start": "2016-04-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A05_201605",
+      "start": "2016-05-02",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2016-06-24 00:00:00",
+      "eval_days": 53,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 11133.55,
+      "n_withdrawals": 6,
+      "funded_final_balance": 94203.02,
+      "funded_n_trades": 82,
+      "withdrawals": [
+        {
+          "date": "2016-07-25",
+          "amount": 2000.0
+        },
+        {
+          "date": "2016-08-01",
+          "amount": 2000.0
+        },
+        {
+          "date": "2016-08-08",
+          "amount": 2000.0
+        },
+        {
+          "date": "2016-08-15",
+          "amount": 2000.0
+        },
+        {
+          "date": "2016-08-22",
+          "amount": 2000.0
+        },
+        {
+          "date": "2016-08-29",
+          "amount": 1133.55
+        }
+      ]
+    },
+    {
+      "account_id": "A06_201606",
+      "start": "2016-06-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2016-08-01 05:00:00",
+      "eval_days": 61,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 2901.22,
+      "n_withdrawals": 4,
+      "funded_final_balance": 94203.3,
+      "funded_n_trades": 52,
+      "withdrawals": [
+        {
+          "date": "2016-08-08",
+          "amount": 885.03
+        },
+        {
+          "date": "2016-08-15",
+          "amount": 885.03
+        },
+        {
+          "date": "2016-08-22",
+          "amount": 388.31
+        },
+        {
+          "date": "2016-08-29",
+          "amount": 742.85
+        }
+      ]
+    },
+    {
+      "account_id": "A07_201607",
+      "start": "2016-07-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2016-08-01 17:00:00",
+      "eval_days": 31,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 2901.22,
+      "n_withdrawals": 4,
+      "funded_final_balance": 94203.3,
+      "funded_n_trades": 52,
+      "withdrawals": [
+        {
+          "date": "2016-08-08",
+          "amount": 885.03
+        },
+        {
+          "date": "2016-08-15",
+          "amount": 885.03
+        },
+        {
+          "date": "2016-08-22",
+          "amount": 388.31
+        },
+        {
+          "date": "2016-08-29",
+          "amount": 742.85
+        }
+      ]
+    },
+    {
+      "account_id": "A08_201608",
+      "start": "2016-08-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A09_201609",
+      "start": "2016-09-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A10_201610",
+      "start": "2016-10-03",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A11_201611",
+      "start": "2016-11-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A12_201612",
+      "start": "2016-12-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-02-24 08:00:00",
+      "eval_days": 85,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 13629.27,
+      "n_withdrawals": 10,
+      "funded_final_balance": 94195.77,
+      "funded_n_trades": 142,
+      "withdrawals": [
+        {
+          "date": "2017-02-27",
+          "amount": 512.39
+        },
+        {
+          "date": "2017-03-06",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-03-13",
+          "amount": 1543.95
+        },
+        {
+          "date": "2017-04-10",
+          "amount": 785.54
+        },
+        {
+          "date": "2017-04-17",
+          "amount": 1463.42
+        },
+        {
+          "date": "2017-04-24",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-01",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-08",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-15",
+          "amount": 441.85
+        },
+        {
+          "date": "2017-05-22",
+          "amount": 882.12
+        }
+      ]
+    },
+    {
+      "account_id": "A13_201701",
+      "start": "2017-01-02",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-02-21 06:00:00",
+      "eval_days": 50,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 14529.56,
+      "n_withdrawals": 10,
+      "funded_final_balance": 94195.77,
+      "funded_n_trades": 149,
+      "withdrawals": [
+        {
+          "date": "2017-02-27",
+          "amount": 1401.96
+        },
+        {
+          "date": "2017-03-06",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-03-13",
+          "amount": 1554.6
+        },
+        {
+          "date": "2017-04-10",
+          "amount": 785.62
+        },
+        {
+          "date": "2017-04-17",
+          "amount": 1463.42
+        },
+        {
+          "date": "2017-04-24",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-01",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-08",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-15",
+          "amount": 441.85
+        },
+        {
+          "date": "2017-05-22",
+          "amount": 882.12
+        }
+      ]
+    },
+    {
+      "account_id": "A14_201702",
+      "start": "2017-02-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-02-27 17:00:00",
+      "eval_days": 26,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 10736.73,
+      "n_withdrawals": 7,
+      "funded_final_balance": 94195.77,
+      "funded_n_trades": 138,
+      "withdrawals": [
+        {
+          "date": "2017-03-06",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-04-17",
+          "amount": 1412.41
+        },
+        {
+          "date": "2017-04-24",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-01",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-08",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-05-15",
+          "amount": 442.21
+        },
+        {
+          "date": "2017-05-22",
+          "amount": 882.11
+        }
+      ]
+    },
+    {
+      "account_id": "A15_201703",
+      "start": "2017-03-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-05-09 12:00:00",
+      "eval_days": 69,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 94241.91,
+      "funded_n_trades": 53,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A16_201704",
+      "start": "2017-04-03",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-05-08 00:00:00",
+      "eval_days": 35,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 600.87,
+      "n_withdrawals": 1,
+      "funded_final_balance": 94195.97,
+      "funded_n_trades": 56,
+      "withdrawals": [
+        {
+          "date": "2017-05-22",
+          "amount": 600.87
+        }
+      ]
+    },
+    {
+      "account_id": "A17_201705",
+      "start": "2017-05-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A18_201706",
+      "start": "2017-06-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A19_201707",
+      "start": "2017-07-03",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A20_201708",
+      "start": "2017-08-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-10-06 15:00:00",
+      "eval_days": 66,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 6629.99,
+      "n_withdrawals": 4,
+      "funded_final_balance": 94179.72,
+      "funded_n_trades": 149,
+      "withdrawals": [
+        {
+          "date": "2017-10-16",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-10-30",
+          "amount": 1207.45
+        },
+        {
+          "date": "2017-12-11",
+          "amount": 1422.54
+        },
+        {
+          "date": "2017-12-18",
+          "amount": 2000.0
+        }
+      ]
+    },
+    {
+      "account_id": "A21_201709",
+      "start": "2017-09-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2017-10-10 12:00:00",
+      "eval_days": 39,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 5431.71,
+      "n_withdrawals": 3,
+      "funded_final_balance": 94180.46,
+      "funded_n_trades": 148,
+      "withdrawals": [
+        {
+          "date": "2017-10-16",
+          "amount": 2000.0
+        },
+        {
+          "date": "2017-12-11",
+          "amount": 1431.71
+        },
+        {
+          "date": "2017-12-18",
+          "amount": 2000.0
+        }
+      ]
+    },
+    {
+      "account_id": "A22_201710",
+      "start": "2017-10-02",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A23_201711",
+      "start": "2017-11-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A24_201712",
+      "start": "2017-12-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A25_201801",
+      "start": "2018-01-02",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A26_201802",
+      "start": "2018-02-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2018-03-08 18:00:00",
+      "eval_days": 35,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 6410.33,
+      "n_withdrawals": 4,
+      "funded_final_balance": 94215.83,
+      "funded_n_trades": 95,
+      "withdrawals": [
+        {
+          "date": "2018-03-26",
+          "amount": 819.44
+        },
+        {
+          "date": "2018-04-23",
+          "amount": 2000.0
+        },
+        {
+          "date": "2018-04-30",
+          "amount": 2000.0
+        },
+        {
+          "date": "2018-05-07",
+          "amount": 1590.89
+        }
+      ]
+    },
+    {
+      "account_id": "A27_201803",
+      "start": "2018-03-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2018-04-20 16:00:00",
+      "eval_days": 50,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 885.03,
+      "n_withdrawals": 1,
+      "funded_final_balance": 94184.36,
+      "funded_n_trades": 40,
+      "withdrawals": [
+        {
+          "date": "2018-04-30",
+          "amount": 885.03
+        }
+      ]
+    },
+    {
+      "account_id": "A28_201804",
+      "start": "2018-04-02",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2018-04-23 12:00:00",
+      "eval_days": 21,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 94186.63,
+      "funded_n_trades": 23,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A29_201805",
+      "start": "2018-05-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A30_201806",
+      "start": "2018-06-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2018-07-27 11:00:00",
+      "eval_days": 56,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 3115.17,
+      "n_withdrawals": 3,
+      "funded_final_balance": 94207.33,
+      "funded_n_trades": 79,
+      "withdrawals": [
+        {
+          "date": "2018-08-06",
+          "amount": 973.83
+        },
+        {
+          "date": "2018-08-13",
+          "amount": 1538.61
+        },
+        {
+          "date": "2018-09-03",
+          "amount": 602.74
+        }
+      ]
+    },
+    {
+      "account_id": "A31_201807",
+      "start": "2018-07-02",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2018-07-19 15:00:00",
+      "eval_days": 17,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 4648.98,
+      "n_withdrawals": 4,
+      "funded_final_balance": 94207.69,
+      "funded_n_trades": 88,
+      "withdrawals": [
+        {
+          "date": "2018-07-23",
+          "amount": 2000.0
+        },
+        {
+          "date": "2018-07-30",
+          "amount": 2000.0
+        },
+        {
+          "date": "2018-08-13",
+          "amount": 331.48
+        },
+        {
+          "date": "2018-09-03",
+          "amount": 317.5
+        }
+      ]
+    },
+    {
+      "account_id": "A32_201808",
+      "start": "2018-08-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A33_201809",
+      "start": "2018-09-03",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A34_201810",
+      "start": "2018-10-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A35_201811",
+      "start": "2018-11-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A36_201812",
+      "start": "2018-12-03",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A37_201901",
+      "start": "2019-01-02",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A38_201902",
+      "start": "2019-02-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A39_201903",
+      "start": "2019-03-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A40_201904",
+      "start": "2019-04-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A41_201905",
+      "start": "2019-05-01",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2019-07-11 05:00:00",
+      "eval_days": 71,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 281.59,
+      "n_withdrawals": 1,
+      "funded_final_balance": 94210.01,
+      "funded_n_trades": 49,
+      "withdrawals": [
+        {
+          "date": "2019-07-29",
+          "amount": 281.59
+        }
+      ]
+    },
+    {
+      "account_id": "A42_201906",
+      "start": "2019-06-03",
+      "status": "funded_active",
+      "eval_passed": true,
+      "eval_pass_time": "2019-06-24 05:00:00",
+      "eval_days": 21,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "",
+      "total_withdrawn": 7832.42,
+      "n_withdrawals": 5,
+      "funded_final_balance": 94206.04,
+      "funded_n_trades": 73,
+      "withdrawals": [
+        {
+          "date": "2019-07-01",
+          "amount": 2000.0
+        },
+        {
+          "date": "2019-07-08",
+          "amount": 2000.0
+        },
+        {
+          "date": "2019-07-15",
+          "amount": 2000.0
+        },
+        {
+          "date": "2019-07-22",
+          "amount": 287.35
+        },
+        {
+          "date": "2019-07-29",
+          "amount": 1545.07
+        }
+      ]
+    },
+    {
+      "account_id": "A43_201907",
+      "start": "2019-07-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A44_201908",
+      "start": "2019-08-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A45_201909",
+      "start": "2019-09-02",
+      "status": "funded_blown",
+      "eval_passed": true,
+      "eval_pass_time": "2019-10-22 15:00:00",
+      "eval_days": 50,
+      "eval_blown": false,
+      "funded_blown": true,
+      "funded_blow_time": "2019-11-11 14:00:00",
+      "blow_reason": "daily_loss",
+      "total_withdrawn": 1777.9,
+      "n_withdrawals": 1,
+      "funded_final_balance": 99338.44,
+      "funded_n_trades": 15,
+      "withdrawals": [
+        {
+          "date": "2019-11-11",
+          "amount": 1777.9
+        }
+      ]
+    },
+    {
+      "account_id": "A46_201910",
+      "start": "2019-10-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A47_201911",
+      "start": "2019-11-01",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    },
+    {
+      "account_id": "A48_201912",
+      "start": "2019-12-02",
+      "status": "eval_failed",
+      "eval_passed": false,
+      "eval_pass_time": null,
+      "eval_days": null,
+      "eval_blown": false,
+      "funded_blown": false,
+      "funded_blow_time": null,
+      "blow_reason": "timeout",
+      "total_withdrawn": 0.0,
+      "n_withdrawals": 0,
+      "funded_final_balance": 100000.0,
+      "funded_n_trades": 0,
+      "withdrawals": []
+    }
+  ]
+}

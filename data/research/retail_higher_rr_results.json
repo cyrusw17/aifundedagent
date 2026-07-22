@@ -1,0 +1,160 @@
+{
+  "accepted": 1,
+  "winner": {
+    "name": "retail_timeless_1k",
+    "account": {
+      "initial_balance": 1000,
+      "leverage": 50,
+      "max_dd_pct": 0.2
+    },
+    "timeframe": "1h",
+    "pairs": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "AUDUSD"
+    ],
+    "params": {
+      "signal_mode": "h1_sweep_bos",
+      "risk_pct": 0.005,
+      "rr": 1.1,
+      "atr_stop_mult": 2.25,
+      "max_positions": 1,
+      "min_confluence": 2,
+      "swing_left": 4,
+      "swing_right": 4,
+      "require_killzone": false,
+      "weekly_withdraw": false,
+      "move_be_at_r": 0.0,
+      "skip_mondays": true,
+      "daily_halt_loss_pct": 0.03,
+      "daily_halt_profit_pct": 0.05,
+      "cooldown_losses": 2,
+      "one_entry_per_day": true
+    },
+    "train_era": [
+      "2016-01-01",
+      "2023-12-31"
+    ],
+    "hold_era": [
+      "2024-01-01",
+      "2025-12-31"
+    ],
+    "future_era": [
+      "2026-01-01",
+      "data_end"
+    ],
+    "train": {
+      "n_trades": 1791,
+      "win_rate": 0.5187046342825238,
+      "profit_factor": 1.1654005407541586,
+      "avg_annual_pnl": 146.08507942758018,
+      "net_wealth_gain": 1166.6808396721462,
+      "total_withdrawn": 0.0,
+      "max_dd": 168.61222219422643,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.007286032578997663,
+      "hit_eval_target": true,
+      "years": 7.98631074606434,
+      "final_balance": 2166.6808396721462,
+      "max_dd_pct": 0.08610001024735137
+    },
+    "hold": {
+      "n_trades": 472,
+      "win_rate": 0.4915254237288136,
+      "profit_factor": 1.055492145059291,
+      "avg_annual_pnl": 34.48903594080846,
+      "net_wealth_gain": 68.93085896451794,
+      "total_withdrawn": 0.0,
+      "max_dd": 114.94746720138926,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.022743101748171554,
+      "hit_eval_target": false,
+      "years": 1.998631074606434,
+      "final_balance": 1068.930858964518,
+      "max_dd_pct": 0.10437036197890827
+    },
+    "future_2026": {
+      "n_trades": 107,
+      "win_rate": 0.5046728971962616,
+      "profit_factor": 1.1164668836395002,
+      "avg_annual_pnl": 57.46119013161092,
+      "net_wealth_gain": 30.99207243238152,
+      "total_withdrawn": 0.0,
+      "max_dd": 48.93752260241388,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.06590197666568401,
+      "hit_eval_target": false,
+      "years": 0.5393566050650239,
+      "final_balance": 1030.9920724323815,
+      "max_dd_pct": 0.04844046999758351
+    },
+    "mcpt_p": 0.008,
+    "mcpt_p_full_2016_2025": 0.01,
+    "mcpt_pass": true,
+    "baseline_comparison": {
+      "prior_rr": 1.0,
+      "prior_wr_train_hold": [
+        0.54,
+        0.515
+      ],
+      "new_rr": 1.1,
+      "new_wr_train_hold": [
+        0.5187046342825238,
+        0.4915254237288136
+      ],
+      "wr_gap_sum": 0.04476994198866269,
+      "note": "Raised RR 1.0\u21921.1 while keeping WR near prior lock. rr=1.2 sweep_bos_ob failed MCPT (p=0.075). rr=1.25/1.3 passed MCPT but dropped hold WR to ~45\u201346%."
+    },
+    "protocol": {
+      "train": [
+        "2016-01-01",
+        "2023-12-31"
+      ],
+      "hold": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "future": "2026-01-01",
+      "note": "Higher-RR WR-preserving; HOLD unused for tuning; FUTURE never trained"
+    },
+    "no_curve_fitting": true,
+    "no_lookahead": true,
+    "never_trained_on_2026": true,
+    "alternatives": [
+      {
+        "rr": 1.2,
+        "signal_mode": "sweep_bos_ob",
+        "mcpt_p": 0.075,
+        "train_wr": 0.482,
+        "hold_wr": 0.494,
+        "note": "failed train MCPT"
+      },
+      {
+        "rr": 1.25,
+        "signal_mode": "h1_sweep_bos",
+        "mcpt_p": 0.008,
+        "mcpt_p_full": 0.01,
+        "train_wr": 0.489,
+        "hold_wr": 0.463,
+        "note": "passed MCPT but hold WR further from baseline"
+      },
+      {
+        "rr": 1.3,
+        "signal_mode": "h1_sweep_bos",
+        "mcpt_p": 0.008,
+        "mcpt_p_full": 0.01,
+        "train_wr": 0.475,
+        "hold_wr": 0.451,
+        "note": "passed MCPT but larger WR gap"
+      }
+    ]
+  },
+  "selection": "wr_preserving_rr_1_1"
+}

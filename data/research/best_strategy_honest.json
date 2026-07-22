@@ -1,0 +1,201 @@
+{
+  "name": "honest_era_winner",
+  "timeframe": "1h",
+  "pairs": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCHF",
+    "USDCAD"
+  ],
+  "params": {
+    "signal_mode": "h1_sweep_bos",
+    "risk_pct": 0.005,
+    "rr": 1.8,
+    "atr_stop_mult": 1.5,
+    "max_positions": 1,
+    "min_confluence": 2,
+    "swing_left": 3,
+    "swing_right": 3,
+    "require_killzone": false,
+    "weekly_withdraw": true,
+    "move_be_at_r": 0.0,
+    "skip_mondays": false,
+    "daily_halt_loss_pct": 0.025,
+    "daily_halt_profit_pct": 0.03,
+    "cooldown_losses": 2,
+    "one_entry_per_day": false
+  },
+  "train_era": [
+    "2020-01-01",
+    "2022-03-04"
+  ],
+  "hold_era": [
+    "2016-01-01",
+    "2019-12-31"
+  ],
+  "train_bt": {
+    "n_trades": 452,
+    "win_rate": 0.3915929203539823,
+    "profit_factor": 1.1609300692867548,
+    "total_pnl": 21700.066571049385,
+    "total_withdrawn": 27522.137911633065,
+    "net_wealth_gain": 21700.066571049203,
+    "avg_annual_pnl": 10020.163483028724,
+    "max_dd": 10863.137875211352,
+    "blown": false,
+    "blow_reason": "",
+    "consistency_ratio": 0.037550510037141535,
+    "consistency_ok": true,
+    "years": 2.1656399726214923,
+    "final_balance": 94177.92865941614,
+    "hit_eval_target": false
+  },
+  "hold_bt": {
+    "n_trades": 311,
+    "win_rate": 0.4115755627009646,
+    "profit_factor": 1.2712307232706443,
+    "total_pnl": 24537.296427978723,
+    "total_withdrawn": 30321.782321189545,
+    "net_wealth_gain": 24537.296427978916,
+    "avg_annual_pnl": 6151.165079148454,
+    "max_dd": 13247.544844570715,
+    "blown": false,
+    "blow_reason": "",
+    "consistency_ratio": 0.04739737146723222,
+    "consistency_ok": true,
+    "years": 3.9890485968514717,
+    "final_balance": 94215.51410678937,
+    "hit_eval_target": false
+  },
+  "full_bt": {
+    "n_trades": 311,
+    "win_rate": 0.4115755627009646,
+    "profit_factor": 1.2712307232706443,
+    "total_pnl": 24537.296427978723,
+    "total_withdrawn": 30321.782321189545,
+    "net_wealth_gain": 24537.296427978916,
+    "avg_annual_pnl": 3981.451586103642,
+    "max_dd": 13247.544844570715,
+    "blown": false,
+    "blow_reason": "",
+    "consistency_ratio": 0.04739737146723222,
+    "consistency_ok": true,
+    "years": 6.16290212183436,
+    "final_balance": 94215.51410678937,
+    "hit_eval_target": false
+  },
+  "hold_train_ann_ratio": 0.6138787146104712,
+  "challenge": {
+    "evaluation_passed": true,
+    "funded_survived": true,
+    "evaluation_days": 120,
+    "funded_annual_pnl": 9797.09911395502,
+    "consistency_ok": true,
+    "details": {
+      "eval": {
+        "stats": {
+          "n_trades": 1800,
+          "win_rate": 0.38555555555555554,
+          "profit_factor": 1.1123201801713365,
+          "total_pnl": 93131.82126320593,
+          "total_withdrawn": 0.0,
+          "net_wealth_gain": 93131.82126320584,
+          "avg_annual_pnl": 23346.875577478335,
+          "max_dd": 33018.23502250601,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ratio": 0.009225962527211421,
+          "consistency_ok": true,
+          "years": 3.9890485968514717,
+          "final_balance": 193131.82126320584,
+          "hit_eval_target": true
+        },
+        "n_trades": 1800,
+        "total_withdrawn": 0.0,
+        "final_balance": 193131.82126320584,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true
+      },
+      "eval_stats": {
+        "n_trades": 1800,
+        "win_rate": 0.38555555555555554,
+        "profit_factor": 1.1123201801713365,
+        "total_pnl": 93131.82126320593,
+        "total_withdrawn": 0.0,
+        "net_wealth_gain": 93131.82126320584,
+        "avg_annual_pnl": 23346.875577478335,
+        "max_dd": 33018.23502250601,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ratio": 0.009225962527211421,
+        "consistency_ok": true,
+        "years": 3.9890485968514717,
+        "final_balance": 193131.82126320584,
+        "hit_eval_target": true
+      },
+      "funded": {
+        "stats": {
+          "n_trades": 453,
+          "win_rate": 0.39072847682119205,
+          "profit_factor": 1.1571987870570153,
+          "total_pnl": 21270.635447957266,
+          "total_withdrawn": 27092.706788540963,
+          "net_wealth_gain": 21270.635447957102,
+          "avg_annual_pnl": 9797.09911395502,
+          "max_dd": 10863.137875211352,
+          "blown": false,
+          "blow_reason": "",
+          "consistency_ratio": 0.037732360011562334,
+          "consistency_ok": true,
+          "years": 2.1711156741957565,
+          "final_balance": 94177.92865941614,
+          "hit_eval_target": false
+        },
+        "n_trades": 453,
+        "total_withdrawn": 27092.706788540963,
+        "final_balance": 94177.92865941614,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ok": true
+      },
+      "funded_stats": {
+        "n_trades": 453,
+        "win_rate": 0.39072847682119205,
+        "profit_factor": 1.1571987870570153,
+        "total_pnl": 21270.635447957266,
+        "total_withdrawn": 27092.706788540963,
+        "net_wealth_gain": 21270.635447957102,
+        "avg_annual_pnl": 9797.09911395502,
+        "max_dd": 10863.137875211352,
+        "blown": false,
+        "blow_reason": "",
+        "consistency_ratio": 0.037732360011562334,
+        "consistency_ok": true,
+        "years": 2.1711156741957565,
+        "final_balance": 94177.92865941614,
+        "hit_eval_target": false
+      }
+    }
+  },
+  "rolling_eval_pass_rate": 0.5909090909090909,
+  "rolling_eval_n": 22,
+  "mcpt_p": 0.035,
+  "mcpt_pass": true,
+  "same_bar_stop_tp": true,
+  "source": "honest_dual_era_similarity_pick",
+  "protocol": {
+    "train": [
+      "2020-01-01",
+      "2022-03-04"
+    ],
+    "hold": [
+      "2016-01-01",
+      "2019-12-31"
+    ],
+    "n_perm": 200,
+    "note": "Fixed discrete grid; holdout never used for tuning; MCPT on train only; final pick maximizes min(train,hold) among MCPT passers with hold/train ratio>=0.45"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "accepted": 1,
+  "winner": {
+    "name": "retail_timeless_1k",
+    "account": {
+      "initial_balance": 1000,
+      "leverage": 50,
+      "max_dd_pct": 0.2
+    },
+    "timeframe": "1h",
+    "pairs": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "AUDUSD"
+    ],
+    "params": {
+      "signal_mode": "h1_sweep_bos",
+      "risk_pct": 0.005,
+      "rr": 1.0,
+      "atr_stop_mult": 1.75,
+      "max_positions": 1,
+      "min_confluence": 2,
+      "swing_left": 2,
+      "swing_right": 2,
+      "require_killzone": false,
+      "weekly_withdraw": false,
+      "move_be_at_r": 0.0,
+      "skip_mondays": true,
+      "daily_halt_loss_pct": 0.03,
+      "daily_halt_profit_pct": 0.05,
+      "cooldown_losses": 2,
+      "one_entry_per_day": true
+    },
+    "train_era": [
+      "2016-01-01",
+      "2023-12-31"
+    ],
+    "hold_era": [
+      "2024-01-01",
+      "2025-12-31"
+    ],
+    "future_era": [
+      "2026-01-01",
+      "data_end"
+    ],
+    "train": {
+      "n_trades": 4016,
+      "win_rate": 0.5398406374501992,
+      "profit_factor": 1.160606422394127,
+      "avg_annual_pnl": 461.7767614338855,
+      "net_wealth_gain": 3687.8927121222287,
+      "total_withdrawn": 0.0,
+      "max_dd": 472.3099411598205,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.0046481172409435926,
+      "hit_eval_target": true,
+      "years": 7.98631074606434,
+      "final_balance": 4687.892712122229,
+      "max_dd_pct": 0.11817220751889104
+    },
+    "hold": {
+      "n_trades": 1019,
+      "win_rate": 0.5152109911678115,
+      "profit_factor": 1.057241494805145,
+      "avg_annual_pnl": 74.98342511796601,
+      "net_wealth_gain": 149.86420352119148,
+      "total_withdrawn": 0.0,
+      "max_dd": 107.02451517434577,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.015729707949027463,
+      "hit_eval_target": true,
+      "years": 1.998631074606434,
+      "final_balance": 1149.8642035211915,
+      "max_dd_pct": 0.09784748127012034
+    },
+    "full_2016_2025": {
+      "n_trades": 4848,
+      "win_rate": 0.5352722772277227,
+      "profit_factor": 1.127893944027585,
+      "avg_annual_pnl": 420.7959058314668,
+      "net_wealth_gain": 4203.926790907659,
+      "total_withdrawn": 0.0,
+      "max_dd": 725.4679434456566,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.003316550332060748,
+      "hit_eval_target": true,
+      "years": 9.990417522245037,
+      "final_balance": 5203.926790907659,
+      "max_dd_pct": 0.14198955485816725
+    },
+    "future_2026": {
+      "n_trades": 278,
+      "win_rate": 0.539568345323741,
+      "profit_factor": 1.169581453101094,
+      "avg_annual_pnl": 208.40888307646654,
+      "net_wealth_gain": 112.4067076415165,
+      "total_withdrawn": 0.0,
+      "max_dd": 76.48875130915462,
+      "blown": false,
+      "blow_reason": "",
+      "consistency_ok": true,
+      "consistency_ratio": 0.06588283208096814,
+      "hit_eval_target": false,
+      "years": 0.5393566050650239,
+      "final_balance": 1112.4067076415165,
+      "max_dd_pct": 0.07280198920964209
+    },
+    "mcpt_p": 0.006666666666666667,
+    "mcpt_p_full_2016_2025": 0.016666666666666666,
+    "mcpt_pass": true,
+    "min_wr_gate": {
+      "train": 0.45,
+      "hold": 0.42
+    },
+    "protocol": {
+      "train": [
+        "2016-01-01",
+        "2023-12-31"
+      ],
+      "hold": [
+        "2024-01-01",
+        "2025-12-31"
+      ],
+      "future": "2026-01-01",
+      "mcpt_windows": [
+        "2016-2023 train",
+        "2016-2025 confirmatory"
+      ],
+      "note": "Fixed grid; HOLD unused for tuning; FUTURE never used for training; causal; same-bar stop; PnL MCPT objective"
+    },
+    "no_curve_fitting": true,
+    "no_lookahead": true,
+    "never_trained_on_2026": true
+  }
+}
