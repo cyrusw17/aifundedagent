@@ -34,3 +34,9 @@ Scores are design judgement, not playtest data. V2 reaches A- only if the myster
 Scope (cut regions, never the three loops); mystery solved too fast (gate behind timers/server goals); map streaming (StreamingEnabled + zoning); exploits (server-authoritative finds and trades).
 
 Wood, region and artifact names are original to this project (not Lumber Tycoon 2 names).
+
+## Archipelago update: sailing and the ocean highway
+- **Thimble Keys** (lv 35-55, Coralwood, Conch Sunhat, Pearl Needle): reached by the **Longstitch Highway**, a bridge from the Desert coast with a dark undersea tunnel, a toll gate (paid in planks) and a Midway Rest Stop. Any wheeled vehicle works, including a semi with a trailer. Storms flood road sections for 10 minutes, so boats are the backup.
+- **Bobbin Rock** (lv 45-60, Brinewood, Captain's Tricorn, Anchor Needle): boat only, via Ash Dock past the Graveyard of Ships (reef wrecks, night Kraken). Holds the Weaver's lost workshop and the 12th shard.
+- Boats: Rowboat (lake/coast, 2 bales), Sailboat (ocean, wind, 10 bales, required for Bobbin Rock), Speedboat (fast, fuel, 6 bales), Cargo barge (carries a full flatbed trailer).
+- New secrets: Longstitch Toll Gate, Midway Rest Stop, Undersea Tunnel, Ash Dock, Swamp Port, Graveyard of Ships.
