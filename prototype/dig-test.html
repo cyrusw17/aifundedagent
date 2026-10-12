@@ -71,12 +71,36 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
 .panel h3{font-size:1.1rem;margin-bottom:4px}
 .panel ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:.93rem}
 .foot{margin-top:36px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:14px}
+
+.hud b small{font-size:.7rem;color:var(--muted);font-family:var(--body);font-weight:800}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:3px}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.meter.luck i{background:linear-gradient(90deg,#79b6e8,#d44bd0)}
+.chip2[hidden]{display:none}
+.chip2{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--green);background:var(--chip);border-radius:99px;padding:1px 8px;margin-top:2px}
+.hud button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--green);background:var(--green);color:var(--bg);border-radius:8px;padding:2px 10px;margin-top:3px}
+.hud button:disabled{opacity:.45;cursor:not-allowed}
+.polish{position:absolute;right:10px;top:10px;display:flex;gap:10px;align-items:center;background:#14221af0;color:#fff;border-radius:14px;padding:8px 12px;max-width:min(300px,80%)}
+.polish[hidden]{display:none}
+.polish svg{width:54px;height:54px;flex:none}
+.polish b{font-family:var(--display);font-weight:400;font-size:1.05rem;display:block}
+.polish span{font-size:.82rem;opacity:.85;display:block}
+.polish button{font:inherit;font-weight:800;cursor:pointer;border:0;background:#f2b705;color:#2a1c00;border-radius:8px;padding:6px 12px;margin-top:4px;min-height:36px}
+.mut{background:linear-gradient(90deg,#ff5a5a,#ffd23f,#3fd0ff,#b45cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pb{margin:6px 0}
+.pb label{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;font-weight:700}
+.pb label span{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.pb button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:1px 10px;margin-left:8px}
+.feed div{font-size:.88rem;color:var(--muted);padding:2px 0;border-bottom:1px dashed var(--line)}
+.feed div b{color:var(--fg)}
+.feed div.rare b{color:var(--accent)}
+.panel h3 small{font-family:var(--body);font-size:.7rem;color:var(--muted);font-weight:800;letter-spacing:.05em}
 </style>
 
 <div class="wrap">
-  <div class="kicker">Playable prototype · Round 3</div>
-  <h1>Needlewood Dig Test</h1>
-  <p class="sub" style="margin-top:8px">The review said the whole game rests on whether digging a hay pile feels good. This is that moment, playable. Press and drag across the hay. Watch the ring around your tool: blue is cold, red is hot.</p>
+  <div class="kicker">Playable prototype · Addiction pass</div>
+  <h1>Needlewood Dig Test 2</h1>
+  <p class="sub" style="margin-top:8px">Same dig, now with the hooks from the engagement audit. Needles glint in their rarity color, a near miss shouts at you, finds chain into combos, luck builds when you find common needles, and every find ends with a polish step that can reveal a mutation. Press and drag across the hay.</p>
 
   <div class="goal" aria-live="polite"><div class="tail">T</div><div><b>The Tailor says</b><span id="goalText"></span></div><div class="dots" id="dots"></div></div>
 
@@ -85,11 +109,16 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     <div><small>Hay bag</small><b id="hay">0 / 150</b><div class="bag"><i id="bagbar"></i></div></div>
     <div><small>Needles</small><b id="nfound">0 / 6</b></div>
     <div><small>Tool</small><b id="toolname">Hands</b></div>
+    <div><small>Luck</small><b id="lucktxt">0%</b><div class="meter luck"><i id="luckbar"></i></div></div>
+    <div><small>Combo</small><b id="combo">&mdash;</b></div>
+    <div><small>Idle line</small><b id="bank">$0</b><button type="button" id="collect" disabled>Collect</button></div>
+    <div><small>Daily streak</small><b id="streak">Day 1</b><span class="chip2" id="freeze" hidden>Freeze used</span></div>
   </div>
 
   <div class="stage" id="stage">
     <canvas id="cv" width="960" height="540" aria-label="A pile of hay. Press and drag to dig for hidden needles."></canvas>
     <div class="toast" id="toast"></div>
+    <div class="polish" id="polish" hidden><svg id="psvg" viewBox="0 0 64 64" aria-hidden="true"></svg><div><b id="ptitle"></b><span id="psub"></span><button type="button" id="pbtn">Polish</button></div></div>
     <div class="heat"><span id="heatTxt">Cold</span><i><u id="heatBar"></u></i></div>
   </div>
 
@@ -104,12 +133,17 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
 
   <div class="shop" id="shop"></div>
   <div class="codex" id="codex" aria-label="Needles found"></div>
-
-  <h2>What this is testing</h2>
   <div class="cols">
-    <div class="panel"><h3>Three beats</h3><ul><li><b>Probe.</b> The ring and meter get hotter as you near a needle. Turn sound on for a rising hum.</li><li><b>Sift.</b> Hay flies as you dig, deeper tools clear faster.</li><li><b>Pull.</b> A light beam, sized by rarity, marks the find.</li></ul></div>
+    <div class="panel"><h3>Bounties</h3><div id="bounties"></div></div>
+    <div class="panel"><h3>Almost there</h3><div id="almost"></div></div>
+    <div class="panel"><h3>Server feed <small>(SIMULATED)</small></h3><div class="feed" id="feed"></div></div>
+  </div>
+
+  <h2>What changed from the first test</h2>
+  <div class="cols">
+    <div class="panel"><h3>New hooks to feel</h3><ul><li><b>Rarity tell.</b> The sparkle takes the needle's color.</li><li><b>Near miss.</b> SO CLOSE bobs over your tool.</li><li><b>Combo.</b> Chain finds within 45 seconds for up to x2.5.</li><li><b>Luck.</b> Common finds fill the bar. Full means the next find upgrades a tier.</li><li><b>Polish.</b> Tap the dusty needle to reveal a mutation.</li></ul></div>
     <div class="panel"><h3>Questions for a tester</h3><ul><li>Do you want to keep digging after five minutes?</li><li>Did the ring tell you where to go without being told?</li><li>Was the first needle too easy, too slow, or about right?</li><li>Did the rake feel worth buying?</li></ul></div>
-    <div class="panel"><h3>Not in this test</h3><ul><li>Trees, sawmill, trailers and base</li><li>Other biomes and the mystery</li><li>Trading and saving progress</li></ul></div>
+    <div class="panel"><h3>Also here</h3><ul><li>Bounties and an Almost there panel, so something is always nearly done.</li><li>An idle line that earns while you are away, up to 8 hours.</li><li>A daily streak that forgives one missed day.</li><li>A simulated server feed. The other players are fake.</li></ul></div>
   </div>
 
   <p class="foot">Prototype for feel only. Prices, rarities and tool ranges are placeholders to tune from playtests. Design review: the Needlewood Design Review page.</p>
@@ -159,7 +193,9 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     needles.forEach(function(n){g[n.y*COLS+n.x]=Math.max(g[n.y*COLS+n.x],2)});
     return {g:g,mask:mask,jit:jit,needles:needles,t0:performance.now(),dug:0};
   }
-  var st={cash:0,hay:0,cap:150,capCost:200,tool:0,owned:[1,0,0,0],sold:0,found:0,counts:[0,0,0,0,0],step:0,sound:false,dugTotal:0};
+  var st={cash:0,hay:0,cap:150,capCost:200,tool:0,owned:[1,0,0,0],sold:0,found:0,counts:[0,0,0,0,0],step:0,sound:false,dugTotal:0,luck:0,combo:0,comboT:0,bank:0,streak:1,
+    bounty:[{t:'Dig 150 hay',k:'hay',goal:150,p:0,r:150,c:false},{t:'Find 2 needles',k:'find',goal:2,p:0,r:220,c:false},{t:'Find a Silver or better',k:'rare',goal:1,p:0,r:500,c:false}]};
+  var shake=0,shaking=false,RATE=6,CAPBANK=RATE*60*8;
   S=newStack();
   var fx=[],pulls=[],ptr={x:-1,y:-1,down:false,in:false},last=0,flash=0,hintShown=false;
 
@@ -206,29 +242,77 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
       var i=y*COLS+x;if(S.g[i]<=0)continue;
       if(st.hay>=st.cap){full=true;continue}
       var take=Math.min(t.d,S.g[i],st.cap-st.hay);
-      S.g[i]-=take;st.hay+=take;removed+=take;st.dugTotal+=take;
+      S.g[i]-=take;st.hay+=take;removed+=take;st.dugTotal+=take;bump('hay',take);
       if(Math.random()<.5)fx.push({x:(x+.5)*CS,y:(y+.5)*CS,vx:(Math.random()-.5)*160,vy:-60-Math.random()*140,life:.6,type:'hay'});
       if(S.g[i]===0){S.needles.forEach(function(n){if(!n.found&&n.x===x&&n.y===y)pull(n)})}
     }
     if(full&&!removed)toast('Bag full. Sell hay to the cow.');
     ui();
   }
+  var MUT=[{n:'',m:1,p:.7},{n:'Giant',m:2,p:.15},{n:'Rainbow',m:3,p:.08},{n:'Glitch',m:4,p:.06},{n:'Cosmic',m:10,p:.01}];
+  function rollMut(){var r=Math.random(),a=0;for(var i=0;i<MUT.length;i++){a+=MUT[i].p;if(r<=a)return MUT[i]}return MUT[0]}
+  function bump(k,v){st.bounty.forEach(function(b){if(b.k===k&&!b.c)b.p=Math.min(b.goal,b.p+v)})}
   function pull(n){
-    n.found=true;st.found++;st.counts[n.r]++;
-    var r=RAR[n.r];st.cash+=r.v;
+    n.found=true;st.found++;
+    var lucky=false;
+    if(st.luck>=100){n.r=Math.min(4,n.r+1);st.luck=0;lucky=true}
+    else st.luck=Math.min(100,st.luck+(n.r<=1?25:n.r===2?10:0));
+    st.counts[n.r]++;
+    st.combo=st.comboT>0?st.combo+1:1;st.comboT=45;
+    var r=RAR[n.r];
     pulls.push({x:(n.x+.5)*CS,y:(n.y+.5)*CS,t:0,r:n.r});
-    flash=n.r>=2?.5:.25;chime(n.r);
-    toast(r.n+' Needle found! +'+money(r.v),2400);
-    if(S.needles.every(function(q){return q.found}))setTimeout(function(){toast('Stack cleaned out. Press Re-stack.',3000)},2600);
+    flash=n.r>=2?.5:.25;shake=6+n.r*5;chime(n.r);
+    bump('find',1);if(n.r>=2)bump('rare',1);
+    toast((lucky?'LUCKY! ':'')+r.n+' Needle found!',2200);
+    feedAdd('<b>You</b> found a '+r.n+' Needle',n.r>=2);
+    var left=S.needles.filter(function(q){return !q.found}).length;
+    if(left===1)setTimeout(function(){toast('Last needle in this Stack. Where is it?',2600)},2400);
+    if(left===0)setTimeout(function(){toast('Stack cleaned out. Press Re-stack.',3000)},2800);
     if(navigator.vibrate){try{navigator.vibrate(n.r>=2?[40,40,80]:30)}catch(e){}}
+    queuePolish({r:n.r,mut:rollMut(),cm:Math.min(2.5,1+(st.combo-1)*.5)});
     ui();
   }
+  /* polish step: wipe the dust to reveal a mutation */
+  var pq=[],pcur=null,ptaps=3,ptimer=0;
+  function needleSvg(color,dust,mut){
+    var stroke=mut&&mut.n==='Rainbow'?'url(#rbw)':color;
+    return '<defs><linearGradient id="rbw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a5a"/><stop offset=".4" stop-color="#ffd23f"/><stop offset=".7" stop-color="#3fd0ff"/><stop offset="1" stop-color="#b45cff"/></linearGradient></defs><path d="M8 56 L52 12" stroke="'+stroke+'" stroke-width="'+(mut&&mut.n==='Giant'?8:5)+'" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="14" rx="4.5" ry="7" transform="rotate(45 50 14)" fill="none" stroke="'+stroke+'" stroke-width="3.5"/>'+(dust>0?'<circle cx="32" cy="32" r="29" fill="#b9a07a" opacity="'+(dust*.9).toFixed(2)+'"/>':'');
+  }
+  function queuePolish(p){pq.push(p);if(!pcur)nextPolish()}
+  function nextPolish(){
+    pcur=pq.shift();if(!pcur){el('polish').hidden=true;return}
+    ptaps=3;el('polish').hidden=false;showPolish();clearTimeout(ptimer);ptimer=setTimeout(finishPolish,6500);
+  }
+  function showPolish(){
+    var r=RAR[pcur.r];
+    el('psvg').innerHTML=needleSvg(r.c,ptaps/3,null);
+    el('ptitle').textContent='Dusty '+r.n+' Needle';
+    el('psub').textContent='Polish it to reveal what it is.';
+    el('pbtn').textContent='Polish ('+ptaps+')';el('pbtn').hidden=false;
+  }
+  function finishPolish(){
+    if(!pcur)return;clearTimeout(ptimer);
+    var r=RAR[pcur.r],m=pcur.mut,val=Math.round(r.v*m.m*pcur.cm);
+    st.cash+=val;
+    el('psvg').innerHTML=needleSvg(r.c,0,m);
+    el('ptitle').innerHTML=(m.n?'<span class="mut">'+m.n+'</span> ':'')+r.n+' Needle';
+    el('psub').textContent='+'+money(val)+(m.m>1?' (x'+m.m+' mutation)':'')+(pcur.cm>1?' (combo x'+pcur.cm.toFixed(1)+')':'');
+    el('pbtn').hidden=true;
+    if(m.m>=3){flash=.45;shake=14;chime(4);feedAdd('<b>You</b> polished a '+m.n+' '+r.n+' Needle',true)}
+    var done=pcur;pcur=null;ui();
+    setTimeout(function(){if(!pcur)nextPolish()},1700);
+  }
+  el('pbtn').addEventListener('click',function(){if(!pcur)return;ptaps--;if(ptaps<=0)finishPolish();else showPolish()});
 
   /* ---- render ---- */
   var HAY=['#6b4a2b','#ead27e','#e0bf58','#d4aa42','#c1952f','#aa8024'];
   function draw(now){
     var i,x,y,dt=Math.min(.05,(now-last)/1000||0);last=now;
+    if(st.comboT>0){st.comboT-=dt;if(st.comboT<=0){st.comboT=0;st.combo=0}}
+    st.bank=Math.min(CAPBANK,st.bank+dt*RATE/60);
+    if(now-(draw.u||0)>250){draw.u=now;hudTick()}
     cx.fillStyle='#6aa65a';cx.fillRect(0,0,W,H);
+    shaking=false;if(shake>.3){cx.save();cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake=Math.max(0,shake-dt*34);shaking=true}
     for(y=0;y<ROWS;y++)for(x=0;x<COLS;x++){
       i=y*COLS+x;
       if(!S.mask[i]){cx.fillStyle=((x+y)&1)?'#66a056':'#6caa5c';cx.fillRect(x*CS,y*CS,CS,CS);continue}
@@ -249,9 +333,9 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
       var dep=S.g[n.y*COLS+n.x],hint=(!hintShown&&n.r===0&&st.found===0&&(now-S.t0)>75000);
       if(dep<=1||hint){
         var s=.6+.4*Math.sin(tt*6+n.x),px=(n.x+.5)*CS,py=(n.y+.5)*CS;
-        cx.fillStyle='rgba(255,255,255,'+(.5+.4*s)+')';cx.beginPath();
-        for(var k=0;k<8;k++){var ang=k*Math.PI/4,rad=(k%2?4:11)*s;cx.lineTo(px+Math.cos(ang)*rad,py+Math.sin(ang)*rad)}
-        cx.closePath();cx.fill();
+        cx.globalAlpha=.5+.45*s;cx.fillStyle=RAR[n.r].c;cx.beginPath();
+        for(var k=0;k<8;k++){var ang=k*Math.PI/4,rad=(k%2?4:12)*s*(1+n.r*.18);cx.lineTo(px+Math.cos(ang)*rad,py+Math.sin(ang)*rad)}
+        cx.closePath();cx.fill();cx.globalAlpha=1;cx.fillStyle='#fff';cx.beginPath();cx.arc(px,py,2.6,0,6.3);cx.fill();
       }
     });
     /* pulls */
@@ -278,8 +362,13 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
       }
       el('heatBar').style.width=Math.round(h*100)+'%';el('heatBar').style.background='hsl('+hue+' 85% 58%)';
       el('heatTxt').textContent=h>.85?'Burning':h>.6?'Hot':h>.3?'Warm':'Cold';
+      if(q.n&&q.d<2.6){
+        cx.font='22px "Lilita One",sans-serif';cx.textAlign='center';cx.lineWidth=5;cx.strokeStyle='#14221a';cx.fillStyle='#ffe066';
+        var bob=Math.sin(now/90)*3;cx.strokeText('SO CLOSE!',ptr.x,ptr.y-t.r*CS-16+bob);cx.fillText('SO CLOSE!',ptr.x,ptr.y-t.r*CS-16+bob);
+      }
       hum(h);
     }else{hum(0)}
+    if(shaking){cx.restore()}
     if(flash>0){cx.fillStyle='rgba(255,255,255,'+flash+')';cx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*1.2)}
     if(ptr.down&&now-(dig.l||0)>85){dig.l=now;dig()}
     requestAnimationFrame(draw);
@@ -309,6 +398,7 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     var sh='';TOOLS.slice(1).forEach(function(t,k){var i=k+1;sh+='<div class="row"><div><b>'+t.n+'</b><span>Radius '+t.r+', digs '+t.d+' deep, senses needles '+t.range+' cells away</span></div>'+(st.owned[i]?'<span>Owned</span>':'<button type="button" data-b="'+i+'"'+(st.cash<t.price?' disabled':'')+'>'+money(t.price)+'</button>')+'</div>'});
     sh+='<div class="row"><div><b>Bigger bag</b><span>+100 hay capacity</span></div><button type="button" data-b="bag"'+(st.cash<st.capCost?' disabled':'')+'>'+money(st.capCost)+'</button></div>';
     el('shop').innerHTML=sh;
+    renderExtras();
   }
   el('tools').addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;st.tool=+b.dataset.t;ui()});
   el('shop').addEventListener('click',function(e){
@@ -321,6 +411,50 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
   el('shopBtn').addEventListener('click',function(){var o=el('shop').classList.toggle('open');this.setAttribute('aria-pressed',o)});
   el('snd').addEventListener('click',function(){st.sound=!st.sound;this.setAttribute('aria-pressed',st.sound);this.textContent=st.sound?'Sound on':'Sound off';if(st.sound)audioOn();else hum(0)});
   el('restack').addEventListener('click',function(){S=newStack();fx=[];pulls=[];toast('Fresh Stack!');ui()});
+
+  /* ---- extras: hud, bounties, idle line, streak, feed ---- */
+  function hudTick(){
+    var cm=Math.min(2.5,1+(st.combo-1)*.5);
+    el('combo').innerHTML=st.combo>0?'x'+cm.toFixed(1)+' <small>'+Math.ceil(st.comboT)+'s</small>':'&mdash;';
+    el('lucktxt').textContent=Math.round(st.luck)+'%';el('luckbar').style.width=st.luck+'%';
+    var b=Math.floor(st.bank);el('bank').innerHTML=money(b)+' <small>of '+money(CAPBANK)+'</small>';el('collect').disabled=b<1;
+  }
+  function bar(label,val,txt,btn){return '<div class="pb"><label>'+label+'<span>'+txt+(btn||'')+'</span></label><div class="meter"><i style="width:'+Math.min(100,val*100)+'%"></i></div></div>'}
+  function renderExtras(){
+    el('bounties').innerHTML=st.bounty.map(function(b,i){
+      var done=b.p>=b.goal;
+      return bar(b.t,b.p/b.goal,b.c?'Claimed':b.p+' / '+b.goal,done&&!b.c?'<button type="button" data-c="'+i+'">Claim '+money(b.r)+'</button>':'');
+    }).join('');
+    var nx=-1;for(var i=1;i<TOOLS.length;i++)if(!st.owned[i]){nx=i;break}
+    var left=S.needles.filter(function(n){return n.found}).length;
+    el('almost').innerHTML=
+      (nx>=0?bar('Next tool: '+TOOLS[nx].n,st.cash/TOOLS[nx].price,Math.min(100,Math.round(st.cash/TOOLS[nx].price*100))+'% funded'):bar('All tools owned',1,'Done'))+
+      bar('This Stack',left/6,left+' / 6 needles')+
+      bar('Bag',st.hay/st.cap,st.hay+' / '+st.cap)+
+      bar('Next lucky upgrade',st.luck/100,Math.round(st.luck)+'%');
+    el('streak').textContent='Day '+st.streak;
+    hudTick();
+  }
+  el('bounties').addEventListener('click',function(e){var b=e.target.closest('button[data-c]');if(!b)return;var q=st.bounty[+b.dataset.c];if(q.p>=q.goal&&!q.c){q.c=true;st.cash+=q.r;toast('Bounty claimed! +'+money(q.r));ui()}});
+  el('collect').addEventListener('click',function(){var v=Math.floor(st.bank);if(v<1)return;st.cash+=v;st.bank=0;toast('Collected '+money(v)+' from your line');ui()});
+  var NAMES=['Mika','Juno','Rex','Pip','Sol','Ari','Tess','Bo'],PLACES=['Pine Forest','Meadow Farm','Snow Peak','Desert Dunes'],FEED=[];
+  function feedAdd(html,rare){FEED.unshift('<div class="'+(rare?'rare':'')+'">'+html+'</div>');FEED=FEED.slice(0,4);el('feed').innerHTML=FEED.join('')}
+  function fakeFeed(){
+    var n=NAMES[Math.floor(Math.random()*NAMES.length)],r=Math.random(),k=r<.5?1:r<.8?2:r<.95?3:4;
+    feedAdd('<b>'+n+'</b> found a '+RAR[k].n+' Needle in '+PLACES[Math.floor(Math.random()*PLACES.length)],k>=3);
+    setTimeout(fakeFeed,9000+Math.random()*8000);
+  }
+  setTimeout(fakeFeed,3500);feedAdd('<b>Server</b> The Golden Needle spawns at dusk',false);
+  /* persistence: idle line while away, daily streak with a forgiving freeze */
+  try{
+    var ls=window.localStorage,seen=+ls.getItem('nw_seen')||0;
+    if(seen){var away=Math.min(480,(Date.now()-seen)/60000);st.bank=Math.min(CAPBANK,Math.floor(away*RATE));if(st.bank>=5)setTimeout(function(){toast('Welcome back! Your line made '+money(st.bank),3600)},900)}
+    var today=new Date().toISOString().slice(0,10),d0=ls.getItem('nw_day'),sk=+ls.getItem('nw_streak')||0;
+    if(!d0)sk=1;else if(d0!==today){var diff=Math.round((Date.parse(today)-Date.parse(d0))/86400000);if(diff===1)sk++;else if(diff===2){sk++;el('freeze').hidden=false}else sk=1}
+    ls.setItem('nw_day',today);ls.setItem('nw_streak',sk);st.streak=sk;
+  }catch(e){}
+  function saveSeen(){try{localStorage.setItem('nw_seen',Date.now())}catch(e){}}
+  setInterval(saveSeen,10000);window.addEventListener('pagehide',saveSeen);
 
   /* ---- pointer ---- */
   function pos(e){var r=cv.getBoundingClientRect();ptr.x=(e.clientX-r.left)*W/r.width;ptr.y=(e.clientY-r.top)*H/r.height;ptr.in=true}
