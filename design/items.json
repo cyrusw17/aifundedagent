@@ -1,0 +1,1920 @@
+{
+ "items": [
+  {
+   "n": "Basic Shovel",
+   "c": "Hand tools",
+   "t": "Starter",
+   "s": "Spawn",
+   "p": "Free",
+   "d": "Scoops 1 unit of hay at a time."
+  },
+  {
+   "n": "Wide Scoop",
+   "c": "Hand tools",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$150",
+   "d": "Scoops 2 units."
+  },
+  {
+   "n": "Garden Rake",
+   "c": "Hand tools",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$400",
+   "d": "Pulls loose hay in a wide arc, light on the arms."
+  },
+  {
+   "n": "Pitchfork",
+   "c": "Hand tools",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$1,200",
+   "d": "Scoops 4 units, can lift small bales."
+  },
+  {
+   "n": "Steel Fork",
+   "c": "Hand tools",
+   "t": "Rare",
+   "s": "Hub shop",
+   "p": "$4,000",
+   "d": "Scoops 6 units and strips more hay per swing."
+  },
+  {
+   "n": "Hay Hook",
+   "c": "Hand tools",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$900",
+   "d": "Drags bales across the ground to a trailer."
+  },
+  {
+   "n": "Needle Tweezers",
+   "c": "Hand tools",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$600",
+   "d": "Pick needles out of a raw load by hand (slow)."
+  },
+  {
+   "n": "Silver Sieve Net",
+   "c": "Hand tools",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$2,500",
+   "d": "Handheld sifter. Raises hand-sort recovery."
+  },
+  {
+   "n": "Magnet Wand",
+   "c": "Hand tools",
+   "t": "Rare",
+   "s": "Hub shop",
+   "p": "$3,500",
+   "d": "Pulls steel needles from a load when waved over it."
+  },
+  {
+   "n": "Barrel Auger",
+   "c": "Hand tools",
+   "t": "Epic",
+   "s": "Hub shop",
+   "p": "$9,000",
+   "d": "Drills a barrel's contents straight into a trailer."
+  },
+  {
+   "n": "Hay Vacuum Hose",
+   "c": "Hand tools",
+   "t": "Legendary",
+   "s": "Hub shop",
+   "p": "$30,000",
+   "d": "Sucks hay from a barrel into your truck's tank."
+  },
+  {
+   "n": "Wheelbarrow",
+   "c": "Carriers",
+   "t": "Starter",
+   "s": "Spawn",
+   "p": "Free",
+   "d": "Carries 6 scoops. Pushed on foot."
+  },
+  {
+   "n": "Two-Wheel Handcart",
+   "c": "Carriers",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$800",
+   "d": "Carries 14 scoops. Pulled by hand."
+  },
+  {
+   "n": "Pull Wagon",
+   "c": "Carriers",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$2,500",
+   "d": "Carries 30 scoops. Slow on slopes."
+  },
+  {
+   "n": "Rusty Pickup",
+   "c": "Trucks",
+   "t": "Common",
+   "s": "Hub dealer",
+   "p": "$6,000",
+   "d": "First truck. Pulls the Wagon Trailer."
+  },
+  {
+   "n": "Farm Flatbed",
+   "c": "Trucks",
+   "t": "Uncommon",
+   "s": "Hub dealer",
+   "p": "$25,000",
+   "d": "Pulls up to a Small trailer."
+  },
+  {
+   "n": "Box Truck",
+   "c": "Trucks",
+   "t": "Rare",
+   "s": "Hub dealer",
+   "p": "$90,000",
+   "d": "Pulls up to a Medium trailer."
+  },
+  {
+   "n": "Heavy Hauler",
+   "c": "Trucks",
+   "t": "Epic",
+   "s": "Hub dealer",
+   "p": "$350,000",
+   "d": "Pulls up to a Large trailer. Needs fuel."
+  },
+  {
+   "n": "Semi Rig",
+   "c": "Trucks",
+   "t": "Legendary",
+   "s": "Hub dealer",
+   "p": "$1,500,000",
+   "d": "Pulls the Double trailer on highways."
+  },
+  {
+   "n": "Starlight Hauler",
+   "c": "Trucks",
+   "t": "Mythic",
+   "s": "Alien quest",
+   "p": "Quest",
+   "d": "Cosmetic truck that glows. Same stats as Semi Rig."
+  },
+  {
+   "n": "Rowboat",
+   "c": "Boats",
+   "t": "Common",
+   "s": "Harbor",
+   "p": "$3,000",
+   "d": "Calm water only. Fits the Drowned Rows entrance."
+  },
+  {
+   "n": "Sailboat",
+   "c": "Boats",
+   "t": "Rare",
+   "s": "Harbor",
+   "p": "$40,000",
+   "d": "Open sea. Required for the far channels."
+  },
+  {
+   "n": "Cargo Barge",
+   "c": "Boats",
+   "t": "Epic",
+   "s": "Harbor",
+   "p": "$250,000",
+   "d": "Carries a full trailer across water."
+  },
+  {
+   "n": "Wagon Trailer",
+   "c": "Trailers",
+   "t": "Common",
+   "s": "Hub dealer",
+   "p": "$2,000",
+   "d": "3 barrels of hay."
+  },
+  {
+   "n": "Small Trailer",
+   "c": "Trailers",
+   "t": "Uncommon",
+   "s": "Hub dealer",
+   "p": "$12,000",
+   "d": "8 barrels."
+  },
+  {
+   "n": "Medium Trailer",
+   "c": "Trailers",
+   "t": "Rare",
+   "s": "Hub dealer",
+   "p": "$60,000",
+   "d": "20 barrels."
+  },
+  {
+   "n": "Large Trailer",
+   "c": "Trailers",
+   "t": "Epic",
+   "s": "Hub dealer",
+   "p": "$240,000",
+   "d": "45 barrels."
+  },
+  {
+   "n": "Double Trailer",
+   "c": "Trailers",
+   "t": "Legendary",
+   "s": "Hub dealer",
+   "p": "$1,000,000",
+   "d": "90 barrels in two linked beds."
+  },
+  {
+   "n": "Barrel Rack Trailer",
+   "c": "Trailers",
+   "t": "Rare",
+   "s": "Hub dealer",
+   "p": "$75,000",
+   "d": "Carries 30 whole barrels for refilling at base."
+  },
+  {
+   "n": "Hay Crate",
+   "c": "Storage",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$100",
+   "d": "Holds 20 units of hay."
+  },
+  {
+   "n": "Mill Bin (Small)",
+   "c": "Storage",
+   "t": "Starter",
+   "s": "Starts with Mill",
+   "p": "Free",
+   "d": "Holds 200 units."
+  },
+  {
+   "n": "Mill Bin (Medium)",
+   "c": "Storage",
+   "t": "Common",
+   "s": "Mill upgrade",
+   "p": "$1,500",
+   "d": "Holds 800 units."
+  },
+  {
+   "n": "Mill Bin (Large)",
+   "c": "Storage",
+   "t": "Uncommon",
+   "s": "Mill upgrade",
+   "p": "$8,000",
+   "d": "Holds 3,000 units."
+  },
+  {
+   "n": "Silo (Small)",
+   "c": "Storage",
+   "t": "Uncommon",
+   "s": "Workshop",
+   "p": "$12,000",
+   "d": "Holds 8,000 units."
+  },
+  {
+   "n": "Silo (Large)",
+   "c": "Storage",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$60,000",
+   "d": "Holds 30,000 units."
+  },
+  {
+   "n": "Silo (Mega)",
+   "c": "Storage",
+   "t": "Epic",
+   "s": "Workshop",
+   "p": "$300,000",
+   "d": "Holds 150,000 units."
+  },
+  {
+   "n": "Warehouse",
+   "c": "Storage",
+   "t": "Epic",
+   "s": "Workshop",
+   "p": "$500,000",
+   "d": "Stores crates, barrels and needle trays."
+  },
+  {
+   "n": "Barrel Rack",
+   "c": "Storage",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$600",
+   "d": "Stores 10 full barrels."
+  },
+  {
+   "n": "Needle Tray",
+   "c": "Storage",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$250",
+   "d": "Holds 100 sorted needles of one type."
+  },
+  {
+   "n": "Needle Vault",
+   "c": "Storage",
+   "t": "Epic",
+   "s": "Workshop",
+   "p": "$150,000",
+   "d": "Holds 10,000 needles of any type."
+  },
+  {
+   "n": "Mill",
+   "c": "Buildings",
+   "t": "Starter",
+   "s": "Plot purchase",
+   "p": "Included",
+   "d": "Stores hay and feeds the sorter. Your first building."
+  },
+  {
+   "n": "Sorter Shed",
+   "c": "Buildings",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$5,000",
+   "d": "Housing for sorter machines."
+  },
+  {
+   "n": "Barn",
+   "c": "Buildings",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$3,000",
+   "d": "Cosmetic and extra crate storage."
+  },
+  {
+   "n": "Garage",
+   "c": "Buildings",
+   "t": "Uncommon",
+   "s": "Workshop",
+   "p": "$20,000",
+   "d": "Stores your truck and trailers safely."
+  },
+  {
+   "n": "Sell Depot",
+   "c": "Buildings",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$80,000",
+   "d": "Private shop that pays better for sorted needles."
+  },
+  {
+   "n": "Needle Forge",
+   "c": "Buildings",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$40,000",
+   "d": "Turns needles into building materials."
+  },
+  {
+   "n": "Workshop",
+   "c": "Buildings",
+   "t": "Starter",
+   "s": "Plot purchase",
+   "p": "Included",
+   "d": "Where you place blueprints and craft."
+  },
+  {
+   "n": "Museum",
+   "c": "Buildings",
+   "t": "Epic",
+   "s": "Workshop",
+   "p": "$200,000",
+   "d": "Displays foreign objects and artifacts for passive cash."
+  },
+  {
+   "n": "Observatory",
+   "c": "Buildings",
+   "t": "Legendary",
+   "s": "Workshop",
+   "p": "$900,000",
+   "d": "Shows the sky pattern for the alien ritual clue."
+  },
+  {
+   "n": "Greenhouse",
+   "c": "Buildings",
+   "t": "Uncommon",
+   "s": "Workshop",
+   "p": "$18,000",
+   "d": "Grows a small patch of hay for starter barrels."
+  },
+  {
+   "n": "Harbor Dock",
+   "c": "Buildings",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$50,000",
+   "d": "Parks your boats at your plot."
+  },
+  {
+   "n": "Small Plot",
+   "c": "Plots",
+   "t": "Starter",
+   "s": "Hub land office",
+   "p": "$500",
+   "d": "First plot. Fits a mill and a few machines."
+  },
+  {
+   "n": "Farm Plot",
+   "c": "Plots",
+   "t": "Common",
+   "s": "Hub land office",
+   "p": "$12,000",
+   "d": "Four times the space."
+  },
+  {
+   "n": "Estate Plot",
+   "c": "Plots",
+   "t": "Rare",
+   "s": "Hub land office",
+   "p": "$150,000",
+   "d": "Room for a full factory line and a house."
+  },
+  {
+   "n": "Ranch Plot",
+   "c": "Plots",
+   "t": "Epic",
+   "s": "Hub land office",
+   "p": "$1,200,000",
+   "d": "Huge. Fits a private road loop."
+  },
+  {
+   "n": "Fence Post Set",
+   "c": "Plots",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$80",
+   "d": "Marks your plot edge."
+  },
+  {
+   "n": "Road Tile",
+   "c": "Plots",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$10",
+   "d": "Driveway and internal roads."
+  },
+  {
+   "n": "Hand Sieve",
+   "c": "Machines",
+   "t": "Starter",
+   "s": "Mill",
+   "p": "$300",
+   "d": "Sorter tier 1. Recovers about 15% of needles."
+  },
+  {
+   "n": "Shaker Table",
+   "c": "Machines",
+   "t": "Common",
+   "s": "Sorter Shed",
+   "p": "$3,000",
+   "d": "Tier 2. About 35% recovery."
+  },
+  {
+   "n": "Hopper Feeder",
+   "c": "Machines",
+   "t": "Common",
+   "s": "Sorter Shed",
+   "p": "$1,200",
+   "d": "Feeds hay from a bin to a belt."
+  },
+  {
+   "n": "Conveyor (Straight)",
+   "c": "Machines",
+   "t": "Common",
+   "s": "Sorter Shed",
+   "p": "$50",
+   "d": "Moves loads along a line."
+  },
+  {
+   "n": "Conveyor (Corner)",
+   "c": "Machines",
+   "t": "Common",
+   "s": "Sorter Shed",
+   "p": "$60",
+   "d": "Turns a belt 90 degrees."
+  },
+  {
+   "n": "Conveyor (Ramp)",
+   "c": "Machines",
+   "t": "Common",
+   "s": "Sorter Shed",
+   "p": "$80",
+   "d": "Lifts a belt up one level."
+  },
+  {
+   "n": "Splitter",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Sorter Shed",
+   "p": "$400",
+   "d": "Divides a belt into two."
+  },
+  {
+   "n": "Merger",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Sorter Shed",
+   "p": "$400",
+   "d": "Joins two belts into one."
+  },
+  {
+   "n": "Conveyor Sorter",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Sorter Shed",
+   "p": "$15,000",
+   "d": "Tier 3. About 55% recovery."
+  },
+  {
+   "n": "Magnet Drum",
+   "c": "Machines",
+   "t": "Rare",
+   "s": "Sorter Shed",
+   "p": "$80,000",
+   "d": "Tier 4. About 75% recovery. Pulls steel and bog."
+  },
+  {
+   "n": "Optical Sorter",
+   "c": "Machines",
+   "t": "Epic",
+   "s": "Sorter Shed",
+   "p": "$400,000",
+   "d": "Tier 5. About 92% recovery. Finds glass and ice."
+  },
+  {
+   "n": "Needle Type Splitter",
+   "c": "Machines",
+   "t": "Rare",
+   "s": "Sorter Shed",
+   "p": "$25,000",
+   "d": "Sends each needle type to its own bin."
+  },
+  {
+   "n": "Needle Bundler",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Sorter Shed",
+   "p": "$6,000",
+   "d": "Packs needles into 10, 50 and 250 bundles."
+  },
+  {
+   "n": "Needle Polisher",
+   "c": "Machines",
+   "t": "Rare",
+   "s": "Sorter Shed",
+   "p": "$60,000",
+   "d": "Chance to reveal a mutation on a sorted needle."
+  },
+  {
+   "n": "Hay Baler",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Sorter Shed",
+   "p": "$9,000",
+   "d": "Makes hay bales for building and the ritual."
+  },
+  {
+   "n": "Hay Press",
+   "c": "Machines",
+   "t": "Rare",
+   "s": "Sorter Shed",
+   "p": "$45,000",
+   "d": "Presses dense blocks for thatch building."
+  },
+  {
+   "n": "Alloy Mixer",
+   "c": "Machines",
+   "t": "Epic",
+   "s": "Needle Forge",
+   "p": "$120,000",
+   "d": "Combines two needle types into a hybrid material."
+  },
+  {
+   "n": "Sorter Boost Oil",
+   "c": "Machines",
+   "t": "Uncommon",
+   "s": "Consumable",
+   "p": "$500",
+   "d": "Runs a machine at double speed for ten minutes."
+  },
+  {
+   "n": "Alien Collector",
+   "c": "Machines",
+   "t": "Mythic",
+   "s": "Alien quest",
+   "p": "Quest",
+   "d": "Tier 6. Pulls every needle from one haystack instantly."
+  },
+  {
+   "n": "Meadow Hay",
+   "c": "Hay types",
+   "t": "Common",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "The basic hay. Few needles."
+  },
+  {
+   "n": "Pine Straw",
+   "c": "Hay types",
+   "t": "Common",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Pine needles are hidden inside."
+  },
+  {
+   "n": "Dune Hay",
+   "c": "Hay types",
+   "t": "Uncommon",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Dry grass full of sand needles."
+  },
+  {
+   "n": "Frost Hay",
+   "c": "Hay types",
+   "t": "Uncommon",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Frozen stalks with ice needles."
+  },
+  {
+   "n": "Bog Reed",
+   "c": "Hay types",
+   "t": "Uncommon",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Wet reed with bog needles."
+  },
+  {
+   "n": "Ember Hay",
+   "c": "Hay types",
+   "t": "Rare",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Warm hay with obsidian needles."
+  },
+  {
+   "n": "Crystal Hay",
+   "c": "Hay types",
+   "t": "Rare",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Glittering hay with geode needles."
+  },
+  {
+   "n": "Cloud Hay",
+   "c": "Hay types",
+   "t": "Epic",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Weightless hay with cloud needles."
+  },
+  {
+   "n": "Ghost Hay",
+   "c": "Hay types",
+   "t": "Epic",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Pale hay with phantom needles. Night only."
+  },
+  {
+   "n": "Golden Hay",
+   "c": "Hay types",
+   "t": "Legendary",
+   "s": "Drowned Rows maze",
+   "p": "",
+   "d": "One-time reward. Sorts into higher rarity needles."
+  },
+  {
+   "n": "Star Hay",
+   "c": "Hay types",
+   "t": "Mythic",
+   "s": "Alien Collector rewards",
+   "p": "",
+   "d": "Appears after the Collector. Cosmic needles."
+  },
+  {
+   "n": "Steel Needle",
+   "c": "Needles",
+   "t": "Common",
+   "s": "Meadow",
+   "p": "$100 sorted",
+   "d": "Base value. Steel plate material."
+  },
+  {
+   "n": "Pine Needle",
+   "c": "Needles",
+   "t": "Common",
+   "s": "Pine Forest",
+   "p": "$110 sorted",
+   "d": "Pine plank material."
+  },
+  {
+   "n": "Sand Needle",
+   "c": "Needles",
+   "t": "Uncommon",
+   "s": "Desert",
+   "p": "$140 sorted",
+   "d": "Sand brick material."
+  },
+  {
+   "n": "Ice Needle",
+   "c": "Needles",
+   "t": "Uncommon",
+   "s": "Snow Peak",
+   "p": "$160 sorted",
+   "d": "Ice glass material."
+  },
+  {
+   "n": "Bog Needle",
+   "c": "Needles",
+   "t": "Uncommon",
+   "s": "Swamp",
+   "p": "$170 sorted",
+   "d": "Mossy stone material."
+  },
+  {
+   "n": "Obsidian Needle",
+   "c": "Needles",
+   "t": "Rare",
+   "s": "Volcano",
+   "p": "$300 sorted",
+   "d": "Obsidian glass material."
+  },
+  {
+   "n": "Geode Needle",
+   "c": "Needles",
+   "t": "Rare",
+   "s": "Cave",
+   "p": "$340 sorted",
+   "d": "Crystal material."
+  },
+  {
+   "n": "Cloud Needle",
+   "c": "Needles",
+   "t": "Epic",
+   "s": "Sky Island",
+   "p": "$700 sorted",
+   "d": "Cloud material."
+  },
+  {
+   "n": "Phantom Needle",
+   "c": "Needles",
+   "t": "Epic",
+   "s": "Haunted Grove",
+   "p": "$800 sorted",
+   "d": "Phantom material. Semi-see-through."
+  },
+  {
+   "n": "Cosmic Needle",
+   "c": "Needles",
+   "t": "Mythic",
+   "s": "Star Hay",
+   "p": "$5,000 sorted",
+   "d": "Cosmic material. Glows."
+  },
+  {
+   "n": "Giant",
+   "c": "Mutations",
+   "t": "Uncommon",
+   "s": "Needle Polisher",
+   "p": "x2 value",
+   "d": "The needle is larger."
+  },
+  {
+   "n": "Rainbow",
+   "c": "Mutations",
+   "t": "Rare",
+   "s": "Needle Polisher",
+   "p": "x3 value",
+   "d": "Shifting color."
+  },
+  {
+   "n": "Glitch",
+   "c": "Mutations",
+   "t": "Epic",
+   "s": "Needle Polisher",
+   "p": "x4 value",
+   "d": "Flickers and jumps."
+  },
+  {
+   "n": "Cosmic Mutation",
+   "c": "Mutations",
+   "t": "Legendary",
+   "s": "Needle Polisher",
+   "p": "x10 value",
+   "d": "Rarest mutation."
+  },
+  {
+   "n": "Compass Needle",
+   "c": "Special needles",
+   "t": "Rare",
+   "s": "Found rarely",
+   "p": "",
+   "d": "Points to the nearest hidden thing."
+  },
+  {
+   "n": "Lumberjack Needle",
+   "c": "Special needles",
+   "t": "Rare",
+   "s": "Found rarely",
+   "p": "",
+   "d": "Stitches two loads into one so a big trailer fits."
+  },
+  {
+   "n": "Magnet Needle",
+   "c": "Special needles",
+   "t": "Rare",
+   "s": "Found rarely",
+   "p": "",
+   "d": "Pulls loose items to you."
+  },
+  {
+   "n": "Thread Needle",
+   "c": "Special needles",
+   "t": "Epic",
+   "s": "Found rarely",
+   "p": "",
+   "d": "Sets a teleport anchor at your plot."
+  },
+  {
+   "n": "Ghost Needle",
+   "c": "Special needles",
+   "t": "Epic",
+   "s": "Haunted Grove, night",
+   "p": "",
+   "d": "Cosmetic ghost trail."
+  },
+  {
+   "n": "Golden Needle",
+   "c": "Special needles",
+   "t": "Legendary",
+   "s": "Daily server event",
+   "p": "",
+   "d": "One per server per day."
+  },
+  {
+   "n": "Meteorite Needle",
+   "c": "Special needles",
+   "t": "Mythic",
+   "s": "Meteor shower",
+   "p": "",
+   "d": "Huge value and a comet trail. Not tradeable."
+  },
+  {
+   "n": "Brass Button",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Bent Nail",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Old Penny",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Lost Thimble",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Clay Marble",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Farmer's Pocket Watch",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Meadow barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Pinecone Charm",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Resin Bead",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Hunter's Whistle",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Rusty Hatchet Head",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Bird Feather",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Fossil Amber",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Pine Forest barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Scarab Charm",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Bronze Key",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Glass Bead",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Clay Tablet Shard",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Camel Bell",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Sun Medallion",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Desert barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Frozen Toy Soldier",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Ice Locket",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Skate Blade",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Snow Globe",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Brass Compass",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Mammoth Tooth",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Snow Peak barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Lily Seed Pod",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Frog Statuette",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Fisher's Hook",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Lantern Glass",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Fossil Fern",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Swamp Pearl",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Swamp barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Meteor Chip",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Obsidian Arrowhead",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Cooled Lava Egg",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Miner's Token",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Ember Coin",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Dragon Scale",
+   "c": "Foreign objects",
+   "t": "Legendary",
+   "s": "Volcano barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Glow Mushroom Cap",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Crystal Shard",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Pick Tip",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Bat Wing Charm",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Lost Lamp",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Geode Heart",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Cave barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Cloud Pearl",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Feather Quill",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Kite Tail",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Wind Chime Piece",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Lightning Bottle",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Storm Medal",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Sky Island barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Ghost Button",
+   "c": "Foreign objects",
+   "t": "Common",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Cracked Mirror",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Music Box Key",
+   "c": "Foreign objects",
+   "t": "Uncommon",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Spectral Locket",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Moth-Eaten Doll",
+   "c": "Foreign objects",
+   "t": "Rare",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Cursed Coin",
+   "c": "Foreign objects",
+   "t": "Epic",
+   "s": "Haunted Grove barrels",
+   "p": "",
+   "d": "Collection book item."
+  },
+  {
+   "n": "Starbeam Collector",
+   "c": "Special items",
+   "t": "Mythic",
+   "s": "Alien quest",
+   "p": "Quest",
+   "d": "Pulls every needle out of one haystack. Once per day. Soulbound."
+  },
+  {
+   "n": "Maze Lantern",
+   "c": "Special items",
+   "t": "Rare",
+   "s": "Straw Labyrinth reward",
+   "p": "Quest",
+   "d": "Widens your vision in the dark maze."
+  },
+  {
+   "n": "Chalk Line",
+   "c": "Special items",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$800",
+   "d": "Draws a permanent line on the maze floor."
+  },
+  {
+   "n": "Thread Ball",
+   "c": "Special items",
+   "t": "Epic",
+   "s": "Drowned Rows reward",
+   "p": "Quest",
+   "d": "Leaves a glowing thread trail you can follow back."
+  },
+  {
+   "n": "Sea Chart Piece (4)",
+   "c": "Special items",
+   "t": "Rare",
+   "s": "Found in sea barrels",
+   "p": "",
+   "d": "Four pieces reveal the Drowned Rows entrance."
+  },
+  {
+   "n": "Cornhusk Key (3)",
+   "c": "Special items",
+   "t": "Epic",
+   "s": "Corn Night Maze",
+   "p": "",
+   "d": "Three keys open the center Landing Pad."
+  },
+  {
+   "n": "Beacon Part: Glowing Button",
+   "c": "Special items",
+   "t": "Legendary",
+   "s": "Rare drop, Sky Island",
+   "p": "",
+   "d": "Ritual part one."
+  },
+  {
+   "n": "Beacon Part: Bent Key",
+   "c": "Special items",
+   "t": "Legendary",
+   "s": "Rare drop, Desert",
+   "p": "",
+   "d": "Ritual part two."
+  },
+  {
+   "n": "Beacon Part: Silver Coin",
+   "c": "Special items",
+   "t": "Legendary",
+   "s": "Rare drop, Haunted Grove",
+   "p": "",
+   "d": "Ritual part three."
+  },
+  {
+   "n": "Pattern Scroll",
+   "c": "Special items",
+   "t": "Rare",
+   "s": "Corn maze center",
+   "p": "",
+   "d": "Shows today's ritual shape. Works once."
+  },
+  {
+   "n": "Moon Sickle",
+   "c": "Special items",
+   "t": "Epic",
+   "s": "Corn Night Maze secret",
+   "p": "Quest",
+   "d": "Cuts one shortcut through corn once per night."
+  },
+  {
+   "n": "Golden Hay Bale",
+   "c": "Special items",
+   "t": "Legendary",
+   "s": "Drowned Rows",
+   "p": "Quest",
+   "d": "One-time bale. Part of the alien offering."
+  },
+  {
+   "n": "Weaver's Thimble",
+   "c": "Special items",
+   "t": "Mythic",
+   "s": "Spindle summit",
+   "p": "Quest",
+   "d": "Doubles Golden Needle spawns for an hour a day."
+  },
+  {
+   "n": "Thread of Fate",
+   "c": "Special items",
+   "t": "Epic",
+   "s": "Sunken Harbor",
+   "p": "Quest",
+   "d": "Re-roll one needle's rarity per day."
+  },
+  {
+   "n": "Fuel Can",
+   "c": "Consumables",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$40",
+   "d": "Refuels a truck or boat."
+  },
+  {
+   "n": "Repair Kit",
+   "c": "Consumables",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$120",
+   "d": "Fixes truck damage."
+  },
+  {
+   "n": "Tire Patch",
+   "c": "Consumables",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$30",
+   "d": "Fixes a flat tire on the road."
+  },
+  {
+   "n": "Lucky Clover",
+   "c": "Consumables",
+   "t": "Uncommon",
+   "s": "Bounty reward",
+   "p": "",
+   "d": "Fills 25% of your luck meter."
+  },
+  {
+   "n": "Combo Hourglass",
+   "c": "Consumables",
+   "t": "Uncommon",
+   "s": "Bounty reward",
+   "p": "",
+   "d": "Adds 30 seconds to your combo timer."
+  },
+  {
+   "n": "Lantern Oil",
+   "c": "Consumables",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$60",
+   "d": "Refills the Maze Lantern."
+  },
+  {
+   "n": "Hint Scroll",
+   "c": "Consumables",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$500",
+   "d": "Shows a cryptic clue. No path or skip."
+  },
+  {
+   "n": "Barrel Refill Token",
+   "c": "Consumables",
+   "t": "Uncommon",
+   "s": "Daily bounty",
+   "p": "",
+   "d": "Refills one barrel. Never sold for Robux."
+  },
+  {
+   "n": "Scarecrow",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$300",
+   "d": "Decoration. Protects from crows in the maze event."
+  },
+  {
+   "n": "Weather Vane",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$500",
+   "d": "Decoration."
+  },
+  {
+   "n": "Windsock",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$150",
+   "d": "Decoration."
+  },
+  {
+   "n": "Garden Gnome",
+   "c": "Decor",
+   "t": "Uncommon",
+   "s": "Workshop",
+   "p": "$900",
+   "d": "Decoration."
+  },
+  {
+   "n": "Mailbox",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$80",
+   "d": "Shows your daily mail."
+  },
+  {
+   "n": "Wind Chimes",
+   "c": "Decor",
+   "t": "Rare",
+   "s": "Needle Forge",
+   "p": "8 needles",
+   "d": "Made of needles. Rings when you pass."
+  },
+  {
+   "n": "Lamp Post",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$200",
+   "d": "Light."
+  },
+  {
+   "n": "Banner",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$120",
+   "d": "Show your clan or hat."
+  },
+  {
+   "n": "Sign",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$50",
+   "d": "Custom text."
+  },
+  {
+   "n": "Door",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$60",
+   "d": "Opens and closes."
+  },
+  {
+   "n": "Gate",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$90",
+   "d": "Opens and closes."
+  },
+  {
+   "n": "Window Pane",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$40",
+   "d": "Glass. Fits a window frame."
+  },
+  {
+   "n": "Needle Statue",
+   "c": "Decor",
+   "t": "Epic",
+   "s": "Needle Forge",
+   "p": "200 needles",
+   "d": "Sculpture made of any needle type."
+  },
+  {
+   "n": "Trophy Pedestal",
+   "c": "Decor",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$5,000",
+   "d": "Display one trophy."
+  },
+  {
+   "n": "Display Wall",
+   "c": "Decor",
+   "t": "Rare",
+   "s": "Workshop",
+   "p": "$20,000",
+   "d": "Shows every needle type you own."
+  },
+  {
+   "n": "Fountain",
+   "c": "Decor",
+   "t": "Epic",
+   "s": "Workshop",
+   "p": "$60,000",
+   "d": "Water feature."
+  },
+  {
+   "n": "Hay Bale Seat",
+   "c": "Decor",
+   "t": "Common",
+   "s": "Workshop",
+   "p": "$60",
+   "d": "Seat."
+  },
+  {
+   "n": "Ritual Circle Mat",
+   "c": "Decor",
+   "t": "Epic",
+   "s": "Alien quest",
+   "p": "Quest",
+   "d": "Marks where the ritual shape is laid out."
+  },
+  {
+   "n": "Straw Boater",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Meadow set",
+   "p": "",
+   "d": "+5% bag capacity."
+  },
+  {
+   "n": "Lumberjack Beanie",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Pine Forest set",
+   "p": "",
+   "d": "+5% scoop speed."
+  },
+  {
+   "n": "Pharaoh Headwrap",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Desert set",
+   "p": "",
+   "d": "Needle sense range +10%."
+  },
+  {
+   "n": "Frost Ushanka",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Snow Peak set",
+   "p": "",
+   "d": "Cold stamina regeneration."
+  },
+  {
+   "n": "Mossy Bog Hat",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Swamp set",
+   "p": "",
+   "d": "Faint glints on loads."
+  },
+  {
+   "n": "Magma Hard-Hat",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Volcano set",
+   "p": "",
+   "d": "Heat immunity."
+  },
+  {
+   "n": "Miner's Lamp Helmet",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Cave set",
+   "p": "",
+   "d": "Wider light in mazes."
+  },
+  {
+   "n": "Cloud Halo",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Sky Island set",
+   "p": "",
+   "d": "Longer glide."
+  },
+  {
+   "n": "Spectral Top Hat",
+   "c": "Hats",
+   "t": "Rare",
+   "s": "Haunted Grove set",
+   "p": "",
+   "d": "See ghost needles at night."
+  },
+  {
+   "n": "Crown of Needles",
+   "c": "Hats",
+   "t": "Mythic",
+   "s": "Endgame",
+   "p": "",
+   "d": "Aura and prestige title."
+  },
+  {
+   "n": "Corn King Crown",
+   "c": "Hats",
+   "t": "Epic",
+   "s": "Corn Night Maze",
+   "p": "",
+   "d": "Cosmetic. Shows you finished the corn maze."
+  },
+  {
+   "n": "Captain's Tricorn",
+   "c": "Hats",
+   "t": "Epic",
+   "s": "Drowned Rows",
+   "p": "",
+   "d": "Cosmetic. Shows you finished the sea maze."
+  },
+  {
+   "n": "Barn Cat",
+   "c": "Pets",
+   "t": "Common",
+   "s": "Hub shop",
+   "p": "$2,000",
+   "d": "Sniffs out nearby needles."
+  },
+  {
+   "n": "Farm Dog",
+   "c": "Pets",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$5,000",
+   "d": "Follows you and detects glints."
+  },
+  {
+   "n": "Crow",
+   "c": "Pets",
+   "t": "Rare",
+   "s": "Corn maze event",
+   "p": "",
+   "d": "Rides on your shoulder. Stops crow attacks."
+  },
+  {
+   "n": "Pig",
+   "c": "Pets",
+   "t": "Uncommon",
+   "s": "Hub shop",
+   "p": "$8,000",
+   "d": "Finds extra foreign objects."
+  },
+  {
+   "n": "Scarecrow Pal",
+   "c": "Pets",
+   "t": "Epic",
+   "s": "Corn Night Maze",
+   "p": "",
+   "d": "Marks shrines for you."
+  },
+  {
+   "n": "Pincushion Heart",
+   "c": "Pets",
+   "t": "Epic",
+   "s": "Swamp pond secret",
+   "p": "",
+   "d": "Sniffs out needles from far away."
+  }
+ ],
+ "shapes": [
+  {
+   "n": "Cube",
+   "u": 8
+  },
+  {
+   "n": "Slab",
+   "u": 4
+  },
+  {
+   "n": "Quarter slab",
+   "u": 2
+  },
+  {
+   "n": "Stair",
+   "u": 6
+  },
+  {
+   "n": "Corner stair",
+   "u": 5
+  },
+  {
+   "n": "Ramp",
+   "u": 4
+  },
+  {
+   "n": "Thin wall",
+   "u": 4
+  },
+  {
+   "n": "Pillar",
+   "u": 8
+  },
+  {
+   "n": "Arch",
+   "u": 10
+  },
+  {
+   "n": "Window frame",
+   "u": 6
+  },
+  {
+   "n": "Door frame",
+   "u": 8
+  },
+  {
+   "n": "Roof tile",
+   "u": 3
+  },
+  {
+   "n": "Roof ridge",
+   "u": 2
+  },
+  {
+   "n": "Fence post",
+   "u": 1
+  },
+  {
+   "n": "Fence rail",
+   "u": 1
+  },
+  {
+   "n": "Floor tile",
+   "u": 2
+  },
+  {
+   "n": "Round column",
+   "u": 12
+  },
+  {
+   "n": "Dome piece",
+   "u": 14
+  },
+  {
+   "n": "Beam",
+   "u": 3
+  },
+  {
+   "n": "Platform",
+   "u": 6
+  }
+ ],
+ "mats": [
+  {
+   "n": "Thatch",
+   "unit": "hay",
+   "per": 2,
+   "col": "#d9b84a"
+  },
+  {
+   "n": "Straw bale",
+   "unit": "bale",
+   "per": 0.25,
+   "col": "#e6cf7a"
+  },
+  {
+   "n": "Steel plate",
+   "unit": "steel needle",
+   "per": 1,
+   "col": "#9aa6b2"
+  },
+  {
+   "n": "Pine plank",
+   "unit": "pine needle",
+   "per": 1,
+   "col": "#4c8a5a"
+  },
+  {
+   "n": "Sand brick",
+   "unit": "sand needle",
+   "per": 1,
+   "col": "#e8c070"
+  },
+  {
+   "n": "Ice glass",
+   "unit": "ice needle",
+   "per": 2,
+   "col": "#9fd8f0"
+  },
+  {
+   "n": "Mossy stone",
+   "unit": "bog needle",
+   "per": 2,
+   "col": "#7f9a55"
+  },
+  {
+   "n": "Obsidian glass",
+   "unit": "obsidian needle",
+   "per": 3,
+   "col": "#4a4a4a"
+  },
+  {
+   "n": "Crystal",
+   "unit": "geode needle",
+   "per": 4,
+   "col": "#b8a2f0"
+  },
+  {
+   "n": "Cloud",
+   "unit": "cloud needle",
+   "per": 4,
+   "col": "#e6f0fa"
+  },
+  {
+   "n": "Phantom",
+   "unit": "phantom needle",
+   "per": 6,
+   "col": "#a99ad0"
+  },
+  {
+   "n": "Cosmic",
+   "unit": "cosmic needle",
+   "per": 10,
+   "col": "#6a3fd0"
+  }
+ ]
+}
