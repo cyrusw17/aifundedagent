@@ -161,10 +161,10 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     {n:'Legendary',c:'#d44bd0',p:.01,v:3000,beam:260}
   ];
   var TOOLS=[
-    {id:'hands',n:'Hands',r:1.7,d:1,range:7,price:0},
-    {id:'rake',n:'Rake',r:2.7,d:1,range:9,price:120},
-    {id:'fork',n:'Pitchfork',r:3.4,d:2,range:11,price:450},
-    {id:'det',n:'Detector',r:3.4,d:2,range:20,price:1400}
+    {id:'hands',n:'Hands',r:1.15,d:1,range:7,price:0},
+    {id:'rake',n:'Rake',r:1.9,d:1,range:9,price:120},
+    {id:'fork',n:'Pitchfork',r:2.7,d:2,range:11,price:450},
+    {id:'det',n:'Detector',r:2.7,d:2,range:20,price:1400}
   ];
   var S;
   function el(i){return document.getElementById(i)}
@@ -173,7 +173,7 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     for(y=0;y<ROWS;y++){for(x=0;x<COLS;x++){
       var dx=(x+.5-COLS/2)/(COLS/2-1),dy=(y+.5-ROWS/2)/(ROWS/2-.5),m=dx*dx+dy*dy<1;
       mask.push(m);
-      g.push(m?(2+Math.floor((1-Math.sqrt(dx*dx+dy*dy))*3+Math.random()*1.4)):0);
+      g.push(m?(3+Math.floor((1-Math.sqrt(dx*dx+dy*dy))*4+Math.random()*1.5)):0);
       jit.push([Math.random(),Math.random()*Math.PI]);
     }}
     var needles=[],tries=0;
@@ -195,7 +195,7 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
   }
   var st={cash:0,hay:0,cap:150,capCost:200,tool:0,owned:[1,0,0,0],sold:0,found:0,counts:[0,0,0,0,0],step:0,sound:false,dugTotal:0,luck:0,combo:0,comboT:0,bank:0,streak:1,
     bounty:[{t:'Dig 150 hay',k:'hay',goal:150,p:0,r:150,c:false},{t:'Find 2 needles',k:'find',goal:2,p:0,r:220,c:false},{t:'Find a Silver or better',k:'rare',goal:1,p:0,r:500,c:false}]};
-  var shake=0,shaking=false,RATE=6,CAPBANK=RATE*60*8;
+  var HAYV=.2,shake=0,shaking=false,RATE=6,CAPBANK=RATE*60*8;
   S=newStack();
   var fx=[],pulls=[],ptr={x:-1,y:-1,down:false,in:false},last=0,flash=0,hintShown=false;
 
@@ -240,9 +240,10 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     for(var y=y0;y<=y1;y++)for(var x=x0;x<=x1;x++){
       if(Math.hypot(x+.5-cxp,y+.5-cyp)>t.r)continue;
       var i=y*COLS+x;if(S.g[i]<=0)continue;
-      if(st.hay>=st.cap){full=true;continue}
-      var take=Math.min(t.d,S.g[i],st.cap-st.hay);
-      S.g[i]-=take;st.hay+=take;removed+=take;st.dugTotal+=take;bump('hay',take);
+      var room=Math.floor((st.cap-st.hay)/HAYV+1e-9);
+      if(room<=0){full=true;continue}
+      var take=Math.min(t.d,S.g[i],room);
+      S.g[i]-=take;st.hay+=take*HAYV;removed+=take;st.dugTotal+=take;bump('hay',take*HAYV);
       if(Math.random()<.5)fx.push({x:(x+.5)*CS,y:(y+.5)*CS,vx:(Math.random()-.5)*160,vy:-60-Math.random()*140,life:.6,type:'hay'});
       if(S.g[i]===0){S.needles.forEach(function(n){if(!n.found&&n.x===x&&n.y===y)pull(n)})}
     }
@@ -370,13 +371,13 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     }else{hum(0)}
     if(shaking){cx.restore()}
     if(flash>0){cx.fillStyle='rgba(255,255,255,'+flash+')';cx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*1.2)}
-    if(ptr.down&&now-(dig.l||0)>85){dig.l=now;dig()}
+    if(ptr.down&&now-(dig.l||0)>110){dig.l=now;dig()}
     requestAnimationFrame(draw);
   }
 
   /* ---- UI ---- */
   var GOALS=[
-    ['Press and drag across the hay with your hands. Follow the ring: blue is cold, red is hot.',function(){return st.dugTotal>=25}],
+    ['Press and drag across the hay with your hands. Follow the ring: blue is cold, red is hot.',function(){return st.dugTotal>=60}],
     ['Keep digging toward the red. Find your first needle.',function(){return st.found>=1}],
     ['Nice. Fill your bag a bit, then sell hay to the cow.',function(){return st.sold>=1}],
     ['Open the Shop and buy a Rake. It clears a wider patch.',function(){return st.owned[1]===1}],
@@ -385,10 +386,10 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
   ];
   function ui(){
     el('cash').textContent=money(st.cash);
-    el('hay').textContent=st.hay+' / '+st.cap;el('bagbar').style.width=Math.min(100,st.hay/st.cap*100)+'%';
+    el('hay').textContent=Math.floor(st.hay)+' / '+st.cap;el('bagbar').style.width=Math.min(100,st.hay/st.cap*100)+'%';
     el('nfound').textContent=S.needles.filter(function(n){return n.found}).length+' / 6';
     el('toolname').textContent=toolNow().n;
-    el('sell').disabled=st.hay===0;
+    el('sell').disabled=Math.floor(st.hay)<1;
     while(st.step<GOALS.length-1&&GOALS[st.step][1]())st.step++;
     el('goalText').textContent=GOALS[st.step][0];
     el('dots').innerHTML=GOALS.map(function(g,i){return '<i class="'+(i<=st.step?'on':'')+'"></i>'}).join('');
@@ -407,7 +408,7 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
     else{var t=TOOLS[+k];if(st.cash>=t.price&&!st.owned[+k]){st.cash-=t.price;st.owned[+k]=1;st.tool=+k;toast(t.n+' bought!')}}
     ui();
   });
-  el('sell').addEventListener('click',function(){if(!st.hay)return;var v=st.hay;st.cash+=v;st.hay=0;st.sold++;toast('Sold '+v+' hay for '+money(v));ui()});
+  el('sell').addEventListener('click',function(){var v=Math.floor(st.hay);if(v<1)return;st.cash+=v;st.hay=0;st.sold++;toast('Sold '+v+' hay for '+money(v));ui()});
   el('shopBtn').addEventListener('click',function(){var o=el('shop').classList.toggle('open');this.setAttribute('aria-pressed',o)});
   el('snd').addEventListener('click',function(){st.sound=!st.sound;this.setAttribute('aria-pressed',st.sound);this.textContent=st.sound?'Sound on':'Sound off';if(st.sound)audioOn();else hum(0)});
   el('restack').addEventListener('click',function(){S=newStack();fx=[];pulls=[];toast('Fresh Stack!');ui()});
@@ -423,14 +424,14 @@ canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
   function renderExtras(){
     el('bounties').innerHTML=st.bounty.map(function(b,i){
       var done=b.p>=b.goal;
-      return bar(b.t,b.p/b.goal,b.c?'Claimed':b.p+' / '+b.goal,done&&!b.c?'<button type="button" data-c="'+i+'">Claim '+money(b.r)+'</button>':'');
+      return bar(b.t,b.p/b.goal,b.c?'Claimed':Math.floor(b.p)+' / '+b.goal,done&&!b.c?'<button type="button" data-c="'+i+'">Claim '+money(b.r)+'</button>':'');
     }).join('');
     var nx=-1;for(var i=1;i<TOOLS.length;i++)if(!st.owned[i]){nx=i;break}
     var left=S.needles.filter(function(n){return n.found}).length;
     el('almost').innerHTML=
       (nx>=0?bar('Next tool: '+TOOLS[nx].n,st.cash/TOOLS[nx].price,Math.min(100,Math.round(st.cash/TOOLS[nx].price*100))+'% funded'):bar('All tools owned',1,'Done'))+
       bar('This Stack',left/6,left+' / 6 needles')+
-      bar('Bag',st.hay/st.cap,st.hay+' / '+st.cap)+
+      bar('Bag',st.hay/st.cap,Math.floor(st.hay)+' / '+st.cap)+
       bar('Next lucky upgrade',st.luck/100,Math.round(st.luck)+'%');
     el('streak').textContent='Day '+st.streak;
     hudTick();
