@@ -154,6 +154,15 @@ back two rows locked (96 of 120 tiles), and each row adds 12 tiles. 96 tiles is 
 only matter when you build a second line, around the shaker-table stage, where $5,000 is about 12 minutes of earnings.
 At $1,500 it would be a 4-minute afterthought; at $5,000 it is a small goal of its own.
 
+**Second farm: $60,000** (`Prices.SecondPlot`, Land's placeholder was $25,000). A save can own one more plot. Three
+things set the price. First, hauling is the limit at almost every stage (the stage table sorts exactly what it hauls),
+so a second line mostly buys room and a second region's sorter, not double income. Second, it should come after the
+first plot is fully built out: plot, both rows and a conveyor sorter cost about $37,500, so a second farm has to cost
+more or players would skip the rows. Third, each server has only six plots, so a second farm takes one from a player
+who might join later; it should be a real commitment. $60,000 is about 90 minutes at the conveyor-sorter stage and
+40 minutes at the box truck, a mid-game goal. $25,000 would arrive before the conveyor sorter and fill servers early.
+There is no loan for it: the land loan only covers a first plot.
+
 ### Building on your land
 
 | Piece | Was | Now | Why |
@@ -266,7 +275,7 @@ anything earned while test money was on was thrown away.)
 
 ## Travel fares (for the rest of the map)
 
-Nothing uses these yet. They are in `Prices.Travel` for the world map thread. A fare should be felt but should never
+The world map thread charges these at boarding (PR #25), per truck (trailers ride free). A fare should be felt but should never
 decide whether a trip is worth making, so each is under 5% of what the trip carries.
 
 | Trip | Fare | Why |
@@ -342,11 +351,11 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
-| Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
+| Plot, expansion rows, second farm, pieces, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
-| Travel fares | `Travel` | Not wired yet (world map thread) |
+| Travel fares | `Travel` | `Services/Ferry.luau` (world map thread, PR #25) |
 | Robux store | `Robux` | Not wired yet (store waits on playtests) |
 | NPC orders | `Orders` | `Services/Orders.luau` |
 | Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |

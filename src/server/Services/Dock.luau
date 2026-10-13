@@ -24,6 +24,7 @@ local ZONE_HEIGHT = 14
 local UNLOAD_SECONDS = 30 -- give up after this, so a stuck bale cannot hold the dock forever
 
 local zone = nil -- CFrame of the zone box
+local edge, outward = nil, nil -- the dock's back edge on the ground, and the way a parked truck points
 local toward = nil -- direction from the bed onto the belt
 local busy = false
 
@@ -31,7 +32,18 @@ local busy = false
 -- truck parks.
 function Dock.init(dockPoint, out)
 	toward = -out
+	edge, outward = dockPoint, out
 	zone = CFrame.lookAt(dockPoint, dockPoint + out) * CFrame.new(0, ZONE_HEIGHT / 2 + 0.5, -ZONE_LENGTH / 2)
+end
+
+-- Where a truck of the given length stands when its tailgate is backed up to the dock (a ground CFrame at its
+-- middle, facing away from the belt). For self-tests and signs.
+function Dock.parkFrame(length)
+	if not edge then
+		return nil
+	end
+	local at = edge + outward * (length / 2 + 0.6)
+	return CFrame.lookAt(at, at + outward)
 end
 
 -- The funnel: one grid cell long and ZONE_WIDTH wide, between the truck and the first belt tile. Its two floor
@@ -69,7 +81,7 @@ function Dock.buildFunnel(parent, dockPoint, out)
 		)
 		half.CustomPhysicalProperties = PhysicalProperties.new(0.7, 1.5, 0, 100, 1)
 		local inward = frame:VectorToWorldSpace(Vector3.new(-side, 0, 0))
-		half.AssemblyLinearVelocity = toward * Factory.BeltSpeed + inward * Factory.BeltSpeed * 0.5
+		half.AssemblyLinearVelocity = -out * Factory.BeltSpeed + inward * Factory.BeltSpeed * 0.5
 
 		-- Guide wall from the wide back edge to the belt's rail.
 		local from = frame * Vector3.new(side * ZONE_WIDTH / 2, 0, 0)

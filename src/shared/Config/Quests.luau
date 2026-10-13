@@ -16,9 +16,10 @@
 --           The bales are taken when it completes.
 --   find    a rare item that can drop when you break a bale: chance per bale, pity = guaranteed by this many bales
 -- when = "day", "dusk", "night" or "midnight" limits a step to that part of the day (see Time below).
--- Spots belong to a region. A spot in a region that is not built yet waits for the map: the "Full world map build"
--- thread tags a part "QuestAnchor" with attribute SpotId = the spot's id (and Region = the region name) and the spot
--- moves there. Spots with a `fallback` position stand in Meadow Farm until then, so every chain can be played now.
+-- Spots belong to a region. `pos` is a Meadow Farm spot; `world` (X, Z) is a spot out on the Stitched Isles, set on the
+-- ground there once the world map is built. A spot whose region is not built yet stands at its `fallback` in Meadow,
+-- or waits (its quest says "Opens when ... is built"). A part tagged "QuestAnchor" with attribute SpotId = a spot id
+-- (and Region = the region name) moves that spot onto the part, for hand-placed spots in Studio.
 local Quests = {}
 
 -- The day and night cycle (src/server/Services/DayNight.luau). Hours are game hours, 0-24.
@@ -93,6 +94,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(163, 0, 392),
 		radius = 10,
+		world = Vector2.new(-1090, 170),
 	},
 	signal_valley = {
 		region = "Homestead Valley",
@@ -100,6 +102,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(-17, 0, -392),
 		radius = 10,
+		world = Vector2.new(180, -1450),
 	},
 	signal_grove = {
 		region = "Haunted Grove",
@@ -107,6 +110,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(-330, 0, -250),
 		radius = 10,
+		world = Vector2.new(-1300, -950),
 	},
 
 	-- Old Bessie's parts, one from each of three regions. Traders leave them by the roads out of Meadow until the regions open.
@@ -116,6 +120,7 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(137, 0, 380),
 		item = true,
+		world = Vector2.new(-1240, 232),
 	},
 	bessie_radiator = {
 		region = "Desert Dunes",
@@ -123,6 +128,7 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(-43, 0, -385),
 		item = true,
+		world = Vector2.new(1312, -236),
 	},
 	bessie_spring = {
 		region = "Snow Peak",
@@ -130,21 +136,87 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(-43, 0, -360),
 		item = true,
+		world = Vector2.new(-612, -1574),
 	},
 
-	-- Spots that only exist once their region is built (no fallback).
-	snow_door = { region = "Snow Peak", name = "Hidden door", look = "door" },
-	volcano_crater = { region = "Volcano", name = "Crater rim", look = "stone", radius = 20 },
-	graveyard_ghost = { region = "Bobbin Rock", name = "Captain's ghost", look = "ghost" },
-	captains_log_1 = { region = "Bobbin Rock", name = "Log page", look = "page", item = true },
-	captains_log_2 = { region = "Bobbin Rock", name = "Log page", look = "page", item = true },
-	captains_log_3 = { region = "Bobbin Rock", name = "Log page", look = "page", item = true },
-	pyramid_garage = { region = "Desert Dunes", name = "Buried garage", look = "door", radius = 16 },
-	pyramid_mechanic = { region = "Desert Dunes", name = "Old mechanic", look = "scarecrow" },
-	lantern_1 = { region = "Haunted Grove", name = "Lantern", look = "lantern", radius = 8 },
-	lantern_2 = { region = "Haunted Grove", name = "Lantern", look = "lantern", radius = 8 },
-	lantern_3 = { region = "Haunted Grove", name = "Lantern", look = "lantern", radius = 8 },
-	haunted_crossroads = { region = "Haunted Grove", name = "The crossroads", look = "stone", radius = 12 },
+	-- Spots that only exist out in their region (no fallback). `world` places them on the Stitched Isles
+	-- (Config/WorldMap.luau, Services/Regions.luau landmarks); a QuestAnchor part still overrides it.
+	snow_door = { region = "Snow Peak", name = "Hidden door", look = "marker", world = Vector2.new(-1052, -1697) },
+	volcano_crater = {
+		region = "Volcano",
+		name = "Crater rim",
+		look = "stone",
+		radius = 20,
+		world = Vector2.new(1080, -1418),
+	},
+	graveyard_ghost = {
+		region = "Bobbin Rock",
+		name = "Captain's ghost",
+		look = "ghost",
+		world = Vector2.new(2585, -1760),
+	},
+	captains_log_1 = {
+		region = "Bobbin Rock",
+		name = "Log page",
+		look = "page",
+		item = true,
+		world = Vector2.new(2770, -1878),
+	},
+	captains_log_2 = {
+		region = "Bobbin Rock",
+		name = "Log page",
+		look = "page",
+		item = true,
+		world = Vector2.new(2680, -1960),
+	},
+	captains_log_3 = {
+		region = "Bobbin Rock",
+		name = "Log page",
+		look = "page",
+		item = true,
+		world = Vector2.new(2860, -1770),
+	},
+	pyramid_garage = {
+		region = "Desert Dunes",
+		name = "Buried garage",
+		look = "marker",
+		radius = 16,
+		world = Vector2.new(1500, -524),
+	},
+	pyramid_mechanic = {
+		region = "Desert Dunes",
+		name = "Old mechanic",
+		look = "scarecrow",
+		world = Vector2.new(1278, -212),
+	},
+	lantern_1 = {
+		region = "Haunted Grove",
+		name = "Lantern",
+		look = "lantern",
+		radius = 8,
+		world = Vector2.new(-1073, -835),
+	},
+	lantern_2 = {
+		region = "Haunted Grove",
+		name = "Lantern",
+		look = "lantern",
+		radius = 8,
+		world = Vector2.new(-990, -948),
+	},
+	lantern_3 = {
+		region = "Haunted Grove",
+		name = "Lantern",
+		look = "lantern",
+		radius = 8,
+		world = Vector2.new(-908, -1060),
+	},
+	haunted_crossroads = {
+		region = "Haunted Grove",
+		name = "The crossroads",
+		look = "stone",
+		radius = 12,
+		world = Vector2.new(-1176, -756),
+	},
 }
 
 -- Where the wandering scarecrow can stand. He moves every WanderMinutes, never to the spot he is on.
@@ -236,8 +308,13 @@ Quests.Rewards = {
 	starlight_hauler = { kind = "truck", name = "Starlight Hauler", blurb = "Call it from the quest log." },
 	alien_collector = {
 		kind = "unlock",
+		name = "Alien Collector",
+		blurb = "A sorter that finds every needle at once while its beam is up, once a day. Build it on your land.",
+	},
+	starbeam_collector = {
+		kind = "unlock",
 		name = "Starbeam Collector",
-		blurb = "A sorter that finds every needle at once. Build it on your land.",
+		blurb = "A beacon over one belt tile that pulls a bale of Star hay out of the sky now and then. Build it on your land.",
 	},
 	captains_barge = {
 		kind = "unlock",
@@ -537,11 +614,15 @@ Quests.List = {
 			{
 				kind = "offer",
 				spot = "crop_circle",
-				needlesEach = 100,
-				text = "Offer 100 sorted needles of every kind you can reach",
+				needlesEach = 50,
+				text = "Offer 50 sorted needles of every kind you can find",
 			},
 		},
-		reward = { unlock = "alien_collector", gloves = "starweave_gloves", truck = "starlight_hauler" },
+		reward = {
+			unlock = { "alien_collector", "starbeam_collector" },
+			gloves = "starweave_gloves",
+			truck = "starlight_hauler",
+		},
 	},
 
 	-- Region quests. Their spots appear once the region is built.

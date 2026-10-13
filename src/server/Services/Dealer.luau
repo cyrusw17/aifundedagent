@@ -291,6 +291,11 @@ local function deliver(player, def)
 		end
 		if model.Parent then
 			Vehicles.release(model, player)
+			-- If the seat could not take them (they jumped, or died mid-scene), let them climb in by the door.
+			local prompt = seat:FindFirstChild("DrivePrompt")
+			if prompt and not seat.Occupant then
+				prompt.Enabled = true
+			end
 		end
 		task.wait(0.6)
 		tweenDoor(false)
@@ -349,6 +354,16 @@ local function onBuy(player, id)
 		return true, "Hank is bringing your truck round."
 	end
 	return true, ("Sold! The %s is yours. Watch the garage door."):format(def.name)
+end
+
+-- For self-tests (SelfTests/Biome.luau): the same purchase the counter panel makes.
+Dealer.buy = function(player, id)
+	return onBuy(player, id)
+end
+
+-- Where a player stands to buy: the sales rug in front of the counter.
+function Dealer.counterPosition()
+	return counter and counter.Position
 end
 
 function Dealer.build(worldFolder)

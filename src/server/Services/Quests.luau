@@ -24,16 +24,21 @@ local Bales = require(script.Parent.Bales)
 local Needle = require(script.Parent.Needle)
 local Gloves = require(script.Parent.Gloves)
 local Vehicles = require(script.Parent.Vehicles)
+local WorldShape = require(script.Parent.WorldShape)
+local Regions = require(script.Parent.Regions)
 
 local Quests = {}
 
 local rng = Random.new()
 local folder = nil -- Workspace.Needlewood.Quests
 local spots = {} -- spotId -> { def, model, base, position, pads }
-local reachable = { Meadow = true } -- regions with a built place (Meadow, plus any region a QuestAnchor names)
+local reachable = { Meadow = true } -- regions with a built place (Meadow, the Stitched Isles, any QuestAnchor's)
 local wanderIndex = 1
 local players = {} -- player -> { lifted = bool, lastPublish }
 local changedRemote = nil -- RemoteEvent: tells a client its quest log changed
+-- player -> { quests, pocket } while Quests.sandbox runs (SelfTests): quest steps run on these instead of the save,
+-- and no cash, gear, needles or saves change.
+local sandboxes = {}
 
 local questById = {}
 for i, q in QuestConfig.List do
@@ -45,9 +50,6 @@ local pieceKinds = {}
 for _, def in LandConfig.Pieces do
 	pieceKinds[def.id] = def.kind
 end
-
--- Config/Needles names some regions differently from the map ("Desert" for Desert Dunes).
-local REGION_ALIAS = { ["Desert Dunes"] = "Desert" }
 
 local function needleForHay(hayType)
 	local hay = GloveConfig.HayTypes[hayType or "meadow"]
@@ -63,15 +65,19 @@ local function isReachable(region)
 	return region == nil or reachable[region] == true
 end
 
--- Needle types whose region can be reached right now (the alien offering asks for these).
+-- Needle types you can actually find right now (the alien offering asks for these): steel, plus the needles hidden
+-- in every hay that grows out on the Stitched Isles (Regions.fields).
 local function reachableNeedles()
+	local ids = { [NeedleTypes[1].id] = true }
+	for _, f in Regions.fields or {} do
+		if f.hayType then
+			ids[needleForHay(f.hayType)] = true
+		end
+	end
 	local list = {}
 	for _, n in NeedleTypes do
-		for region in reachable do
-			if n.map == region or n.map == REGION_ALIAS[region] then
-				table.insert(list, n)
-				break
-			end
+		if ids[n.id] then
+			table.insert(list, n)
 		end
 	end
 	return list
@@ -93,7 +99,8 @@ local function questsOf(player)
 	if not s then
 		return nil, nil
 	end
-	local q = s.quests
+	local box = sandboxes[player]
+	local q = box and box.quests or s.quests
 	if typeof(q) ~= "table" then
 		q = {}
 		s.quests = q
@@ -194,27 +201,43 @@ local function applyPerks(player, q)
 	end
 end
 
+-- A reward slot holds one id or a list of them.
+local function rewardIds(value)
+	if typeof(value) == "table" then
+		return value
+	end
+	return value and { value } or {}
+end
+
 local function rewardText(reward)
 	local parts = {}
 	if reward.cash then
 		table.insert(parts, ("$%d"):format(reward.cash))
 	end
 	for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
-		local id = reward[key]
-		if id and QuestConfig.Rewards[id] then
-			table.insert(parts, QuestConfig.Rewards[id].name)
+		for _, id in rewardIds(reward[key]) do
+			if QuestConfig.Rewards[id] then
+				table.insert(parts, QuestConfig.Rewards[id].name)
+			end
 		end
 	end
 	return table.concat(parts, ", ")
 end
 
 local function giveReward(player, q, reward, name)
+	if sandboxes[player] then
+		for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
+			for _, id in rewardIds(reward[key]) do
+				q.earned[id] = true
+			end
+		end
+		return
+	end
 	if reward.cash then
 		Bank.earn(player, reward.cash, "Quest: " .. name)
 	end
 	for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
-		local id = reward[key]
-		if id then
+		for _, id in rewardIds(reward[key]) do
 			q.earned[id] = true
 		end
 	end
@@ -236,6 +259,10 @@ local function complete(player, q, def)
 			got ~= "" and ("You got: " .. got) or ""
 		)
 	)
+	unlockQuests(q)
+	if sandboxes[player] then
+		return
+	end
 	if def.ritual then
 		for _, other in Players:GetPlayers() do
 			if other ~= player then
@@ -243,7 +270,6 @@ local function complete(player, q, def)
 			end
 		end
 	end
-	unlockQuests(q)
 	task.spawn(Data.save, player)
 end
 
@@ -299,11 +325,36 @@ end
 -- The world ----------------------------------------------------------------------------------------------------------
 
 local function groundAt(x, z)
+	-- The same math the terrain is written from, so spots can go up before the terrain has finished.
+	local ok, h = pcall(WorldShape.heightAt, x, z)
+	if ok and typeof(h) == "number" then
+		return h
+	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { Workspace.Terrain }
 	local hit = Workspace:Raycast(Vector3.new(x, 400, z), Vector3.new(0, -800, 0), params)
 	return hit and hit.Position.Y or 0
+end
+
+-- True once the Stitched Isles are standing (Services/WorldMap.luau builds them before the quests).
+local function worldBuilt()
+	return #(Regions.fields or {}) > 0
+end
+
+-- A dry spot at or near (x, z): the map math can put a planned spot in a pond or the sea after a reshape.
+local function landNear(x, z)
+	for r = 0, 120, 8 do
+		for k = 0, r == 0 and 0 or 7 do
+			local a = k / 8 * math.pi * 2
+			local px, pz = x + math.cos(a) * r, z + math.sin(a) * r
+			local ok, h, water = pcall(WorldShape.column, px, pz)
+			if not ok or water == nil or h > water + 0.3 then
+				return px, pz
+			end
+		end
+	end
+	return x, z
 end
 
 local function part(parent, name, size, cframe, color, material, shape)
@@ -631,6 +682,14 @@ function LOOKS.stone(m, cf)
 	).CanCollide =
 		false
 	return stone
+end
+
+-- Just the quest marker and prompt, for a place the world map already built (the snow door, the pyramid door).
+function LOOKS.marker(m, cf)
+	local base = part(m, "Base", Vector3.new(4, 0.4, 4), cf * CFrame.new(0, 0.2, 0), Color3.new(1, 1, 1))
+	base.Transparency = 1
+	base.CanCollide = false
+	return base
 end
 
 function LOOKS.crate(m, cf)
@@ -1014,7 +1073,9 @@ local function onEvent(player, kind, amount, info)
 			bounty.n[def.id] = (bounty.n[def.id] or 0) + amount
 			if bounty.n[def.id] >= def.count then
 				bounty.done[def.id] = true
-				Bank.earn(player, def.cash, "Bounty: " .. def.text)
+				if not sandboxes[player] then
+					Bank.earn(player, def.cash, "Bounty: " .. def.text)
+				end
 				Data.toast(player, ("Bounty done: %s. +$%d"):format(def.text, def.cash))
 			end
 			publish(player)
@@ -1047,7 +1108,8 @@ function Quests.usePrompt(player, spotId)
 		return
 	end
 	local spot = spots[spotId]
-	if not spot or not near(player, spot, 14) then
+	local box = sandboxes[player]
+	if not spot or not (box or near(player, spot, 14)) then
 		return
 	end
 	for _, id in activeIds(q) do
@@ -1105,15 +1167,14 @@ function Quests.usePrompt(player, spotId)
 					want[n.id] = step.needlesEach
 				end
 			end
-			local pocket = Needle.held(player)
 			local missing = {}
 			for needleId, count in want do
-				local have = pocket[needleId] or 0
+				local have = box and (box.pocket[needleId] or 0) or Needle.plainCount(player, needleId)
 				if have < count then
 					table.insert(missing, ("%d more %s"):format(count - have, needleName(needleId):lower()))
 				end
 			end
-			if step.cash and not Bank.canAfford(player, step.cash) then
+			if step.cash and not box and not Bank.canAfford(player, step.cash) then
 				table.insert(missing, ("%s more"):format(Bank.money(step.cash - Bank.spendable(s))))
 			end
 			if #missing > 0 then
@@ -1125,11 +1186,15 @@ function Quests.usePrompt(player, spotId)
 				)
 				return
 			end
-			if step.cash and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
+			if step.cash and not box and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
 				return
 			end
 			for needleId, count in want do
-				Needle.take(player, needleId, count)
+				if box then
+					box.pocket[needleId] -= count
+				else
+					Needle.take(player, needleId, count)
+				end
 			end
 			Data.toast(player, ("%s accepts your offering."):format(spot.def.name))
 			advance(player, id)
@@ -1225,6 +1290,18 @@ end
 
 -- The quest log ------------------------------------------------------------------------------------------------------
 
+-- A step's text for the quest log. An offering of every reachable kind names the kinds, since that grows with the map.
+local function stepText(step)
+	if step.needlesEach then
+		local names = {}
+		for _, n in reachableNeedles() do
+			table.insert(names, n.name)
+		end
+		return ("%s: %s"):format(step.text, table.concat(names, ", "))
+	end
+	return step.text
+end
+
 local function stepProgress(step, entry)
 	if step.kind == "visit" or step.kind == "collect" then
 		local ids = spotIds(step)
@@ -1270,7 +1347,7 @@ local function snapshot(player)
 				n, count = stepProgress(step, entry)
 			end
 			table.insert(steps, {
-				text = step.text,
+				text = stepText(step),
 				done = q.done[def.id] or (entry ~= nil and entry.step > i),
 				current = isCurrent,
 				n = n,
@@ -1486,6 +1563,33 @@ local function onLoaded(player)
 	publish(player)
 end
 
+-- For SelfTests: runs fn(q, pocket) with this player's quests swapped for a fresh, empty set (q) and a pretend needle
+-- pocket, so steps, rituals and rewards can be driven without touching their save, cash, gear or real needles.
+-- Prompts work from anywhere while it runs. Returns pcall's results.
+function Quests.sandbox(player, fn)
+	if not Data.get(player) or sandboxes[player] then
+		return false, "no save loaded, or a sandbox is already running"
+	end
+	local box = { quests = {}, pocket = {} }
+	sandboxes[player] = box
+	local q = questsOf(player)
+	unlockQuests(q)
+	local results = table.pack(pcall(fn, q, box.pocket))
+	sandboxes[player] = nil
+	publish(player)
+	return table.unpack(results, 1, results.n)
+end
+
+-- For SelfTests: presses a quest spot's prompt as this player (no distance check inside a sandbox).
+function Quests.press(player, spotId)
+	Quests.usePrompt(player, spotId)
+end
+
+-- For SelfTests: the built spot for an id ({ def, model, base, position }), or nil.
+function Quests.spot(spotId)
+	return spots[spotId]
+end
+
 function Quests.has(player, rewardId)
 	local q = questsOf(player)
 	return q ~= nil and q.earned[rewardId] == true
@@ -1543,10 +1647,14 @@ function Quests.build(worldFolder)
 	-- Build the places once the terrain is in, so they sit on the ground.
 	task.spawn(function()
 		markPrompted()
+		local isles = worldBuilt()
 		for id, def in QuestConfig.Spots do
-			local p = def.pos or def.fallback
-			if p and not def.wander then
-				buildSpot(id, p)
+			if def.world and isles then
+				local x, z = landNear(def.world.X, def.world.Y)
+				buildSpot(id, Vector3.new(x, 0, z))
+				reachable[def.region] = true
+			elseif not def.wander and (def.pos or def.fallback) then
+				buildSpot(id, def.pos or def.fallback)
 			end
 		end
 		moveScarecrow()
@@ -1555,7 +1663,12 @@ function Quests.build(worldFolder)
 		for _, anchor in CollectionService:GetTagged("QuestAnchor") do
 			onAnchor(anchor)
 		end
+		-- Anyone who loaded a save while the places went up gets the region quests that just opened.
 		for player in players do
+			local q = questsOf(player)
+			if q then
+				unlockQuests(q)
+			end
 			publish(player)
 		end
 	end)

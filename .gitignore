@@ -12,3 +12,4 @@ exports/
 rustic-import/
 __pycache__/
 *.pyc
+blender/launch/renders/raw/

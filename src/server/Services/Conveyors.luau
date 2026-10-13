@@ -235,18 +235,31 @@ local function feeds(n, side, level, gx, gz)
 	return false
 end
 
--- Clears what finish() added last time (rails, raised legs, meshes), so finish() can run again after an edit.
+-- Clears what finish() added last time (rails, raised legs), so finish() can run again after an edit.
 local function clearFinish(tile)
 	for _, child in tile.model:GetChildren() do
 		if child.Name == "Rail" or child.Name == "RaisedLeg" then
 			child:Destroy()
 		end
 	end
+end
+
+-- Dresses a level-0 tile in mesh `name` (or none), keeping the mesh it has when that is already right, so an edit
+-- elsewhere on the plot doesn't make every tile reload its mesh.
+local function dressTile(grid, tile, name)
+	if tile.mesh == name then
+		return
+	end
+	tile.mesh = name
 	local frame = tile.model:FindFirstChild("Frame")
 	for _, child in frame and frame:GetChildren() or {} do
 		if child:IsA("Model") then
 			child:Destroy()
 		end
+	end
+	if name then
+		local at = Conveyors.frame(grid, tile.gx, tile.gz, tile.dir)
+		Skins.dress(name, tile.model.Frame, tile.model, at, CFrame.Angles(0, math.pi / 2, 0)) -- meshes run along +X
 	end
 end
 
@@ -307,16 +320,7 @@ function Conveyors.finish(grid)
 			end
 			continue
 		end
-		-- The meshes' belts run along their own X axis, in at -X and out at +X.
-		local frame = Conveyors.frame(grid, tile.gx, tile.gz, tile.dir)
-		local turn = CFrame.Angles(0, math.pi / 2, 0)
-		if tile.kind == "splitter" then
-			Skins.dress("splitter", tile.model.Frame, tile.model, frame, turn)
-		elseif fed == 2 then
-			Skins.dress("merger", tile.model.Frame, tile.model, frame, turn)
-		elseif fed == 0 then
-			Skins.dress("conveyor_straight", tile.model.Frame, tile.model, frame, turn)
-		end
+		dressTile(grid, tile, (tile.kind == "splitter" and "splitter") or (fed == 2 and "merger") or (fed == 0 and "conveyor_straight") or nil)
 	end
 end
 

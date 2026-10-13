@@ -95,6 +95,10 @@ local function spawnBlock(cframe, ownerId, units)
 		if not Data.get(player) then
 			return
 		end
+		if ownerId and player.UserId ~= ownerId then
+			Data.toast(player, "That thatch belongs to whoever's hay it was pressed from.")
+			return
+		end
 		Press.give(player, units)
 		block:Destroy()
 		Data.toast(player, ("Picked up %d thatch. You carry %d for building."):format(units, Press.thatch(player)))
@@ -145,42 +149,54 @@ function Press.build(parent, frame)
 		model:SetAttribute("Running", false)
 
 		local units = math.max(1, math.floor(hay / Blocks.Materials.thatch.per))
-		local stack = pressed % 4
-		local at = pallet * CFrame.new((stack % 2 - 0.5) * 1.1, 0.5 + BLOCK.Y / 2 + 0.2, (math.floor(stack / 2) - 0.5) * 2.2)
+		-- Four spots on the pallet, stacked three high, so a new block never lands inside one nobody picked up.
+		local stack, layer = pressed % 4, (pressed // 4) % 3
+		local at = pallet * CFrame.new((stack % 2 - 0.5) * 1.1, 0.5 + BLOCK.Y / 2 + 0.2 + layer * (BLOCK.Y + 0.1), (math.floor(stack / 2) - 0.5) * 2.2)
 		spawnBlock(at, ownerId, units)
 		Feedback.play("BaleSetDown", beam)
 		pressed += 1
 		label.Text = ("HAY PRESS\n%d blocks pressed"):format(pressed)
 	end
 
+	-- Everything sorted that reaches the press comes off the belt at once and waits its turn here, so nothing rides
+	-- through while the plate is down.
+	local queue = {}
+	task.spawn(function()
+		while model.Parent do
+			local job = table.remove(queue, 1)
+			if job then
+				press(job.hay, job.ownerId)
+			else
+				task.wait(0.25)
+			end
+		end
+	end)
+
 	task.spawn(function()
 		while model.Parent do
 			task.wait(0.25)
-			local bale, loose, refused = nil, {}, nil
+			local refused = nil
+			local loose = {} -- ownerId -> strands
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
 				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking then
 					if b.sorted then
-						bale = bale or b
+						local hay = b.sortedHay or Config.PiecesPerBale * Config.HayPerPiece
+						table.insert(queue, { hay = hay, ownerId = b.ownerId })
+						Bales.consume(b)
 					else
 						refused = b.ownerId
 					end
-				elseif Hay.isPiece(p) and p:GetAttribute("Sorted") then
-					table.insert(loose, p)
-				end
-			end
-			if bale then
-				local ownerId = bale.ownerId
-				local hay = bale.sortedHay or Config.PiecesPerBale * Config.HayPerPiece
-				Bales.consume(bale)
-				press(hay, ownerId)
-			elseif #loose > 0 then
-				local ownerId = loose[1]:GetAttribute("OwnerId")
-				for _, p in loose do
+				elseif Hay.isPiece(p) and p:GetAttribute("Sorted") and p.Parent then
+					local ownerId = p:GetAttribute("OwnerId") or 0
+					loose[ownerId] = (loose[ownerId] or 0) + 1
 					Hay.remove(p)
 				end
-				press(#loose * Config.HayPerPiece, ownerId)
-			elseif refused and os.clock() - refusedAt > 8 then
+			end
+			for ownerId, strands in loose do
+				table.insert(queue, { hay = strands * Config.HayPerPiece, ownerId = ownerId ~= 0 and ownerId or nil })
+			end
+			if refused and os.clock() - refusedAt > 8 then
 				refusedAt = os.clock()
 				local owner = Players:GetPlayerByUserId(refused or 0)
 				if owner then
@@ -191,5 +207,14 @@ function Press.build(parent, frame)
 	end)
 	return model
 end
+
+-- Blocks nobody can pick up any more go when their owner leaves.
+Players.PlayerRemoving:Connect(function(player)
+	for _, block in CollectionService:GetTagged("ThatchBlock") do
+		if block:GetAttribute("OwnerId") == player.UserId then
+			block:Destroy()
+		end
+	end
+end)
 
 return Press

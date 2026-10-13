@@ -105,6 +105,8 @@ return function(SelfTest)
 			local right = forward:Cross(up)
 			steer.CFrame = CFrame.fromMatrix(Vector3.zero, right, up, -forward)
 			drive.PlaneVelocity = Vector2.new(0, -speed)
+			-- The same pull Truck.client.luau sets every frame.
+			drive.MaxForce = (chassis.AssemblyMass + (model:GetAttribute("PullMass") or 0)) * (workspace.Gravity + 80)
 			topY = math.max(topY, chassis.Position.Y)
 		end)
 		task.wait(seconds)

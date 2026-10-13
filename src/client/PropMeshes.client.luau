@@ -101,20 +101,29 @@ local function inPlace(model, parts)
 	return ok
 end
 
--- Keeps a fallback part hidden here even if the server changes its transparency (a bale fading in, say).
+-- Keeps a fallback part hidden here even if the server changes its transparency (a bale fading in, say). Returns a
+-- function that shows the part again, for when the mesh goes away (a conveyor tile re-dressed after an edit).
 local function hide(part)
+	local was = part.Transparency
 	part.Transparency = 1
-	part:GetPropertyChangedSignal("Transparency"):Connect(function()
+	local conn = part:GetPropertyChangedSignal("Transparency"):Connect(function()
 		if part.Transparency < 1 then
 			part.Transparency = 1
 		end
 	end)
+	return function()
+		conn:Disconnect()
+		if part.Parent then
+			part.Transparency = was
+		end
+	end
 end
 
 local function swap(model, parts)
 	for _, part in parts do
 		part.Transparency = part:GetAttribute("MeshTransparency") or 0
 	end
+	local restore = {}
 	for _, link in model:GetChildren() do
 		local root = link.Name == "Fallback" and link:IsA("ObjectValue") and link.Value
 		if root then
@@ -124,11 +133,22 @@ local function swap(model, parts)
 			end
 			for _, part in list do
 				if part:IsA("BasePart") and not part:IsDescendantOf(model) then
-					hide(part)
+					table.insert(restore, hide(part))
 				end
 			end
 		end
 	end
+	-- The mesh removed while its fallback stays: show the part look again, or the piece is invisible but solid.
+	local gone
+	gone = model.AncestryChanged:Connect(function()
+		if model.Parent then
+			return
+		end
+		gone:Disconnect()
+		for _, show in restore do
+			show()
+		end
+	end)
 end
 
 local function watch(model)
