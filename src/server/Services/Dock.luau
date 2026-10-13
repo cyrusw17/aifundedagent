@@ -3,6 +3,7 @@
 -- bed up to the dock (bed floor at or a little above the belt, Factory.BeltTop studs off the ground) and step on
 -- UNLOAD. The dock then nudges every loose bale and hay piece in the dock zone toward the belt, like a walking
 -- floor, so the cargo slides off the back. Nothing is welded: the cargo is ordinary physics before and after.
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -50,12 +51,33 @@ function Dock.isBusy()
 	return busy
 end
 
+-- A truck's tailgate (any part tagged "Tailgate") swings out of the way while the dock unloads, then comes back.
+local function openTailgates()
+	local opened = {}
+	for _, p in Workspace:GetPartBoundsInBox(zone, Vector3.new(ZONE_WIDTH, ZONE_HEIGHT, ZONE_LENGTH)) do
+		if CollectionService:HasTag(p, "Tailgate") and not opened[p] then
+			opened[p] = { canCollide = p.CanCollide, transparency = p.Transparency }
+			p.CanCollide = false
+			p.Transparency = 1
+		end
+	end
+	return function()
+		for p, was in opened do
+			if p.Parent then
+				p.CanCollide = was.canCollide
+				p.Transparency = was.transparency
+			end
+		end
+	end
+end
+
 -- Slides everything in the zone onto the belt. onDone runs when the zone is empty or time runs out.
 function Dock.unload(onDone)
 	if busy then
 		return false
 	end
 	busy = true
+	local closeTailgates = openTailgates()
 	task.spawn(function()
 		local started = os.clock()
 		local nextScan, parts = 0, {}
@@ -63,6 +85,12 @@ function Dock.unload(onDone)
 			if os.clock() >= nextScan then
 				parts = cargo()
 				nextScan = os.clock() + 0.5
+				for _, p in parts do
+					-- The server takes over the cargo so its push is not overwritten by the driver's physics.
+					pcall(function()
+						p:SetNetworkOwner(nil)
+					end)
+				end
 				if #parts == 0 then
 					break
 				end
@@ -79,6 +107,7 @@ function Dock.unload(onDone)
 			end
 			RunService.Heartbeat:Wait()
 		end
+		closeTailgates()
 		busy = false
 		if onDone then
 			onDone()
