@@ -12,11 +12,11 @@ local Conveyors = {}
 local T = Factory.TileSize
 local RAIL = 0.3
 local RAIL_HEIGHT = 1.2
--- Rustic palette (blender/lib/style.py): weathered wood frame, dark rubber belt, rusty steel rails and legs.
+-- Rustic palette (blender/lib/style.py): weathered wood frame, dark rubber belt, plain weathered metal rails and legs.
 local FRAME = Color3.fromRGB(179, 153, 115)
 local BELT = Color3.fromRGB(41, 33, 26)
 local RAIL_COLOR = Color3.fromRGB(128, 117, 105)
-local LEG = Color3.fromRGB(102, 66, 42)
+local LEG = Color3.fromRGB(107, 94, 84)
 
 Conveyors.TILE = T
 Conveyors.Dirs = {
@@ -60,6 +60,12 @@ function Conveyors.cellCenter(grid, gx, gz)
 	return grid.origin + Vector3.new((gx + 0.5) * T, 0, (gz + 0.5) * T)
 end
 
+-- Ground-level CFrame at the middle of a cell, facing dir. Machines.luau places its pieces with this.
+function Conveyors.frame(grid, gx, gz, dir)
+	local ground = Conveyors.cellCenter(grid, gx, gz)
+	return CFrame.lookAt(ground, ground + Conveyors.Dirs[dir])
+end
+
 -- Lays one tile. dir is "N", "S", "E" or "W". openBack leaves the back end without a rail (for a loading dock).
 function Conveyors.place(grid, gx, gz, dir, openBack)
 	local d = Conveyors.Dirs[dir]
@@ -86,7 +92,7 @@ function Conveyors.place(grid, gx, gz, dir, openBack)
 				Vector3.new(0.4, legHeight, 0.4),
 				CFrame.new(ground + Vector3.new(sx * (T / 2 - 0.6), legHeight / 2, sz * (T / 2 - 0.6))),
 				LEG,
-				Enum.Material.CorrodedMetal
+				Enum.Material.Metal
 			)
 		end
 	end

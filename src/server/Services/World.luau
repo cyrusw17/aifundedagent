@@ -6,11 +6,12 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
-local BaseLine = require(script.Parent.BaseLine)
+local SellShop = require(script.Parent.SellShop)
 local Props = require(script.Parent.Props)
 local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
+local Land = require(script.Parent.Land)
 
 local World = {}
 
@@ -137,12 +138,15 @@ function World.build()
 	-- The Rustic props that have no job yet (wheelbarrow, crate, logs, spare tools) dress up the camp.
 	Props.dressBaseCamp(folder)
 
-	-- The starter base with its conveyor line, east of base camp.
-	BaseLine.build(folder)
+	-- The public hay sell shop with its conveyor line, east of base camp.
+	SellShop.build(folder)
 
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
 	Dealer.build(folder)
 	MeadowDecor.build(folder)
+
+	-- The land office and the buildable plots south of the main road.
+	Land.build(folder)
 end
 
 return World
