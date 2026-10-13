@@ -107,6 +107,17 @@ return function(SelfTest)
 			end
 		end
 		t.check("the roads have lanterns for the night", lighting ~= nil and #RoadPolishL.lanterns >= 50 and unlit == 0, ("%d lanterns, %d without a light"):format(#RoadPolishL.lanterns, unlit))
+		-- Weekly festival (H11): this week's region is published for the countdown strip, and it has a field.
+		local Festival = require(Services.Festival)
+		local fest = Festival.at(os.time())
+		t.equal("the festival region is published", ReplicatedStorage:GetAttribute("FestivalRegion"), fest.region)
+		local festField = false
+		for _, f in Regions.fields do
+			if f.region == fest.name then
+				festField = true
+			end
+		end
+		t.check("this week's festival region has a hay field", festField, fest.region)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}

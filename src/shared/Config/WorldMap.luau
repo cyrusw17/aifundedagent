@@ -431,6 +431,16 @@ return {
 		["HayWagon"] = 100,
 		["Field bales"] = 400,
 		["Lighting"] = 400, -- landmark lights at night (#26)
+		["Festival"] = 60, -- this week's festival bunting (Festival.luau)
 	} :: { [string]: number },
 	PartShare = 12000, -- the slices above must add up to no more than this
+
+	-- Weekly region festival (Addiction push H11, Services/Festival.luau). Weeks count from FestivalEpoch (a Monday,
+	-- 00:00 UTC), so every server agrees on the region and the dates. The festival region's field bales carry
+	-- FestivalBoost times the needles (not stacked on the rich field's 2x), it gets bunting and a banner, and a
+	-- player who visits it that week earns that week's festival ribbon (cosmetic, kept in the save).
+	FestivalEpoch = 1704067200, -- Monday 2024-01-01 00:00 UTC
+	FestivalWeek = 7 * 24 * 3600,
+	FestivalBoost = 2,
+	FestivalOrder = { "pine", "valley", "desert", "snow", "swamp", "shore", "haunted", "volcano", "keys", "homestead", "bobbin" }, -- the Spindle has no hay field
 }
