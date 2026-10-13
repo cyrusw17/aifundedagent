@@ -99,9 +99,18 @@ local function tweenMotor(motor, base, degrees, seconds, style)
 	if not motor or not motor.Parent or not base then
 		return
 	end
+	-- Some rigs lock the shoulder joint (Studio reports C0 as read only). The arm pose is only cosmetic, so if it
+	-- cannot move, skip it rather than let the error stop the swing, the scoop or the carry.
 	local goal = { C0 = base * CFrame.Angles(math.rad(degrees), 0, 0) }
-	TweenService:Create(motor, TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out), goal)
-		:Play()
+	local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	local ok = pcall(function()
+		TweenService:Create(motor, info, goal):Play()
+	end)
+	if not ok then
+		pcall(function()
+			motor.C0 = goal.C0
+		end)
+	end
 end
 
 local function tweenArm(rig, degrees, seconds, style)
