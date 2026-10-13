@@ -165,9 +165,15 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
+	decor_flowers = 200,
+	decor_bench = 350,
+	decor_lantern = 500,
+	decor_scarecrow = 900,
 }
 Prices.RefundShare = 0.5
 
