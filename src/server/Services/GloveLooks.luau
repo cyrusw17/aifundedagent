@@ -38,32 +38,97 @@ local function handOf(character, side)
 	return nil
 end
 
-local function dressHands(player)
-	local character = player.Character
-	if not character then
-		return
+local function weldOn(part, hand, at)
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Massless = true
+	part.CFrame = hand.CFrame * at
+	local weld = Instance.new("Weld")
+	weld.Part0 = hand
+	weld.Part1 = part
+	weld.C0 = at
+	weld.Parent = part
+end
+
+-- What every pair shows whether or not its mesh is in: a cuff at the wrist in the pair's color and material, metal
+-- knuckle plates on Reinforced and up, and a glint on the starlight pairs. Without the mesh, a mitt over the hand
+-- too, so no tier ever looks like bare hands.
+local function addTrim(def, hand, offset, folder, hasMesh)
+	local color = Color3.fromRGB(def.color[1], def.color[2], def.color[3])
+	local material = Enum.Material[def.material or "Fabric"] or Enum.Material.Fabric
+	-- The hand itself: an R15 hand part, or the bottom of an R6 arm.
+	local size = Vector3.new(hand.Size.X, math.min(hand.Size.Y, 0.9), hand.Size.Z)
+	local cuff = Instance.new("Part")
+	cuff.Name = "Cuff"
+	cuff.Color = color
+	cuff.Material = material
+	cuff.Size = Vector3.new(size.X + 0.12, 0.22, size.Z + 0.12)
+	cuff.Parent = folder
+	weldOn(cuff, hand, offset * CFrame.new(0, size.Y / 2 - 0.08, 0))
+	if not hasMesh then
+		local mitt = Instance.new("Part")
+		mitt.Name = "Mitt"
+		mitt.Color = color
+		mitt.Material = material
+		mitt.Size = size + Vector3.new(0.08, 0.04, 0.08)
+		mitt.Parent = folder
+		weldOn(mitt, hand, offset * CFrame.new(0, -0.02, 0))
 	end
+	if def.tier >= 3 then
+		local plate = Instance.new("Part")
+		plate.Name = "Knuckles"
+		plate.Color = Color3.fromRGB(118, 116, 110)
+		plate.Material = Enum.Material.Metal
+		plate.Size = Vector3.new(size.X * 0.8, 0.14, 0.1)
+		plate.Parent = folder
+		-- Across the back of the hand, near the fingers (the back faces out: the hand's own -Z in either rig).
+		weldOn(plate, hand, offset * CFrame.new(0, -size.Y / 2 + 0.25, -size.Z / 2 - 0.08))
+	end
+	if def.tier >= 5 then
+		local sparkles = Instance.new("Sparkles")
+		sparkles.SparkleColor = color:Lerp(Color3.new(1, 1, 1), 0.5)
+		sparkles.Parent = cuff
+	end
+end
+
+-- Dresses a character's hands for the pair with id gloveId (bare hands: nothing). Old gloves come off first.
+function GloveLooks.dress(character, gloveId)
 	for _, side in { "Right", "Left" } do
 		local hand = handOf(character, side)
 		local old = hand and hand:FindFirstChild("WornGlove")
-		if old then
+		while old do
 			old:Destroy()
+			old = hand:FindFirstChild("WornGlove")
 		end
 	end
-
-	local def = byId[player:GetAttribute("GloveId") or "bare"]
+	local def = byId[gloveId or "bare"]
 	if not def or not def.prop then
 		return
 	end
 	for _, side in { "Right", "Left" } do
 		local hand, offset, length = handOf(character, side)
 		if hand then
+			local folder = Instance.new("Model")
+			folder.Name = "WornGlove"
+			folder:SetAttribute("GloveId", def.id)
 			local model = Props.make(def.prop, hand.CFrame * offset, length, side == "Right" and RIGHT or LEFT)
 			if model then
-				model.Name = "WornGlove"
+				model.Parent = folder
 				Props.weldTo(model, hand)
+				model.Parent = folder
 			end
+			addTrim(def, hand, offset, folder, model ~= nil)
+			folder.Parent = hand
 		end
+	end
+end
+
+local function dressHands(player)
+	local character = player.Character
+	if character then
+		GloveLooks.dress(character, player:GetAttribute("GloveId"))
 	end
 end
 
