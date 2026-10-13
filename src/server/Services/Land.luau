@@ -17,6 +17,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
 local LandConfig = require(Shared.Config.Land)
+local PricesConfig = require(Shared.Config.Prices)
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local GameConfig = require(Shared.Config.Game)
@@ -2271,7 +2272,9 @@ local function mailbox(player, land)
 		left -= take
 	end
 	local hay = bales * hayPerBale
-	local hidden = math.floor(hay * GameConfig.NeedleChancePerHay + 0.5)
+	-- A save keeps only how many bales a silo holds, not their hay (they come back out as Meadow hay, SiloBales), so
+	-- the away line sorts Meadow hay too, the same as LineRate.line("meadow", ...) above sets its speed.
+	local hidden = math.floor(hay * PricesConfig.needleChance("meadow") + 0.5)
 	local cash, found = 0, 0
 	if best then
 		found = math.floor(hidden * best.recovery + 0.5)
@@ -2483,7 +2486,6 @@ end
 -- as they always do, and strands from a boosted bale keep it. A helper only counts once their own slot has sold
 -- Prices.Trade.MinSoldToGiveCash, the same alt-account rule as handing over cash at the trading post. The owner's
 -- TogetherBonus attribute names who is helping (nil when nobody), for the HUD.
-local PricesConfig = require(Shared.Config.Prices)
 local friendCache = {} -- "low:high" UserIds -> true / false, filled in the background
 local function friends(a, b)
 	local lo, hi = math.min(a.UserId, b.UserId), math.max(a.UserId, b.UserId)
