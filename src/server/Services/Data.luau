@@ -276,6 +276,8 @@ local function stateFrom(saved)
 		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
+		-- price hold for needle bins: an index into Machines' HOLD_STEPS, nil when off (Machines.needleBin)
+		needleHold = typeof(saved.needleHold) == "number" and math.clamp(math.floor(saved.needleHold), 1, 4) or nil,
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- finder's rewards already paid in this slot, { [findId] = 1 }: paid once per kind, ever, even if the find is
 		-- later traded away (Finds.luau)
@@ -330,6 +332,7 @@ local function toSave(state)
 		thatch = state.thatch,
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
+		needleHold = state.needleHold,
 		finds = state.finds,
 		findsPaid = state.findsPaid,
 		skins = state.skins,

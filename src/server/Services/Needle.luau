@@ -309,6 +309,14 @@ local function pickUp(player, n, anyReach, quiet)
 	if not root or not n.Parent or (not anyReach and (n.Position - root.Position).Magnitude > PICKUP_REACH + 2) then
 		return false
 	end
+	-- Needles in a needle bin (Machines marks them Binned) belong to their owner; anyone may pick up a loose field needle.
+	local ownerId = n:GetAttribute("OwnerId")
+	if n:GetAttribute("Binned") and ownerId and ownerId ~= player.UserId then
+		if not quiet then
+			Data.toast(player, "Those needles belong to this bin's owner.")
+		end
+		return false
+	end
 	local id = n:GetAttribute("NeedleId") or Needle.default.id
 	local mult = n:GetAttribute("Mutation") or 1
 	local count = Needle.count(n)
