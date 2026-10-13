@@ -375,9 +375,66 @@ local function registerTogether(SelfTest)
 	end)
 end
 
+-- "LandAudit" (script audit, 13 Oct): the silo hands back the same bale it took, and away pay ignores the Alien
+-- Collector's beam-up-only rate.
+local function registerAudit(SelfTest)
+	SelfTest.register("LandAudit", function(t)
+		local L = Land.test
+		local Bales = require(Services.Bales)
+		local SB = L.SiloBales
+		local plot = { ownerId = -941, crew = { [-942] = true } }
+		t.check("silo takes ownerless bales", SB.mayTake(plot, nil))
+		t.check("silo takes the owner's and crew's bales", SB.mayTake(plot, -941) and SB.mayTake(plot, -942))
+		t.check("silo leaves a stranger's bale alone", not SB.mayTake(plot, -943))
+
+		local at = t.place().Position + Vector3.new(0, 3, 0)
+		local src = Bales.spawn(at, false, false, "pine")
+		src.body.Anchored = true
+		src.ownerId = -942
+		src.body:SetAttribute("NeedleBoost", 2.2)
+		src.body:SetAttribute("MutationBoost", 3)
+		src.body:SetAttribute("TogetherBoost", true)
+		Bales.wet(src)
+		local rec = SB.record(src)
+		Bales.consume(src)
+		local back = SB.respawn(at + Vector3.new(0, 0, 6), rec, -941)
+		back.body.Anchored = true
+		t.check("a bale comes out of the silo as the same hay", back.body:GetAttribute("HayType") == "pine", back.body:GetAttribute("HayType"))
+		t.check("it keeps its owner, not the farm's", back.ownerId == -942)
+		t.check("it keeps its needle boost", back.body:GetAttribute("NeedleBoost") == 2.2, back.body:GetAttribute("NeedleBoost"))
+		t.check("it keeps its mutation boost and together mark", back.body:GetAttribute("MutationBoost") == 3 and back.body:GetAttribute("TogetherBoost") == true)
+		t.check("it stays wet", back.body:GetAttribute("Wet") == true)
+		local plain = SB.respawn(at + Vector3.new(0, 0, 12), nil, -941)
+		plain.body.Anchored = true
+		t.check("a bale from a save comes out plain, owned by the farm", plain.ownerId == -941 and plain.body:GetAttribute("NeedleBoost") == nil)
+		pcall(Bales.consume, back)
+		pcall(Bales.consume, plain)
+
+		local owner = fakeOwner(-944)
+		local function land(sorters)
+			local items = { { id = "silo", gx = 0, gz = 0, dir = "N", stored = 40 }, { id = "hay_buyer", gx = 4, gz = 0, dir = "N" } }
+			for i, id in sorters do
+				table.insert(items, { id = id, gx = 2 + i, gz = 2, dir = "N" })
+			end
+			return { owned = true, savedAt = os.time() - 3600, items = items, needles = {} }
+		end
+		local alien = land({ "alien_collector" })
+		local letter = L.mailbox(owner, alien)
+		t.check("away pay with only an Alien Collector still sells hay", letter ~= nil and alien.items[1].stored < 40, tostring(letter))
+		local both = land({ "alien_collector", "conveyor_sorter" })
+		L.mailbox(owner, both)
+		local found = 0
+		for _, n in both.needles do
+			found += n
+		end
+		t.check("away pay with an Alien Collector and a sorter uses the sorter", both.items[1].stored < 40 and found > 0, ("%d left, %d needles"):format(both.items[1].stored, found))
+	end)
+end
+
 return function(SelfTest)
 	registerSaves(SelfTest)
 	registerTogether(SelfTest)
+	registerAudit(SelfTest)
 	SelfTest.register("Land", function(t)
 		local L = Land.test
 		if not L then

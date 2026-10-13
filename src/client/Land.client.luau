@@ -827,10 +827,12 @@ end
 
 -- LAYOUTS: save the clipboard as a named layout (kept in the save slot), or load one back into the clipboard
 -- to PASTE on any plot (Services/Blueprints.luau).
-local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
+-- The remotes are made at the end of the world build, which can take longer than any fixed wait on a slow server,
+-- so the button stays hidden until they exist instead of giving up (audit).
+local blueprintRemotes = ReplicatedStorage:FindFirstChild("LineBlueprints")
 local presetButton = button(actions, "LAYOUTS", PICKED)
 presetButton.Size = UDim2.fromOffset(100, 34) -- "layouts", not "blueprints": those are the fill-in templates
-presetButton.Visible = blueprintRemotes ~= nil
+presetButton.Visible = false
 local presetPanel = Instance.new("Frame")
 presetPanel.AnchorPoint = Vector2.new(0.5, 1)
 presetPanel.Position = UDim2.new(0.5, 0, 1, -172)
@@ -921,7 +923,9 @@ local function refreshPresets()
 	end
 end
 
-if blueprintRemotes then
+task.spawn(function()
+	blueprintRemotes = blueprintRemotes or ReplicatedStorage:WaitForChild("LineBlueprints")
+	presetButton.Visible = true
 	presetButton.Activated:Connect(function()
 		presetPanel.Visible = not presetPanel.Visible
 		if presetPanel.Visible then
@@ -944,7 +948,7 @@ if blueprintRemotes then
 			presetPanel.Visible = false
 		end
 	end)
-end
+end)
 
 local function undo()
 	if busy then
