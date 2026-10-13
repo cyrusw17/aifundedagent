@@ -67,6 +67,7 @@ Weather.Regions = {
 	meadow = { clear = 6, mist = 1 },
 	shore = { clear = 5, mist = 2 },
 	valley = { clear = 5, mist = 2 },
+	ridge = { clear = 4, mist = 2, fog = 1 },
 	homestead = { clear = 6, mist = 1 },
 	spindle = { clear = 4, mist = 2 },
 	pine = { clear = 4, mist = 2 },

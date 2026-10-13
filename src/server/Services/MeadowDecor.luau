@@ -300,8 +300,8 @@ function MeadowDecor.build(worldFolder)
 	signpost(folder, Vector2.new(-14, 6), Vector2.new(0, 1), "< TRUCK DEALER\nSELL HAY >", 10)
 	signpost(folder, Vector2.new(2, 40), Vector2.new(0, -1), "LAND OFFICE\nPLOTS FOR SALE", 11, true)
 	signpost(folder, Vector2.new(-112, 36), Vector2.new(1, 0), "HOMESTEAD MOTORS\nTRUCKS FOR SALE", 11, true)
-	signpost(folder, Vector2.new(10, -38), Vector2.new(0, 1), "BASE CAMP\n^ HOMESTEAD VALLEY (soon)", 11)
-	signpost(folder, Vector2.new(130, 36), Vector2.new(-1, 0), "< STARTER BASE\nPINE FOREST (soon) >", 11)
+	signpost(folder, Vector2.new(10, -38), Vector2.new(0, 1), "BASE CAMP\n^ HOMESTEAD VALLEY (Ridge Tunnel)", 11)
+	signpost(folder, Vector2.new(130, 36), Vector2.new(-1, 0), "< STARTER BASE\nPINE FOREST >", 11)
 
 	for _, def in Meadow.Gates do
 		gate(folder, def)

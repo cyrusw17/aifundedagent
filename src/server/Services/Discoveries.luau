@@ -30,7 +30,9 @@ end
 for _, r in Map.Regions do
 	add({ id = r.id, name = r.name, kind = "region" })
 end
-add({ id = WorldRegions.Sky.id, name = WorldRegions.Sky.name, kind = "region" })
+if Map.SkyIsland then
+	add({ id = WorldRegions.Sky.id, name = WorldRegions.Sky.name, kind = "region" })
+end
 add({ id = WorldRegions.Cave.id, name = WorldRegions.Cave.name, kind = "region" })
 local landmarks = {}
 for _, d in Map.Discoveries do
@@ -58,7 +60,7 @@ function Discoveries.focus(id)
 	end
 	local at = nil
 	if id == WorldRegions.Sky.id then
-		at = Map.Zeppelin.b.pos
+		at = Map.Zeppelin and Map.Zeppelin.b.pos
 	elseif id ~= WorldRegions.Cave.id then
 		for _, entry in landmarks do
 			local y = WorldShape.heightAt(entry.at.X, entry.at.Y)

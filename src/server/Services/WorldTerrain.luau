@@ -112,7 +112,10 @@ local function writeChunk(terrain, x0, z0)
 				for j = 1, layers do
 					local y0 = base + (j - 1) * RES
 					local fill = (h - y0) / RES
-					if fill > 0 then
+					if tube and tube.land and y0 >= tube.floor and y0 < tube.roof then
+						-- A road tunnel through the rock (the Ridge Cut): hollow inside.
+						continue
+					elseif fill > 0 then
 						matX[j][dk] = (h - y0 > RES * 3) and deep or top
 						occX[j][dk] = math.min(fill, 1)
 					elseif tube and y0 + RES > tube.floor and y0 < tube.roof then
@@ -135,6 +138,9 @@ end
 -- Sky Island: a floating disc of land with a rounded underside, above Homestead.
 local function writeSkyIsland(terrain)
 	local sky = Map.SkyIsland
+	if not sky then
+		return
+	end
 	local r = sky.radius + 24
 	local x0 = math.floor((sky.center.X - r) / RES) * RES
 	local z0 = math.floor((sky.center.Y - r) / RES) * RES

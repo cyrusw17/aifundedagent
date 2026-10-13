@@ -696,6 +696,9 @@ end
 Regions.drivable = drivable
 
 local function hayFields(r, rng)
+	if r.noFields then
+		return -- bare rock (Stitch Ridge)
+	end
 	local made = 0
 	for _ = 1, 400 do
 		if made >= Map.FieldsPerRegion then
@@ -848,29 +851,29 @@ function LANDMARKS.homestead(folder)
 	stalls.Parent = folder
 	local colors = { Rustic.PaintRed, Rustic.PaintGreen, Rustic.PaintBlue, Rustic.PaintYellow }
 	for i = 0, 3 do
-		local base = CFrame.new(-100, y, -1530 + i * 34) * CFrame.Angles(0, -math.pi / 2, 0)
+		local base = CFrame.new(-100, y, -4610 + i * 34) * CFrame.Angles(0, -math.pi / 2, 0)
 		part(stalls, "Counter", Vector3.new(12, 3.5, 3), base * CFrame.new(0, 1.75, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
 		for _, x in { -5.5, 5.5 } do
 			post(stalls, "Pole", 9, 0.5, base * CFrame.new(x, 0, 2), Rustic.Wood, Enum.Material.Wood)
 		end
 		part(stalls, "Canopy", Vector3.new(13, 0.4, 7), base * CFrame.new(0, 9, 0.5) * CFrame.Angles(math.rad(10), 0, 0), colors[i + 1], Enum.Material.Fabric)
 	end
-	billboard(part(stalls, "MarketSign", Vector3.new(1, 1, 1), CFrame.new(-100, y + 12, -1480), Rustic.Wood, nil, nil, false), "NEEDLE MARKET", Vector3.zero, 220)
+	billboard(part(stalls, "MarketSign", Vector3.new(1, 1, 1), CFrame.new(-100, y + 12, -4560), Rustic.Wood, nil, nil, false), "NEEDLE MARKET", Vector3.zero, 220)
 
-	building(folder, "TradingPost", CFrame.new(0, y, -1590) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "trading_post" })
-	building(folder, "Museum", CFrame.new(90, y, -1580) * CFrame.Angles(0, math.pi, 0), 34, 24, 16, { sign = "MUSEUM", prop = "museum", wall = Rustic.PaintCream, roof = Rustic.PaintBlue })
-	for i, z in { -1405, -1490, -1530 } do
+	building(folder, "TradingPost", CFrame.new(0, y, -4670) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "trading_post" })
+	building(folder, "Museum", CFrame.new(90, y, -4660) * CFrame.Angles(0, math.pi, 0), 34, 24, 16, { sign = "MUSEUM", prop = "museum", wall = Rustic.PaintCream, roof = Rustic.PaintBlue })
+	for i, z in { -4485, -4570, -4610 } do
 		building(folder, "Sawmill", CFrame.new(165, y, z) * CFrame.Angles(0, math.pi / 2, 0), 26, 20, 12, { sign = i == 1 and "SAWMILL ROW" or nil, prop = "mill" })
 	end
-	building(folder, "Workshop", CFrame.new(-150, y, -1600) * CFrame.Angles(0, math.pi * 0.75, 0), 24, 20, 11, { sign = "WORKSHOP", prop = "workshop" })
+	building(folder, "Workshop", CFrame.new(-150, y, -4680) * CFrame.Angles(0, math.pi * 0.75, 0), 24, 20, 11, { sign = "WORKSHOP", prop = "workshop" })
 
 	-- The bounty board and the well in the middle.
-	local board = part(folder, "BountyBoard", Vector3.new(14, 8, 0.6), CFrame.new(0, y + 6, -1480), Rustic.Wood, Enum.Material.WoodPlanks)
+	local board = part(folder, "BountyBoard", Vector3.new(14, 8, 0.6), CFrame.new(0, y + 6, -4560), Rustic.Wood, Enum.Material.WoodPlanks)
 	boardText(board, "BOUNTY BOARD\nNew jobs every day")
 	for _, x in { -6.5, 6.5 } do
-		post(folder, "BoardPost", 10, 0.7, CFrame.new(x, y, -1480), Rustic.WoodDark, Enum.Material.Wood)
+		post(folder, "BoardPost", 10, 0.7, CFrame.new(x, y, -4560), Rustic.WoodDark, Enum.Material.Wood)
 	end
-	local well = CFrame.new(0, y, -1440)
+	local well = CFrame.new(0, y, -4520)
 	post(folder, "Well", 3, 8, well, Rustic.Stone, Enum.Material.Cobblestone)
 	part(folder, "WellWater", Vector3.new(0.2, 6.4, 6.4), well * CFrame.new(0, 2.9, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Water, Enum.Material.Glass, Enum.PartType.Cylinder, false)
 	for _, x in { -3.6, 3.6 } do
@@ -878,9 +881,9 @@ function LANDMARKS.homestead(folder)
 	end
 	part(folder, "WellRoof", Vector3.new(9, 0.5, 5), well * CFrame.new(0, 8, 0), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
 
-	-- An arch where the North Road comes in.
-	-- On the road's center line, facing along it (the road runs (120, -1260) -> (0, -1330) here).
-	local arch = spot(80, -1283.3, Vector2.new(-120, -70).Unit)
+	-- An arch where the Ridge Cut comes in.
+	-- On the road's center line, facing along it (the road runs (-15, -4100) -> (0, -4460) here).
+	local arch = spot(-6.67, -4300, Vector2.new(15, -360).Unit)
 	for _, side in { -1, 1 } do
 		post(folder, "ArchPost", 16, 1.6, arch * CFrame.new(side * 11, -1, 0), Rustic.WoodDark, Enum.Material.Wood)
 	end
@@ -888,8 +891,8 @@ function LANDMARKS.homestead(folder)
 	boardText(beam, "HOMESTEAD VALLEY")
 
 	-- The Homestead branch of the bank (the Economy thread's counter can hook the BankCounter tag), facing the well.
-	local bank = building(folder, "HomesteadBank", CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0), 30, 22, 13, { sign = "SAVINGS & LOAN", wall = Rustic.PaintCream, roof = Rustic.PaintGreen, material = Enum.Material.Brick, prop = "homestead_bank" })
-	local counter = part(bank, "Counter", Vector3.new(10, 3.5, 2), CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 2.75, 3), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	local bank = building(folder, "HomesteadBank", CFrame.new(95, y, -4570) * CFrame.Angles(0, math.pi / 2, 0), 30, 22, 13, { sign = "SAVINGS & LOAN", wall = Rustic.PaintCream, roof = Rustic.PaintGreen, material = Enum.Material.Brick, prop = "homestead_bank" })
+	local counter = part(bank, "Counter", Vector3.new(10, 3.5, 2), CFrame.new(95, y, -4570) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 2.75, 3), Rustic.WoodDark, Enum.Material.WoodPlanks)
 	CollectionService:AddTag(counter, "BankCounter")
 
 	CollectionService:AddTag(board, "BountyBoard")
@@ -902,28 +905,28 @@ function LANDMARKS.homestead(folder)
 		local p = Vector3.new(x, y, z)
 		return CFrame.lookAt(p, Vector3.new(tx, y, tz))
 	end
-	townsperson(people, "bounty", "Marshal Hettie", facing(10, -1474, 0, -1440), Rustic.PaintBlue, {
+	townsperson(people, "bounty", "Marshal Hettie", facing(10, -4554, 0, -4520), Rustic.PaintBlue, {
 		"Jobs go up on the board every morning. Bring the hay, get paid.",
 		"Folks out past the Spindle pay double for clean bales.",
 	})
-	townsperson(people, "trader", "Trader Oskar", facing(-12, -1572, 0, -1440), Rustic.PaintGreen, {
+	townsperson(people, "trader", "Trader Oskar", facing(-12, -4652, 0, -4520), Rustic.PaintGreen, {
 		"I'll trade for anything with a shine on it. Needles most of all.",
 		"Pine needles from the west woods? Bring me those.",
 	})
-	townsperson(people, "elder", "Old Wren", facing(-14, -1436, 0, -1440), Rustic.PaintRedDark, {
+	townsperson(people, "elder", "Old Wren", facing(-14, -4516, 0, -4520), Rustic.PaintRedDark, {
 		"Twelve shards, they say, and the Spindle door opens.",
 		"The tailor down on the south shore knows more than she lets on.",
 		"When the gold beam goes up, ride for it. Rich hay never lasts.",
 	})
-	townsperson(people, "ferrymaster", "Ferrymaster Bo", facing(70, -1400, 80, -1300), IRON, {
+	townsperson(people, "ferrymaster", "Ferrymaster Bo", facing(70, -4480, 80, -4380), IRON, {
 		"Ferries leave from Swamp Port and Ash Dock. Trailers ride free.",
-		"The zeppelin lifts off the field east of here, trucks and all.",
+		"The Return Ferry runs from Swamp Port back round to Meadow Shore.",
 	})
 end
 
 function LANDMARKS.spindle(folder)
 	-- The sealed door on the Spindle's east face, with a socket for each of the twelve shards of the Master Needle.
-	local x, z = 155, -990
+	local x, z = 333, -5916
 	local base = spot(x, z, Vector2.new(1, 0))
 	local stone = Color3.fromRGB(150, 142, 160)
 	local frame = part(folder, "DoorFrame", Vector3.new(20, 26, 4), base * CFrame.new(0, 12, 2.5), stone, Enum.Material.Slate)
@@ -948,8 +951,8 @@ function LANDMARKS.spindle(folder)
 	end
 	billboard(door, "THE SPINDLE\nTwelve shards open this door", Vector3.new(0, 14, 0), 160)
 
-	-- The Observatory on the Spindle's shoulder (meteor showers land here).
-	local ox, oz = 30, -1080
+	-- The Observatory up on the bluff above Mirror Lake (meteor showers land here).
+	local ox, oz = 1830, -1000
 	local oy = ground(ox, oz)
 	local obs = Instance.new("Model")
 	obs.Name = "Observatory"
@@ -1019,7 +1022,7 @@ end
 
 function LANDMARKS.shore(folder)
 	-- The lighthouse on the south coast: it flashes at night (its code is a puzzle for later).
-	local x, z = 420, 860
+	local x, z = 300, 1280
 	local y = ground(x, z)
 	local tower = Instance.new("Model")
 	tower.Name = "Lighthouse"
@@ -1035,37 +1038,37 @@ function LANDMARKS.shore(folder)
 	tower.Parent = folder
 
 	-- The Tailor's shack, where the mystery starts.
-	building(folder, "TailorShack", spot(-250, 660, Vector2.new(0, 1), 4), 18, 14, 9, { sign = "THE TAILOR", roof = Rustic.PaintGreen })
-	signpost(folder, -230, 690, Vector2.new(0, 1), "THE TAILOR'S SHACK", 10)
+	building(folder, "TailorShack", spot(-264, 820, Vector2.new(0, 1), 4), 18, 14, 9, { sign = "THE TAILOR", roof = Rustic.PaintGreen })
+	signpost(folder, -244, 850, Vector2.new(0, 1), "THE TAILOR'S SHACK", 10)
 end
 
 function LANDMARKS.pine(folder)
 	-- The old mill by the end of the Shore Road, with log piles.
-	building(folder, "PineMill", spot(-1210, 190, Vector2.new(1, 0), 18), 30, 22, 14, { sign = "PINE MILL", prop = "mill", roof = Rustic.PaintGreen })
+	building(folder, "PineMill", spot(-2010, -780, Vector2.new(1, 0), 18), 30, 22, 14, { sign = "PINE MILL", prop = "mill", roof = Rustic.PaintGreen })
 	-- A log pile beside it: three logs on the ground, two on top.
 	for layer = 0, 1 do
 		for k = 0, 2 - layer do
-			local x = -1180 + k * 2.3 + layer * 1.15
-			part(folder, "Log", Vector3.new(14, 2.2, 2.2), CFrame.new(x, 18 + 1.1 + layer * 2, 214) * CFrame.Angles(0, math.pi / 2, 0), Rustic.Bark, Enum.Material.Wood, Enum.PartType.Cylinder)
+			local x = -1980 + k * 2.3 + layer * 1.15
+			part(folder, "Log", Vector3.new(14, 2.2, 2.2), CFrame.new(x, 18 + 1.1 + layer * 2, -756) * CFrame.Angles(0, math.pi / 2, 0), Rustic.Bark, Enum.Material.Wood, Enum.PartType.Cylinder)
 		end
 	end
-	signpost(folder, -1120, 120, Vector2.new(1, 0.3), "PINE FOREST", 9)
+	signpost(folder, -1625, 50, Vector2.new(1, 0.3), "PINE FOREST", 9)
 end
 
 function LANDMARKS.haunted(folder, rng)
 	-- The Wreck of the Bobbin, half sunk on the west shore. The captain's cabin hides the Moth-Eaten Map.
-	local cf = CFrame.new(-1770, -2, -860) * CFrame.Angles(0, math.rad(20), math.rad(12))
+	local cf = CFrame.new(-3500, -2, -2807) * CFrame.Angles(0, math.rad(20), math.rad(12))
 	local hull = Color3.fromRGB(70, 58, 48)
 	part(folder, "Hull", Vector3.new(16, 10, 60), cf * CFrame.new(0, 3, 0), hull, Enum.Material.WoodPlanks)
 	wedge(folder, "Bow", Vector3.new(16, 10, 14), cf * CFrame.new(0, 3, -37), hull, Enum.Material.WoodPlanks)
 	part(folder, "Deck", Vector3.new(15, 1, 58), cf * CFrame.new(0, 8.4, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
 	building(folder, "CaptainsCabin", cf * CFrame.new(0, 8.4, 18), 12, 12, 7, { roof = hull })
 	post(folder, "Mast", 34, 1.4, cf * CFrame.new(0, 8, -6) * CFrame.Angles(0, 0, math.rad(-18)), Rustic.WoodDark, Enum.Material.Wood)
-	signpost(folder, -1700, -830, Vector2.new(-1, 0), "WRECK OF THE BOBBIN", 11)
+	signpost(folder, -3430, -2790, Vector2.new(-1, 0), "WRECK OF THE BOBBIN", 11)
 
 	-- Graves and lanterns along the grove road.
 	for i = 1, 14 do
-		local x, z = -1180 + rng:NextNumber(-90, 90), -780 + rng:NextNumber(-60, 60)
+		local x, z = -2620 + rng:NextNumber(-90, 90), -2960 + rng:NextNumber(-60, 60)
 		if buildable(x, z, 4) and not crowded(x, z, 4) then
 			local base = spot(x, z, Vector2.new(0, -1))
 			part(folder, "Gravestone", Vector3.new(2.4, 3.4, 0.6), base * CFrame.new(0, 1.2, 0) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.15, 0.15)), Color3.fromRGB(110, 106, 116), Enum.Material.Slate)
@@ -1073,27 +1076,27 @@ function LANDMARKS.haunted(folder, rng)
 		end
 	end
 	for i = 0, 8 do
-		local p = Vector2.new(-1120, -760):Lerp(Vector2.new(-900, -1060), i / 8) + Vector2.new(11, 0)
+		local p = Vector2.new(-2250, -1800):Lerp(Vector2.new(-2350, -2200), i / 8) + Vector2.new(11, 0)
 		local lx, lz = offRoad(p.X, p.Y, 1.5) -- the road bends near the end; keep every post out of the lane
 		local base = CFrame.new(at(lx, lz))
 		post(folder, "LanternPost", 7, 0.4, base, Color3.fromRGB(40, 36, 36), Enum.Material.Metal)
 		local glow = part(folder, "Lantern", Vector3.new(1, 1.2, 1), base * CFrame.new(0, 7.4, 0), Color3.fromRGB(150, 210, 190), Enum.Material.Neon, nil, false)
 		light(glow, Color3.fromRGB(140, 220, 200), 20, 0.8)
 	end
-	signpost(folder, -1150, -700, Vector2.new(0.3, 1), "HAUNTED GROVE\nStay on the road at night", 11)
+	signpost(folder, -2235, -1780, Vector2.new(0.3, 1), "HAUNTED GROVE\nStay on the road at night", 11)
 end
 
 function LANDMARKS.snow(folder)
 	-- The ski lodge at the end of the Snow Road.
-	building(folder, "SkiLodge", spot(-650, -1625, Vector2.new(0, 1), 46), 34, 24, 13, { sign = "SNOW PEAK LODGE", roof = SNOW })
+	building(folder, "SkiLodge", spot(-1665, -5082, Vector2.new(0, 1), 46), 34, 24, 13, { sign = "SNOW PEAK LODGE", roof = SNOW })
 	-- The hidden door: a stitched seam in the rock high on the ridge.
-	local x, z = -1060, -1700
+	local x, z = -2130, -5180
 	local base = spot(x, z, Vector2.new(1, 0.4))
 	local seam = part(folder, "HiddenDoor", Vector3.new(8, 12, 1.2), base * CFrame.new(0, 5, 0), Color3.fromRGB(110, 120, 134), Enum.Material.Slate)
 	for i = -2, 2 do
 		part(folder, "Stitch", Vector3.new(2.4, 0.3, 0.3), seam.CFrame * CFrame.new(0, i * 2, -0.7) * CFrame.Angles(0, 0, math.rad(i % 2 == 0 and 30 or -30)), Color3.fromRGB(170, 220, 240), Enum.Material.Neon, nil, false)
 	end
-	signpost(folder, -660, -1460, Vector2.new(0, 1), "SNOW PEAK\nLodge ahead", 9)
+	signpost(folder, -1675, -4870, Vector2.new(0, 1), "SNOW PEAK\nLodge ahead", 9)
 end
 
 function LANDMARKS.volcano(folder, rng)
@@ -1108,7 +1111,7 @@ function LANDMARKS.volcano(folder, rng)
 	billboard(spire, "VOLCANO", Vector3.new(0, 30, 0), 900)
 
 	-- The Old Quarry at the foot: cut stone, a cracked mine cart track and a locked chest.
-	local q = CFrame.new(740, 30, -1300)
+	local q = CFrame.new(1943, 30, -5759)
 	for i = 1, 9 do
 		local size = Vector3.new(rng:NextNumber(4, 7), rng:NextNumber(3, 6), rng:NextNumber(4, 7))
 		part(folder, "QuarryStone", size, q * CFrame.new(rng:NextNumber(-30, 30), size.Y / 2, rng:NextNumber(-25, 25)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color3.fromRGB(122, 112, 104), Enum.Material.Slate)
@@ -1123,12 +1126,12 @@ function LANDMARKS.volcano(folder, rng)
 	local cart = q * CFrame.new(4, 1.6, 18)
 	part(folder, "MineCart", Vector3.new(5, 2.6, 3.6), cart, IRON, Enum.Material.Metal)
 	part(folder, "Chest", Vector3.new(3, 2, 2), q * CFrame.new(-26, 1, -18), Rustic.WoodDark, Enum.Material.WoodPlanks)
-	signpost(folder, 680, -1275, Vector2.new(-0.6, 0.8), "OLD QUARRY", 8)
+	signpost(folder, 1883, -5734, Vector2.new(-0.6, 0.8), "OLD QUARRY", 8)
 end
 
 function LANDMARKS.desert(folder, rng)
 	-- The Buried Pyramid: stepped sandstone, half under the dunes.
-	local c = Vector3.new(1500, 10, -580)
+	local c = Vector3.new(1934, 10, -4355)
 	local stone = Color3.fromRGB(190, 160, 112)
 	for i = 0, 5 do
 		local w = 96 - i * 16
@@ -1146,16 +1149,16 @@ function LANDMARKS.desert(folder, rng)
 		claim(x, z)
 	end
 	for i = 0, 2 do
-		local base = spot(1170 + i * 16, -222, Vector2.new(0, 1))
+		local base = spot(1579 + i * 16, -3980, Vector2.new(0, 1))
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, -2.5), Rustic.Cloth, Enum.Material.Fabric)
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, 2.5) * CFrame.Angles(0, math.pi, 0), Rustic.Cloth, Enum.Material.Fabric)
 	end
-	signpost(folder, 1060, -470, Vector2.new(-1, 0), "DESERT DUNES", 9)
+	signpost(folder, 2240, -3250, Vector2.new(0, -1), "DESERT DUNES", 9)
 end
 
 function LANDMARKS.swamp(folder, rng)
 	-- Boardwalks out over the bog, with lily pads in the pools.
-	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1440, 495), Vector2.new(1500, 360) } } do
+	for _, walk in { { Vector2.new(2280, -2325), Vector2.new(2340, -2170) }, { Vector2.new(2720, -2375), Vector2.new(2780, -2510) } } do
 		local a, b = walk[1], walk[2]
 		local n = math.floor((b - a).Magnitude / 6)
 		local along = CFrame.lookAt(Vector3.zero, Vector3.new(b.X - a.X, 0, b.Y - a.Y))
@@ -1171,26 +1174,26 @@ function LANDMARKS.swamp(folder, rng)
 		end
 	end
 	for _ = 1, 50 do
-		local x, z = 1120 + rng:NextNumber(-500, 500), 470 + rng:NextNumber(-300, 300)
+		local x, z = 2400 + rng:NextNumber(-700, 700), -2400 + rng:NextNumber(-800, 800)
 		local h, water = WorldShape.column(x, z)
 		if water and water > SEA and water - h < 3 then
 			part(folder, "LilyPad", Vector3.new(0.2, 3, 3), CFrame.new(x, water + 0.1, z) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(96, 128, 70), Enum.Material.Grass, Enum.PartType.Cylinder, false)
 		end
 	end
-	signpost(folder, 980, 540, Vector2.new(-1, 0), "THE SWAMP\nMud slows trucks", 10)
+	signpost(folder, 2195, -1830, Vector2.new(0, 1), "THE SWAMP\nMud slows trucks", 10)
 end
 
 function LANDMARKS.keys(folder)
 	-- A harbor market by the ferry, and tide-pool rocks.
 	for i = 0, 2 do
-		local base = spot(2905 + i * 16, 40, Vector2.new(-1, 0), 2)
+		local base = spot(3990 + i * 16, -2630, Vector2.new(-1, 0), 2)
 		part(folder, "Counter", Vector3.new(3, 3.5, 10), base * CFrame.new(0, 1.75, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
 		part(folder, "Awning", Vector3.new(7, 0.4, 12), base * CFrame.new(0, 8, 0) * CFrame.Angles(0, 0, math.rad(10)), ({ Rustic.PaintBlue, Rustic.PaintCream, Rustic.PaintGreen })[i + 1], Enum.Material.Fabric)
 		for _, z in { -5, 5 } do
 			post(folder, "Pole", 8, 0.4, base * CFrame.new(2.5, 0, z), Rustic.Wood, Enum.Material.Wood)
 		end
 	end
-	signpost(folder, 2780, -270, Vector2.new(-1, 0), "THIMBLE KEYS", 9)
+	signpost(folder, 3946, -3192, Vector2.new(-1, 0), "THIMBLE KEYS", 9)
 end
 
 function LANDMARKS.bobbin(folder)
@@ -1221,7 +1224,7 @@ local function graveyard(folder, rng)
 		if made >= 6 then
 			break
 		end
-		local x, z = 2150 + rng:NextNumber(-260, 260), -1560 + rng:NextNumber(-200, 200)
+		local x, z = 3700 + rng:NextNumber(-260, 260), -5560 + rng:NextNumber(-200, 200)
 		local d = WorldShape.segment(x, z, lane.from.X, lane.from.Y, lane.to.X, lane.to.Y)
 		if d > lane.width / 2 + 70 then
 			local cf = CFrame.new(x, SEA - 6, z) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), rng:NextNumber(0, math.pi * 2), rng:NextNumber(0.2, 0.5))
@@ -1235,6 +1238,9 @@ end
 -- The sky island's trees and its field of cloud hay.
 local function skyIsland(folder, rng)
 	local sky = Map.SkyIsland
+	if not sky then
+		return -- out for now
+	end
 	for i = 1, 16 do
 		local a = rng:NextNumber(0, math.pi * 2)
 		local d = rng:NextNumber(30, sky.radius * 0.7)
@@ -1253,18 +1259,20 @@ local function regionCenter(id)
 	local r = WorldShape.region(id)
 	return r and Vector2.new(r.cx, r.cz) or Vector2.zero
 end
-local HOMESTEAD = Vector2.new(0, -1470)
-local ASH_DOCK = Vector2.new(1585, -1225)
+local HOMESTEAD = Vector2.new(0, -4550)
+local ASH_DOCK = Vector2.new(3107, -5627)
+local SWAMP_PORT = Vector2.new(3220, -2246)
+local MIRROR_LAKE = Map.Lake.center
 local JUNCTIONS = {
-	{ -30, -600, Vector2.new(0, 1), { { "^", "HOMESTEAD VALLEY", HOMESTEAD }, { ">", "MIRROR LAKE", Vector2.new(400, -880) } } },
-	{ 100, -748, Vector2.new(0, 1), { { "<", "HOMESTEAD", HOMESTEAD }, { ">", "DESERT", function() return regionCenter("desert") end } } },
-	{ 150, 610, Vector2.new(0, -1), { { "<", "PINE FOREST", function() return regionCenter("pine") end }, { ">", "SWAMP", function() return regionCenter("swamp") end } } },
-	{ -1190, -740, Vector2.new(1, 0), { { "^", "HOMESTEAD", HOMESTEAD }, { ">", "WRECK", Vector2.new(-1765, -860) } } },
-	{ -620, -1320, Vector2.new(1, 0), { { "<", "SNOW PEAK", Vector2.new(-650, -1600) }, { ">", "HOMESTEAD", HOMESTEAD } } },
-	{ 220, -1475, Vector2.new(-1, 0), { { ">", "VOLCANO", function() return regionCenter("volcano") end }, { ">", "ASH DOCK", ASH_DOCK } } },
-	{ 1300, -400, Vector2.new(0, -1), { { "<", "HIGHWAY", Map.Highway.from }, { "v", "SWAMP", function() return regionCenter("swamp") end } } },
-	{ 1560, 500, Vector2.new(-1, 0), { { ">", "SWAMP PORT", Vector2.new(1685, 520) }, { "", "Ferry to Thimble Keys" } } },
-	{ 1480, -1170, Vector2.new(-1, 0), { { ">", "ASH DOCK", ASH_DOCK }, { "", "Ferry to Bobbin Rock" } } },
+	{ 150, 600, Vector2.new(0, -1), { { "<", "PINE FOREST", function() return regionCenter("pine") end }, { ">", "MIRROR LAKE", MIRROR_LAKE } } },
+	{ -30, -600, Vector2.new(0, 1), { { "^", "HOMESTEAD", HOMESTEAD }, { "", "by the Ridge Cut" } } },
+	{ 450, 740, Vector2.new(0, -1), { { "v", "RETURN FERRY", Vector2.new(715, 1195) }, { ">", "MIRROR LAKE", MIRROR_LAKE } } },
+	{ -2540, -2880, Vector2.new(0, 1), { { "^", "HOMESTEAD", HOMESTEAD }, { "<", "WRECK", Vector2.new(-3495, -2807) } } },
+	{ -1700, -4730, Vector2.new(1, 0), { { "<", "SNOW PEAK LODGE", Vector2.new(-1665, -5057) }, { ">", "HOMESTEAD", HOMESTEAD } } },
+	{ 2440, -2330, Vector2.new(0, 1), { { ">", "SWAMP PORT", SWAMP_PORT }, { "", "Ferries to Thimble Keys and Meadow" } } },
+	{ 2110, -3570, Vector2.new(0, 1), { { "<", "HIGHWAY", Map.Highway.from }, { "^", "HOMESTEAD", HOMESTEAD } } },
+	{ 1510, -4280, Vector2.new(1, 0), { { "v", "VOLCANO", function() return regionCenter("volcano") end }, { ">", "ASH DOCK", ASH_DOCK } } },
+	{ 2980, -5520, Vector2.new(-1, 0), { { ">", "ASH DOCK", ASH_DOCK }, { "", "Ferry to Bobbin Rock" } } },
 }
 
 -- A junction sign's text: one line per place, "^ HOMESTEAD 880" or "MIRROR LAKE 340 >" (arrows keep their side).
@@ -1428,10 +1436,12 @@ function Regions.build(worldFolder)
 	sea.Parent = folder
 	graveyard(sea, rng)
 
-	local sky = Instance.new("Model")
-	sky.Name = "Sky Island"
-	sky.Parent = folder
-	skyIsland(sky, rng)
+	if Map.SkyIsland then
+		local sky = Instance.new("Model")
+		sky.Name = "Sky Island"
+		sky.Parent = folder
+		skyIsland(sky, rng)
+	end
 
 	local signs = Instance.new("Model")
 	signs.Name = "Signs"

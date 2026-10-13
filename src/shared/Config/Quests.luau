@@ -130,12 +130,12 @@ Quests.Spots = {
 		pos = Vector3.new(-280, 0, -330),
 		radius = 4,
 	},
-	-- The Drowned Rows: old pilings standing out of the sea south of the Meadow beach. Swim in from the beach side.
+	-- The Drowned Rows: old pilings standing out of the sea off the Lighthouse point, south of the Meadow. Swim in from the beach side.
 	drowned_rows = {
 		region = "Meadow",
 		name = "Drowned Rows chest",
 		look = "rows",
-		sea = Vector2.new(300, 1085),
+		sea = Vector2.new(300, 1385), -- off the Lighthouse point
 		radius = 5,
 	},
 	-- The Weaver, chapter 1: words cut in the rock beside the Spindle door, and a spool that rises from Mirror Lake.
@@ -143,14 +143,14 @@ Quests.Spots = {
 		region = "The Spindle",
 		name = "Words beside the door",
 		look = "plaque",
-		world = Vector2.new(163, -979),
+		world = Vector2.new(341, -5905),
 		radius = 8,
 	},
 	weaver_spool = {
 		region = "The Spindle",
 		name = "Weaver's spool",
 		look = "spool",
-		world = Vector2.new(262, -880), -- the west shore of Mirror Lake
+		world = Vector2.new(1840, -844), -- the west shore of Mirror Lake
 		showWhen = "midnight",
 		item = true,
 	},
@@ -159,14 +159,14 @@ Quests.Spots = {
 		region = "Meadow Shore",
 		name = "The tailor's note",
 		look = "page",
-		world = Vector2.new(-238, 668), -- beside the Tailor's Shack
+		world = Vector2.new(-252, 828), -- beside the Tailor's Shack
 		radius = 8,
 	},
 	shore_glint = {
 		region = "Meadow Shore",
 		name = "Glint under the lighthouse",
 		look = "shardglint",
-		world = Vector2.new(412, 875),
+		world = Vector2.new(318, 1296),
 		showWhen = "night",
 		item = true,
 	},
@@ -174,7 +174,7 @@ Quests.Spots = {
 		region = "Pine Forest",
 		name = "Stitched pine",
 		look = "stitchedpine",
-		world = Vector2.new(-1110, 90),
+		world = Vector2.new(-1910, -880),
 		radius = 10,
 	},
 	old_wren = {
@@ -188,7 +188,7 @@ Quests.Spots = {
 		region = "Homestead Valley",
 		name = "Glint in the hub well",
 		look = "shardglint",
-		world = Vector2.new(4, -1444),
+		world = Vector2.new(4, -4524),
 		showWhen = "midnight",
 		item = true,
 	},
@@ -196,35 +196,35 @@ Quests.Spots = {
 		region = "Swamp",
 		name = "Sunken stone",
 		look = "stone",
-		world = Vector2.new(1120, 470),
+		world = Vector2.new(2400, -2400),
 		radius = 10,
 	},
 	keys_bead_1 = {
 		region = "Thimble Keys",
 		name = "Bead lantern",
 		look = "lantern",
-		world = Vector2.new(3020, -250),
+		world = Vector2.new(4320, -3100),
 		radius = 10,
 	},
 	keys_bead_2 = {
 		region = "Thimble Keys",
 		name = "Bead lantern",
 		look = "lantern",
-		world = Vector2.new(3110, -130),
+		world = Vector2.new(4410, -2980),
 		radius = 10,
 	},
 	keys_bead_3 = {
 		region = "Thimble Keys",
 		name = "Bead lantern",
 		look = "lantern",
-		world = Vector2.new(3200, -240),
+		world = Vector2.new(4500, -3090),
 		radius = 10,
 	},
 	keys_glint = {
 		region = "Thimble Keys",
 		name = "Glint on the string",
 		look = "shardglint",
-		world = Vector2.new(3100, -200),
+		world = Vector2.new(4400, -3050),
 		showWhen = "dusk",
 		item = true,
 	},
@@ -250,7 +250,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(163, 0, 392),
 		radius = 10,
-		world = Vector2.new(-1090, 170),
+		world = Vector2.new(-1890, -800),
 	},
 	signal_valley = {
 		region = "Homestead Valley",
@@ -258,7 +258,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(-17, 0, -392),
 		radius = 10,
-		world = Vector2.new(180, -1450),
+		world = Vector2.new(180, -4530),
 	},
 	signal_grove = {
 		region = "Haunted Grove",
@@ -266,7 +266,7 @@ Quests.Spots = {
 		look = "stone",
 		fallback = Vector3.new(-330, 0, -250),
 		radius = 10,
-		world = Vector2.new(-1300, -950),
+		world = Vector2.new(-2530, -2930),
 	},
 
 	-- Old Bessie's parts, one from each of three regions. Traders leave them by the roads out of Meadow until the regions open.
@@ -276,7 +276,7 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(137, 0, 380),
 		item = true,
-		world = Vector2.new(-1240, 232),
+		world = Vector2.new(-2040, -738),
 	},
 	bessie_radiator = {
 		region = "Desert Dunes",
@@ -284,7 +284,7 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(-43, 0, -385),
 		item = true,
-		world = Vector2.new(1312, -236),
+		world = Vector2.new(1721, -3994),
 	},
 	bessie_spring = {
 		region = "Snow Peak",
@@ -292,86 +292,86 @@ Quests.Spots = {
 		look = "crate",
 		fallback = Vector3.new(-43, 0, -360),
 		item = true,
-		world = Vector2.new(-612, -1574),
+		world = Vector2.new(-1627, -5031),
 	},
 
 	-- Spots that only exist out in their region (no fallback). `world` places them on the Stitched Isles
 	-- (Config/WorldMap.luau, Services/Regions.luau landmarks); a QuestAnchor part still overrides it.
-	snow_door = { region = "Snow Peak", name = "Hidden door", look = "marker", world = Vector2.new(-1052, -1697) },
+	snow_door = { region = "Snow Peak", name = "Hidden door", look = "marker", world = Vector2.new(-2122, -5177) },
 	volcano_crater = {
 		region = "Volcano",
 		name = "Crater rim",
 		look = "stone",
 		radius = 20,
-		world = Vector2.new(1080, -1418),
+		world = Vector2.new(2350, -5908),
 	},
 	graveyard_ghost = {
 		region = "Bobbin Rock",
 		name = "Captain's ghost",
 		look = "ghost",
-		world = Vector2.new(2585, -1760),
+		world = Vector2.new(4342, -5346),
 	},
 	captains_log_1 = {
 		region = "Bobbin Rock",
 		name = "Log page",
 		look = "page",
 		item = true,
-		world = Vector2.new(2770, -1878),
+		world = Vector2.new(4600, -5400),
 	},
 	captains_log_2 = {
 		region = "Bobbin Rock",
 		name = "Log page",
 		look = "page",
 		item = true,
-		world = Vector2.new(2680, -1960),
+		world = Vector2.new(4480, -5420),
 	},
 	captains_log_3 = {
 		region = "Bobbin Rock",
 		name = "Log page",
 		look = "page",
 		item = true,
-		world = Vector2.new(2860, -1770),
+		world = Vector2.new(4716, -5394),
 	},
 	pyramid_garage = {
 		region = "Desert Dunes",
 		name = "Buried garage",
 		look = "marker",
 		radius = 16,
-		world = Vector2.new(1500, -524),
+		world = Vector2.new(1934, -4299),
 	},
 	pyramid_mechanic = {
 		region = "Desert Dunes",
 		name = "Old mechanic",
 		look = "scarecrow",
-		world = Vector2.new(1278, -212),
+		world = Vector2.new(1687, -3970),
 	},
 	lantern_1 = {
 		region = "Haunted Grove",
 		name = "Lantern",
 		look = "lantern",
 		radius = 8,
-		world = Vector2.new(-1073, -835),
+		world = Vector2.new(-2264, -1900),
 	},
 	lantern_2 = {
 		region = "Haunted Grove",
 		name = "Lantern",
 		look = "lantern",
 		radius = 8,
-		world = Vector2.new(-990, -948),
+		world = Vector2.new(-2294, -2020),
 	},
 	lantern_3 = {
 		region = "Haunted Grove",
 		name = "Lantern",
 		look = "lantern",
 		radius = 8,
-		world = Vector2.new(-908, -1060),
+		world = Vector2.new(-2324, -2140),
 	},
 	haunted_crossroads = {
 		region = "Haunted Grove",
 		name = "The crossroads",
 		look = "stone",
 		radius = 12,
-		world = Vector2.new(-1176, -756),
+		world = Vector2.new(-2580, -2890),
 	},
 }
 
