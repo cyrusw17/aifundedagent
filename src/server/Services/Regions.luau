@@ -36,7 +36,7 @@ local PALETTE = {
 	desert = { leaves = Color3.fromRGB(107, 128, 89), bark = Color3.fromRGB(122, 110, 94) },
 	swamp = { leaves = Color3.fromRGB(74, 92, 54), bark = Color3.fromRGB(59, 54, 46) },
 }
-local palette = {} -- the region being planted right now (set in Regions.build)
+local palette: { leaves: Color3?, bark: Color3? } = {} -- the region being planted right now (set in Regions.build)
 local SEA = Map.SeaLevel
 
 -- Every hay field in the world, for the rich field rotation: { region, center, bales = { bale record } }
