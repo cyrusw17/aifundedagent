@@ -27,6 +27,7 @@ return {
 	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
 	ExpansionRows = 2,
 	ExpansionPrice = Prices.PlotExpansion,
+	SecondPlotPrice = Prices.SecondPlot, -- a save can own a second plot at this price
 	BinDividersPrice = Prices.BinDividers, -- the needle bin's type dividers (Machines bin.splitByType)
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
