@@ -62,6 +62,10 @@ local function useShovel(player, root, aim)
 	else
 		bale = Bales.inFront(root, Config.ShovelReach)
 	end
+	-- The aim's position is range-checked, but the part it names could be any bale in the world.
+	if bale and (bale.body.Position - root.Position).Magnitude > Config.ToolReach then
+		bale = nil
+	end
 	if bale and not bale.carriedBy then
 		Avatar.swing(player, "Shovel", function()
 			Bales.breakOpen(player, bale)
@@ -98,12 +102,15 @@ local function useShovel(player, root, aim)
 		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
 		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
 		local first = targetPieces(1)[1]
-		local _, hayTier = if first then Gloves.pieceWeight(first) else 0, 0
+		local hayTier = 0
+		if first then
+			hayTier = select(2, Gloves.pieceWeight(first))
+		end
 		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier), room))
 		if #list == 0 then
 			return
 		end
-		local strands, found = 0, 0
+		local strands, found, unsorted = 0, 0, 0
 		for i = #list, 1, -1 do
 			local piece = list[i]
 			if Hay.isNeedle(piece) then
@@ -114,6 +121,9 @@ local function useShovel(player, root, aim)
 				end
 			else
 				strands += 1
+				if not piece:GetAttribute("Sorted") then
+					unsorted += 1 -- hay from a sorted bale has had its needles taken out already
+				end
 				local weight, tier = Gloves.pieceWeight(piece)
 				state.loadWeight = (state.loadWeight or 0) + weight
 				state.loadTier = math.max(state.loadTier or 0, tier)
@@ -121,7 +131,8 @@ local function useShovel(player, root, aim)
 		end
 		local hay = strands * Config.HayPerPiece
 		state.loadHay += hay
-		state.loadNeedles += found + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+		state.loadNeedles += found
+			+ Economy.rollNeedles(rng, unsorted * Config.HayPerPiece, Config.NeedleChancePerHay)
 		Data.sync(player)
 		Hay.flyToPlayer(root, list)
 		Feedback.play("Scoop", root)

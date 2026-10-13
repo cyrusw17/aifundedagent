@@ -86,6 +86,10 @@ Prices.Gloves = {
 -- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
 -- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
 Prices.Plot = 2500
+-- Each extra row of 12 tiles at the back of a plot (two rows to buy). A new plot's 96 tiles hold a first line easily;
+-- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
+-- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
+Prices.PlotExpansion = 5000
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the

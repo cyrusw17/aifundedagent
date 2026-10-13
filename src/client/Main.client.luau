@@ -113,8 +113,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		return
 	end
 	local kind = input.UserInputType
-	local pressed = kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch
-	if pressed or input.KeyCode == Enum.KeyCode.G then
+	-- Touch is left out on purpose: dragging the camera on a phone is a touch too. Phones use the Put down button
+	-- or a tap (below).
+	if kind == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.G then
+		dropRemote:FireServer()
+	end
+end)
+UserInputService.TouchTap:Connect(function(_, gameProcessed)
+	if not gameProcessed and player:GetAttribute("Carrying") then
 		dropRemote:FireServer()
 	end
 end)
