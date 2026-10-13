@@ -231,6 +231,14 @@ Prices.Travel = {
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
 }
 
+-- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
+-- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
+-- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
+Prices.GoldenBale = {
+	oneIn = 150,
+	needles = 3,
+}
+
 -- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
 -- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
 -- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
