@@ -23,6 +23,7 @@ local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
 local Announce = require(script.Parent.Announce)
 local Weather = require(script.Parent.Weather)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
@@ -478,9 +479,8 @@ local function toss(b, root, power, lift)
 	local look = root.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
-	local range = Config.TossMinRange + (Config.TossRange - Config.TossMinRange) * power
-	-- A 45 degree lob: speed for that range under this place's gravity, split evenly up and forward.
-	local speed = math.sqrt(range * workspace.Gravity) / math.sqrt(2)
+	-- A 45 degree lob: speed for the range under this place's gravity, the same up and forward.
+	local speed = HayMath.tossSpeed(power, Config, workspace.Gravity)
 	b.body.Massless = false
 	b.body.CanCollide = true
 	b.body.Anchored = false

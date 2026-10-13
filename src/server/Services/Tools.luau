@@ -14,6 +14,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
@@ -101,7 +102,7 @@ local function comboBonus(player, root)
 	end
 	comboPop(root, combo.count)
 	Feedback.juice(player, "combo", combo.count - Config.ComboStart + 1)
-	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
+	return HayMath.comboExtra(combo.count, Config)
 end
 
 -- Machines that take loose hay in (the sorter's hopper, the hay buyer, the baler, the docks' funnels).
@@ -142,14 +143,14 @@ function Tools.pour(player, root, target)
 		return 0
 	end
 	local held = math.floor(state.loadHay / Config.HayPerPiece)
-	local n = math.min(held, Config.PourStrands)
-	local sortedHeld = math.min(math.floor((state.loadSortedHay or 0) / Config.HayPerPiece), held)
-	local sortedOut = math.min(n, sortedHeld)
-	local unsortedHeld = held - sortedHeld
-	local unsortedOut = n - sortedOut
-	local needlesOut = unsortedHeld > 0 and math.floor((state.loadNeedles or 0) * unsortedOut / unsortedHeld + 0.5) or 0
+	local split = HayMath.pourSplit({
+		hay = state.loadHay,
+		sorted = state.loadSortedHay,
+		needles = state.loadNeedles,
+		wet = state.loadWetHay,
+	}, Config.PourStrands, Config.HayPerPiece)
+	local n, sortedOut, needlesOut, wetOut = split.n, split.sortedOut, split.needlesOut, split.wetOut
 	local fraction = n / held
-	local wetOut = math.min(n, math.floor((state.loadWetHay or 0) / Config.HayPerPiece * fraction + 0.5))
 
 	state.loadHay -= n * Config.HayPerPiece
 	state.loadSortedHay = math.max(0, (state.loadSortedHay or 0) - sortedOut * Config.HayPerPiece)
