@@ -61,25 +61,41 @@ Weather.Kinds = {
 	mist = { name = "Mist", tint = rgb(205, 215, 225), density = 0.14, grip = 1, cloud = 0.5 },
 } :: { [string]: Kind }
 
--- Each region's weather and how often it comes (weights). Regions not listed stay clear.
+-- Each region's everyday weather and how often it comes (weights): the haze and mist that give it its mood. Regions
+-- not listed stay clear. Rain, snow and dust come as fronts (below), one at a time.
 Weather.Regions = {
-	meadow = { clear = 6, rain = 2, mist = 1 },
-	shore = { clear = 5, rain = 2, mist = 2 },
-	valley = { clear = 5, rain = 2, mist = 2 },
-	homestead = { clear = 6, rain = 2 },
-	spindle = { clear = 4, rain = 2, mist = 2 },
-	pine = { clear = 4, rain = 3, mist = 2 },
-	haunted = { fog = 5, mist = 2, rain = 1 },
-	snow = { snow = 5, clear = 3, mist = 1 },
+	meadow = { clear = 6, mist = 1 },
+	shore = { clear = 5, mist = 2 },
+	valley = { clear = 5, mist = 2 },
+	homestead = { clear = 6, mist = 1 },
+	spindle = { clear = 4, mist = 2 },
+	pine = { clear = 4, mist = 2 },
+	haunted = { fog = 5, mist = 2 },
+	snow = { clear = 3, mist = 1 },
 	volcano = { ash = 4, clear = 3 },
-	desert = { clear = 5, dust = 3 },
-	swamp = { fog = 4, mist = 3, rain = 2 },
-	keys = { clear = 6, rain = 1, mist = 1 },
-	bobbin = { clear = 5, mist = 2, rain = 1 },
+	desert = { clear = 6 },
+	swamp = { fog = 4, mist = 3 },
+	keys = { clear = 6, mist = 1 },
+	bobbin = { clear = 5, mist = 2 },
 	sky = { clear = 5, mist = 2 },
 	cave = { clear = 1 },
 } :: { [string]: { [string]: number } }
 
-Weather.SpellMinutes = { 4, 8 } -- each region's weather lasts this long (real minutes) before it rolls again
+Weather.SpellMinutes = { 4, 8 } -- each region's everyday weather lasts this long (real minutes) before it rolls again
+
+-- Fronts (map #25): the weather that matters. Only one front is on the map at a time. The sky over its region
+-- clouds over for FrontWarnSeconds first and the server announces it, so players can get loose hay under a roof
+-- (rain soaks bales left out, Bales.luau and Config/Game WetWeather). Region events (RegionEvents.luau) that bring
+-- their own weather count as the front while they run.
+export type Front = { region: string, kind: string, weight: number, text: string }
+Weather.Fronts = {
+	{ region = "meadow", kind = "rain", weight = 3, text = "Clouds are building over Meadow Farm: rain in a minute. Get loose hay under a roof." },
+	{ region = "swamp", kind = "rain", weight = 3, text = "Rain is coming to the Swamp in a minute. Cover any hay you have out there." },
+	{ region = "snow", kind = "snow", weight = 2, text = "Snow is coming to Snow Peak in a minute. Roads get slippery." },
+	{ region = "desert", kind = "dust", weight = 2, text = "A dust storm is blowing into the Desert Dunes in a minute." },
+} :: { Front }
+Weather.FrontWarnSeconds = 60
+Weather.FrontMinutes = { 3, 5 } -- how long a front lasts once it arrives
+Weather.FrontGapMinutes = { 4, 9 } -- clear spell between fronts
 
 return Weather
