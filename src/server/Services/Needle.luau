@@ -59,7 +59,7 @@ local folder = Instance.new("Folder")
 folder.Name = "Needles"
 folder.Parent = Workspace
 
-local held = {} -- player -> list of { id = needleId, mult = multiplier }
+local held = {} -- player -> { [key] = count }, only until a save slot is loaded (then Data state.pocket)
 
 function Needle.info(id)
 	return types[id] or Needle.default
@@ -68,6 +68,35 @@ end
 -- Dollars one needle of this type and multiplier sells for at a SELL NEEDLES pad.
 function Needle.priceOf(id, mult)
 	return Needle.info(id).sortedValue * (mult or 1)
+end
+
+-- The pocket lives in the player's save slot (Data state.pocket) so it saves and loads with the slot. It counts
+-- needles by key: the needle id, or "id*mult" for a mutated one, so mutations survive a save.
+local function pocketOf(player)
+	local state = Data.get(player)
+	if state then
+		state.pocket = state.pocket or {}
+		return state.pocket
+	end
+	held[player] = held[player] or {}
+	return held[player]
+end
+
+local function keyOf(id, mult)
+	return (mult and mult > 1) and ("%s*%d"):format(id, mult) or id
+end
+
+local function parseKey(key)
+	local id, mult = string.match(key, "^(.-)%*(%d+)$")
+	if id then
+		return id, tonumber(mult)
+	end
+	return key, 1
+end
+
+-- Needles in this player's pocket, as { [key] = count } (see keyOf).
+function Needle.held(player)
+	return pocketOf(player)
 end
 
 -- How many needles a needle part is: 1, or 10 for a bundle.
@@ -94,15 +123,29 @@ end
 
 -- How many needles are in this player's pocket.
 function Needle.heldCount(player)
-	return #(held[player] or {})
+	local total = 0
+	for _, count in pocketOf(player) do
+		total += count
+	end
+	return total
 end
 
 -- Empties the player's pocket and returns what was in it, as a list of { id = needleId, mult = multiplier }.
 function Needle.takeHeld(player)
-	local pocket = held[player] or {}
+	local list = {}
+	for key, count in pocketOf(player) do
+		local id, mult = parseKey(key)
+		for _ = 1, count do
+			table.insert(list, { id = id, mult = mult })
+		end
+	end
+	local state = Data.get(player)
+	if state then
+		state.pocket = {}
+	end
 	held[player] = nil
 	player:SetAttribute("NeedlesHeld", 0)
-	return pocket
+	return list
 end
 
 -- Sells everything in the player's pocket. Returns how many needles and how many dollars (the caller pays).
@@ -150,12 +193,10 @@ local function pickUp(player, n)
 	local mult = n:GetAttribute("Mutation") or 1
 	local count = Needle.count(n)
 	local value = Needle.value(n)
-	local pocket = held[player] or {}
-	for _ = 1, count do
-		table.insert(pocket, { id = id, mult = mult })
-	end
-	held[player] = pocket
-	player:SetAttribute("NeedlesHeld", #pocket)
+	local pocket = pocketOf(player)
+	local key = keyOf(id, mult)
+	pocket[key] = (pocket[key] or 0) + count
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	n:Destroy()
 	local what = count > 1 and ("a bundle of %d %s needles"):format(count, Needle.info(id).name:lower())
 		or ("a %s%s needle"):format(mult > 1 and ("x%d MUTATED "):format(mult) or "", Needle.info(id).name:lower())
