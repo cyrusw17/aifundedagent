@@ -208,7 +208,7 @@ def value_noise_2d(seed, n):
     return fn
 
 
-def weathered_texture(pal, c, seed):
+def weathered_texture(pal, c, seed, blotch=0.4):
     """Faded paint / stone / canvas: soft blotches, faint grain, a few chips and vertical streaks."""
     lite, mid, dark = pal
     big = value_noise_2d(seed, 4)
@@ -217,7 +217,7 @@ def weathered_texture(pal, c, seed):
     streaks = noise(seed + 3, 24)
 
     def fn(u, v):
-        k = 0.55 + (big(u, v) - 0.5) * 0.4 + (fine(u, v) - 0.5) * 0.12
+        k = 0.55 + (big(u, v) - 0.5) * blotch + (fine(u, v) - 0.5) * 0.12
         k -= 0.08 * max(0.0, smooth_lookup(streaks, u) - 0.6) * 2.5   # rain streaks run down (v)
         if chips(u, v) > 0.8:
             k -= 0.18                                                  # a few worn chips
@@ -266,7 +266,9 @@ class Finish:
               "handle": lambda: plank_texture(pal, c),
               "metal": lambda: metal_texture(pal, c, rusty),
               "rolled": lambda: rolled_hay_texture(self.pal["hay"], c)}.get(kind)
-        fn = fn() if fn else weathered_texture(pal, c, 10 + WEATHERED.index(kind))
+        # Paint reads as solid color at driving distance: half the blotch of stone and cloth (art review B2-1).
+        fn = fn() if fn else weathered_texture(pal, c, 10 + WEATHERED.index(kind),
+                                               blotch=0.2 if kind.startswith("paint_") else 0.4)
         return common.make_texture(f"{self.name}_{kind}", 256 if kind in ("hay", "bark") else 128, fn)
 
     def shape(self, obj, round_edges=True):
