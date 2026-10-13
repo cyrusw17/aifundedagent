@@ -23,6 +23,8 @@ local GameConfig = require(Shared.Config.Game)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
 local RateLimit = require(Shared.RateLimit)
+local LineRate = require(Shared.LineRate)
+local Away = require(Shared.Away)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -2147,13 +2149,15 @@ local function restoreNeedles(player, plot, land)
 	land.needles = inBin
 end
 
--- The mailbox: while the owner was away, the silo kept feeding the line, but only from bales already in it (no
--- income out of nothing). Works on the save before the plot is built, so the silos come back emptier and the found
--- needles land in the bin. Needs a hay buyer on the plot; the best sorter there sets speed and needles found.
-local MAIL_MAX_AWAY = 8 * 3600
+-- The mailbox (away earnings, CEO H1): while the owner was away the line kept sorting at Away.SHARE (half) of its
+-- LineRate, for at most Away.MAX_SECONDS (8 hours), but only from bales already in the silos (no income out of
+-- nothing). Works on the save before the plot is built, so the silos come back emptier and the found needles land in
+-- the bin. Needs a hay buyer on the plot; the best sorter there sets speed and needles found. Paying moves savedAt
+-- to now, so a second load before the next save pays nothing (tests/away.luau). The amounts go on the player as
+-- AwayCash, AwayBales, AwayNeedles and AwaySeconds (summed over both farms) for the "While you were away" card.
 local function mailbox(player, land)
-	local away = math.min(os.time() - (land.savedAt or os.time()), MAIL_MAX_AWAY)
-	if away < 60 or typeof(land.items) ~= "table" then
+	local away = Away.span(land.savedAt, os.time())
+	if away <= 0 or typeof(land.items) ~= "table" then
 		return nil
 	end
 	local silos, stored, hasBuyer, best = {}, 0, false, nil
@@ -2179,11 +2183,13 @@ local function mailbox(player, land)
 		return ("Your silo holds %d bales, but there is no hay buyer on your line, so nothing sold while you were away."):format(stored)
 	end
 	local hayPerBale = GameConfig.PiecesPerBale * GameConfig.HayPerPiece
-	local perBale = LandConfig.SiloFeedSeconds
+	-- Full speed: the silo's feed, or the best sorter's LineRate if that is slower. Away.bales halves it.
+	local perMinute = 60 / LandConfig.SiloFeedSeconds
 	if best then
-		perBale = math.max(perBale, Machines.sortSeconds(best.id, hayPerBale))
+		perMinute = math.min(perMinute, LineRate.line("meadow", best.id).bales)
 	end
-	local bales = math.min(stored, math.floor(away / perBale))
+	local bales = Away.bales(away, perMinute, stored)
+	land.savedAt = os.time() -- double-pay guard: this span is spent, paid or not
 	if bales <= 0 then
 		return nil
 	end
@@ -2208,6 +2214,12 @@ local function mailbox(player, land)
 		cash = Economy.rawLoadValue(hay, hidden)
 	end
 	Bank.earn(player, cash, "While you were away")
+	if typeof(player) == "Instance" then -- self-tests pass a plain table
+		player:SetAttribute("AwayCash", (player:GetAttribute("AwayCash") or 0) + cash)
+		player:SetAttribute("AwayBales", (player:GetAttribute("AwayBales") or 0) + bales)
+		player:SetAttribute("AwayNeedles", (player:GetAttribute("AwayNeedles") or 0) + found)
+		player:SetAttribute("AwaySeconds", math.max((player:GetAttribute("AwaySeconds") or 0) :: number, away))
+	end
 	local hours = away / 3600
 	local when = hours >= 1 and ("%.1f hours"):format(hours) or ("%d minutes"):format(math.floor(away / 60))
 	local letter = ("While you were away (%s) your silo fed %d bales: +$%d"):format(when, bales, cash)
@@ -2239,6 +2251,9 @@ local function onLoaded(player)
 	if not plot then
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
+	end
+	for _, name in { "AwayCash", "AwayBales", "AwayNeedles", "AwaySeconds" } do
+		player:SetAttribute(name, nil) -- a fresh card per load (a slot switch loads again)
 	end
 	local letter = mailbox(player, s.land)
 	claim(plot, player, s.land)

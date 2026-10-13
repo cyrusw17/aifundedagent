@@ -492,6 +492,13 @@ return function(SelfTest)
 		letter = L.mailbox(owner, withBuyer)
 		local left = withBuyer.items[1].stored
 		t.check("mailbox an hour away drains the silo", letter ~= nil and left < 10, ("%s bales left: %s"):format(left, tostring(letter)))
+		t.check("mailbox pays once: a second load straight after pays nothing", L.mailbox(owner, withBuyer) == nil and withBuyer.savedAt >= os.time() - 1)
+		local long = mailLand(true)
+		long.savedAt = os.time() - 72 * 3600
+		long.items[1].stored = 1e6
+		L.mailbox(owner, long)
+		local sorted = 1e6 - long.items[1].stored
+		t.check("mailbox stops at 8 hours at half speed", sorted > 0 and sorted <= 8 * 60 * 30 / 2, sorted)
 		local recent = mailLand(true)
 		recent.savedAt = os.time() - 10
 		t.check("mailbox after 10 seconds stays empty", L.mailbox(owner, recent) == nil)
