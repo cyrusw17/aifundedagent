@@ -234,6 +234,14 @@ return function(SelfTest)
 			local found = Wilds.Secrets[id]
 			t.check(("secret %s is hidden on the map, with a reward in Prices"):format(id), found ~= nil and found.part.Parent ~= nil and Prices.Secrets[id] ~= nil)
 		end
+		local noHidden = {}
+		for _, def in Map.Regions do
+			local h = Wilds.Hidden[def.id]
+			if not (h and h.part.Parent and Wilds.Secrets[h.id]) then
+				table.insert(noHidden, def.id)
+			end
+		end
+		t.check("every region hides one spot with an Old Sign clue", #noHidden == 0, #noHidden > 0 and table.concat(noHidden, ", ") or nil)
 		local ember = Wilds.Secrets.ember_cache
 		t.check("the Ember Cache lies in the crater's heat", ember ~= nil and Wilds.inHeat(ember.part.Position))
 		local clockWas = Lighting.ClockTime

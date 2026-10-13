@@ -156,6 +156,16 @@ if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry
 Lighting.ClockTime = 0
 Wilds.refreshGhost()
 if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+local hiddenCount = 0
+for rid, h in Wilds.Hidden do
+	hiddenCount += 1
+	local d = (Vector2.new(h.spot.X, h.spot.Z) - h.sign).Magnitude
+	if d < 40 or d > 220 then wildsOk = false print("WARN hidden spot too near or far from its sign", rid, d) end
+end
+for _, r in Map.Regions do
+	if not Wilds.Hidden[r.id] then wildsOk = false print("WARN no hidden spot in", r.id) end
+end
+print("hidden spots", hiddenCount)
 print("wilds", wildsOk and "ok" or "WRONG")
 
 -- Discoveries: every landmark is found standing on it, every region standing in its middle, and nothing in Meadow.
