@@ -4,7 +4,7 @@ Chosen by Cyrus on 2026-10-13. Every prop builds its parts with cyl()/box(),
 then calls RUSTIC_FINISH.shape(part) and .apply(part, kind) so materials,
 bevels and the weathered unevenness stay consistent across the game.
 
-Kinds: hay, bark, wood (end grain), handle (plank wood), metal (rusty), twine.
+Kinds: hay, bark, wood (end grain), handle (plank wood), metal (weathered grey), twine.
 The other finishes (plain, textured, painted, faceted, soft) are kept for the
 mockups in styles/lt2_mockups.py.
 """
@@ -37,7 +37,7 @@ RUSTIC = {
     "bark": ((0.38, 0.33, 0.27), (0.30, 0.25, 0.20), (0.16, 0.13, 0.10)),
     "wood": ((0.80, 0.70, 0.55), (0.70, 0.60, 0.45), (0.52, 0.43, 0.32)),
     "handle": ((0.60, 0.50, 0.38), (0.50, 0.41, 0.30), (0.36, 0.29, 0.21)),
-    "metal": ((0.55, 0.55, 0.54), (0.44, 0.44, 0.43), (0.45, 0.28, 0.16)),  # grey iron, rust in patches
+    "metal": ((0.58, 0.58, 0.57), (0.48, 0.48, 0.47), (0.40, 0.38, 0.35)),  # clean weathered grey iron, light wear
     "twine": ((0.45, 0.40, 0.32), (0.38, 0.33, 0.26), (0.28, 0.24, 0.18)),
     # Weathered paint, stone and cloth for vehicles, machines and buildings.
     "paint_red": ((0.62, 0.30, 0.24), (0.52, 0.24, 0.19), (0.36, 0.18, 0.14)),
@@ -162,8 +162,8 @@ def metal_texture(pal, c, rusty):
     def fn(u, v):
         k = fine[int((u * 7 + v * 3) * 128) % 128]
         col = mix(mid, lite, k * 0.4)
-        if rusty and smooth_lookup(blotch, (u * 3 + v) % 1) > 0.6:
-            col = mix(col, dark, 0.7)
+        if rusty and smooth_lookup(blotch, (u * 3 + v) % 1) > 0.75:
+            col = mix(col, dark, 0.45)  # light wear spots, not heavy rust
         return col
 
     return fn
