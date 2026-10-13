@@ -236,13 +236,14 @@ local function buildSilo(plot, item, def)
 		local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
 		local pitch = math.rad(35)
 		local roofW = (w - 1) / 2 / math.cos(pitch) + 0.6
+		local look = { body } -- the part barn the mesh replaces; each client hides it once the mesh has loaded
 		for _, side in { -1, 1 } do
-			part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
+			look[#look + 1] = part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
 		end
 		for _, x in { -(w - 1) / 2, (w - 1) / 2 } do
-			part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
+			look[#look + 1] = part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
 		end
-		part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+		look[#look + 1] = part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
 		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
 		label = sign(body, "", Vector3.new(0, wallH / 2 + (w - 1) / 4 + 3, 0))
 		local mesh = Props.make("barn", frame * CFrame.new(0, wallH / 2, 0), Vector3.new(w - 0.5, wallH + (w - 1) / 2, l - 0.5))
@@ -253,7 +254,7 @@ local function buildSilo(plot, item, def)
 					p.CanCollide = false
 				end
 			end
-			Props.weldTo(mesh, body, { body })
+			Props.weldTo(mesh, body, look)
 		end
 	else
 		local height = 20
