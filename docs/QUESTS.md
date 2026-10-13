@@ -37,6 +37,7 @@ Quest gear is earned, never sold. No cash or Robux price buys a quest shovel, ra
 | The Golden Hay Bale | Claim it in the crop circle at midnight (it only appears then) | **Golden Hay Bale** |
 | Beacon Parts | Break bales until 3 glowing beacon parts pop out (1 in 120 per bale, guaranteed by 250) | **Star Beacon** |
 | The Pattern | At midnight, lay bales on exactly tonight's pads in the crop circle (the sign post shows today's 3x3 sign) | $15,000 |
+| The Corn Night Maze | After The Signal: at night, find the 3 glowing corn keys in the maze east of the plots, bring them to its heart | **Corn Moon Charm** (needed for The Offering) |
 | The Offering | Offer 50 needles of every kind that grows in the world (the log lists them) | **Alien Collector** (100% sorter while its daily beam is up) and **Starbeam Collector** (beams down Star hay), both free to build; **Starweave Gloves** (tier 6); **Starlight Hauler** |
 
 ## Region quests (Stitched Isles)
