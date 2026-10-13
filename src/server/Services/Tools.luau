@@ -3,12 +3,14 @@
 -- signal. The client also reports where the click pointed (ToolAim), so a tool works on the exact hay piece or
 -- bale you clicked. If no aim arrives, the tool works on what is in front of you.
 --   shovel: smash the clicked bale, or scoop the clicked hay piece and the pieces next to it
+--   shovel with hay in your arms: click a truck bed, a hopper, a belt or the sell pad to pour it there
 --   rake:   drag the loose pieces around the click back toward you, spreading them across the ground
 -- Bare hands lift a whole bale with its Pick up button (see Bales.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -99,6 +101,98 @@ local function comboBonus(player, root)
 	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
 end
 
+-- Machines that take loose hay in (the sorter's hopper, the hay buyer, the baler, the docks' funnels).
+local POUR_INTO = { NeedleSorter = true, HayBuyer = true, HayBaler = true, DockFunnel = true, PlotDock = true }
+
+-- Where a pour can go: the cargo box of the truck or trailer clicked (returns its box CFrame and size), or the clicked
+-- spot on a conveyor belt, a machine's hopper, the dock or the sell pad. Anything else (the ground, a wall) is not a
+-- pour target, so a stray click never dumps your hay.
+function Tools.pourTarget(aim)
+	if not aim or not aim.part then
+		return nil
+	end
+	local box, size = Wheelbarrow.cargoOf(aim.part)
+	if box then
+		return { box = box, size = size }
+	end
+	local part = aim.part
+	if CollectionService:HasTag(part, "ConveyorBelt") or part.Name == "Hopper" or part.Name == "SellPad" then
+		return { at = aim.position }
+	end
+	local node = part.Parent
+	while node and node ~= workspace do
+		if node:IsA("Model") and (POUR_INTO[node.Name] or node:GetAttribute("Machine")) then
+			return { at = aim.position }
+		end
+		node = node.Parent
+	end
+	return nil
+end
+
+-- Pours up to Config.PourStrands of the hay in your arms onto target, in an arc: real loose strands that land where
+-- they land, so the hay becomes truck cargo or line feed. Hay scooped from sorted bales stays sorted. The hidden
+-- needles rolled when the hay was scooped go back with it in proportion (the strands roll their own again wherever
+-- they end up), so pouring out and scooping up again never makes needles.
+function Tools.pour(player, root, target)
+	local state = Data.get(player)
+	if not state or state.loadHay < Config.HayPerPiece then
+		return 0
+	end
+	local held = math.floor(state.loadHay / Config.HayPerPiece)
+	local n = math.min(held, Config.PourStrands)
+	local sortedHeld = math.min(math.floor((state.loadSortedHay or 0) / Config.HayPerPiece), held)
+	local sortedOut = math.min(n, sortedHeld)
+	local unsortedHeld = held - sortedHeld
+	local unsortedOut = n - sortedOut
+	local needlesOut = unsortedHeld > 0 and math.floor((state.loadNeedles or 0) * unsortedOut / unsortedHeld + 0.5) or 0
+	local fraction = n / held
+
+	state.loadHay -= n * Config.HayPerPiece
+	state.loadSortedHay = math.max(0, (state.loadSortedHay or 0) - sortedOut * Config.HayPerPiece)
+	state.loadNeedles = math.max(0, (state.loadNeedles or 0) - needlesOut)
+	state.loadWeight = (state.loadWeight or 0) * (1 - fraction)
+	local hayType = state.loadType or "meadow"
+	if state.loadHay <= 0 then
+		state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadWeight, state.loadTier = 0, 0, 0, 0, 0
+		state.loadType = nil
+	end
+	Data.sync(player)
+	Avatar.refreshSpeed(player)
+
+	local from = root.Position + Vector3.new(0, 1.5, 0) + root.CFrame.LookVector * 1.2
+	local flight = Config.PourFlightSeconds
+	local gravity = Vector3.new(0, -workspace.Gravity, 0)
+	for i = 1, n do
+		local landAt
+		if target.box then
+			-- Anywhere across the bed, a little above its floor, keeping off the walls.
+			local size = target.size
+			landAt = (
+				target.box
+				* CFrame.new(
+					rng:NextNumber(-size.X / 2 + 0.6, size.X / 2 - 0.6),
+					-size.Y / 2 + 0.6,
+					rng:NextNumber(-size.Z / 2 + 0.6, size.Z / 2 - 0.6)
+				)
+			).Position
+		else
+			local spread = Config.PourSpread
+			landAt = target.at + Vector3.new(rng:NextNumber(-spread, spread), 0.5, rng:NextNumber(-spread, spread))
+		end
+		-- The launch speed that lands it there after `flight` seconds under gravity.
+		local velocity = (landAt - from - 0.5 * gravity * flight * flight) / flight
+		task.delay((i - 1) * Config.PourStagger, function()
+			local piece = Hay.spawnPiece(from, velocity, player.UserId, nil, hayType)
+			if i <= sortedOut then
+				piece:SetAttribute("Sorted", true)
+			end
+		end)
+	end
+	Feedback.play("Scoop", root, 0.8)
+	Events.fire(player, "hay_poured", n, { position = target.at or target.box.Position })
+	return n
+end
+
 local function useShovel(player, root, aim)
 	local bale
 	if aim then
@@ -119,6 +213,14 @@ local function useShovel(player, root, aim)
 
 	local state = Data.get(player)
 	if not state then
+		return
+	end
+	-- Hay in your arms and a truck bed, hopper, belt or sell pad clicked: pour it there.
+	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim)
+	if target then
+		Avatar.swing(player, "Shovel", function()
+			Tools.pour(player, root, target)
+		end)
 		return
 	end
 	-- The clicked spot, or else the ground in front of you. Pieces right at your feet count too.
@@ -204,6 +306,9 @@ local function useShovel(player, root, aim)
 		end
 		local hay = strands * Config.HayPerPiece
 		state.loadHay += hay
+		-- What kind of hay is in your arms, so it pours back out as the same (Tools.pour).
+		state.loadSortedHay = (state.loadSortedHay or 0) + (strands - unsorted) * Config.HayPerPiece
+		state.loadType = state.loadType or first:GetAttribute("HayType") or "meadow"
 		state.loadNeedles += found
 			+ Economy.rollNeedles(rng, unsorted * Config.HayPerPiece, Config.NeedleChancePerHay)
 		Data.sync(player)

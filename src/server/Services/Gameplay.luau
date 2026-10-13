@@ -50,6 +50,8 @@ local function sellHay(player)
 	end
 	state.loadHay = 0
 	state.loadNeedles = 0
+	state.loadSortedHay = 0
+	state.loadType = nil
 
 	local pocketCount, pocketValue = 0, 0
 	if hasPocketNeedles(player) then
