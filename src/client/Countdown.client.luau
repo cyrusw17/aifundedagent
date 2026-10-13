@@ -7,6 +7,7 @@
 --   WeatherFront / WeatherFrontKind / Phase / At   when a front arrives or clears (Weather.luau)
 --   StormStarts / StormEnds                    when the thunderstorm breaks or ends (Weather.luau)
 --   FestivalName / FestivalRegion / FestivalEnds, FestivalRibbons (player)   the festival (Map)
+--   ContractsResetAt                           when the daily contracts reset (Orders.luau)
 --   HayMarketRestockAt                         when the Hay Market restocks (HayMarket.luau)
 --   SiloFullIn (player)                        seconds until your silo fills, 0 when full (Land.luau)
 --   Cash and Catalog.nextGoal()                how little is left to the next buy
@@ -127,6 +128,11 @@ local function timers()
 				ribbons > 0 and ("  ·  %d ribbon%s"):format(ribbons, ribbons == 1 and "" or "s") or ""
 			),
 		})
+	end
+	-- Daily contracts (Orders.luau): only once you have some for today.
+	local reset = left("ContractsResetAt")
+	if reset and typeof(player:GetAttribute("Contracts")) == "string" then
+		table.insert(list, { reset, ("Daily contracts reset in %s"):format(clock(reset)) })
 	end
 	local restock = left("HayMarketRestockAt")
 	if restock then

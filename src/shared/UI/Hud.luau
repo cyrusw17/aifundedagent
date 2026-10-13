@@ -13,7 +13,7 @@ local Kit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):
 local Hud = {}
 
 -- Where each piece sits in the column, top to bottom.
-Hud.Order = { Cash = 10, Bank = 20, Goal = 30, Buttons = 40, Extra = 50 }
+Hud.Order = { Cash = 10, Bank = 20, Goal = 30, Buttons = 40, Extra = 50, Contracts = 60 }
 
 -- The top-center stack, top to bottom (Hud.top()). Hidden pieces take no room, so nothing up there overlaps.
 Hud.TopOrder = {
