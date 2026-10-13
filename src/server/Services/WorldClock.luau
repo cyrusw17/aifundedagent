@@ -21,7 +21,6 @@ local Windows = require(game:GetService("ReplicatedStorage").Shared.Config.Quest
 local WorldClock = {}
 
 local LAMPS_ON, LAMPS_OFF = 18.25, 6.25 -- game hours
-local SCAN_EVERY = 20 -- seconds between looks for new lamps (plots and machines are built during play)
 
 function WorldClock.hour()
 	return DayNight.hour()
@@ -74,16 +73,11 @@ local function setLamp(light, on)
 	end
 end
 
-local function scan(on)
-	for _, d in workspace:GetDescendants() do
-		if (d:IsA("PointLight") or d:IsA("SpotLight")) and lamps[d] == nil and isLamp(d) then
-			setLamp(d, on)
-		end
-	end
-	for light in lamps do
-		if not light.Parent then
-			lamps[light] = nil
-		end
+local lampsLit = false
+
+local function consider(d)
+	if (d:IsA("PointLight") or d:IsA("SpotLight")) and lamps[d] == nil and isLamp(d) then
+		setLamp(d, lampsLit)
 	end
 end
 
@@ -103,25 +97,30 @@ function WorldClock.start()
 		atmosphere.Glare = 0.3
 		atmosphere.Parent = Lighting
 	end
+	-- Every lamp there is now, and each one built later (plots, machines) as it appears: no rescans.
+	lampsLit = WorldClock.lampsOn()
+	for _, d in workspace:GetDescendants() do
+		consider(d)
+	end
+	workspace.DescendantAdded:Connect(function(d)
+		if d:IsA("PointLight") or d:IsA("SpotLight") then
+			task.defer(consider, d) -- once its tags and parent are set
+		end
+	end)
+	workspace.DescendantRemoving:Connect(function(d)
+		lamps[d] = nil
+	end)
 	task.spawn(function()
-		local on = WorldClock.lampsOn()
-		scan(on)
-		local sinceScan = 0
 		while true do
 			task.wait(1)
-			sinceScan += 1
 			local now = WorldClock.lampsOn()
-			if now ~= on then
-				on = now
+			if now ~= lampsLit then
+				lampsLit = now
 				for light in lamps do
 					if light.Parent then
-						setLamp(light, on)
+						setLamp(light, now)
 					end
 				end
-			end
-			if sinceScan >= SCAN_EVERY then
-				sinceScan = 0
-				scan(on)
 			end
 		end
 	end)

@@ -41,6 +41,8 @@ return {
 		{ id = "belt", kind = "belt", name = "Conveyor belt", price = Prices.Pieces.belt, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
 		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = Prices.Pieces.hay_buyer, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
 		{ id = "silo", kind = "silo", name = "Hay silo", price = Prices.Pieces.silo, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
+		{ id = "hay_barn", kind = "silo", look = "barn", capacity = 150, name = "Hay barn", price = Prices.Pieces.hay_barn, size = { 3, 3 }, blurb = "A red barn that holds 150 bales and feeds them out the front onto a belt, one at a time." },
+		{ id = "garage", kind = "garage", name = "Garage", price = Prices.Pieces.garage, size = { 2, 2 }, blurb = "Swap which of your trucks is out. It parks on your parking pad, or by the lane." },
 		{ id = "parking", kind = "parking", name = "Parking pad", price = Prices.Pieces.parking, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
 		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = Prices.Pieces.hand_sieve, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
 		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = Prices.Pieces.shaker_table, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
@@ -70,6 +72,8 @@ return {
 		{ id = "decor_bench", kind = "decor", look = "bench", name = "Hay-bale bench", price = Prices.Pieces.decor_bench, size = { 1, 1 }, blurb = "Two bales and a plank for visitors to sit on." },
 		{ id = "decor_lantern", kind = "decor", look = "lantern", name = "Lantern post", price = Prices.Pieces.decor_lantern, size = { 1, 1 }, blurb = "A warm light for your farm at night." },
 		{ id = "decor_scarecrow", kind = "decor", look = "scarecrow", name = "Scarecrow", price = Prices.Pieces.decor_scarecrow, size = { 1, 1 }, blurb = "Keeps watch over your line. Just for looks." },
+		{ id = "decor_fountain", kind = "decor", look = "fountain", name = "Stone fountain", price = Prices.Pieces.decor_fountain, size = { 2, 2 }, blurb = "A splashing fieldstone fountain. Just for looks." },
+		{ id = "decor_windmill", kind = "decor", look = "windmill", name = "Windmill", price = Prices.Pieces.decor_windmill, size = { 2, 2 }, blurb = "A tall farm windmill with turning sails. The showpiece of a rich farm." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },

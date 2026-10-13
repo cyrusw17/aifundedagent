@@ -1,13 +1,13 @@
 MODULES["Services.Props"] = function() return { has = function() return false end, make = function() return nil end, weldTo = function() end, restOn = function() end } end
 BALES = 0
 MODULES["Services.Bales"] = function()
-	return { spawn = function(pos, home, fade, hayType)
+	return { consume = function(b) b.gone = true; BALES -= 1; b.body:Destroy() end, spawn = function(pos, home, fade, hayType)
 		BALES += 1
 		local body = Instance.new("Part")
 		body.Size = Vector3.new(4.6, 2.6, 3.2)
 		body.CFrame = CFrame.new(pos)
 		body.Parent = workspace
-		return { body = body, hayType = hayType }
+		return { body = body, hayType = hayType, spawnPosition = pos, gone = false }
 	end }
 end
 MODULES["Services.Data"] = function() return { get = function() return nil end, toast = function() end } end

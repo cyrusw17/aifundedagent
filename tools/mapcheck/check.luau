@@ -105,3 +105,55 @@ end
 Weather.force("desert", "dust", 60)
 if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
 print("weather", weatherOk and "ok" or "WRONG")
+
+-- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
+local RegionEvents = require({ __path = "Services.RegionEvents" })
+local Prices = require({ __path = "Shared.Config.Prices" })
+local WorldShapeE = require({ __path = "Services.WorldShape" })
+local eventsOk = true
+for _, e in RegionEvents.List do
+	local reward = Prices.RegionEvents[e.id]
+	local dropped = RegionEvents.run(e.id, 1)
+	local n, onRoad = 0, 0
+	for b in dropped do
+		n += 1
+		local d = WorldShapeE.nearestRoad(b.spawnPosition.X, b.spawnPosition.Z)
+		if d and d < 6 then onRoad += 1 end
+		if b.body:GetAttribute("NeedleBoost") ~= reward.boost then eventsOk = false end
+	end
+	if n < reward.bales * 0.6 or onRoad > 0 then
+		eventsOk = false
+		print("WARN event", e.id, "dropped", n, "of", reward.bales, "on road", onRoad)
+	end
+	print(("event %-14s %2d bales"):format(e.id, n))
+end
+RegionEvents.finish()
+print("events", eventsOk and "ok" or "WRONG")
+
+-- Wilds: the four secrets exist, the crater is hot, the Ghost Road holds only at night.
+local Wilds = require({ __path = "Services.Wilds" })
+local wildsOk = true
+for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+	if not Wilds.Secrets[id] or not Prices.Secrets[id] then
+		wildsOk = false
+		print("WARN secret missing", id)
+	end
+end
+local ember = Wilds.Secrets.ember_cache
+if ember and not Wilds.inHeat(ember.part.Position) then
+	wildsOk = false
+	print("WARN the Ember Cache is outside the crater's heat", ember.part.Position)
+end
+local quarry = Vector3.new(740, 30, -1300)
+if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry") end
+Lighting.ClockTime = 0
+Wilds.refreshGhost()
+if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+print("wilds", wildsOk and "ok" or "WRONG")
+
+-- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
+local mapParts = 0
+for _, d in workspace:GetDescendants() do
+	if d:IsA("BasePart") then mapParts += 1 end
+end
+print("map parts", mapParts, mapParts <= 12000 and "within 12000" or "WARN over the map's 12000 share")

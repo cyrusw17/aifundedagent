@@ -28,7 +28,9 @@ Prices.NeedlesPerBale = {
 	desert = 4,
 	snow = 5,
 	swamp = 6,
+	keys = 6, -- Thimble Keys, by ferry from Swamp Port: Swamp's count with a better needle, paid for by the fare
 	volcano = 8,
+	bobbin = 9, -- Bobbin Rock, by ferry from Ash Dock: between Volcano and Cave
 	cave = 10,
 	sky = 12,
 	haunted = 14,
@@ -42,7 +44,9 @@ Prices.Needles = {
 	sand = 140,
 	ice = 160,
 	bog = 170,
+	coral = 220, -- Thimble Keys
 	obsidian = 300,
+	brass = 320, -- Bobbin Rock
 	geode = 340,
 	cloud = 700,
 	phantom = 800,
@@ -176,11 +180,16 @@ Prices.Pieces = {
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	garage = 2000, -- swaps which owned truck is out; a convenience, so priced like a mid-early piece
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
 	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
 	decor_flowers = 200,
 	decor_bench = 350,
 	decor_lantern = 500,
 	decor_scarecrow = 900,
+	-- Late-game decor: pure show for players with money to spare (Economy: $10k-$50k sinks).
+	decor_fountain = 15000,
+	decor_windmill = 45000,
 }
 Prices.RefundShare = 0.5
 
@@ -225,6 +234,14 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
+-- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
+-- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
+-- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+Prices.Trade = {
+	Fee = 25, -- per side, per trade
+	CashShare = 0.05, -- of the cash a side gives
+}
+
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
 -- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
 -- Longstitch Highway, stay free.
@@ -232,6 +249,41 @@ Prices.Travel = {
 	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
 	barge = 0, -- the Captain's Barge is earned by quest and free to use
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
+-- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
+-- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
+Prices.GoldenBale = {
+	oneIn = 150,
+	needles = 3,
+}
+
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul. Each is worth about 5 to 10 minutes of income at the stage where you reach
+-- its region (ECONOMY.md "Region events").
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
+	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
+	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
+}
+
+-- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward. Each is
+-- worth a trip on its own: for a player who arrives early (walking, before they haul there) it's about the price of
+-- the next mid-game buy, and for one who arrives on schedule it's a few minutes of income. Gated secrets pay more.
+Prices.Secrets = {
+	ember_cache = 40000, -- in the volcano's crater, past the heat: needs $75,000 Iron Gauntlets, so it pays the most
+	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
+	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
+	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

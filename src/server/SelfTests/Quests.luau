@@ -60,6 +60,17 @@ return function(SelfTest)
 			table.concat(bad, "; ")
 		)
 
+		-- Steps that send you to a building say which one (so GO works), and every find step has a hint.
+		local noWay = {}
+		for _, def in QuestConfig.List do
+			for i, step in def.steps do
+				if (step.kind == "own" and not step.place) or (step.kind == "find" and not step.hint) then
+					table.insert(noWay, ("%s step %d"):format(def.id, i))
+				end
+			end
+		end
+		t.check("ownership steps have a place and find steps a hint", #noWay == 0, table.concat(noWay, ", "))
+
 		-- Quest-only land pieces are exactly the ids a quest unlocks, and cost nothing.
 		local unlocks = {}
 		for _, def in QuestConfig.List do
@@ -84,7 +95,7 @@ return function(SelfTest)
 		for id, def in QuestConfig.Spots do
 			local spot = Quests.spot(id)
 			local built = spot and spot.model and spot.model.Parent and spot.base
-			if not built and (def.pos or def.fallback or def.world or def.wander) then
+			if not built and (def.pos or def.fallback or def.world or def.wander or def.inMaze) then
 				table.insert(missing, id)
 			elseif built and spot.base.Position.Y < MapConfig.SeaLevel then
 				table.insert(wet, ("%s (y %.0f)"):format(id, spot.base.Position.Y))
@@ -92,6 +103,26 @@ return function(SelfTest)
 		end
 		t.check("every quest place is built", #missing == 0, table.concat(missing, ", "))
 		t.check("no quest place is under the sea", #wet == 0, table.concat(wet, ", "))
+
+		-- The Corn Night Maze: corn walls, and three keys in different dead ends inside it.
+		local maze = Quests.spot("corn_maze")
+		local corn = 0
+		for _, p in (maze and maze.model and maze.model:GetChildren()) or {} do
+			if p.Name == "Corn" then
+				corn += 1
+			end
+		end
+		t.check("the corn maze has its walls", corn >= 20, ("%d corn walls"):format(corn))
+		local keysOk, keyDetail = maze ~= nil, {}
+		for i = 1, 3 do
+			local key = Quests.spot("maze_key_" .. i)
+			local offset = key and maze and key.position - maze.position
+			if not offset or math.abs(offset.X) > 36 or math.abs(offset.Z) > 36 then
+				keysOk = false
+			end
+			table.insert(keyDetail, offset and ("(%.0f, %.0f)"):format(offset.X, offset.Z) or "missing")
+		end
+		t.check("three corn keys sit inside the maze", keysOk, table.concat(keyDetail, " "))
 
 		local remotes = ReplicatedStorage:FindFirstChild("Quests")
 		t.check(
@@ -144,6 +175,46 @@ return function(SelfTest)
 			Quests.press(player, "old_well")
 			t.check("the well takes 10 steel needles at midnight", q.done.midnight_needle == true and pocket.steel == 0)
 			t.check("the ritual gives the Lucky Thimble", q.earned.lucky_thimble == true)
+
+			-- The Corn Night Maze: the keys can't be taken by day, then three keys and the heart at night.
+			q.active.corn_maze = { step = 1, n = 0, seen = {} }
+			Lighting.ClockTime = 12
+			Quests.press(player, "maze_key_1")
+			t.check("corn keys can't be taken by day", (q.active.corn_maze and q.active.corn_maze.n or 0) == 0)
+			Lighting.ClockTime = 21
+			for i = 1, 3 do
+				Quests.press(player, "maze_key_" .. i)
+			end
+			Quests.press(player, "corn_maze")
+			t.check("the corn maze completes at night", q.done.corn_maze == true and q.earned.corn_moon_charm == true)
+
+			-- The daily streak: a finished bounty counts the day once; a gap pauses it; 3 days earns the first rosette.
+			local bounty = QuestConfig.Bounties
+			local function finishABounty()
+				q.bounty = {}
+				for _, def in bounty do
+					Events.fire(
+						player,
+						def.event,
+						def.count,
+						{ position = Vector3.new(0, -500, 0), center = Vector3.zero }
+					)
+				end
+				t.wait(0.3)
+			end
+			finishABounty()
+			local today = os.time() // 86400
+			t.check(
+				"finishing a bounty counts today for the streak",
+				q.streak and q.streak.last == today and q.streak.days == 1
+			)
+			finishABounty()
+			t.equal("a second bounty the same day does not count again", q.streak and q.streak.days, 1)
+			q.streak.last = today - 4
+			q.streak.days = 2
+			finishABounty()
+			t.check("after missed days the streak picks up (paused, not reset)", q.streak.days == 3)
+			t.check("3 streak days earn the Bronze Rosette", q.earned.streak_rosette_bronze == true)
 
 			-- The alien offering grants exactly the land pieces' reward ids.
 			q.active.alien_offering = { step = 1, n = 0, seen = {} }

@@ -6,6 +6,8 @@
 -- spill on rough driving. Speed changes are kept smooth so a careful driver keeps the load.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 
@@ -30,13 +32,14 @@ local F = Theme.Fonts
 local hint = Instance.new("TextLabel")
 hint.AnchorPoint = Vector2.new(0.5, 1)
 hint.Position = UDim2.new(0.5, 0, 1, -90)
-hint.Size = UDim2.fromOffset(420, 26)
+hint.Size = UDim2.fromOffset(480, 26)
 hint.BackgroundColor3 = Theme.Colors.Wood
 hint.BackgroundTransparency = 0.1
 hint.Font = F.Bold
 hint.TextSize = 15
 hint.TextColor3 = Theme.Colors.Cream
-hint.Text = "W/S drive   A/D steer   Space get out"
+local DRIVE_HINT = "W/S drive   A/D steer   Q horn   Space get out   T tow"
+hint.Text = DRIVE_HINT
 hint.Visible = false
 Kit.corner(hint, 8)
 Kit.stroke(hint, Theme.Colors.Ink, 1.5)
@@ -51,6 +54,7 @@ local function stop()
 		return
 	end
 	active.connection:Disconnect()
+	active.recovered:Disconnect()
 	local chassis = active.chassis
 	if chassis.Parent then
 		active.drive.PlaneVelocity = Vector2.zero
@@ -141,7 +145,15 @@ local function start(seat)
 		up = Vector3.yAxis,
 	}
 	active = state
+	hint.Text = DRIVE_HINT
 	hint.Visible = true
+
+	-- Flipped or towed (Vehicles.recover): start again from where the truck now stands, not the old heading.
+	state.recovered = model:GetAttributeChangedSignal("RecoveredAt"):Connect(function()
+		state.yaw = yawOf(chassis.CFrame)
+		state.speed = 0
+		state.up = Vector3.yAxis
+	end)
 
 	state.connection = RunService.Heartbeat:Connect(function(dt)
 		if not seat.Parent or seat.Occupant == nil then
@@ -244,3 +256,46 @@ end)
 if player.Character then
 	task.spawn(watch, player.Character)
 end
+
+-- T twice while driving: the tow truck sets your truck (and a hitched trailer) down on the dealer lot. For a truck
+-- stuck in a ditch or on a rock; a truck on its roof gets a "Flip upright" button beside it instead.
+local towAskedAt = -math.huge
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not active then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Q then
+		local horn = ReplicatedStorage:FindFirstChild("TruckHorn")
+		if horn then
+			horn:FireServer()
+		end
+		return
+	end
+	if input.KeyCode ~= Enum.KeyCode.T then
+		return
+	end
+	if os.clock() - towAskedAt > 3 then
+		towAskedAt = os.clock()
+		hint.Text = "Press T again to tow to Homestead Motors"
+		task.delay(3, function()
+			if active and os.clock() - towAskedAt >= 3 then
+				hint.Text = DRIVE_HINT
+			end
+		end)
+		return
+	end
+	towAskedAt = -math.huge
+	local remote = ReplicatedStorage:FindFirstChild("TruckRecover")
+	if not remote then
+		return
+	end
+	local ok, _, message = pcall(function()
+		return remote:InvokeServer("tow")
+	end)
+	hint.Text = ok and (message or "") or "Could not reach the tow truck."
+	task.delay(3, function()
+		if active then
+			hint.Text = DRIVE_HINT
+		end
+	end)
+end)

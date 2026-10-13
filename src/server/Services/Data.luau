@@ -236,6 +236,30 @@ local function landFrom(land)
 	}
 end
 
+-- Trade locks (Trade.luau): { [needleKey] = { { count, untilTime }, ... } } for mythic needles received in a trade.
+-- Locks that have run out are dropped on load.
+local function tradeLocksFrom(saved)
+	local out = {}
+	if typeof(saved) ~= "table" then
+		return out
+	end
+	local now = os.time()
+	for key, list in saved do
+		if typeof(key) == "string" and typeof(list) == "table" then
+			local locks = {}
+			for _, lock in list do
+				if typeof(lock) == "table" and typeof(lock.count) == "number" and lock.count >= 1 and typeof(lock.untilTime) == "number" and lock.untilTime > now then
+					table.insert(locks, { count = math.floor(lock.count), untilTime = lock.untilTime })
+				end
+			end
+			if #locks > 0 then
+				out[key] = locks
+			end
+		end
+	end
+	return out
+end
+
 -- A fresh state from a saved table (or an empty one).
 local function stateFrom(saved)
 	saved = typeof(saved) == "table" and saved or {}
@@ -253,6 +277,7 @@ local function stateFrom(saved)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -269,8 +294,11 @@ local function stateFrom(saved)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 		-- settings: { effects, uiSize, shadows, labels } (Settings.luau checks each value)
 		settings = typeof(saved.settings) == "table" and saved.settings or {},
+		-- codex: { needles = { [id] = true }, hay = { [id] = true } } for the collection book (Codex.luau)
+		codex = typeof(saved.codex) == "table" and saved.codex or {},
 		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
+		tradeLocks = tradeLocksFrom(saved.tradeLocks), -- mythic needles received in a trade can't be traded on for a day
 	}
 	state.savedCash = state.cash
 	state.land = landFrom(saved.land)
@@ -291,13 +319,16 @@ local function toSave(state)
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
+		secrets = state.secrets,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,
 		bank = state.bank,
 		tutorial = state.tutorial,
 		settings = state.settings,
+		codex = state.codex,
 		quests = state.quests,
+		tradeLocks = state.tradeLocks,
 	}
 end
 
@@ -333,6 +364,7 @@ function Data.sync(player)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
+	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
 	local held = 0
 	for _, count in state.pocket do
 		held += count

@@ -208,6 +208,10 @@ local function building(parent, name, cframe, w, d, h, opts)
 		boardText(board, opts.sign, { Enum.NormalId.Front })
 	end
 	model.PrimaryPart = floor
+	-- With StreamingEnabled: a building streams in whole (never a roof without walls), and from far away it still
+	-- shows as a low-detail mesh, so the skyline never pops.
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	model.LevelOfDetail = Enum.ModelLevelOfDetail.StreamingMesh
 	-- The Blender building of this kind, when imported, takes over the look. Its front (Blender -Y) faces cframe's
 	-- LookVector; every Rustic export has its front at +Z, hence the half turn.
 	if opts.prop and Props.has(opts.prop) then

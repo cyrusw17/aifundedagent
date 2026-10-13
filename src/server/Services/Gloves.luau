@@ -79,15 +79,21 @@ function Gloves.scoopSize(player, hayTier)
 	return math.max(2, math.floor(base * (1 - GloveConfig.UnderGearedScoop * short) + 0.5))
 end
 
--- Walk speed carrying weight of hay whose hardest tier is hayTier.
-function Gloves.walkSpeed(player, baseSpeed, weight, hayTier)
+-- Walk speed wearing glove (a Config/Gloves tier) and carrying weight of hay whose hardest tier is hayTier.
+-- The gloves add their carrySpeed and take away relief of the slowdown; hay above their tier slows much more.
+function Gloves.speedFor(glove, baseSpeed, weight, hayTier)
 	if weight <= 0 then
 		return baseSpeed
 	end
-	local glove = Gloves.get(player)
-	local short = Gloves.shortBy(player, hayTier)
+	local short = math.max(0, (hayTier or 0) - glove.tier)
 	local slow = weight * GloveConfig.SlowPerWeight * (1 - glove.relief) * (1 + GloveConfig.UnderGearedSlow * short)
-	return math.max(GloveConfig.MinWalkSpeed, baseSpeed - slow)
+	-- Never faster than walking with empty hands, however good the gloves.
+	return math.clamp(baseSpeed + (glove.carrySpeed or 0) - slow, GloveConfig.MinWalkSpeed, baseSpeed)
+end
+
+-- Walk speed for this player carrying weight of hay whose hardest tier is hayTier.
+function Gloves.walkSpeed(player, baseSpeed, weight, hayTier)
+	return Gloves.speedFor(Gloves.get(player), baseSpeed, weight, hayTier)
 end
 
 local function publish(player)

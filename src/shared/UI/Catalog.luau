@@ -130,14 +130,15 @@ function Catalog.items(tab)
 			end
 		end
 	elseif tab == "Trailers" then
+		local ownedTrailers = listAttr("OwnedTrailers")
 		for _, def in Trailers do
 			table.insert(rows, {
 				id = def.id,
 				name = def.name,
 				blurb = ("Holds %d bales a layer."):format(def.along * def.across),
 				price = Prices.Trailers[def.id] or def.price,
-				state = "soon",
-				place = nil,
+				state = ownedTrailers[def.id] and "owned" or "buy",
+				place = "dealer",
 			})
 		end
 	elseif tab == "Robux" then
@@ -148,91 +149,79 @@ function Catalog.items(tab)
 	return rows
 end
 
--- The goal bar's ladder, in the order Economy plans (ECONOMY.md): gloves, the pickup, land, a sieve, then glove
--- tiers. The first one you don't have yet is the goal.
+-- The goal bar's ladder, in the order ECONOMY.md plans the first hours: Work Gloves, Wheelbarrow, Pickup (on a loan),
+-- Wagon, Plot and a hand sieve, Shaker table, Leather Gloves, Flatbed (on a loan), Conveyor sorter, then the higher
+-- glove tiers. The first one you don't have yet is the goal. Prices come from Config/Prices.
+local function hasGlove(id)
+	return function()
+		return listAttr("GlovesOwned")[id] == true
+	end
+end
+local function built(id)
+	return function()
+		return flags()["built_" .. id] == true
+	end
+end
 local LADDER = {
+	{ name = "Work Gloves", price = Prices.Gloves.work, place = "gloves", have = hasGlove("work") },
 	{
-		name = "Work Gloves",
-		price = 250,
-		place = "gloves",
+		name = "a Wheelbarrow",
+		price = Prices.Wheelbarrow,
+		place = "sellpad", -- the stand is beside the sell pad
 		have = function()
-			return listAttr("GlovesOwned").work
+			return listAttr("Gear").wheelbarrow == true
 		end,
 	},
 	{
 		name = "the Rusty Pickup",
-		price = 6000,
+		price = Prices.Trucks.rusty_pickup,
+		loan = true,
 		place = "dealer",
 		have = function()
-			return listAttr("OwnedTrucks").rusty_pickup
+			return listAttr("OwnedTrucks").rusty_pickup == true
+		end,
+	},
+	{
+		name = "a Wagon Trailer",
+		price = Prices.Trailers.wagon_trailer,
+		place = "dealer",
+		have = function()
+			return listAttr("OwnedTrailers").wagon_trailer == true
 		end,
 	},
 	{
 		name = "your first plot",
-		price = LandConfig.Plots[1].price,
+		price = Prices.Plot,
 		place = "landoffice",
 		have = function()
 			return (attr("LandPlot") or 0) > 0
 		end,
 	},
+	{ name = "a Hand Sieve", price = Prices.Pieces.hand_sieve, place = "plot", have = built("hand_sieve") },
+	{ name = "a Shaker Table", price = Prices.Pieces.shaker_table, place = "plot", have = built("shaker_table") },
+	{ name = "Leather Gloves", price = Prices.Gloves.leather, place = "gloves", have = hasGlove("leather") },
 	{
-		name = "a Hand Sieve",
-		price = 250,
+		name = "the Farm Flatbed",
+		price = Prices.Trucks.farm_flatbed,
+		loan = true,
+		place = "dealer",
+		have = function()
+			return listAttr("OwnedTrucks").farm_flatbed == true
+		end,
+	},
+	{
+		name = "a Conveyor Sorter",
+		price = Prices.Pieces.conveyor_sorter,
 		place = "plot",
-		have = function()
-			return flags().sorter
-		end,
+		have = built("conveyor_sorter"),
 	},
-	{
-		name = "Leather Gloves",
-		price = 1500,
-		place = "gloves",
-		have = function()
-			return listAttr("GlovesOwned").leather
-		end,
-	},
-	{
-		name = "Reinforced Gloves",
-		price = 6000,
-		place = "gloves",
-		have = function()
-			return listAttr("GlovesOwned").reinforced
-		end,
-	},
-	{
-		name = "Iron Gauntlets",
-		price = 25000,
-		place = "gloves",
-		have = function()
-			return listAttr("GlovesOwned").iron
-		end,
-	},
-	{
-		name = "Starlight Gloves",
-		price = 150000,
-		place = "gloves",
-		have = function()
-			return listAttr("GlovesOwned").starlight
-		end,
-	},
+	{ name = "Reinforced Gloves", price = Prices.Gloves.reinforced, place = "gloves", have = hasGlove("reinforced") },
+	{ name = "Iron Gauntlets", price = Prices.Gloves.iron, place = "gloves", have = hasGlove("iron") },
+	{ name = "Starlight Gloves", price = Prices.Gloves.starlight, place = "gloves", have = hasGlove("starlight") },
 }
+Catalog.Ladder = LADDER
 
--- Ladder prices from the one price config.
-local function ladderPrice(name, price)
-	for _, step in LADDER do
-		if step.name == name then
-			step.price = price
-		end
-	end
-end
-for _, def in Gloves.Tiers do
-	ladderPrice(def.name, Prices.Gloves[def.id] or def.price)
-end
-ladderPrice("the Rusty Pickup", Prices.Trucks.rusty_pickup)
-ladderPrice("a Hand Sieve", Prices.Pieces.hand_sieve)
-ladderPrice("your first plot", Prices.Plot)
-
--- { name, price, place } for the next thing to save for, or nil when the ladder is done.
+-- { name, price, place, loan } for the next thing to save for, or nil when the ladder is done.
 function Catalog.nextGoal()
 	for _, step in LADDER do
 		if not step.have() then

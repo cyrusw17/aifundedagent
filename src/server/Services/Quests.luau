@@ -150,6 +150,26 @@ local function bountyState(q)
 	return q.bounty
 end
 
+-- The daily streak: { days, last = UTC day last counted, lucky = { day, n } }.
+local function streakState(q)
+	local st = typeof(q.streak) == "table" and q.streak or {}
+	q.streak = st
+	st.days = typeof(st.days) == "number" and st.days or 0
+	st.lucky = typeof(st.lucky) == "table" and st.lucky or {}
+	return st
+end
+
+-- Today's personal lucky field for this player (a Regions field), or nil before LuckyField.fromDays.
+local function luckyField(player, q)
+	local st = streakState(q)
+	local fields = Regions.fields or {}
+	if st.days < QuestConfig.Streak.LuckyField.fromDays or #fields == 0 then
+		return nil
+	end
+	local r = Random.new(today() * 31 + player.UserId % 1000003)
+	return fields[r:NextInteger(1, #fields)]
+end
+
 local function currentStep(q, id)
 	local entry = id and q.active[id]
 	local def = id and questById[id]
@@ -684,6 +704,209 @@ function LOOKS.stone(m, cf)
 	return stone
 end
 
+-- The Corn Night Maze: a square of corn walls carved by a fixed-seed walk, so every server has the same maze. The
+-- entrance is the middle of the south side and the heart (this spot's base) is the middle cell. spot.keyCells gets
+-- the three dead ends farthest from the entrance, where the corn keys go.
+local MAZE_CELLS, MAZE_CELL, MAZE_WALL, MAZE_HEIGHT = 9, 8, 1.4, 10
+
+function LOOKS.maze(m, cf, spot)
+	local n = MAZE_CELLS
+	local half = n * MAZE_CELL / 2
+	local r = Random.new(20261013)
+	-- open[x][z] = { E = bool, S = bool }: the wall east of / south of cell (x, z) is gone. z grows to the south.
+	local open, seen = {}, {}
+	for x = 1, n do
+		open[x], seen[x] = {}, {}
+		for z = 1, n do
+			open[x][z] = { E = false, S = false }
+		end
+	end
+	local stack = { { 1, 1 } }
+	seen[1][1] = true
+	while #stack > 0 do
+		local x, z = stack[#stack][1], stack[#stack][2]
+		local options = {}
+		for _, d in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local nx, nz = x + d[1], z + d[2]
+			if nx >= 1 and nx <= n and nz >= 1 and nz <= n and not seen[nx][nz] then
+				table.insert(options, { nx, nz, d })
+			end
+		end
+		if #options == 0 then
+			table.remove(stack)
+		else
+			local pick = options[r:NextInteger(1, #options)]
+			local nx, nz, d = pick[1], pick[2], pick[3]
+			if d[1] == 1 then
+				open[x][z].E = true
+			elseif d[1] == -1 then
+				open[nx][nz].E = true
+			elseif d[2] == 1 then
+				open[x][z].S = true
+			else
+				open[nx][nz].S = true
+			end
+			seen[nx][nz] = true
+			table.insert(stack, { nx, nz })
+		end
+	end
+	local mid = (n + 1) // 2
+	-- A clearing at the heart: the walls between the middle cell and its neighbors come down.
+	open[mid][mid].E, open[mid][mid].S, open[mid - 1][mid].E, open[mid][mid - 1].S = true, true, true, true
+
+	local corn = Color3.fromRGB(150, 146, 74)
+	local function wall(x0, z0, x1, z1)
+		-- A straight run of corn from (x0, z0) to (x1, z1) in maze-local studs.
+		local len = math.max(math.abs(x1 - x0), math.abs(z1 - z0)) + MAZE_WALL
+		local size = x0 == x1 and Vector3.new(MAZE_WALL, MAZE_HEIGHT, len) or Vector3.new(len, MAZE_HEIGHT, MAZE_WALL)
+		local p = part(
+			m,
+			"Corn",
+			size,
+			cf * CFrame.new((x0 + x1) / 2, MAZE_HEIGHT / 2, (z0 + z1) / 2),
+			corn,
+			Enum.Material.Grass
+		)
+		p.CastShadow = false
+	end
+	local function edge(i)
+		return -half + (i - 1) * MAZE_CELL
+	end
+	-- Walls along each row line (south walls), merged into runs; the outer north and south edges too.
+	for z = 0, n do
+		local runStart = nil
+		for x = 1, n + 1 do
+			local closed
+			if x > n then
+				closed = false
+			elseif z == 0 then
+				closed = true
+			elseif z == n then
+				closed = x ~= mid -- the entrance
+			else
+				closed = not open[x][z].S
+			end
+			if closed and not runStart then
+				runStart = x
+			elseif not closed and runStart then
+				wall(edge(runStart), edge(z + 1), edge(x), edge(z + 1))
+				runStart = nil
+			end
+		end
+	end
+	-- Walls along each column line (east walls), merged into runs; the outer west and east edges too.
+	for x = 0, n do
+		local runStart = nil
+		for z = 1, n + 1 do
+			local closed
+			if z > n then
+				closed = false
+			elseif x == 0 or x == n then
+				closed = true
+			else
+				closed = not open[x][z].E
+			end
+			if closed and not runStart then
+				runStart = z
+			elseif not closed and runStart then
+				wall(edge(x + 1), edge(runStart), edge(x + 1), edge(z))
+				runStart = nil
+			end
+		end
+	end
+
+	-- The three dead ends farthest from the entrance (breadth-first from the entrance cell) get the keys.
+	local dist = { [mid .. "," .. n] = 0 }
+	local queue, head = { { mid, n } }, 1
+	local deadEnds = {}
+	while head <= #queue do
+		local x, z = queue[head][1], queue[head][2]
+		head += 1
+		local links = {}
+		if x < n and open[x][z].E then
+			table.insert(links, { x + 1, z })
+		end
+		if x > 1 and open[x - 1][z].E then
+			table.insert(links, { x - 1, z })
+		end
+		if z < n and open[x][z].S then
+			table.insert(links, { x, z + 1 })
+		end
+		if z > 1 and open[x][z - 1].S then
+			table.insert(links, { x, z - 1 })
+		end
+		if #links == 1 and not (x == mid and z == n) then
+			table.insert(deadEnds, { x, z })
+		end
+		for _, l in links do
+			local key = l[1] .. "," .. l[2]
+			if dist[key] == nil then
+				dist[key] = dist[x .. "," .. z] + 1
+				table.insert(queue, l)
+			end
+		end
+	end
+	table.sort(deadEnds, function(a, b)
+		return dist[a[1] .. "," .. a[2]] > dist[b[1] .. "," .. b[2]]
+	end)
+	spot.keyCells = {}
+	for i = 1, math.min(3, #deadEnds) do
+		local c = deadEnds[i]
+		local center = edge(c[1]) + MAZE_CELL / 2
+		local depth = edge(c[2]) + MAZE_CELL / 2
+		table.insert(spot.keyCells, (cf * CFrame.new(center, 0, depth)).Position)
+	end
+
+	-- Lanterns at the entrance (the world's lamps light them at dusk) and a sign.
+	for _, side in { -1, 1 } do
+		local base = cf * CFrame.new(side * (MAZE_CELL / 2 + 1.5), 0, half + 2)
+		part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood)
+		local lantern =
+			part(m, "Lantern", Vector3.new(1, 1.3, 1), base * CFrame.new(0, 6.4, 0), Rustic.Metal, Enum.Material.Metal)
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 200, 120)
+		glow.Range = 16
+		glow.Parent = lantern
+	end
+	local sign = part(
+		m,
+		"Sign",
+		Vector3.new(6, 2.4, 0.3),
+		cf * CFrame.new(MAZE_CELL / 2 + 6, 3, half + 3),
+		Rustic.Wood,
+		Enum.Material.WoodPlanks
+	)
+	label(sign, "CORN MAZE\nKeys glow after dark", Vector3.new(0, 3, 0), 90)
+
+	-- The heart: a scarecrow on a hay-strewn patch, where the keys are brought.
+	local heart =
+		part(m, "Heart", Vector3.new(6, 0.2, 6), cf * CFrame.new(0, 0.1, 0), Rustic.HayLight, Enum.Material.Fabric)
+	heart.CanCollide = false
+	LOOKS.scarecrow(m, cf * CFrame.new(0, 0, -2))
+	return heart
+end
+
+-- A corn key: a small glowing brass key on a corn husk.
+function LOOKS.cornkey(m, cf)
+	local husk =
+		part(m, "Husk", Vector3.new(1.4, 0.3, 2), cf * CFrame.new(0, 0.15, 0), Rustic.HayLight, Enum.Material.Fabric)
+	husk.CanCollide = false
+	local key = part(
+		m,
+		"Key",
+		Vector3.new(1.4, 0.25, 0.5),
+		cf * CFrame.new(0, 1.2, 0),
+		Color3.fromRGB(230, 186, 74),
+		Enum.Material.Neon
+	)
+	key.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Range = 10
+	light.Parent = key
+	return husk
+end
+
 -- Just the quest marker and prompt, for a place the world map already built (the snow door, the pyramid door).
 function LOOKS.marker(m, cf)
 	local base = part(m, "Base", Vector3.new(4, 0.4, 4), cf * CFrame.new(0, 0.2, 0), Color3.new(1, 1, 1))
@@ -746,6 +969,7 @@ local function buildSpot(id, position, cframe)
 	spot.model = model
 	spot.base = base
 	spot.position = cf.Position
+	spot.shown = nil -- timed spots (showWhen) set their look on the next tick
 
 	-- The marker over a spot your quest needs. Each client shows it only for its own active spots.
 	local marker = label(base, "!", Vector3.new(0, 5, 0), 500)
@@ -1046,6 +1270,77 @@ local function dropFind(player, questId, step, position)
 	Data.toast(player, ("Something glows in the hay: a %s!"):format(find.name:lower()))
 end
 
+-- The best streak rosette this player has earned, pinned to their chest (welded, massless, no collisions).
+local function pinRosette(player)
+	local q = questsOf(player)
+	local character = player.Character
+	if not q or not character then
+		return
+	end
+	local best
+	for _, m in QuestConfig.Streak.Milestones do
+		if q.earned[m.reward] then
+			best = m.reward
+		end
+	end
+	local old = character:FindFirstChild("StreakRosette")
+	if old and old:GetAttribute("Reward") == best then
+		return
+	end
+	if old then
+		old:Destroy()
+	end
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local reward = best and QuestConfig.Rewards[best]
+	if not torso or not reward then
+		return
+	end
+	local c = reward.color or { 230, 186, 74 }
+	local rosette = Instance.new("Part")
+	rosette.Name = "StreakRosette"
+	rosette.Shape = Enum.PartType.Cylinder
+	rosette.Size = Vector3.new(0.15, 0.7, 0.7)
+	rosette.Color = Color3.fromRGB(c[1], c[2], c[3])
+	rosette.Material = reward.glow and Enum.Material.Neon or Enum.Material.Fabric
+	rosette.CanCollide = false
+	rosette.CanQuery = false
+	rosette.CanTouch = false
+	rosette.Massless = true
+	-- Left side of the chest; a torso's front is -Z. The cylinder's flat face points out of the chest.
+	rosette.CFrame = torso.CFrame * CFrame.new(-0.45, 0.35, -torso.Size.Z / 2 - 0.05) * CFrame.Angles(0, math.pi / 2, 0)
+	rosette:SetAttribute("Reward", best)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = torso
+	weld.Part1 = rosette
+	weld.Parent = rosette
+	rosette.Parent = character
+end
+
+-- A finished bounty counts today toward the streak (once a day). Missed days pause it; it never goes back down.
+local function countStreakDay(player, q)
+	local st = streakState(q)
+	if st.last == today() then
+		return
+	end
+	st.days += 1
+	st.last = today()
+	local got
+	for _, m in QuestConfig.Streak.Milestones do
+		if st.days >= m.days and not q.earned[m.reward] then
+			q.earned[m.reward] = true
+			got = QuestConfig.Rewards[m.reward]
+		end
+	end
+	if got then
+		Data.toast(player, ("Streak day %d! You earned the %s."):format(st.days, got.name))
+		if not sandboxes[player] then
+			pinRosette(player)
+		end
+	else
+		Data.toast(player, ("Streak day %d. Come back tomorrow to keep it going."):format(st.days))
+	end
+end
+
 local function onEvent(player, kind, amount, info)
 	local q = questsOf(player)
 	if not q then
@@ -1077,8 +1372,31 @@ local function onEvent(player, kind, amount, info)
 					Bank.earn(player, def.cash, "Bounty: " .. def.text)
 				end
 				Data.toast(player, ("Bounty done: %s. +$%d"):format(def.text, def.cash))
+				countStreakDay(player, q)
 			end
 			publish(player)
+		end
+	end
+
+	-- The streak's lucky field: bales broken there sometimes spill an extra needle, a few times a day.
+	if kind == "bale_broken" and info.position then
+		local field = luckyField(player, q)
+		local cfg = QuestConfig.Streak.LuckyField
+		local st = streakState(q)
+		if st.lucky.day ~= today() then
+			st.lucky = { day = today(), n = 0 }
+		end
+		if
+			field
+			and st.lucky.n < cfg.perDay
+			and (info.position - field.center).Magnitude <= cfg.radius
+			and rng:NextNumber() < cfg.chance
+		then
+			st.lucky.n += 1
+			if not sandboxes[player] then
+				local jitter = Vector3.new(rng:NextNumber(-1.5, 1.5), 2.5, rng:NextNumber(-1.5, 1.5))
+				Needle.spawn(info.position + jitter, nil, needleForHay(info.hayType))
+			end
 		end
 	end
 
@@ -1322,7 +1640,7 @@ local function targetsOf(q, id)
 	if step and step.kind ~= "own" and step.kind ~= "event" and step.kind ~= "find" then
 		for _, spotId in spotIds(step) do
 			local spot = spots[spotId]
-			if not entry.seen[spotId] and spot and spot.position then
+			if not entry.seen[spotId] and spot and spot.position and (not spot.def.showWhen or spot.shown) then
 				table.insert(list, { name = spot.def.name, position = spot.position })
 			end
 		end
@@ -1353,6 +1671,7 @@ local function snapshot(player)
 				n = n,
 				count = count,
 				when = step.when and QuestConfig.WhenText[step.when] or nil,
+				hint = isCurrent and step.hint or nil,
 			})
 		end
 		local needs = {}
@@ -1373,6 +1692,7 @@ local function snapshot(player)
 			steps = steps,
 			reward = rewardText(def.reward or {}),
 			targets = entry and targetsOf(q, def.id) or {},
+			place = entry and def.steps[entry.step] and def.steps[entry.step].place or nil,
 		})
 	end
 
@@ -1415,8 +1735,25 @@ local function snapshot(player)
 		return a.name < b.name
 	end)
 
+	local st = streakState(q)
+	local nextMilestone
+	for _, m in QuestConfig.Streak.Milestones do
+		if not nextMilestone and st.days < m.days then
+			nextMilestone = { days = m.days, name = QuestConfig.Rewards[m.reward].name }
+		end
+	end
+	local field = luckyField(player, q)
+	local streak = {
+		days = st.days,
+		today = st.last == today(),
+		nextMilestone = nextMilestone,
+		lucky = field and { region = field.region, position = field.center } or nil,
+		luckyFrom = QuestConfig.Streak.LuckyField.fromDays,
+	}
+
 	return {
 		quests = list,
+		streak = streak,
 		bounties = bounties,
 		relics = relics,
 		gear = gear,
@@ -1431,7 +1768,9 @@ local function activeSpots(q)
 		local step, entry = currentStep(q, id)
 		if step and step.kind ~= "own" and step.kind ~= "event" and step.kind ~= "find" then
 			for _, spotId in spotIds(step) do
-				if not entry.seen[spotId] and spots[spotId] and spots[spotId].model then
+				local spot = spots[spotId]
+				-- A timed spot (the corn keys) is only marked while it shows.
+				if not entry.seen[spotId] and spot and spot.model and (not spot.def.showWhen or spot.shown) then
 					table.insert(ids, spotId)
 				end
 			end
@@ -1474,6 +1813,8 @@ publish = function(player)
 	local target = best and targetsOf(q, best)[1]
 	player:SetAttribute("QuestTrackTarget", target and target.position or nil)
 	player:SetAttribute("QuestTrackTargetName", target and target.name or nil)
+	-- A step that sends you to a building (the dealer, your plot): the client finds it with UI Places.
+	player:SetAttribute("QuestTrackPlace", not target and step and step.place or nil)
 	if changedRemote then
 		changedRemote:FireClient(player)
 	end
@@ -1545,7 +1886,11 @@ local function dressTools(player)
 		end
 		dressAll()
 	end
-	player.CharacterAdded:Connect(watch)
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(watch, character)
+		character:WaitForChild("HumanoidRootPart", 10)
+		pinRosette(player)
+	end)
 	if player.Character then
 		task.spawn(watch, player.Character)
 	end
@@ -1561,6 +1906,7 @@ local function onLoaded(player)
 	unlockQuests(q)
 	applyPerks(player, q)
 	publish(player)
+	pinRosette(player)
 end
 
 -- For SelfTests: runs fn(q, pocket) with this player's quests swapped for a fresh, empty set (q) and a pretend needle
@@ -1657,6 +2003,13 @@ function Quests.build(worldFolder)
 				buildSpot(id, def.pos or def.fallback)
 			end
 		end
+		-- The corn keys go where the maze put its dead ends.
+		local maze = spots.corn_maze
+		for i, position in (maze and maze.keyCells) or {} do
+			if QuestConfig.Spots["maze_key_" .. i] then
+				buildSpot("maze_key_" .. i, position)
+			end
+		end
 		moveScarecrow()
 		refreshSign()
 		CollectionService:GetInstanceAddedSignal("QuestAnchor"):Connect(onAnchor)
@@ -1694,16 +2047,28 @@ function Quests.build(worldFolder)
 					publish(player)
 				end
 			end
-			-- The golden bale only shows at midnight.
-			local golden = spots.golden_bale
-			if golden and golden.model then
-				local show = DayNight.is("midnight")
-				for _, p in golden.model:GetDescendants() do
-					if p:IsA("BasePart") then
-						p.Transparency = show and 0 or 1
-					elseif p:IsA("PointLight") then
-						p.Enabled = show
+			-- Spots that only show at their time (the golden bale at midnight, the corn keys at night).
+			local toggled = false
+			for _, spot in spots do
+				local when = spot.def and spot.def.showWhen
+				if when and spot.model then
+					local show = DayNight.is(when)
+					if spot.shown ~= show then
+						spot.shown = show
+						toggled = true
+						for _, p in spot.model:GetDescendants() do
+							if p:IsA("BasePart") then
+								p.Transparency = show and 0 or 1
+							elseif p:IsA("PointLight") then
+								p.Enabled = show
+							end
+						end
 					end
+				end
+			end
+			if toggled then
+				for player in players do
+					publish(player)
 				end
 			end
 		end

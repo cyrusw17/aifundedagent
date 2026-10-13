@@ -501,7 +501,7 @@ REGIONS = {
     "volcano": dict(ground=(62, 56, 54), leaves=[(70, 60, 50)], accent=(220, 110, 50),
                     sky=((90, 80, 84), (200, 140, 110)), hay=(150, 110, 80), trees="deadtree"),
     "haunted": dict(ground=(70, 76, 70), leaves=[(70, 66, 90)], accent=(150, 130, 210),
-                    sky=((44, 48, 72), (110, 104, 132)), hay=(140, 140, 150), trees="deadtree"),
+                    sky=((70, 74, 104), (150, 140, 170)), hay=(140, 140, 150), trees="deadtree"),
     "sky": dict(ground=(150, 170, 120), leaves=[(140, 170, 140)], accent=(230, 236, 250),
                 sky=((150, 186, 226), (246, 240, 230)), hay=(236, 232, 214), trees="oak"),
 }

@@ -50,16 +50,33 @@ RUSTIC = {
     "steel": ((0.78, 0.78, 0.76), (0.66, 0.66, 0.64), (0.50, 0.50, 0.48)),  # galvanized, unrusted
     "dirt": ((0.58, 0.48, 0.36), (0.48, 0.39, 0.29), (0.34, 0.27, 0.20)),
     "leather": ((0.56, 0.40, 0.27), (0.46, 0.32, 0.21), (0.32, 0.22, 0.15)),
+    "greywood": ((0.55, 0.53, 0.49), (0.45, 0.43, 0.40), (0.30, 0.29, 0.27)),  # sun-bleached grey boards
+    # Region scatter (STYLE.md "Regions" leaves / bark / ground, light-mid-dark).
+    "leaf_oak": ((0.36, 0.46, 0.28), (0.30, 0.40, 0.23), (0.23, 0.31, 0.18)),     # Meadow
+    "leaf_pine": ((0.24, 0.36, 0.28), (0.19, 0.30, 0.23), (0.13, 0.21, 0.16)),    # Pine Forest
+    "leaf_snow": ((0.26, 0.36, 0.33), (0.21, 0.30, 0.28), (0.14, 0.21, 0.20)),    # Snow Peak
+    "leaf_desert": ((0.50, 0.58, 0.42), (0.42, 0.50, 0.35), (0.30, 0.37, 0.26)),  # Desert (cactus)
+    "leaf_swamp": ((0.36, 0.44, 0.26), (0.29, 0.36, 0.21), (0.20, 0.25, 0.15)),   # Swamp (reeds)
+    "bark_pine": ((0.34, 0.27, 0.21), (0.26, 0.20, 0.15), (0.14, 0.11, 0.08)),
+    "bark_swamp": ((0.30, 0.28, 0.24), (0.23, 0.21, 0.18), (0.12, 0.11, 0.10)),
+    "snow": ((0.95, 0.96, 0.97), (0.92, 0.93, 0.94), (0.80, 0.82, 0.85)),         # #EBEDF0
+    "sand": ((0.82, 0.73, 0.56), (0.76, 0.66, 0.49), (0.62, 0.52, 0.38)),         # Desert ground
+    "lilac": ((0.70, 0.57, 0.78), (0.60, 0.47, 0.69), (0.44, 0.33, 0.52)),        # Epic needle tier #9A78B0
+    "gold": ((0.90, 0.76, 0.42), (0.79, 0.65, 0.29), (0.58, 0.46, 0.18)),         # quest gold #C9A54A, no glow
     # Flat, untextured.
     "tire": (None, (0.13, 0.12, 0.11), None),
     "glass": (None, (0.20, 0.26, 0.28), None),
     "glow": (None, (0.55, 0.95, 0.90), None),
+    "lava": (None, (1.00, 0.45, 0.12), None),  # orange glow for fire and lava
+    "firefly": (None, (0.70, 0.76, 0.36), None),  # Swamp accent glow
 }
 # Kinds that stay flat even in textured finishes, and their extra material settings.
 FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3},
-        "glow": {"roughness": 0.4, "emission": 2.0}}
+        "glow": {"roughness": 0.4, "emission": 2.0}, "lava": {"roughness": 0.5, "emission": 2.5},
+        "firefly": {"roughness": 0.4, "emission": 3.0}}
 # Kinds that use the blotchy weathered texture.
-WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt", "leather")
+WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt", "leather", "greywood",
+             "leaf_oak", "leaf_pine", "leaf_snow", "leaf_desert", "leaf_swamp", "bark_pine", "bark_swamp", "snow", "sand", "lilac", "gold")
 SOFT = {
     "hay": (None, (1.00, 0.86, 0.55), None),
     "bark": (None, (0.66, 0.45, 0.34), None),
@@ -170,14 +187,38 @@ def metal_texture(pal, c, rusty):
     return fn
 
 
-def weathered_texture(pal, c, seed):
-    """Faded paint / stone / canvas: soft blotches plus fine speckle."""
-    lite, mid, dark = pal
-    big, fine = noise(seed, 16), noise(seed + 1, 256)
+def value_noise_2d(seed, n):
+    """Tileable 2D value noise on an n x n grid, smoothly interpolated: fn(u, v) -> 0..1."""
+    rng = random.Random(seed)
+    grid = [[rng.random() for _ in range(n)] for _ in range(n)]
 
     def fn(u, v):
-        b = smooth_lookup(big, (u * 2 + smooth_lookup(big, v * 3 % 1) * 0.5) % 1)
-        k = contrast(0.5 + (b - 0.5) * 0.8 + (fine[int((u * 13 + v * 7) * 256) % 256] - 0.5) * 0.25, c)
+        x, y = (u % 1) * n, (v % 1) * n
+        i, j = int(x), int(y)
+        fx, fy = x - i, y - j
+        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        i1, j1 = (i + 1) % n, (j + 1) % n
+        a = grid[j % n][i % n] + (grid[j % n][i1] - grid[j % n][i % n]) * fx
+        b = grid[j1][i % n] + (grid[j1][i1] - grid[j1][i % n]) * fx
+        return a + (b - a) * fy
+
+    return fn
+
+
+def weathered_texture(pal, c, seed):
+    """Faded paint / stone / canvas: soft blotches, faint grain, a few chips and vertical streaks."""
+    lite, mid, dark = pal
+    big = value_noise_2d(seed, 4)
+    fine = value_noise_2d(seed + 1, 32)
+    chips = value_noise_2d(seed + 2, 12)
+    streaks = noise(seed + 3, 24)
+
+    def fn(u, v):
+        k = 0.55 + (big(u, v) - 0.5) * 0.4 + (fine(u, v) - 0.5) * 0.12
+        k -= 0.08 * max(0.0, smooth_lookup(streaks, u) - 0.6) * 2.5   # rain streaks run down (v)
+        if chips(u, v) > 0.8:
+            k -= 0.18                                                  # a few worn chips
+        k = contrast(k, c)
         return mix(dark, mid, k * 2) if k < 0.5 else mix(mid, lite, (k - 0.5) * 2)
 
     return fn
@@ -185,7 +226,15 @@ def weathered_texture(pal, c, seed):
 
 def rolled_hay_texture(pal, c):
     lite, mid, dark = pal
-    return lambda u, v: mix(lite, dark, contrast(0.5 + 0.5 * math.sin(math.hypot(u - 0.5, v - 0.5) * 70), c * 0.8))
+
+    def fn(u, v):
+        # A soft spiral wound from the center, at half contrast, instead of hard rings.
+        du, dv = u - 0.5, v - 0.5
+        r, a = math.hypot(du, dv), math.atan2(dv, du)
+        k = 0.5 + 0.25 * math.sin(r * 55 - a)
+        return mix(lite, dark, contrast(k, c * 0.5))
+
+    return fn
 
 
 # ---------------------------------------------------------------- finish

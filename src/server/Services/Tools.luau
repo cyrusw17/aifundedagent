@@ -276,8 +276,13 @@ function Tools.init()
 	local dropRemote = Instance.new("RemoteEvent")
 	dropRemote.Name = "DropBale"
 	dropRemote.Parent = ReplicatedStorage
-	dropRemote.OnServerEvent:Connect(function(player)
-		Bales.drop(player)
+	-- With a charge (0..1, from holding the click) it throws the bale instead.
+	dropRemote.OnServerEvent:Connect(function(player, power)
+		if typeof(power) == "number" then
+			Bales.toss(player, power)
+		else
+			Bales.drop(player)
+		end
 	end)
 end
 
