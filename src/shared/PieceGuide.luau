@@ -40,7 +40,7 @@ function PieceGuide.line(def: any): string
 			return ("Finds %s of the needles, %g bales a minute.%s"):format(percent(tier.recovery), perMin, gradeText(def.id))
 		end
 	elseif def.kind == "treat" then
-		for hayType, t in Factory.Treatments do
+		for hayType, t: any in Factory.Treatments do
 			if t.machine == def.id then
 				local name = HayTypes[hayType] and HayTypes[hayType].name or hayType
 				if t.required then
