@@ -69,6 +69,11 @@ return function(SelfTest)
 			end
 		end
 		walk(Prices, "Prices")
+		-- Robux truck skins are keyed by their mesh name (Config/Props Sizes), so the store can find the mesh.
+		local PropsConfig = require(Shared.Config.Props)
+		for id in Prices.Robux.Trucks do
+			t.check(("Robux truck %s is a mesh in Config/Props"):format(id), PropsConfig.Sizes[id] ~= nil)
+		end
 		t.check("every Prices number is finite and positive", #bad == 0, #bad > 0 and table.concat(bad, ", ") or nil)
 		for hay, n in Prices.NeedlesPerBale do
 			local chance = Prices.needleChance(hay)

@@ -425,10 +425,11 @@ Prices.Secrets = {
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
 -- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+-- Truck keys are the skin mesh names in Config/Props Sizes; a skin is drawn at the meshSize of the truck it repaints.
 Prices.Robux = {
 	Trucks = {
 		homestead_classic = 399, -- skin of the Rusty Pickup tier
-		timber_wolf = 799, -- Farm Flatbed tier
+		timber_wolf_4x4 = 799, -- Farm Flatbed tier (key = its mesh name in Config/Props)
 		midnight_express = 1199, -- Box Truck tier
 		prairie_schooner = 1799, -- Heavy Hauler tier
 		founders_semi = 2499, -- Semi tier, launch edition
