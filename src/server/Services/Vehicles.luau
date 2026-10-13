@@ -1115,6 +1115,7 @@ function Vehicles.recover(player, mode)
 	end
 	setDown(truck, ground, truck:GetAttribute("Deck") - 0.4)
 	chassis.Steer.CFrame = CFrame.Angles(0, yawOf(ground), 0)
+	truck:SetAttribute("RecoveredAt", os.clock()) -- the driver's client takes its new heading from here (Truck.client)
 	if hitched then
 		local def = Vehicles.getTrailer(trailer:GetAttribute("TrailerId"))
 		local truckDef = Vehicles.get(truck:GetAttribute("TruckId"))
