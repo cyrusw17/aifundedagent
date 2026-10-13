@@ -165,6 +165,12 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
+	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
+	-- sorter, Volcano at the magnet drum).
+	thawing_shed = 10000,
+	drying_rack = 20000,
+	ash_sifter = 60000,
 	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
@@ -211,6 +217,14 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
+-- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
+-- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
+-- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+Prices.Trade = {
+	Fee = 25, -- per side, per trade
+	CashShare = 0.05, -- of the cash a side gives
+}
+
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
 -- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
 -- Longstitch Highway, stay free.
@@ -218,6 +232,23 @@ Prices.Travel = {
 	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
 	barge = 0, -- the Captain's Barge is earned by quest and free to use
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul. Each is worth about 5 to 10 minutes of income at the stage where you reach
+-- its region (ECONOMY.md "Region events").
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
+	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
+	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

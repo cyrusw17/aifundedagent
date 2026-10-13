@@ -193,6 +193,14 @@ return function(SelfTest)
 				t.equal("an early payoff clears the loan", Bank.account(state).loans.truck, nil)
 			end
 
+			-- Trading post fees (a real two-player trade needs a second player, so only the rules are checked here).
+			local trade = Prices.Trade
+			t.equal("trade fee with no cash", Bank.tradeFee(0), math.floor(trade.Fee + 0.5))
+			t.equal("trade fee on $1,000 cash", Bank.tradeFee(1000), math.floor(trade.Fee + 1000 * trade.CashShare + 0.5))
+			reset(500)
+			t.check("a player can't trade with themselves", not Bank.settleTrade(player, player, { aCash = 10 }))
+			t.equal("a refused trade moves nothing", Bank.spendable(state), 500)
+
 			-- NPC orders: each one pays its rate per unit and stops at its amount.
 			reset(0)
 			local offers = Orders.current()

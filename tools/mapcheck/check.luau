@@ -105,3 +105,27 @@ end
 Weather.force("desert", "dust", 60)
 if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
 print("weather", weatherOk and "ok" or "WRONG")
+
+-- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
+local RegionEvents = require({ __path = "Services.RegionEvents" })
+local Prices = require({ __path = "Shared.Config.Prices" })
+local WorldShapeE = require({ __path = "Services.WorldShape" })
+local eventsOk = true
+for _, e in RegionEvents.List do
+	local reward = Prices.RegionEvents[e.id]
+	local dropped = RegionEvents.run(e.id, 1)
+	local n, onRoad = 0, 0
+	for b in dropped do
+		n += 1
+		local d = WorldShapeE.nearestRoad(b.spawnPosition.X, b.spawnPosition.Z)
+		if d and d < 6 then onRoad += 1 end
+		if b.body:GetAttribute("NeedleBoost") ~= reward.boost then eventsOk = false end
+	end
+	if n < reward.bales * 0.6 or onRoad > 0 then
+		eventsOk = false
+		print("WARN event", e.id, "dropped", n, "of", reward.bales, "on road", onRoad)
+	end
+	print(("event %-14s %2d bales"):format(e.id, n))
+end
+RegionEvents.finish()
+print("events", eventsOk and "ok" or "WRONG")

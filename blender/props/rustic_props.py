@@ -8,6 +8,7 @@ Run:
   blender --background --python blender/props/rustic_props.py -- --out blender/exports/rustic
   ... [--category vehicles] [--only basic_shovel,log] [--no-catalog]
 """
+import json
 import math
 import os
 import sys
@@ -178,8 +179,28 @@ def wheelbarrow(f):
     return parts
 
 
+def wheelbarrow_loaded(f):
+    """Rigged wheelbarrow for carrying (art spec): the wheelbarrow turned to face forward (wheel at the
+    front, Roblox -Z), the wheel and hub as one Wheel_L1 mesh, and a loose-hay HayFill heap the game
+    raises as it fills. Bales ride loose in game, so none are baked in."""
+    from mathutils import Matrix
+    parts = wheelbarrow(f)
+    wheel = parts[-2:]
+    hay = f.apply(f.shape(box((0.84, 0.62, 0.2), (0.02, 0, 0.52)), round_edges=False), "hay")
+    rig.tag(wheel, "Wheel_L1")
+    rig.tag([hay], "HayFill")
+    parts.append(hay)
+    turn = Matrix.Rotation(math.pi / 2, 4, "Z")
+    for o in parts:
+        o.data.transform(o.matrix_world)
+        o.matrix_world = Matrix.Identity(4)
+        o.data.transform(turn)
+        o.data.update()
+    return parts
+
+
 def hay_crate(f):
-    """Slatted crate, 3 x 3 x 2 studs."""
+    """Slatted crate, 3 x 3 x 2 studs. Spawned often, so the slats are unbevelled."""
     w, d, h = 3 * STUD, 3 * STUD, 2 * STUD
     parts = [f.apply(f.shape(box((w - 0.04, d - 0.04, 0.03), (0, 0, 0.03))), "handle", along="x")]
     slats = 3
@@ -188,10 +209,10 @@ def hay_crate(f):
         for sx, sy, size in ((0, -d / 2, (w, 0.025, 0.1)), (0, d / 2, (w, 0.025, 0.1)),
                              (-w / 2, 0, (0.025, d, 0.1)), (w / 2, 0, (0.025, d, 0.1))):
             along = "x" if size[0] > size[1] else "y"
-            parts.append(f.apply(f.shape(box(size, (sx, sy, z))), "handle", along=along))
+            parts.append(f.apply(f.shape(box(size, (sx, sy, z)), round_edges=False), "handle", along=along))
     for x in (-w / 2, w / 2):
         for y in (-d / 2, d / 2):
-            parts.append(f.apply(f.shape(box((0.06, 0.06, h), (x, y, h / 2))), "handle", along="z"))
+            parts.append(f.apply(f.shape(box((0.06, 0.06, h), (x, y, h / 2)), round_edges=False), "handle", along="z"))
     # Some hay inside, heaped a little above the top.
     parts.append(f.apply(f.shape(box((w - 0.08, d - 0.08, h * 0.8), (0, 0, h * 0.45))), "hay"))
     return parts
@@ -216,12 +237,18 @@ HAY_AND_TOOLS = {
     "pitchfork": pitchfork,
     "hay_hook": hay_hook,
     "wheelbarrow": wheelbarrow,
+    "wheelbarrow_loaded": wheelbarrow_loaded,
     "hay_crate": hay_crate,
     "log": log,
 }
 
 
-CATEGORIES = ("hay_and_tools", "tools", "gloves", "vehicles", "storage", "buildings", "machines")
+GROUNDED = {"wide_scoop", "hay_hook", "garden_rake"}  # rest exactly on z=0 (art review P3)
+MAX_TRIANGLES = 6000  # per prop; the body is decimated down to fit
+MAX_MATERIALS = 4  # per mesh; Roblox imports one MeshPart per material (moving parts get 1)
+
+CATEGORIES = ("scatter", "hay_and_tools", "tools", "gloves", "quest_gear", "finds", "needles", "vehicles", "special_vehicles", "storage",
+              "buildings", "hub", "regions", "machines", "truck_skins")
 
 
 def categories(wanted=CATEGORIES):
@@ -285,6 +312,8 @@ def main():
     out = args.out
     args.formats = "glb"
 
+    rigs_path = os.path.join(out, "rigs.json")
+    rigs = json.load(open(rigs_path)) if os.path.exists(rigs_path) else {}
     for cat, props in cats.items():
         for key, build in props.items():
             if only and key not in only:
@@ -297,10 +326,19 @@ def main():
                 objs = [obj] + list(obj.children)
             else:
                 objs = [common.join(parts, object_name(key))]
+            if key in GROUNDED:
+                rig.ground(objs[0])
+            rig.limit_materials(objs[0], MAX_MATERIALS)
+            rig.limit_triangles(objs, MAX_TRIANGLES)
             args.name = key
             common.export(objs, args)
+            if len(objs) > 1:
+                rigs[key] = rig.describe(objs, getattr(sys.modules.get(build.__module__), "BEDS", {}).get(key))
         if "--no-catalog" not in argv:
             catalog(props, os.path.join(out, f"catalog_{cat}.png"))
+    with open(rigs_path, "w") as fh:
+        json.dump(dict(sorted(rigs.items())), fh, indent=1)
+        fh.write("\n")
 
 
 if __name__ == "__main__":

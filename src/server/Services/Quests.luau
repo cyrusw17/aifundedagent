@@ -684,6 +684,209 @@ function LOOKS.stone(m, cf)
 	return stone
 end
 
+-- The Corn Night Maze: a square of corn walls carved by a fixed-seed walk, so every server has the same maze. The
+-- entrance is the middle of the south side and the heart (this spot's base) is the middle cell. spot.keyCells gets
+-- the three dead ends farthest from the entrance, where the corn keys go.
+local MAZE_CELLS, MAZE_CELL, MAZE_WALL, MAZE_HEIGHT = 9, 8, 1.4, 10
+
+function LOOKS.maze(m, cf, spot)
+	local n = MAZE_CELLS
+	local half = n * MAZE_CELL / 2
+	local r = Random.new(20261013)
+	-- open[x][z] = { E = bool, S = bool }: the wall east of / south of cell (x, z) is gone. z grows to the south.
+	local open, seen = {}, {}
+	for x = 1, n do
+		open[x], seen[x] = {}, {}
+		for z = 1, n do
+			open[x][z] = { E = false, S = false }
+		end
+	end
+	local stack = { { 1, 1 } }
+	seen[1][1] = true
+	while #stack > 0 do
+		local x, z = stack[#stack][1], stack[#stack][2]
+		local options = {}
+		for _, d in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local nx, nz = x + d[1], z + d[2]
+			if nx >= 1 and nx <= n and nz >= 1 and nz <= n and not seen[nx][nz] then
+				table.insert(options, { nx, nz, d })
+			end
+		end
+		if #options == 0 then
+			table.remove(stack)
+		else
+			local pick = options[r:NextInteger(1, #options)]
+			local nx, nz, d = pick[1], pick[2], pick[3]
+			if d[1] == 1 then
+				open[x][z].E = true
+			elseif d[1] == -1 then
+				open[nx][nz].E = true
+			elseif d[2] == 1 then
+				open[x][z].S = true
+			else
+				open[nx][nz].S = true
+			end
+			seen[nx][nz] = true
+			table.insert(stack, { nx, nz })
+		end
+	end
+	local mid = (n + 1) // 2
+	-- A clearing at the heart: the walls between the middle cell and its neighbors come down.
+	open[mid][mid].E, open[mid][mid].S, open[mid - 1][mid].E, open[mid][mid - 1].S = true, true, true, true
+
+	local corn = Color3.fromRGB(150, 146, 74)
+	local function wall(x0, z0, x1, z1)
+		-- A straight run of corn from (x0, z0) to (x1, z1) in maze-local studs.
+		local len = math.max(math.abs(x1 - x0), math.abs(z1 - z0)) + MAZE_WALL
+		local size = x0 == x1 and Vector3.new(MAZE_WALL, MAZE_HEIGHT, len) or Vector3.new(len, MAZE_HEIGHT, MAZE_WALL)
+		local p = part(
+			m,
+			"Corn",
+			size,
+			cf * CFrame.new((x0 + x1) / 2, MAZE_HEIGHT / 2, (z0 + z1) / 2),
+			corn,
+			Enum.Material.Grass
+		)
+		p.CastShadow = false
+	end
+	local function edge(i)
+		return -half + (i - 1) * MAZE_CELL
+	end
+	-- Walls along each row line (south walls), merged into runs; the outer north and south edges too.
+	for z = 0, n do
+		local runStart = nil
+		for x = 1, n + 1 do
+			local closed
+			if x > n then
+				closed = false
+			elseif z == 0 then
+				closed = true
+			elseif z == n then
+				closed = x ~= mid -- the entrance
+			else
+				closed = not open[x][z].S
+			end
+			if closed and not runStart then
+				runStart = x
+			elseif not closed and runStart then
+				wall(edge(runStart), edge(z + 1), edge(x), edge(z + 1))
+				runStart = nil
+			end
+		end
+	end
+	-- Walls along each column line (east walls), merged into runs; the outer west and east edges too.
+	for x = 0, n do
+		local runStart = nil
+		for z = 1, n + 1 do
+			local closed
+			if z > n then
+				closed = false
+			elseif x == 0 or x == n then
+				closed = true
+			else
+				closed = not open[x][z].E
+			end
+			if closed and not runStart then
+				runStart = z
+			elseif not closed and runStart then
+				wall(edge(x + 1), edge(runStart), edge(x + 1), edge(z))
+				runStart = nil
+			end
+		end
+	end
+
+	-- The three dead ends farthest from the entrance (breadth-first from the entrance cell) get the keys.
+	local dist = { [mid .. "," .. n] = 0 }
+	local queue, head = { { mid, n } }, 1
+	local deadEnds = {}
+	while head <= #queue do
+		local x, z = queue[head][1], queue[head][2]
+		head += 1
+		local links = {}
+		if x < n and open[x][z].E then
+			table.insert(links, { x + 1, z })
+		end
+		if x > 1 and open[x - 1][z].E then
+			table.insert(links, { x - 1, z })
+		end
+		if z < n and open[x][z].S then
+			table.insert(links, { x, z + 1 })
+		end
+		if z > 1 and open[x][z - 1].S then
+			table.insert(links, { x, z - 1 })
+		end
+		if #links == 1 and not (x == mid and z == n) then
+			table.insert(deadEnds, { x, z })
+		end
+		for _, l in links do
+			local key = l[1] .. "," .. l[2]
+			if dist[key] == nil then
+				dist[key] = dist[x .. "," .. z] + 1
+				table.insert(queue, l)
+			end
+		end
+	end
+	table.sort(deadEnds, function(a, b)
+		return dist[a[1] .. "," .. a[2]] > dist[b[1] .. "," .. b[2]]
+	end)
+	spot.keyCells = {}
+	for i = 1, math.min(3, #deadEnds) do
+		local c = deadEnds[i]
+		local center = edge(c[1]) + MAZE_CELL / 2
+		local depth = edge(c[2]) + MAZE_CELL / 2
+		table.insert(spot.keyCells, (cf * CFrame.new(center, 0, depth)).Position)
+	end
+
+	-- Lanterns at the entrance (the world's lamps light them at dusk) and a sign.
+	for _, side in { -1, 1 } do
+		local base = cf * CFrame.new(side * (MAZE_CELL / 2 + 1.5), 0, half + 2)
+		part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood)
+		local lantern =
+			part(m, "Lantern", Vector3.new(1, 1.3, 1), base * CFrame.new(0, 6.4, 0), Rustic.Metal, Enum.Material.Metal)
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 200, 120)
+		glow.Range = 16
+		glow.Parent = lantern
+	end
+	local sign = part(
+		m,
+		"Sign",
+		Vector3.new(6, 2.4, 0.3),
+		cf * CFrame.new(MAZE_CELL / 2 + 6, 3, half + 3),
+		Rustic.Wood,
+		Enum.Material.WoodPlanks
+	)
+	label(sign, "CORN MAZE\nKeys glow after dark", Vector3.new(0, 3, 0), 90)
+
+	-- The heart: a scarecrow on a hay-strewn patch, where the keys are brought.
+	local heart =
+		part(m, "Heart", Vector3.new(6, 0.2, 6), cf * CFrame.new(0, 0.1, 0), Rustic.HayLight, Enum.Material.Fabric)
+	heart.CanCollide = false
+	LOOKS.scarecrow(m, cf * CFrame.new(0, 0, -2))
+	return heart
+end
+
+-- A corn key: a small glowing brass key on a corn husk.
+function LOOKS.cornkey(m, cf)
+	local husk =
+		part(m, "Husk", Vector3.new(1.4, 0.3, 2), cf * CFrame.new(0, 0.15, 0), Rustic.HayLight, Enum.Material.Fabric)
+	husk.CanCollide = false
+	local key = part(
+		m,
+		"Key",
+		Vector3.new(1.4, 0.25, 0.5),
+		cf * CFrame.new(0, 1.2, 0),
+		Color3.fromRGB(230, 186, 74),
+		Enum.Material.Neon
+	)
+	key.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Range = 10
+	light.Parent = key
+	return husk
+end
+
 -- Just the quest marker and prompt, for a place the world map already built (the snow door, the pyramid door).
 function LOOKS.marker(m, cf)
 	local base = part(m, "Base", Vector3.new(4, 0.4, 4), cf * CFrame.new(0, 0.2, 0), Color3.new(1, 1, 1))
@@ -746,6 +949,7 @@ local function buildSpot(id, position, cframe)
 	spot.model = model
 	spot.base = base
 	spot.position = cf.Position
+	spot.shown = nil -- timed spots (showWhen) set their look on the next tick
 
 	-- The marker over a spot your quest needs. Each client shows it only for its own active spots.
 	local marker = label(base, "!", Vector3.new(0, 5, 0), 500)
@@ -1322,7 +1526,7 @@ local function targetsOf(q, id)
 	if step and step.kind ~= "own" and step.kind ~= "event" and step.kind ~= "find" then
 		for _, spotId in spotIds(step) do
 			local spot = spots[spotId]
-			if not entry.seen[spotId] and spot and spot.position then
+			if not entry.seen[spotId] and spot and spot.position and (not spot.def.showWhen or spot.shown) then
 				table.insert(list, { name = spot.def.name, position = spot.position })
 			end
 		end
@@ -1431,7 +1635,9 @@ local function activeSpots(q)
 		local step, entry = currentStep(q, id)
 		if step and step.kind ~= "own" and step.kind ~= "event" and step.kind ~= "find" then
 			for _, spotId in spotIds(step) do
-				if not entry.seen[spotId] and spots[spotId] and spots[spotId].model then
+				local spot = spots[spotId]
+				-- A timed spot (the corn keys) is only marked while it shows.
+				if not entry.seen[spotId] and spot and spot.model and (not spot.def.showWhen or spot.shown) then
 					table.insert(ids, spotId)
 				end
 			end
@@ -1657,6 +1863,13 @@ function Quests.build(worldFolder)
 				buildSpot(id, def.pos or def.fallback)
 			end
 		end
+		-- The corn keys go where the maze put its dead ends.
+		local maze = spots.corn_maze
+		for i, position in (maze and maze.keyCells) or {} do
+			if QuestConfig.Spots["maze_key_" .. i] then
+				buildSpot("maze_key_" .. i, position)
+			end
+		end
 		moveScarecrow()
 		refreshSign()
 		CollectionService:GetInstanceAddedSignal("QuestAnchor"):Connect(onAnchor)
@@ -1694,16 +1907,28 @@ function Quests.build(worldFolder)
 					publish(player)
 				end
 			end
-			-- The golden bale only shows at midnight.
-			local golden = spots.golden_bale
-			if golden and golden.model then
-				local show = DayNight.is("midnight")
-				for _, p in golden.model:GetDescendants() do
-					if p:IsA("BasePart") then
-						p.Transparency = show and 0 or 1
-					elseif p:IsA("PointLight") then
-						p.Enabled = show
+			-- Spots that only show at their time (the golden bale at midnight, the corn keys at night).
+			local toggled = false
+			for _, spot in spots do
+				local when = spot.def and spot.def.showWhen
+				if when and spot.model then
+					local show = DayNight.is(when)
+					if spot.shown ~= show then
+						spot.shown = show
+						toggled = true
+						for _, p in spot.model:GetDescendants() do
+							if p:IsA("BasePart") then
+								p.Transparency = show and 0 or 1
+							elseif p:IsA("PointLight") then
+								p.Enabled = show
+							end
+						end
 					end
+				end
+			end
+			if toggled then
+				for player in players do
+					publish(player)
 				end
 			end
 		end

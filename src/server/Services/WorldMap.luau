@@ -16,6 +16,7 @@ local Ferry = require(script.Parent.Ferry)
 local WorldShape = require(script.Parent.WorldShape)
 local WorldClock = require(script.Parent.WorldClock)
 local Weather = require(script.Parent.Weather)
+local RegionEvents = require(script.Parent.RegionEvents)
 
 local WorldMap = {}
 
@@ -220,6 +221,7 @@ function WorldMap.build(worldFolder)
 			task.wait(Map.RichMinutes * 60)
 		end
 	end)
+	RegionEvents.start()
 end
 
 return WorldMap

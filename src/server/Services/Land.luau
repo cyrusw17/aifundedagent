@@ -35,6 +35,7 @@ local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Baler = require(script.Parent.Baler)
+local Treat = require(script.Parent.Treat)
 local Vault = require(script.Parent.Vault)
 local Blueprints = require(script.Parent.Blueprints)
 local Display = require(script.Parent.Display)
@@ -703,7 +704,7 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "ramp" then
 		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
-	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "baler" or def.kind == "starbeam" then
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "baler" or def.kind == "treat" or def.kind == "starbeam" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
@@ -716,6 +717,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Press.build(plot.items, frame))
 	elseif def.kind == "baler" then
 		table.insert(item.instances, Baler.build(plot.items, frame))
+	elseif def.kind == "treat" then
+		table.insert(item.instances, Treat.build(plot.items, frame, def.id))
 	elseif def.kind == "starbeam" then
 		table.insert(item.instances, Starbeam.build(plot.items, frame, function()
 			return plot.ownerId

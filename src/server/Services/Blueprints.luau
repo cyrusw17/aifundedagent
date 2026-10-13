@@ -1,6 +1,6 @@
 --!nonstrict
--- Line blueprints: named presets of a copied plot area (Land's COPY tool), kept in the save slot so a line you liked
--- can be built again on any plot in any session. Loading one fills the build bar's clipboard; PASTE then builds it
+-- Saved layouts: named copies of a plot area (Land's COPY tool), kept in the save slot so a line you liked can be built
+-- again. Players see "layouts", because Land's blueprints are the see-through templates you fill. A layout can be built again on any plot in any session. Loading one fills the build bar's clipboard; PASTE then builds it
 -- for its total price through Land's own Paste, which does every check and the charge.
 --
 -- Remotes in ReplicatedStorage.LineBlueprints (RemoteFunctions):
@@ -69,12 +69,12 @@ local function onSave(player, name, list)
 		return false, "Pick a save slot first."
 	end
 	if typeof(name) ~= "string" then
-		return false, "Give the preset a name."
+		return false, "Give the layout a name."
 	end
 	name = string.sub(string.gsub(name, "[%c]", ""), 1, MAX_NAME)
 	name = string.match(name, "^%s*(.-)%s*$")
 	if name == "" then
-		return false, "Give the preset a name."
+		return false, "Give the layout a name."
 	end
 	local good = clean(list)
 	if not good then
@@ -87,7 +87,7 @@ local function onSave(player, name, list)
 		end
 	end
 	if #mine >= MAX_PRESETS then
-		return false, ("You can keep %d presets. Delete one first."):format(MAX_PRESETS)
+		return false, ("You can keep %d saved layouts. Delete one first."):format(MAX_PRESETS)
 	end
 	table.insert(mine, { name = name, list = good })
 	return true, ("Saved \"%s\": %d pieces, $%d to build."):format(name, #good, totalOf(good))
@@ -112,7 +112,7 @@ local function onDelete(player, name)
 			return true, ("Deleted \"%s\"."):format(name)
 		end
 	end
-	return false, "No preset by that name."
+	return false, "No saved layout by that name."
 end
 
 function Blueprints.init()

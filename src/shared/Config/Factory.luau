@@ -15,4 +15,15 @@ return {
 
 	AlienWindowSeconds = 60, -- how long the Alien collector's daily beam stays up
 	LooseBaleSeconds = 180, -- a sorted bale that falls off the line disappears after this long
+
+	-- Region machines (Services/Treat.luau): some hay has to be treated on the line before a sorter will do it
+	-- justice. Keyed by hay type (Config/Gloves HayTypes). mark is the bale attribute the machine sets; required
+	-- means a sorter refuses an untreated bale (it rides on through), otherwise its recovery is multiplied by penalty.
+	-- Only whole bales are checked: loose strands are already broken open.
+	Treatments = {
+		snow = { machine = "thawing_shed", mark = "Thawed", required = true, refuse = "Frozen hay has to thaw in a thawing shed before it can be sorted." },
+		swamp = { machine = "drying_rack", mark = "Dried", required = true, refuse = "Bog reed has to dry on a drying rack before it can be sorted." },
+		volcano = { machine = "ash_sifter", mark = "Sifted", required = false, penalty = 0.5, refuse = "Ashen hay sorts at half recovery until an ash sifter knocks the ash out." },
+	},
+	TreatSeconds = 2, -- how long a bale spends in a region machine (the belt stops it at a gate meanwhile)
 }
