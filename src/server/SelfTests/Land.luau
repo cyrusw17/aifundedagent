@@ -119,6 +119,7 @@ local function randomSave(rng, big)
 		materials = { bronze = rng:NextInteger(1, 50) },
 		finds = { horseshoe = 2 },
 		secrets = { ["secret_" .. rng:NextInteger(1, 9)] = 1, meadow_well = 1 },
+		discovered = { ["region_" .. rng:NextInteger(1, 14)] = 1, old_mill = 1 },
 		gloves = { owned = { "work", "leather" }, worn = "leather", brokeFirstBale = true },
 		land = farm(big and 120 or rng:NextInteger(0, 30)),
 		land2 = rng:NextNumber() < 0.5 and farm(big and 120 or rng:NextInteger(0, 30)) or nil,
@@ -128,6 +129,8 @@ local function randomSave(rng, big)
 		quests = { earned = { alien_collector = true }, done = {}, active = {} },
 	}
 end
+
+local COUNT_FIELDS, savesField = {}, {}
 
 local function registerSaves(SelfTest)
 	SelfTest.register("Saves", function(t)
@@ -163,6 +166,15 @@ local function registerSaves(SelfTest)
 		took = os.clock() - started
 		t.check(("a stuck save stops at the deadline (%.1f s, %d of 2 done)"):format(took, finished), finished == 1 and took < 2)
 
+		-- Which per-slot sets this build saves at all.
+		COUNT_FIELDS = { "secrets", "discovered" }
+		savesField = {}
+		for _, field in COUNT_FIELDS do
+			local probe = D.toSave(D.stateFrom({ [field] = { probe = 1 } }))
+			savesField[field] = typeof(probe[field]) == "table" and probe[field].probe == 1
+			t.check(("the save keeps %s per slot"):format(field), savesField[field])
+		end
+
 		-- Round trips: save, JSON (what the DataStore keeps), load, save again. The second save must equal the first,
 		-- and what the player had must survive.
 		local rng = Random.new(1337)
@@ -193,9 +205,15 @@ local function registerSaves(SelfTest)
 				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
 					error("second farm lost")
 				end
-				for k, n in original.secrets do
-					if not first.secrets or first.secrets[k] ~= n then
-						error("region secret " .. k .. " lost")
+				-- Map's per-slot sets: secrets found and regions/landmarks discovered. A field this build's Data doesn't
+				-- save yet is skipped here and reported once below.
+				for _, field in COUNT_FIELDS do
+					if savesField[field] then
+						for k, n in original[field] do
+							if not first[field] or first[field][k] ~= n then
+								error(field .. " " .. k .. " lost")
+							end
+						end
 					end
 				end
 				if first.land.name ~= original.land.name then

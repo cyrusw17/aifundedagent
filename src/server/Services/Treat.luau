@@ -2,7 +2,7 @@
 -- Region machines: the thawing shed (Frozen hay), the drying rack (Bog reed) and the ash sifter (Ashen hay). Each sits
 -- over two belt cells like the press. A bale of its hay type that rides through gets the machine's mark attribute
 -- (Config/Factory Treatments), and sorters check that mark: Frozen hay and Bog reed are refused untreated, Ashen hay
--- sorts at half recovery. Every other bale rides through untouched, so a line can keep one in place for any hay.
+-- sorts at half recovery. The drying rack also dries any rain-wet bale. Every other bale rides through untouched, so a line can keep one in place for any hay.
 --
 --   Treat.build(parent, frame, machineId)   -- frame: Conveyors.frame of the upstream cell, facing the flow
 --   Treat.needs(body)                       -- the Treatments entry a bale body still needs, or nil
@@ -111,6 +111,12 @@ function Treat.build(parent, frame, machineId)
 			task.wait(0.2)
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
+				-- A drying rack also dries rain-wet bales of any hay type (Bales.dry, from the hay thread).
+				if machineId == "drying_rack" and b and p == b.body and not b.gone and not b.carriedBy and p:GetAttribute("Wet") and Bales.dry and Bales.dry(b) then
+					treated += 1
+					lastWork = os.clock()
+					refresh()
+				end
 				if b and p == b.body and not b.gone and not b.carriedBy and (p:GetAttribute("HayType") or "meadow") == spec.hayType and not p:GetAttribute(spec.treatment.mark) then
 					p:SetAttribute(spec.treatment.mark, true)
 					if look.tint then

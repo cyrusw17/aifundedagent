@@ -704,8 +704,8 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				local taken = 0
 				for _, p in loose do
 					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
+						taken += Hay.strandsIn(p) -- a raked pile counts every strand in it
 						Hay.remove(p)
-						taken += 1
 					end
 				end
 				sort(taken * Config.HayPerPiece, ownerId, hayType)
@@ -764,7 +764,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 							end
 						end
 					elseif Hay.isPiece(p) and not Needle.isNeedle(p) then -- a visible needle stays for its finder to pick up
-						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
+						hay, ownerId, hayType = Config.HayPerPiece * Hay.strandsIn(p), p:GetAttribute("OwnerId"), hayTypeOf(p)
 						clean = p:GetAttribute("Sorted") == true -- from a sorted bale that broke: its needles are gone
 						take = function()
 							Hay.remove(p)

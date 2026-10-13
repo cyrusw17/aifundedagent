@@ -27,6 +27,8 @@ local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
 
+-- Bale meshes not named after their hay type (Blender names them for the grass).
+
 local rng = Random.new()
 local folder = nil
 local dropOff = nil -- the pad where set-down bales are kept for later

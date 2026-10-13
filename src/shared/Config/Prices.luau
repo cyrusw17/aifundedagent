@@ -277,6 +277,13 @@ Prices.RegionEvents = {
 	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
+-- Discoveries (Services/Discoveries.luau): the first visit to each region and landmark, once per save slot. Small on
+-- purpose: exploring pays a little everywhere (about $5,700 for the whole map) and the stamps are the real prize.
+Prices.Discovery = {
+	region = 250,
+	landmark = 150,
+}
+
 -- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward. Each is
 -- worth a trip on its own: for a player who arrives early (walking, before they haul there) it's about the price of
 -- the next mid-game buy, and for one who arrives on schedule it's a few minutes of income. Gated secrets pay more.

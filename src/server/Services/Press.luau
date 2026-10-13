@@ -189,7 +189,7 @@ function Press.build(parent, frame)
 					end
 				elseif Hay.isPiece(p) and p:GetAttribute("Sorted") and p.Parent then
 					local ownerId = p:GetAttribute("OwnerId") or 0
-					loose[ownerId] = (loose[ownerId] or 0) + 1
+					loose[ownerId] = (loose[ownerId] or 0) + Hay.strandsIn(p)
 					Hay.remove(p)
 				end
 			end
