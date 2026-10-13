@@ -22,6 +22,7 @@ local Rustic = require(Shared.Config.Rustic)
 local GameConfig = require(Shared.Config.Game)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
+local RateLimit = require(Shared.RateLimit)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -713,6 +714,10 @@ local function chargedFor(price)
 	return if GameConfig.InfiniteMoney then 0 else price
 end
 
+-- Upgrade in place (CEO #36): each sorter tier's next tier, same footprint, so it swaps where it stands.
+local UPGRADE_NEXT = { hand_sieve = "shaker_table", shaker_table = "conveyor_sorter", conveyor_sorter = "magnet_drum", magnet_drum = "optical_sorter" }
+local upgradeSorter -- (player, plot, item), defined with the build remotes below
+
 -- Builds one piece on a plot. No checks and no charge: callers do that.
 -- stored, fill and display come back from a save: a silo's bales, a blueprint's fill, a display's needles.
 local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
@@ -728,7 +733,23 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		end
 	end
 	if def.kind == "separator" then
-		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
+		local sorter = Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot))
+		table.insert(item.instances, sorter)
+		local nextDef = pieces[UPGRADE_NEXT[def.id] or ""]
+		if nextDef then
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "Upgrade"
+			prompt.ActionText = ("Upgrade to %s"):format(nextDef.name:lower())
+			prompt.ObjectText = ("$%d more"):format(math.max(0, nextDef.price - def.price))
+			prompt.KeyboardKeyCode = Enum.KeyCode.U
+			prompt.HoldDuration = 1
+			prompt.MaxActivationDistance = 10
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = sorter:FindFirstChild("Roof") or sorter:FindFirstChildWhichIsA("BasePart")
+			prompt.Triggered:Connect(function(player)
+				upgradeSorter(player, plot, item)
+			end)
+		end
 	elseif def.kind == "press" then
 		table.insert(item.instances, Press.build(plot.items, frame))
 	elseif def.kind == "baler" then
@@ -1320,6 +1341,41 @@ local function afterEdit(player, plot)
 	publish(plot)
 	saveItems(player, plot)
 	Data.sync(player)
+end
+
+-- Swaps a sorter for the next tier in the same cells and direction, for the difference in price. The belts under
+-- it are the sorter's own, so the line stays connected. Not undoable: removing the upgraded sorter refunds from what
+-- was paid in all.
+local upgradeLimit = RateLimit.new("Land.Upgrade", 0.5, 2)
+upgradeSorter = function(player, plot, item)
+	if not upgradeLimit:allow(player) then
+		return
+	end
+	if plot.ownerId ~= player.UserId or not Data.get(player) then -- either of the owner's farms
+		Data.toast(player, "Only this farm's owner can upgrade its machines.")
+		return
+	end
+	if not table.find(plot.list, item) then
+		return -- removed or moved since the prompt was shown
+	end
+	local def = pieces[item.id]
+	local nextDef = pieces[UPGRADE_NEXT[item.id] or ""]
+	if not nextDef then
+		return
+	end
+	local diff = math.max(0, nextDef.price - def.price)
+	local paid, short = Bank.charge(player, diff, "Upgraded a " .. def.name:lower())
+	if not paid then
+		Data.toast(player, short or ("An upgrade to the %s costs $%d."):format(nextDef.name:lower(), diff))
+		return
+	end
+	local gx, gz, dir, before = item.gx, item.gz, item.dir, item.paid
+	destroyItem(plot, item)
+	local upgraded = spawnItem(plot, nextDef, gx, gz, dir)
+	upgraded.paid = (if typeof(before) == "number" then before else chargedFor(def.price)) + chargedFor(diff)
+	afterEdit(player, plot)
+	Tutorial.placed(player, nextDef.id)
+	Data.toast(player, ("Upgraded to a %s for $%d."):format(nextDef.name:lower(), diff))
 end
 
 -- The piece covering a tile: { id, gx, gz, dir } of its anchor, so the client can pick it up to move it.
