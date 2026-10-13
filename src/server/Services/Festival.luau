@@ -117,12 +117,18 @@ local function boostFields(fest)
 			local body = b.body
 			if body and body.Parent then
 				local marked = body:GetAttribute("FestivalBoost") == true
-				if on and (body:GetAttribute("NeedleBoost") or 1) < Map.FestivalBoost then
-					body:SetAttribute("NeedleBoost", Map.FestivalBoost)
-					body:SetAttribute("FestivalBoost", true)
-				elseif not on and marked then
+				if on then
+					-- Marked even under a bigger boost (the rich field's 2x), so the bale drops back to the
+					-- festival's boost, not to none, when the rich field moves on.
+					if (body:GetAttribute("NeedleBoost") or 1) < Map.FestivalBoost then
+						body:SetAttribute("NeedleBoost", Map.FestivalBoost)
+					end
+					if not marked then
+						body:SetAttribute("FestivalBoost", true)
+					end
+				elseif marked then
 					body:SetAttribute("FestivalBoost", nil)
-					if not entry.rich then
+					if not body:GetAttribute("RichBoost") then
 						body:SetAttribute("NeedleBoost", nil)
 					end
 				end

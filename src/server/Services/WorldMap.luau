@@ -107,10 +107,19 @@ end
 local rich = nil -- the field entry that is rich right now
 local beacon = nil
 
+-- Puts the rich field's boost on an entry's bales (RichBoost marks them), or takes it back off only the marked ones.
+-- Taking it off leaves whatever else the bale earned: a festival bale (FestivalBoost) goes back to the festival's boost.
 local function setBoost(entry, boost)
 	for b in entry.bales do
-		if b.body and b.body.Parent then
-			b.body:SetAttribute("NeedleBoost", boost)
+		local body = b.body
+		if body and body.Parent then
+			if boost then
+				body:SetAttribute("NeedleBoost", math.max(body:GetAttribute("NeedleBoost") or 1, boost))
+				body:SetAttribute("RichBoost", true)
+			elseif body:GetAttribute("RichBoost") then
+				body:SetAttribute("RichBoost", nil)
+				body:SetAttribute("NeedleBoost", body:GetAttribute("FestivalBoost") and Map.FestivalBoost or nil)
+			end
 		end
 	end
 end

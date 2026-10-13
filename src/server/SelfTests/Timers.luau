@@ -55,8 +55,10 @@ return function(SelfTest)
 		Weather.stepStorm(clock)
 		t.equal("then it clears", ReplicatedStorage:GetAttribute("Storm"), nil)
 		local nextStarts = ReplicatedStorage:GetAttribute("StormStarts")
-		local gapLow = (WeatherConfig.StormEveryMinutes[1] * 60 + WeatherConfig.StormWarnSeconds) - (clock - os.clock())
-		local gapHigh = (WeatherConfig.StormEveryMinutes[2] * 60 + WeatherConfig.StormWarnSeconds) - (clock - os.clock())
+		-- The pushed clock runs ahead of real time, so the published time is that far further out too.
+		local ahead = clock - os.clock()
+		local gapLow = WeatherConfig.StormEveryMinutes[1] * 60 + WeatherConfig.StormWarnSeconds + ahead
+		local gapHigh = WeatherConfig.StormEveryMinutes[2] * 60 + WeatherConfig.StormWarnSeconds + ahead
 		t.check("and the next one is scheduled about an hour out", typeof(nextStarts) == "number" and nextStarts >= now() + gapLow - SLACK and nextStarts <= now() + gapHigh + SLACK, tostring(nextStarts))
 		-- Put the live schedule back: the clock above ran ahead of real time, so step once at the real time.
 		Weather.stepStorm(os.clock())
