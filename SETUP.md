@@ -15,6 +15,25 @@ You only do this once. Claude edits the code in this repo; you run it in Roblox 
 Blender: install Blender 4.x from blender.org. Model scripts will live in `blender/`. Run one with
 `/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/<script>.py`.
 
+## Rustic props (one-time import in Studio)
+
+The bale, shovel and rake use the Rustic Blender meshes once they are imported. Until then the game keeps its
+part-built look, so nothing breaks if you skip this. The ten .glb files are in `rustic-import/` in your repo folder
+(Claude copied them there; they also live in `blender/exports/rustic/`).
+
+1. In Studio with your place open (Rojo can stay connected), go to **Home > Import 3D**.
+2. Pick `rustic-import/hay_bale.glb`. In the import window leave the defaults and press **Import**.
+   Repeat for the other nine files (or multi-select them, if your Studio version allows it).
+3. Each one shows up in the **Explorer** under **Workspace** with its file name (hay_bale, basic_shovel, ...).
+   Select all ten, right-click **Group as a Folder**, name the folder `RusticProps`, and drag it into **ServerStorage**.
+   (Leaving them in Workspace also works: the game moves them out of sight when it starts.)
+4. Save the place (**File > Save**, Cmd+S). Rojo never touches ServerStorage, so they stay.
+5. Press Play. Output should say `[Needlewood] Rustic props: all 10 meshes found.` If it lists some as using parts,
+   those files were not imported or were renamed.
+
+Size and orientation are fixed up by the code, so it does not matter what unit the importer used. Tuning lives in
+`src/shared/Config/Props.luau` (prop sizes, how the tools sit in the hand).
+
 ## Cloud session tools (for Claude)
 
 GitHub release downloads are blocked in the cloud environment, so tools are built from crates.io. Add this to the environment's Setup script so every new session has them:

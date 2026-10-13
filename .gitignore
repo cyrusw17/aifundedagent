@@ -7,3 +7,6 @@ Packages/
 sourcemap.json
 node_modules/
 exports/
+
+# Rustic .glb props copied here for Studio Import 3D (the source lives in blender/exports/rustic)
+rustic-import/
