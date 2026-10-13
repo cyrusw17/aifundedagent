@@ -128,6 +128,7 @@ end)
 local HINTS = {
 	Shovel = "Shovel: click a bale or hay",
 	Rake = "Rake: click loose hay",
+	Wheelbarrow = "Wheelbarrow: click a bale to load, the ground to unload",
 }
 
 local function refresh()
