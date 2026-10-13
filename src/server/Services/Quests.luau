@@ -150,6 +150,26 @@ local function bountyState(q)
 	return q.bounty
 end
 
+-- The daily streak: { days, last = UTC day last counted, lucky = { day, n } }.
+local function streakState(q)
+	local st = typeof(q.streak) == "table" and q.streak or {}
+	q.streak = st
+	st.days = typeof(st.days) == "number" and st.days or 0
+	st.lucky = typeof(st.lucky) == "table" and st.lucky or {}
+	return st
+end
+
+-- Today's personal lucky field for this player (a Regions field), or nil before LuckyField.fromDays.
+local function luckyField(player, q)
+	local st = streakState(q)
+	local fields = Regions.fields or {}
+	if st.days < QuestConfig.Streak.LuckyField.fromDays or #fields == 0 then
+		return nil
+	end
+	local r = Random.new(today() * 31 + player.UserId % 1000003)
+	return fields[r:NextInteger(1, #fields)]
+end
+
 local function currentStep(q, id)
 	local entry = id and q.active[id]
 	local def = id and questById[id]
@@ -1250,6 +1270,77 @@ local function dropFind(player, questId, step, position)
 	Data.toast(player, ("Something glows in the hay: a %s!"):format(find.name:lower()))
 end
 
+-- The best streak rosette this player has earned, pinned to their chest (welded, massless, no collisions).
+local function pinRosette(player)
+	local q = questsOf(player)
+	local character = player.Character
+	if not q or not character then
+		return
+	end
+	local best
+	for _, m in QuestConfig.Streak.Milestones do
+		if q.earned[m.reward] then
+			best = m.reward
+		end
+	end
+	local old = character:FindFirstChild("StreakRosette")
+	if old and old:GetAttribute("Reward") == best then
+		return
+	end
+	if old then
+		old:Destroy()
+	end
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local reward = best and QuestConfig.Rewards[best]
+	if not torso or not reward then
+		return
+	end
+	local c = reward.color or { 230, 186, 74 }
+	local rosette = Instance.new("Part")
+	rosette.Name = "StreakRosette"
+	rosette.Shape = Enum.PartType.Cylinder
+	rosette.Size = Vector3.new(0.15, 0.7, 0.7)
+	rosette.Color = Color3.fromRGB(c[1], c[2], c[3])
+	rosette.Material = reward.glow and Enum.Material.Neon or Enum.Material.Fabric
+	rosette.CanCollide = false
+	rosette.CanQuery = false
+	rosette.CanTouch = false
+	rosette.Massless = true
+	-- Left side of the chest; a torso's front is -Z. The cylinder's flat face points out of the chest.
+	rosette.CFrame = torso.CFrame * CFrame.new(-0.45, 0.35, -torso.Size.Z / 2 - 0.05) * CFrame.Angles(0, math.pi / 2, 0)
+	rosette:SetAttribute("Reward", best)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = torso
+	weld.Part1 = rosette
+	weld.Parent = rosette
+	rosette.Parent = character
+end
+
+-- A finished bounty counts today toward the streak (once a day). Missed days pause it; it never goes back down.
+local function countStreakDay(player, q)
+	local st = streakState(q)
+	if st.last == today() then
+		return
+	end
+	st.days += 1
+	st.last = today()
+	local got
+	for _, m in QuestConfig.Streak.Milestones do
+		if st.days >= m.days and not q.earned[m.reward] then
+			q.earned[m.reward] = true
+			got = QuestConfig.Rewards[m.reward]
+		end
+	end
+	if got then
+		Data.toast(player, ("Streak day %d! You earned the %s."):format(st.days, got.name))
+		if not sandboxes[player] then
+			pinRosette(player)
+		end
+	else
+		Data.toast(player, ("Streak day %d. Come back tomorrow to keep it going."):format(st.days))
+	end
+end
+
 local function onEvent(player, kind, amount, info)
 	local q = questsOf(player)
 	if not q then
@@ -1281,8 +1372,31 @@ local function onEvent(player, kind, amount, info)
 					Bank.earn(player, def.cash, "Bounty: " .. def.text)
 				end
 				Data.toast(player, ("Bounty done: %s. +$%d"):format(def.text, def.cash))
+				countStreakDay(player, q)
 			end
 			publish(player)
+		end
+	end
+
+	-- The streak's lucky field: bales broken there sometimes spill an extra needle, a few times a day.
+	if kind == "bale_broken" and info.position then
+		local field = luckyField(player, q)
+		local cfg = QuestConfig.Streak.LuckyField
+		local st = streakState(q)
+		if st.lucky.day ~= today() then
+			st.lucky = { day = today(), n = 0 }
+		end
+		if
+			field
+			and st.lucky.n < cfg.perDay
+			and (info.position - field.center).Magnitude <= cfg.radius
+			and rng:NextNumber() < cfg.chance
+		then
+			st.lucky.n += 1
+			if not sandboxes[player] then
+				local jitter = Vector3.new(rng:NextNumber(-1.5, 1.5), 2.5, rng:NextNumber(-1.5, 1.5))
+				Needle.spawn(info.position + jitter, nil, needleForHay(info.hayType))
+			end
 		end
 	end
 
@@ -1619,8 +1733,25 @@ local function snapshot(player)
 		return a.name < b.name
 	end)
 
+	local st = streakState(q)
+	local nextMilestone
+	for _, m in QuestConfig.Streak.Milestones do
+		if not nextMilestone and st.days < m.days then
+			nextMilestone = { days = m.days, name = QuestConfig.Rewards[m.reward].name }
+		end
+	end
+	local field = luckyField(player, q)
+	local streak = {
+		days = st.days,
+		today = st.last == today(),
+		nextMilestone = nextMilestone,
+		lucky = field and { region = field.region, position = field.center } or nil,
+		luckyFrom = QuestConfig.Streak.LuckyField.fromDays,
+	}
+
 	return {
 		quests = list,
+		streak = streak,
 		bounties = bounties,
 		relics = relics,
 		gear = gear,
@@ -1751,7 +1882,11 @@ local function dressTools(player)
 		end
 		dressAll()
 	end
-	player.CharacterAdded:Connect(watch)
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(watch, character)
+		character:WaitForChild("HumanoidRootPart", 10)
+		pinRosette(player)
+	end)
 	if player.Character then
 		task.spawn(watch, player.Character)
 	end
@@ -1767,6 +1902,7 @@ local function onLoaded(player)
 	unlockQuests(q)
 	applyPerks(player, q)
 	publish(player)
+	pinRosette(player)
 end
 
 -- For SelfTests: runs fn(q, pocket) with this player's quests swapped for a fresh, empty set (q) and a pretend needle

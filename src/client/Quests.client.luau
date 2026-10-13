@@ -257,6 +257,58 @@ local function showBounties()
 		line(f, ("%d / %d"):format(b.n, b.count), T.Body, C.InkSoft, F.Medium, 2)
 		line(f, "Reward: " .. Kit.money(b.cash), T.Small + 1, C.Green, F.Bold, 3)
 	end
+
+	-- The daily streak: any finished bounty counts the day. A missed day pauses it, never resets it.
+	local st = data.streak
+	if st then
+		local f = entry(10, false)
+		line(f, ("Streak: %d day%s"):format(st.days, st.days == 1 and "" or "s"), T.Heading, C.Ink, F.Bold, 1)
+		line(
+			f,
+			st.today and "Today counted. Come back tomorrow." or "Finish any bounty today to count it.",
+			T.Body,
+			st.today and C.Green or C.Ink,
+			F.Medium,
+			2
+		)
+		line(f, "Missing a day only pauses your streak. It never resets.", T.Small + 1, C.InkSoft, F.Body, 3)
+		if st.nextMilestone then
+			line(
+				f,
+				("Next: %s at %d days"):format(st.nextMilestone.name, st.nextMilestone.days),
+				T.Small + 1,
+				C.InkSoft,
+				F.Medium,
+				4
+			)
+		end
+		if st.lucky then
+			line(
+				f,
+				("Your lucky field today: %s. Bales there sometimes spill an extra needle."):format(st.lucky.region),
+				T.Body,
+				C.Ink,
+				F.Bold,
+				5
+			)
+			local row = buttonRow(f, 6)
+			local go = Kit.button(row, "Show the way", "go", UDim2.fromOffset(120, 28))
+			go.TextSize = T.Small + 1
+			go.Activated:Connect(function()
+				Waypoint.set(st.lucky.position, "Lucky field")
+				Menus.close()
+			end)
+		elseif st.days < st.luckyFrom then
+			line(
+				f,
+				("At %d days you get a lucky field each day."):format(st.luckyFrom),
+				T.Small + 1,
+				C.InkSoft,
+				F.Body,
+				5
+			)
+		end
+	end
 end
 
 local function showRelics()

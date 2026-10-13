@@ -352,6 +352,32 @@ Quests.Rewards = {
 		name = "Starbeam Collector",
 		blurb = "A beacon over one belt tile that pulls a bale of Star hay out of the sky now and then. Build it on your land.",
 	},
+	-- Daily streak rosettes (Streak below): a little ribbon pinned to your chest, the best one you have earned.
+	streak_rosette_bronze = {
+		kind = "cosmetic",
+		name = "Bronze Rosette",
+		blurb = "3 streak days. Pinned to your chest.",
+		color = { 176, 124, 72 },
+	},
+	streak_rosette_silver = {
+		kind = "cosmetic",
+		name = "Silver Rosette",
+		blurb = "7 streak days. Pinned to your chest.",
+		color = { 196, 200, 204 },
+	},
+	streak_rosette_gold = {
+		kind = "cosmetic",
+		name = "Gold Rosette",
+		blurb = "14 streak days. Pinned to your chest.",
+		color = { 230, 186, 74 },
+	},
+	streak_rosette_star = {
+		kind = "cosmetic",
+		name = "Starlight Rosette",
+		blurb = "30 streak days. It glows a little at night.",
+		color = { 150, 170, 255 },
+		glow = true,
+	},
 	captains_barge = {
 		kind = "unlock",
 		name = "Captain's Barge",
@@ -793,6 +819,20 @@ Quests.List = {
 		},
 		reward = { truck = "ghost_hauler", relic = "shard_haunted" },
 	},
+}
+
+-- The gentle daily streak. Finishing any one bounty on a UTC day counts that day. A missed day pauses the streak; it
+-- never resets. Rosettes are cosmetic. From LuckyField.fromDays on, each day you also get a personal lucky field (one
+-- of the hay fields out on the isles, shown in the Bounties tab): bales you break there sometimes spill an extra
+-- needle, a few times a day.
+Quests.Streak = {
+	Milestones = {
+		{ days = 3, reward = "streak_rosette_bronze" },
+		{ days = 7, reward = "streak_rosette_silver" },
+		{ days = 14, reward = "streak_rosette_gold" },
+		{ days = 30, reward = "streak_rosette_star" },
+	},
+	LuckyField = { fromDays = 2, radius = 22, chance = 0.3, perDay = 10 },
 }
 
 -- Daily bounties: three a day from this pool, the same three for everyone, new at midnight UTC. Cash only.

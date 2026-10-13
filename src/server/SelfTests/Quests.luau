@@ -177,6 +177,34 @@ return function(SelfTest)
 			Quests.press(player, "corn_maze")
 			t.check("the corn maze completes at night", q.done.corn_maze == true and q.earned.corn_moon_charm == true)
 
+			-- The daily streak: a finished bounty counts the day once; a gap pauses it; 3 days earns the first rosette.
+			local bounty = QuestConfig.Bounties
+			local function finishABounty()
+				q.bounty = {}
+				for _, def in bounty do
+					Events.fire(
+						player,
+						def.event,
+						def.count,
+						{ position = Vector3.new(0, -500, 0), center = Vector3.zero }
+					)
+				end
+				t.wait(0.3)
+			end
+			finishABounty()
+			local today = os.time() // 86400
+			t.check(
+				"finishing a bounty counts today for the streak",
+				q.streak and q.streak.last == today and q.streak.days == 1
+			)
+			finishABounty()
+			t.equal("a second bounty the same day does not count again", q.streak and q.streak.days, 1)
+			q.streak.last = today - 4
+			q.streak.days = 2
+			finishABounty()
+			t.check("after missed days the streak picks up (paused, not reset)", q.streak.days == 3)
+			t.check("3 streak days earn the Bronze Rosette", q.earned.streak_rosette_bronze == true)
+
 			-- The alien offering grants exactly the land pieces' reward ids.
 			q.active.alien_offering = { step = 1, n = 0, seen = {} }
 			local def
