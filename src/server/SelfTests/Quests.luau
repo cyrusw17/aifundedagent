@@ -16,6 +16,7 @@ local Events = require(Services.Events)
 local Data = require(Services.Data)
 local Regions = require(Services.Regions)
 local WorldShape = require(Services.WorldShape)
+local CollectionService = game:GetService("CollectionService")
 
 local function spotIdsOf(step)
 	return step.spots or (step.spot and { step.spot }) or {}
@@ -168,6 +169,57 @@ return function(SelfTest)
 			t.skip("the drowned rows stand in the sea", "the world map is not built")
 		end
 
+		-- The Master Needle: twelve different shards in the collection, each a real relic, in the Spindle door's order.
+		local shardIds, seenShard, shardBad = {}, {}, {}
+		for _, entry in QuestConfig.Collection do
+			if string.sub(entry.id, 1, 6) == "shard_" then
+				table.insert(shardIds, entry.id)
+				if seenShard[entry.id] or not QuestConfig.Rewards[entry.id] then
+					table.insert(shardBad, entry.id)
+				end
+				seenShard[entry.id] = true
+			end
+		end
+		t.equal("the collection holds twelve Master Needle shards", #shardIds, 12)
+		t.check("every shard is a distinct relic", #shardBad == 0, table.concat(shardBad, ", "))
+		local okDoor, SpindleDoor = pcall(require, Services.SpindleDoor)
+		if okDoor then
+			local sameOrder = #SpindleDoor.shards == #shardIds
+			for i, id in shardIds do
+				sameOrder = sameOrder and SpindleDoor.shards[i] == id
+			end
+			t.check("the Spindle door's sockets follow the collection's shards", sameOrder)
+			local slots = {}
+			for _, socket in CollectionService:GetTagged("ShardSocket") do
+				slots[socket:GetAttribute("Slot") or 0] = true
+			end
+			local socketCount = 0
+			for slot = 1, 12 do
+				if slots[slot] then
+					socketCount += 1
+				end
+			end
+			if #CollectionService:GetTagged("ShardSocket") > 0 then
+				t.equal("the Spindle door has a socket for each shard", socketCount, 12)
+			else
+				t.skip("the Spindle door has a socket for each shard", "the world map is not built")
+			end
+		else
+			t.skip("the Spindle door's sockets follow the collection's shards", "no SpindleDoor service")
+		end
+
+		-- Every bounty board opens the quest log (it gets a prompt the quest system listens to).
+		local boardsBad = {}
+		for _, board in CollectionService:GetTagged("BountyBoard") do
+			if
+				board:IsA("BasePart")
+				and not (board:GetAttribute("QuestHooked") and board:FindFirstChildWhichIsA("ProximityPrompt", true))
+			then
+				table.insert(boardsBad, board:GetFullName())
+			end
+		end
+		t.check("every bounty board has a working prompt", #boardsBad == 0, table.concat(boardsBad, ", "))
+
 		local remotes = ReplicatedStorage:FindFirstChild("Quests")
 		t.check(
 			"quest remotes exist",
@@ -231,6 +283,28 @@ return function(SelfTest)
 			end
 			Quests.press(player, "corn_maze")
 			t.check("the corn maze completes at night", q.done.corn_maze == true and q.earned.corn_moon_charm == true)
+
+			-- The Weaver, chapter 1: read the words, the spool only at midnight, wind it home for the Spindle shard.
+			q.active.weaver_1 = { step = 1, n = 0, seen = {} }
+			Quests.press(player, "weaver_words")
+			t.equal("reading the words moves the Weaver on", q.active.weaver_1 and q.active.weaver_1.step, 2)
+			Lighting.ClockTime = 12
+			Quests.press(player, "weaver_spool")
+			t.equal("the spool can't be taken at noon", q.active.weaver_1 and q.active.weaver_1.step, 2)
+			Lighting.ClockTime = 23.8
+			Quests.press(player, "weaver_spool")
+			Quests.press(player, "weaver_words")
+			t.check("chapter 1 gives the Spindle shard", q.done.weaver_1 == true and q.earned.shard_spindle == true)
+			if okDoor then
+				SpindleDoor.refresh()
+				t.check("the door counts the new shard", SpindleDoor.count(player) >= 1)
+				local slot = table.find(SpindleDoor.shards, "shard_spindle")
+				for _, socket in CollectionService:GetTagged("ShardSocket") do
+					if socket:GetAttribute("Slot") == slot then
+						t.check("the Spindle shard's socket lights up", socket:GetAttribute("Lit") == true)
+					end
+				end
+			end
 
 			-- Timed mazes: a run moves the labyrinth quest on, a slow one doesn't pass the 45 second step, and the
 			-- first finish of the day is recorded (paid outside a sandbox) once.

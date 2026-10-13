@@ -42,6 +42,19 @@ Quest gear is earned, never sold. No cash or Robux price buys a quest shovel, ra
 | The Corn Night Maze | After The Signal: at night, find the 3 glowing corn keys in the maze east of the plots, bring them to its heart | **Corn Moon Charm** (needed for The Offering) |
 | The Offering | Offer 50 needles of every kind that grows in the world (the log lists them) | **Alien Collector** (100% sorter while its daily beam is up) and **Starbeam Collector** (beams down Star hay), both free to build; **Starweave Gloves** (tier 6); **Starlight Hauler** |
 
+## The Weaver mystery
+
+The Weaver who stitched the isles vanished and the Master Needle broke into twelve shards. The sealed door on the
+Spindle has a socket for each (SpindleDoor.luau lights a socket while anyone on the server holds that shard, in
+`Quests.Collection` order). Six shards come from rituals and region quests; chapter 1 adds the seventh; five more
+(Pine Forest, Homestead, Swamp, Thimble Keys, Shore) wait for later chapters and show as ??? with a hint.
+
+| Chapter | Steps | Reward |
+|---|---|---|
+| 1: Still Water | Read the words beside the Spindle door ("Still water keeps the sky. When the sky is darkest, the dropped thread rises. Wind it home."), take the glowing spool from Mirror Lake's west shore at midnight, wind it back at the door | **Master Needle shard: Spindle** |
+
+Bounty boards (the Homestead hub, the ferry promenades) open the quest log at the Bounties tab.
+
 ## Region quests (Stitched Isles)
 
 Their places stand on the world map (`world` in `Config/Quests.luau` Spots), so they open as soon as the isles load.

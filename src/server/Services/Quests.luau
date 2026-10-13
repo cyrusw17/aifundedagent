@@ -995,6 +995,57 @@ function LOOKS.rows(m, cf, spot)
 	return raft
 end
 
+-- The Weaver's words: a slab of dark stone by the Spindle door with the riddle cut into it.
+function LOOKS.plaque(m, cf)
+	local slab = part(
+		m,
+		"WeaverWords",
+		Vector3.new(4.5, 3.4, 0.8),
+		cf * CFrame.new(0, 2.2, 0) * CFrame.Angles(math.rad(-8), 0, 0),
+		Color3.fromRGB(96, 86, 120),
+		Enum.Material.Slate
+	)
+	part(m, "Plinth", Vector3.new(5, 0.8, 1.6), cf * CFrame.new(0, 0.4, 0), Rustic.Stone, Enum.Material.Cobblestone)
+	local text = label(
+		slab,
+		"STILL WATER KEEPS THE SKY.\nWHEN THE SKY IS DARKEST,\nTHE DROPPED THREAD RISES.",
+		Vector3.new(0, 2.6, 0),
+		40
+	)
+	text.Parent.Size = UDim2.fromOffset(260, 70)
+	text.TextColor3 = Color3.fromRGB(220, 206, 240)
+	return slab
+end
+
+-- The Weaver's spool: a little wooden spool wound with glowing gold thread, floating at the water's edge.
+function LOOKS.spool(m, cf)
+	local spool = part(
+		m,
+		"WeaverSpool",
+		Vector3.new(1.6, 1.4, 1.4),
+		cf * CFrame.new(0, 1.6, 0) * CFrame.Angles(0, 0, math.pi / 2),
+		Rustic.Wood,
+		Enum.Material.Wood,
+		Enum.PartType.Cylinder
+	)
+	spool.CanCollide = false
+	local thread = part(
+		m,
+		"Thread",
+		Vector3.new(1, 1.6, 1.6),
+		spool.CFrame,
+		Color3.fromRGB(242, 196, 70),
+		Enum.Material.Neon,
+		Enum.PartType.Cylinder
+	)
+	thread.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Range = 14
+	light.Parent = thread
+	return spool
+end
+
 -- A corn key: a small glowing brass key on a corn husk.
 function LOOKS.cornkey(m, cf)
 	local husk =
@@ -1647,6 +1698,9 @@ function Quests.usePrompt(player, spotId)
 			else
 				entry.seen[spotId] = true
 			end
+			if step.say then
+				Data.toast(player, step.say)
+			end
 			if (step.count or 1) > 1 then
 				Data.toast(player, ("%s (%d / %d)"):format(spot.def.name, (entry.n or 0) + 1, step.count))
 			end
@@ -2136,6 +2190,30 @@ function Quests.has(player, rewardId)
 	return q ~= nil and q.earned[rewardId] == true
 end
 
+-- Bounty boards (the Homestead hub's, the ferry promenades'): using one opens your quest log at the Bounties tab.
+local function hookBoard(board)
+	if not board:IsA("BasePart") or board:GetAttribute("QuestHooked") then
+		return
+	end
+	board:SetAttribute("QuestHooked", true)
+	task.defer(function()
+		local prompt = board:FindFirstChildWhichIsA("ProximityPrompt", true)
+		if not prompt then
+			prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Read"
+			prompt.ObjectText = "Bounty board"
+			prompt.MaxActivationDistance = 12
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = board
+		end
+		prompt.Triggered:Connect(function(player)
+			if changedRemote and Data.get(player) then
+				changedRemote:FireClient(player, "open", "Bounties")
+			end
+		end)
+	end)
+end
+
 function Quests.build(worldFolder)
 	DayNight.start()
 
@@ -2218,6 +2296,10 @@ function Quests.build(worldFolder)
 		end
 		moveScarecrow()
 		refreshSign()
+		CollectionService:GetInstanceAddedSignal("BountyBoard"):Connect(hookBoard)
+		for _, board in CollectionService:GetTagged("BountyBoard") do
+			hookBoard(board)
+		end
 		CollectionService:GetInstanceAddedSignal("QuestAnchor"):Connect(onAnchor)
 		for _, anchor in CollectionService:GetTagged("QuestAnchor") do
 			onAnchor(anchor)
