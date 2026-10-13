@@ -140,9 +140,18 @@ local function turnFor(plot, gx, gz, dir)
 	return plot.tiles.X - 1 - gx, plot.tiles.Z - 1 - gz, OPPOSITE[dir] or dir
 end
 
+-- A whole, finite grid number. (math.floor(inf) == inf, so the bounds check is what keeps inf and -inf out.)
 local function isCell(n)
-	return typeof(n) == "number" and n == n and math.floor(n) == n
+	return typeof(n) == "number" and n == n and n > -1000 and n < 1000 and math.floor(n) == n
 end
+
+-- Whether a player's character stands within radius studs of a point (the server's view of where they are).
+local function within(player, point, radius)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return root ~= nil and (root.Position - point).Magnitude <= radius
+end
+local OFFICE_REACH = 45
 
 -- Ground CFrame at the middle of a piece's footprint, facing its direction.
 local function footprintFrame(plot, def, gx, gz, dir)
@@ -1586,6 +1595,39 @@ local function onName(player, raw)
 end
 
 -- Adds (on = true) or removes a player from the owner's farm crew.
+-- Pending crew invites: invited player -> { owner, plot, at }. One at a time; a new one replaces the old.
+local crewInvites = {}
+local CREW_INVITE_SECONDS = 60
+
+local function onCrewAnswer(player, ownerId, yes)
+	local invite = crewInvites[player]
+	crewInvites[player] = nil
+	player:SetAttribute("CrewInvite", nil)
+	if not invite or invite.owner.UserId ~= ownerId then
+		return false, "That invite is gone."
+	end
+	local owner, plot = invite.owner, invite.plot
+	if os.clock() - invite.at > CREW_INVITE_SECONDS or not owner.Parent or plot.owner ~= owner then
+		return false, "That invite ran out."
+	end
+	if yes ~= true then
+		Data.toast(owner, player.DisplayName .. " said no to joining your crew.")
+		return true, nil
+	end
+	local count = 0
+	for _ in plot.crew do
+		count += 1
+	end
+	if count >= CREW_MAX then
+		return false, ("%s's crew is full."):format(owner.DisplayName)
+	end
+	plot.crew[player.UserId] = true
+	plot.dirty = true
+	publish(plot)
+	Data.toast(owner, player.DisplayName .. " joined your farm crew.")
+	return true, ("You're on %s's crew. You can drive their truck, and hay you run through their line pays them."):format(owner.DisplayName)
+end
+
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
 	if not plot then
@@ -1606,8 +1648,13 @@ local function onCrew(player, userId, on)
 		if not plot.crew[userId] and count >= CREW_MAX then
 			return false, ("A crew holds %d players."):format(CREW_MAX)
 		end
-		plot.crew[userId] = true
-		Data.toast(mate, ("%s added you to their farm crew. You can drive their truck, and hay you run through their line pays them."):format(player.DisplayName))
+		if plot.crew[userId] then
+			return true, "Already on your crew."
+		end
+		-- The invited player has to say yes (CrewAnswer); until then nothing changes.
+		crewInvites[mate] = { owner = player, plot = plot, at = os.clock() }
+		mate:SetAttribute("CrewInvite", ("%d|%s"):format(player.UserId, player.DisplayName))
+		return true, ("Asked %s to join your crew."):format(mate.DisplayName)
 	else
 		plot.crew[userId] = nil
 	end
@@ -1915,6 +1962,11 @@ local function onVisit(player, index)
 	if os.clock() - (lastAction[player] or 0) < 1 then
 		return false, "One moment."
 	end
+	-- Visiting moves you across the map, so it can't carry hay with it.
+	local s = Data.get(player)
+	if s and (s.carryBale ~= nil or (s.loadHay or 0) > 0) then
+		return false, "Put down the hay you're carrying before you visit a farm."
+	end
 	lastAction[player] = os.clock()
 	task.spawn(sendHome, player, plot)
 	return true, ("Visiting %s's farm. Like it at the sign by the lane."):format(plot.ownerName)
@@ -2081,6 +2133,24 @@ local function onLoaded(player)
 	end
 end
 
+-- Buying happens at the Land Office. (Loading a save that picked a plot calls onBuy directly, from anywhere.)
+local function onBuyRemote(player, ...)
+	if not within(player, LandConfig.OfficeCenter, OFFICE_REACH) then
+		return false, "Buy land at the Land Office."
+	end
+	return onBuy(player, ...)
+end
+
+-- Expanding happens at the Land Office or on the farm itself (the EXPAND button in build mode).
+local function onExpandRemote(player, ...)
+	local plot = plotOf[player]
+	local onFarm = plot and within(player, plot.corner + Vector3.new(plot.size.X / 2, 0, plot.size.Z / 2), math.max(plot.size.X, plot.size.Z) + 20)
+	if not onFarm and not within(player, LandConfig.OfficeCenter, OFFICE_REACH) then
+		return false, "Expand your land from your farm or at the Land Office."
+	end
+	return onExpand(player, ...)
+end
+
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
 	plots = plots,
@@ -2101,6 +2171,13 @@ Land.test = {
 	mailbox = mailbox,
 	onPlace = onPlace,
 	onUndo = onUndo,
+	onPaste = onPaste,
+	onVisit = onVisit,
+	onCrew = onCrew,
+	onCrewAnswer = onCrewAnswer,
+	onBuyRemote = onBuyRemote,
+	onExpandRemote = onExpandRemote,
+	isCell = isCell,
 }
 
 function Land.build(worldFolder)
@@ -2114,7 +2191,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName", "CrewAnswer" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -2138,12 +2215,13 @@ function Land.build(worldFolder)
 			return table.unpack(out, 2, out.n)
 		end
 	end
-	remotes.Buy.OnServerInvoke = guard(onBuy)
+	remotes.Buy.OnServerInvoke = guard(onBuyRemote)
 	remotes.Place.OnServerInvoke = guard(onPlace)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
 	remotes.Crew.OnServerInvoke = guard(onCrew)
 	remotes.Visit.OnServerInvoke = guard(onVisit)
-	remotes.Expand.OnServerInvoke = guard(onExpand)
+	remotes.Expand.OnServerInvoke = guard(onExpandRemote)
+	remotes.CrewAnswer.OnServerInvoke = guard(onCrewAnswer)
 	remotes.Pick.OnServerInvoke = guard(onPick)
 	remotes.Move.OnServerInvoke = guard(onMove)
 	remotes.Copy.OnServerInvoke = guard(onCopy)
@@ -2205,6 +2283,7 @@ function Land.build(worldFolder)
 		end
 	end
 	Players.PlayerRemoving:Connect(function(player)
+		crewInvites[player] = nil
 		lastAction[player] = nil
 		history[player] = nil
 		local mine = {}

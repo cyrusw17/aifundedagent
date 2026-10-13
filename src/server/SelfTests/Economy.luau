@@ -169,6 +169,7 @@ return function(SelfTest)
 				local principal = truck.price - down
 				t.equal("taking a loan charges the down payment", Bank.wallet(state), 0)
 				t.equal("loan money doesn't land in the bank balance", Bank.account(state).balance, 0)
+				t.equal("so it earns no savings interest", Bank.interestOn(Bank.account(state).balance), 0)
 				t.equal("the bank holds the whole price for purchases", Bank.held(state), truck.price)
 				t.equal("so shops can spend the price", Bank.spendable(state), truck.price)
 				t.equal("but it isn't your own money", Bank.liquid(state), 0)
@@ -206,6 +207,14 @@ return function(SelfTest)
 				t.equal("what the loan held beyond the payback comes back to you", Bank.liquid(state), truck.price - owed)
 			end
 
+			-- One-time rewards count as earnings but not as selling (the trade cash gate).
+			reset(0)
+			Bank.earn(player, 500, "Hay shop")
+			Bank.earn(player, 2000, "Secret: SelfTest")
+			Bank.earn(player, 300, "Discovered SelfTest")
+			t.equal("all of it counts as earned", Bank.account(state).earned, 2800)
+			t.equal("only sales count as sold", Bank.account(state).sold, 500)
+
 			-- Trading post fees (a real two-player trade needs a second player, so only the rules are checked here).
 			local trade = Prices.Trade
 			t.equal("an items-only side pays no trade fee", Bank.tradeFee(0), 0)
@@ -228,6 +237,12 @@ return function(SelfTest)
 					if left > 0 then
 						t.equal(("%s order takes one"):format(offer.kind), took, 1)
 						t.equal(("%s order pays its rate"):format(offer.kind), Bank.wallet(state) - before, offer.rate)
+					end
+					if left > 1 then
+						-- A part-full sorted bale pays for the hay it holds.
+						local mid = Bank.wallet(state)
+						took += Orders.fill(player, offer.kind, 1, 0.1)
+						t.equal(("%s order pays a tenth for a tenth-full bale"):format(offer.kind), Bank.wallet(state) - mid, math.floor(offer.rate * 0.1 + 0.5))
 					end
 					local rest = Orders.fill(player, offer.kind, offer.amount + 50)
 					t.equal(("%s order stops at its amount"):format(offer.kind), took + rest, math.max(0, left))

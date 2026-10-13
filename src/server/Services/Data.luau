@@ -189,6 +189,7 @@ local function bankFrom(saved)
 		return typeof(v) == "number" and v == v and v or 0
 	end
 	local bank = { balance = num(saved.balance), earned = num(saved.earned), loans = {}, history = {} }
+	bank.sold = typeof(saved.sold) == "number" and saved.sold == saved.sold and saved.sold or bank.earned
 	if typeof(saved.loans) == "table" then
 		for kind, loan in saved.loans do
 			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then
@@ -391,11 +392,11 @@ function Data.sync(player)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
-	local held = 0
+	local inPocket = 0
 	for _, count in state.pocket do
-		held += count
+		inPocket += count
 	end
-	player:SetAttribute("NeedlesHeld", held)
+	player:SetAttribute("NeedlesHeld", inPocket)
 	player:SetAttribute("Thatch", state.thatch or 0)
 	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
 	for _, alloy in Alloys do

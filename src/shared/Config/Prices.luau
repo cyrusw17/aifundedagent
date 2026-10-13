@@ -242,6 +242,10 @@ Prices.SorterBalesPerMinute = {
 Prices.Trade = {
 	Fee = 25, -- per side that gives cash, per trade
 	CashShare = 0.05, -- of the cash a side gives
+	-- A save slot can hand over cash only once it has made this much from selling (not from one-time rewards like
+	-- secrets, discoveries, mazes, quests and finds). About 2 hours of a new player's farming, so a fresh alt slot
+	-- can't collect one-time rewards and pass the cash on. Items can always be traded.
+	MinSoldToGiveCash = 25000,
 }
 
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
@@ -299,7 +303,22 @@ Prices.Secrets = {
 	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
 	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
 	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
-	hidden = 4000, -- each region's hidden spot (hidden_<region>, 12 of them), a short walk off a road from its Old Sign clue (placeholder for Econ)
+	-- Each region's hidden spot (Wilds, hidden_<region>), a short walk off a road from its Old Sign clue. Smaller than
+	-- the four big secrets and scaled to the region: about 5 minutes of income at the stage you reach it, so the
+	-- Meadow ones can't hand a new player a pickup. `hidden` is the fallback for a region not listed. $58,000 in all.
+	hidden = 500,
+	hidden_shore = 500,
+	hidden_valley = 500,
+	hidden_homestead = 500,
+	hidden_spindle = 500,
+	hidden_pine = 1500,
+	hidden_desert = 2500,
+	hidden_snow = 4000,
+	hidden_keys = 5000,
+	hidden_swamp = 6000,
+	hidden_volcano = 10000,
+	hidden_bobbin = 12000,
+	hidden_haunted = 15000,
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

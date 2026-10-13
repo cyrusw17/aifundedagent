@@ -275,7 +275,11 @@ when the orders change.
 
 A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
 the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
-since they are capped per player.
+since they are capped per player. A sorted bale pays for the hay it actually holds (rate × strands ÷ 90), because a sorter can wrap a few
+loose strands into a full-size sorted bale; Conveyor's audit found that paid up to $1,800 a rotation for nearly empty
+bales.
+
+Savings interest is paid on the bank balance only. Loan money is held apart (see Loans), so it never earns interest.
 
 ## The bank: Meadow Savings & Loan
 
@@ -458,6 +462,25 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
 
+Map's twelve hidden spots, one per region and each found from an Old Sign clue, also pay through `Prices.Secrets`
+(`hidden_<region>`). Map's placeholder was $4,000 each, which was a pickup's worth for the four Meadow spots a new player
+can walk to in the first ten minutes. They're scaled to the region instead, at about 5 minutes of income at the stage
+you reach it, and stay smaller than the four big secrets:
+
+| Region | Hidden spot | Reward |
+|---|---|---|
+| Meadow Shore, Mirror Lake Valley, Homestead, Spindle | Driftwood Oak, Willow, Founders' Cairn, Echo Cairn | $500 each |
+| Pine Forest | Hollow Pine | $1,500 |
+| Desert | Prospector's Shed | $2,500 |
+| Snow Peak | Buried Ski Shed | $4,000 |
+| Thimble Keys | Castaway's Chest | $5,000 |
+| Swamp | Sunken Bog Chest | $6,000 |
+| Volcano | Ash Cairn | $10,000 |
+| Bobbin Rock | Spool Shed | $12,000 |
+| Haunted Grove | Whispering Oak | $15,000 |
+
+All twelve together come to $58,000. Like every one-time reward, they count as earnings but not as `sold`.
+
 ## Wet hay
 
 The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
@@ -501,6 +524,23 @@ Cash-for-needles deals pay something like the market's spread, and big cash tran
 cost. Cash moves wallet to wallet (taking from
 the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
 side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
+
+**Alt accounts and one-time rewards.** Secrets, discoveries, mazes, quest cash and finder's rewards pay once per save
+slot, so a fresh slot (or a second account) could collect them and trade the cash to a main farm. The rewards keep
+their amounts: they are what make exploring worth it, and cutting them to stop alts would punish everyone. Instead,
+a slot can hand over cash at the trading post only after it has made $25,000 from selling
+(`Prices.Trade.MinSoldToGiveCash`, about 2 hours of a new player's farming). One-time rewards still count toward loans
+and credit, but not toward that $25,000, which Bank tracks separately as `sold`. Items can always be traded, and saves
+from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
+a clock nobody can game; sales already are one.
+
+Two kinds of repeatable pay count as selling on purpose. **Daily bounties** ("Bounty: ", $300 to $450 each, three a
+day) are paid for real farming (sell 15 bales, break 12, pick up 8 needles), so they're sales with a bonus; reaching
+$25,000 on bounties alone would take about three weeks of daily play, which is real progress, not an alt trick.
+**Offline pay** ("While you were away") is what your own sorter line made while you were gone, so it needs a built
+farm first. Daily maze runs ("Maze: ") stay out of `sold` because they pay for running, not farming. The health
+check's contract rule 6 reads the one-time list from Bank.luau, so any new reward note must either match a one-time
+prefix or be a known sale.
 
 ## Where each number lives
 
