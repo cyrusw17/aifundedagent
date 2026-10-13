@@ -22,6 +22,7 @@ local Rustic = require(Shared.Config.Rustic)
 local GameConfig = require(Shared.Config.Game)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
+local RateLimit = require(Shared.RateLimit)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -2152,8 +2153,30 @@ local function onExpandRemote(player, ...)
 	return onExpand(player, ...)
 end
 
+-- Rate limits on the remotes a script could spam (CEO #31): each is a per-player token bucket (perSecond, burst).
+-- They wrap the remotes only, so the SelfTests can still call the handlers directly.
+local limits = {
+	Crew = RateLimit.new("Land.Crew", 1, 3),
+	CrewAnswer = RateLimit.new("Land.CrewAnswer", 1, 3),
+	Visit = RateLimit.new("Land.Visit", 0.5, 2),
+	Buy = RateLimit.new("Land.Buy", 0.5, 2),
+	Expand = RateLimit.new("Land.Expand", 1, 3),
+	Paste = RateLimit.new("Land.Paste", 1, 3),
+}
+
+local function limited(limiter, fn)
+	return function(player, ...)
+		if not limiter:allow(player) then
+			return false, RateLimit.BUSY
+		end
+		return fn(player, ...)
+	end
+end
+
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	limits = limits,
+	limited = limited,
 	plots = plots,
 	pieces = pieces,
 	farms = farms,
@@ -2216,17 +2239,17 @@ function Land.build(worldFolder)
 			return table.unpack(out, 2, out.n)
 		end
 	end
-	remotes.Buy.OnServerInvoke = guard(onBuyRemote)
+	remotes.Buy.OnServerInvoke = guard(limited(limits.Buy, onBuyRemote))
 	remotes.Place.OnServerInvoke = guard(onPlace)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
-	remotes.Crew.OnServerInvoke = guard(onCrew)
-	remotes.Visit.OnServerInvoke = guard(onVisit)
-	remotes.Expand.OnServerInvoke = guard(onExpandRemote)
-	remotes.CrewAnswer.OnServerInvoke = guard(onCrewAnswer)
+	remotes.Crew.OnServerInvoke = guard(limited(limits.Crew, onCrew))
+	remotes.Visit.OnServerInvoke = guard(limited(limits.Visit, onVisit))
+	remotes.Expand.OnServerInvoke = guard(limited(limits.Expand, onExpandRemote))
+	remotes.CrewAnswer.OnServerInvoke = guard(limited(limits.CrewAnswer, onCrewAnswer))
 	remotes.Pick.OnServerInvoke = guard(onPick)
 	remotes.Move.OnServerInvoke = guard(onMove)
 	remotes.Copy.OnServerInvoke = guard(onCopy)
-	remotes.Paste.OnServerInvoke = guard(onPaste)
+	remotes.Paste.OnServerInvoke = guard(limited(limits.Paste, onPaste))
 	remotes.Undo.OnServerInvoke = guard(onUndo)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
 	remotes.FarmName.OnServerInvoke = guard(onName)
