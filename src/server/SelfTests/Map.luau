@@ -82,6 +82,21 @@ return function(SelfTest)
 			end
 		end
 		t.check("a fall anywhere lands on a dry road", #wet == 0, #wet > 0 and table.concat(wet, "; ") or nil)
+		-- Signpost distances (#23): every place a junction sign names is reachable by road.
+		local noRoute = {}
+		for _, j in Regions.junctions or {} do
+			local ok, text, numbers = pcall(Regions.junctionText, j)
+			local wanted = 0
+			for _, line in j[4] do
+				if line[3] then
+					wanted += 1
+				end
+			end
+			if not ok or #numbers < wanted then
+				table.insert(noRoute, ok and text or tostring(text))
+			end
+		end
+		t.check("every junction sign has a road distance to each place", #noRoute == 0, #noRoute > 0 and table.concat(noRoute, "; ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}
