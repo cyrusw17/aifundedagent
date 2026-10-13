@@ -50,10 +50,13 @@ local function fitBillboard(gui, label, spec)
 end
 
 -- A floating label above adornee (a BasePart or Attachment). Returns the TextLabel; set .Text to change it.
--- opts: offset (Vector3, studs above the part), kind ("sign" | "status" | "tag"), distance (override), color.
+-- opts: offset (Vector3, studs above the part), kind ("sign" | "status" | "tag"), distance (override), color,
+-- studs (line height override for far landmarks).
 function WorldLabel.billboard(adornee, text, opts)
 	opts = opts or {}
-	local spec = WorldLabel.Kinds[opts.kind or "status"] or WorldLabel.Kinds.status
+	local base = WorldLabel.Kinds[opts.kind or "status"] or WorldLabel.Kinds.status
+	-- studs overrides the line height, for a landmark meant to be read from far away (a volcano, not a shop).
+	local spec = { studs = opts.studs or base.studs, maxPx = base.maxPx, distance = base.distance, font = base.font }
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "WorldLabel"
