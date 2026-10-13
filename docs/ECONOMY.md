@@ -434,6 +434,23 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
 
+## Wet hay
+
+The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
+(`Prices.WetHayShare`) until it dries, 150 seconds after the rain stops or at once on a drying rack. Needles are
+untouched, so the loss is only on the hay:
+
+| Bale | Dry, sorted | Wet, sorted | Loss |
+|---|---|---|---|
+| Meadow | $245 | $227 | 7% |
+| Swamp | $1,065 | $1,047 | 2% |
+| Sold raw at the public shop (Meadow) | $47 | $29 | 38% |
+
+That's the right size. It hurts most at the very start, when hay is all you sell, which teaches parking under cover
+early; later it's a nudge, and waiting out the rain costs nothing. It doesn't change the drying rack's price: at the
+Swamp stage, rescuing $18 a bale is under 2% of the bale, while the rack's real value is letting Bog reed be sorted
+at all.
+
 ## Golden bales
 
 The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
@@ -474,6 +491,7 @@ side can't pay, nothing moves and the post cancels the trade. Trading is free wh
 | Trade fee | `Trade` | `Services/Bank` (settleTrade) |
 | Region events | `RegionEvents` | `Services/RegionEvents` |
 | Region secrets | `Secrets` | `Services/Wilds` |
+| Wet hay | `WetHayShare` | `Config/Game` (WetPriceFactor) |
 | Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |

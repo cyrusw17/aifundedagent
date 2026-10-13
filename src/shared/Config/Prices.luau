@@ -253,6 +253,11 @@ Prices.Travel = {
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
 }
 
+-- Wet hay (Hay thread; Config/Game reads it as WetPriceFactor): a bale soaked by rain sells its hay at this share of
+-- the price until it dries. Needles are unharmed, so a wet Meadow bale sorts to $227 against $245: a nudge to park
+-- under cover or wait out the rain (it dries 150 s after), never a disaster.
+Prices.WetHayShare = 0.6
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
