@@ -31,6 +31,20 @@ return function(SelfTest)
 		local Market = require(Services.Market)
 		local TruckConfig = require(Shared.Config.Trucks)
 		local Orders = require(Services.Orders)
+		local HayMarket = require(Services.HayMarket)
+		local Bales = require(Services.Bales)
+
+		-- Hay Market prices sit below what each rare bale is worth on a conveyor sorter, so it's a bonus for a line.
+		local badMarket = {}
+		for kindId in Prices.HayMarket.Kinds do
+			for hayType in Prices.HayMarket.HayTypes do
+				local price, value = HayMarket.priceOf(kindId, hayType), HayMarket.valueOf(kindId, hayType)
+				if not (price > 0 and price < value) then
+					table.insert(badMarket, ("%s %s: $%s for $%s"):format(kindId, hayType, tostring(price), tostring(value)))
+				end
+			end
+		end
+		t.check("every Hay Market price is under its bale's value", #badMarket == 0, #badMarket > 0 and table.concat(badMarket, "; ") or nil)
 
 		-- Every price is a finite number above zero (the intentionally free ones may be zero).
 		local bad = {}
@@ -249,6 +263,38 @@ return function(SelfTest)
 					t.equal(("%s order is full"):format(offer.kind), Orders.fill(player, offer.kind, 1), 0)
 				end
 				Orders.setProgress(player, progress)
+			end
+
+			-- The Hay Market: a purchase charges the price, takes one from stock, hands over a marked bale, and stops at
+			-- the per-restock cap. A restock afterwards puts the stall back for real players.
+			local stall = HayMarket.slots()
+			if #stall == 0 then
+				t.skip("hay market", "the stall hasn't been built")
+			else
+				HayMarket.restock()
+				t.equal("a restock fills every slot", stall[1].stock, Prices.HayMarket.StockPerSlot)
+				t.check("and sets the countdown", (game:GetService("ReplicatedStorage"):GetAttribute("HayMarketRestockAt") or 0) > workspace:GetServerTimeNow())
+				reset(1000000)
+				local slot = stall[1]
+				local price, stock = slot.price, slot.stock
+				local okBuy, buyMsg, bale = HayMarket.buy(player, 1)
+				t.check("buying a rare bale works", okBuy, buyMsg)
+				t.equal("it charges the price", 1000000 - Bank.spendable(state), price)
+				t.equal("it takes one from stock", slot.stock, stock - 1)
+				t.check("the bale is marked with its kind", bale ~= nil and bale.body:GetAttribute("RareBale") == slot.kindId)
+				t.equal("and belongs to the buyer", bale and bale.ownerId, player.UserId)
+				local spent = { bale }
+				for _ = 2, Prices.HayMarket.PerPlayer do
+					local _, _, more = HayMarket.buy(player, 1)
+					spent[#spent + 1] = more
+				end
+				t.check("the per-restock cap holds", not HayMarket.buy(player, 2))
+				for i = 1, Prices.HayMarket.PerPlayer do
+					if spent[i] then
+						Bales.consume(spent[i])
+					end
+				end
+				HayMarket.restock()
 			end
 		end, debug.traceback)
 		if not ok then

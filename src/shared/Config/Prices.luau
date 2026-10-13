@@ -272,6 +272,32 @@ Prices.Mutation = {
 	max = 25,
 }
 
+-- The Hay Market (Services/HayMarket.luau, CEO H6): a stall at base camp restocks every RestockSeconds with Slots
+-- rare bales, each a kind (Golden, Storm or Moon Hay) of one region's hay, StockPerSlot of each for the whole server.
+-- A player can buy PerPlayer bales per restock. needles multiplies the bale's hidden needles and mutation multiplies
+-- each found needle's chance to mutate (Prices.Mutation).
+-- Price is not set by hand: it is PriceShare of what the bale is worth sorted on a conveyor sorter
+-- (ReferenceRecovery), mutations included. So a player with a conveyor sorter or better makes a little on every rare
+-- bale and gets a lottery ticket on top, while a player selling raw or hand-sieving loses money on them: rare bales
+-- are a bonus for a working line, not a replacement for farming (ECONOMY.md "The Hay Market").
+Prices.HayMarket = {
+	RestockSeconds = 300,
+	Slots = 3,
+	StockPerSlot = 3,
+	PerPlayer = 2,
+	PriceShare = 0.85,
+	ReferenceRecovery = 0.55,
+	Kinds = {
+		-- weight: how often a slot rolls this kind
+		golden = { name = "Golden Hay", weight = 5, needles = 3, mutation = 1 },
+		storm = { name = "Storm Hay", weight = 3, needles = 2, mutation = 5 },
+		moon = { name = "Moon Hay", weight = 1, needles = 1, mutation = 25 },
+	},
+	-- Which region's hay a slot holds, by weight. Hay that needs a region machine (Snow, Swamp) is left out, so
+	-- any bale can go straight into a sorter.
+	HayTypes = { meadow = 6, pine = 4, desert = 3, keys = 2, volcano = 1, bobbin = 1 },
+}
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
