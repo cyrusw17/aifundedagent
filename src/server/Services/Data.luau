@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
+local Alloys = require(ReplicatedStorage.Shared.Config.Alloys)
 
 local Data = {}
 
@@ -255,6 +256,10 @@ function Data.sync(player)
 	end
 	player:SetAttribute("NeedlesHeld", held)
 	player:SetAttribute("Thatch", state.thatch or 0)
+	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
+	for _, alloy in Alloys do
+		player:SetAttribute("Material_" .. alloy.id, (state.materials or {})[alloy.id] or 0)
+	end
 end
 
 function Data.toast(player, text)
@@ -315,16 +320,22 @@ function Data.choose(player, slot, plot)
 		return false, "No such save."
 	end
 	choosing[player] = true
-	local used = summaries[player] and summaries[player][slot] ~= nil and not offline[player]
+	-- Wait for the slot list, so offline is known before anything can be written.
+	while summaries[player] == nil and player.Parent do
+		task.wait(0.1)
+	end
+	-- Always read the slot itself: the index can miss a slot whose index write failed, and a slot that looks empty
+	-- must never be started fresh over real progress.
 	local saved = nil
-	if used then
+	if not offline[player] then
 		local ok, result = read(slotKey(player, slot))
 		if not ok then
 			choosing[player] = nil
 			return false, "Couldn't read that save. Try again."
 		end
-		saved = result
+		saved = typeof(result) == "table" and result or nil
 	end
+	local used = saved ~= nil
 	local fresh = saved == nil
 	if fresh then
 		local preset = presetFor(player)
@@ -349,7 +360,30 @@ function Data.choose(player, slot, plot)
 	return true, used and ("Loaded save %d."):format(slot) or ("Started save %d."):format(slot)
 end
 
+-- One write per player at a time, so an older snapshot can never land after a newer one. A save asked for while one
+-- is writing waits for it, and the writer then saves once more with the newest state.
+local saving, saveAgain = {}, {}
+local saveOnce
 function Data.save(player)
+	if saving[player] then
+		saveAgain[player] = true
+		while saving[player] do
+			task.wait(0.1)
+		end
+		return
+	end
+	saving[player] = true
+	repeat
+		saveAgain[player] = nil
+		local ok, err = pcall(saveOnce, player)
+		if not ok then
+			warn("[Needlewood] save failed: " .. tostring(err))
+		end
+	until not saveAgain[player]
+	saving[player] = nil
+end
+
+saveOnce = function(player)
 	local state = states[player]
 	if not state or not store or not state.slot or offline[player] then
 		return

@@ -25,6 +25,7 @@ local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
 local Market = require(script.Parent.Market)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+local LineMath = require(ReplicatedStorage.Shared.LineMath)
 
 local Needle = {}
 
@@ -110,23 +111,10 @@ local function pocketOf(player)
 end
 
 -- Pocket and save key for a needle: its id, or "id*mult" when mutated, with a trailing "!" when polished.
-function Needle.keyOf(id, mult, polished)
-	local key = (mult and mult > 1) and ("%s*%d"):format(id, mult) or id
-	return polished and key .. "!" or key
-end
+Needle.keyOf = LineMath.keyOf
 
 -- The id, multiplier and polish of a key from keyOf.
-function Needle.parseKey(key)
-	local polished = string.sub(key, -1) == "!"
-	if polished then
-		key = string.sub(key, 1, -2)
-	end
-	local id, mult = string.match(key, "^(.-)%*(%d+)$")
-	if id then
-		return id, tonumber(mult), polished
-	end
-	return key, 1, polished
-end
+Needle.parseKey = LineMath.parseKey
 
 -- Needles in this player's pocket, as { [key] = count } (see keyOf).
 function Needle.held(player)
@@ -186,11 +174,16 @@ end
 -- Sells everything in the player's pocket. Returns how many needles and how many dollars (the caller pays).
 function Needle.sellHeld(player)
 	local count, value = 0, 0
-	for _, n in Needle.takeHeld(player) do
-		count += 1
-		value += Needle.priceOf(n.id, n.mult, n.polished)
-		Market.sold(n.id, 1)
+	local pocket = pocketOf(player)
+	for key, n in pocket do
+		local id, mult, polished = Needle.parseKey(key)
+		count += n
+		value += Needle.priceOf(id, mult, polished) * n -- priced before Market.sold lowers it, like one sale
 	end
+	for key, n in pocket do
+		Market.sold((Needle.parseKey(key)), n)
+	end
+	Needle.takeHeld(player)
 	return count, value
 end
 

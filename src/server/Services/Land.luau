@@ -309,7 +309,20 @@ end
 local function takeNeedles(player, n)
 	local pocket = Needle.held(player)
 	local took = 0
-	for key, count in pocket do
+	-- Plain needles first, so a mutated or polished one isn't spent as one unit of iron.
+	local keys = {}
+	for key in pocket do
+		table.insert(keys, key)
+	end
+	local function worth(key)
+		local _, mult, polished = Needle.parseKey(key)
+		return mult + (polished and 0.5 or 0)
+	end
+	table.sort(keys, function(a, b)
+		return worth(a) < worth(b)
+	end)
+	for _, key in keys do
+		local count = pocket[key]
 		local use = math.min(count, n - took)
 		pocket[key] = count - use > 0 and count - use or nil
 		took += use
@@ -574,12 +587,8 @@ local function fits(plot, def, gx, gz, dir, ignore)
 end
 
 -- What gets saved: the plot and the pieces by id, anchor cell and direction (and a silo's bales).
-local function saveItems(player, plot)
-	local s = Data.get(player)
-	local land = s and s[plot.landKey or "land"]
-	if not land then
-		return
-	end
+-- Writes a plot into its save table (plot-local, so it loads onto any free plot). ownerId picks whose bin needles go in.
+local function writeLand(land, plot, ownerId)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
@@ -596,12 +605,21 @@ local function saveItems(player, plot)
 	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
 	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
-	land.needles = plot.bin.contents(player.UserId)
+	land.needles = plot.bin.contents(ownerId)
 	local crew = {}
 	for userId in plot.crew do
 		table.insert(crew, userId)
 	end
 	land.crew = crew
+end
+
+local function saveItems(player, plot)
+	local s = Data.get(player)
+	local land = s and s[plot.landKey or "land"]
+	if not land then
+		return
+	end
+	writeLand(land, plot, player.UserId)
 	plot.dirty = false
 end
 
@@ -756,6 +774,19 @@ local function release(plot)
 		end
 	end
 	clearPlot(plot)
+	-- Visitors who sorted here keep what their hay gave up: it goes to their pockets before the bin empties.
+	for _, other in Players:GetPlayers() do
+		local s = other ~= owner and Data.get(other)
+		if s then
+			local theirs = plot.bin.contents(other.UserId)
+			if next(theirs) then
+				for k, count in theirs do
+					s.pocket[k] = (s.pocket[k] or 0) + count
+				end
+				Data.sync(other)
+			end
+		end
+	end
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	if plot.binSorted or plot.binPolisher then
 		-- Dividers and the polisher belong to the owner's save; the next owner gets a plain bin.
@@ -1069,6 +1100,9 @@ local function onPaste(player, list, gx, gz)
 		local def = typeof(entry) == "table" and typeof(entry.id) == "string" and pieces[entry.id]
 		if not def or not isCell(entry.dx) or not isCell(entry.dz) or typeof(entry.dir) ~= "string" or not Conveyors.Dirs[entry.dir] then
 			return false, "Nothing to paste."
+		end
+		if def.quest and not Quests.has(player, def.quest) then
+			return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
 		end
 		local ax, az = gx + entry.dx, gz + entry.dz
 		if not fits(plot, def, ax, az, entry.dir) then
@@ -1706,6 +1740,28 @@ local function onLoaded(player)
 		end)
 	end
 end
+
+-- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
+Land.test = {
+	plots = plots,
+	pieces = pieces,
+	farms = farms,
+	plotOf = plotOf,
+	key = key,
+	levelsOf = levelsOf,
+	turnFor = turnFor,
+	fits = fits,
+	spawnItem = spawnItem,
+	destroyItem = destroyItem,
+	writeLand = writeLand,
+	claim = claim,
+	release = release,
+	pickPlot = pickPlot,
+	restoreNeedles = restoreNeedles,
+	mailbox = mailbox,
+	onPlace = onPlace,
+	onUndo = onUndo,
+}
 
 function Land.build(worldFolder)
 	local folder = Instance.new("Folder")

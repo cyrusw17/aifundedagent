@@ -145,6 +145,21 @@ local function deliverNeedles(player)
 	credit(player, i, offer, count)
 end
 
+-- Credits up to count units of a kind ("bales", "sorted" or "needles") to a player's open order, as the pad does once
+-- it has taken the goods. Returns how many the order took. The pad uses the same rules; SelfTests/Economy calls this.
+function Orders.fill(player, kind, count)
+	local i, offer, want = openOrder(player.UserId, kind)
+	if not i or not Data.get(player) then
+		return 0
+	end
+	local take = math.min(math.floor(count or 0), want)
+	if take <= 0 then
+		return 0
+	end
+	credit(player, i, offer, take)
+	return take
+end
+
 function Orders.build(parent, position)
 	rotate()
 	local model = Instance.new("Model")
@@ -245,9 +260,27 @@ function Orders.build(parent, position)
 	return model
 end
 
--- Unused by the game; kept so a test can read the current orders.
+-- The current orders (read by SelfTests/Economy).
 function Orders.current()
 	return offers
+end
+
+-- How much of each current order a player has delivered, as { [orderIndex] = count }, and putting it back. The self
+-- test uses these so a test run leaves the player's real orders untouched.
+function Orders.progress(player)
+	local out = {}
+	for i in offers do
+		out[i] = delivered[i] and delivered[i][player.UserId] or 0
+	end
+	return out
+end
+
+function Orders.setProgress(player, progress)
+	for i, count in progress do
+		if delivered[i] then
+			delivered[i][player.UserId] = count > 0 and count or nil
+		end
+	end
 end
 
 -- Config.PiecesPerBale is the bale size the rest of the game uses; warn if Prices disagrees.
