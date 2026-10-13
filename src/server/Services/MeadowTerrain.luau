@@ -122,6 +122,14 @@ local function surfaceMaterial(x, z, h, slope)
 end
 
 local function setColors(terrain)
+	-- Roblox's decoration grass grows knee-high on the Grass material and hides bales, pads and paths. Cut it short
+	-- and switch it off; each in its own pcall, since a place may refuse script writes to either.
+	pcall(function()
+		terrain.GrassLength = 0.1
+	end)
+	pcall(function()
+		terrain.Decoration = false
+	end)
 	terrain:SetMaterialColor(Enum.Material.Grass, Rustic.Grass)
 	terrain:SetMaterialColor(Enum.Material.LeafyGrass, Rustic.LeafyGrass)
 	terrain:SetMaterialColor(Enum.Material.Ground, Rustic.Dirt)

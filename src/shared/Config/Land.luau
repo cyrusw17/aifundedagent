@@ -27,6 +27,8 @@ return {
 	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
 	ExpansionRows = 2,
 	ExpansionPrice = Prices.PlotExpansion,
+	SecondPlotPrice = Prices.SecondPlot, -- a save can own a second plot at this price
+	PolisherPrice = Prices.Pieces.needle_polisher, -- the needle bin's polishing wheel (Machines bin.fitPolisher)
 	BinDividersPrice = Prices.BinDividers, -- the needle bin's type dividers (Machines bin.splitByType)
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
@@ -51,10 +53,12 @@ return {
 		{ id = "splitter", kind = "splitter", rule = "alternate", name = "Splitter", price = Prices.Pieces.splitter, size = { 1, 1 }, blurb = "Sends loads out its left and right sides in turn. Put belts on both sides." },
 		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
+		{ id = "alloy_mixer", kind = "mixer", name = "Alloy mixer", price = Prices.Pieces.alloy_mixer, size = { 1, 1 }, blurb = "Mixes two needle types from your pocket into an alloy block for blueprints. No belt needed." },
 		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
 		-- Quest-only: free to build once the alien ritual is done (Config/Quests.luau), never sold.
-		{ id = "alien_collector", kind = "separator", name = "Alien Collector", price = 0, quest = true, size = { 1, 2 }, blurb = "Sorts every needle at once while its beam is up, once a day. Earned from the alien offering." },
-		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = true, size = { 1, 1 }, blurb = "Pulls a bale of Star hay down onto its belt every few minutes. Earned from the alien offering." },
+		-- quest is the reward id (Quests.has) that unlocks the piece.
+		{ id = "alien_collector", kind = "separator", name = "Alien Collector", price = 0, quest = "alien_collector", size = { 1, 2 }, blurb = "Sorts every needle at once while its beam is up, once a day. Earned from the alien offering." },
+		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = "starbeam_collector", size = { 1, 1 }, blurb = "Pulls a bale of Star hay down onto its belt every few minutes. Earned from the alien offering." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },

@@ -54,7 +54,11 @@ return function(SelfTest)
 				end
 			end
 		end
-		t.check(("%d quests name only real spots, rewards and quests"):format(#QuestConfig.List), #bad == 0, table.concat(bad, "; "))
+		t.check(
+			("%d quests name only real spots, rewards and quests"):format(#QuestConfig.List),
+			#bad == 0,
+			table.concat(bad, "; ")
+		)
 
 		-- Quest-only land pieces are exactly the ids a quest unlocks, and cost nothing.
 		local unlocks = {}
@@ -70,7 +74,10 @@ return function(SelfTest)
 			end
 		end
 		t.check("quest land pieces are unlocked by a quest and free", #pieceBad == 0, table.concat(pieceBad, ", "))
-		t.check("the alien offering unlocks the Alien Collector and Starbeam Collector", unlocks.alien_collector and unlocks.starbeam_collector)
+		t.check(
+			"the alien offering unlocks the Alien Collector and Starbeam Collector",
+			unlocks.alien_collector and unlocks.starbeam_collector
+		)
 
 		-- Every quest place is built, tagged, and above the sea.
 		local missing, wet = {}, {}
@@ -89,7 +96,10 @@ return function(SelfTest)
 		local remotes = ReplicatedStorage:FindFirstChild("Quests")
 		t.check(
 			"quest remotes exist",
-			remotes and remotes:FindFirstChild("Get") and remotes:FindFirstChild("Action") and remotes:FindFirstChild("Changed")
+			remotes
+				and remotes:FindFirstChild("Get")
+				and remotes:FindFirstChild("Action")
+				and remotes:FindFirstChild("Changed")
 		)
 
 		-- The clock runs (a game day is Config/Quests Time.DayMinutes real minutes).
@@ -99,12 +109,13 @@ return function(SelfTest)
 		t.check("the day and night clock moves", moved > 0 and moved < 1, ("%.3f game hours in 1.5 s"):format(moved))
 
 		local player = t.player(10)
-		if not player or not Data.get(player) then
+		local state = player and Data.get(player)
+		if not state then
 			t.skip("quest and ritual play-through", "needs a player with a save slot picked")
 			t.skip("quest progress survives a save", "needs a player with a save slot picked")
 			return
 		end
-		local cashBefore = Data.get(player).cash
+		local cashBefore = state.cash
 		local savedClock = Lighting.ClockTime
 
 		local ok, err = Quests.sandbox(player, function(q, pocket)
@@ -155,10 +166,10 @@ return function(SelfTest)
 		end)
 		Lighting.ClockTime = savedClock
 		t.check("the sandbox ran without errors", ok, not ok and tostring(err) or nil)
-		t.equal("the sandbox left the player's cash alone", Data.get(player).cash, cashBefore)
+		t.equal("the sandbox left the player's cash alone", state.cash, cashBefore)
 
 		-- The real quest progress survives the DataStore's JSON (string keys only, no mixed tables).
-		local real = Data.get(player).quests
+		local real = state.quests
 		local okJson, decoded = pcall(function()
 			return HttpService:JSONDecode(HttpService:JSONEncode(real or {}))
 		end)

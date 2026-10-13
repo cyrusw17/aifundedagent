@@ -291,6 +291,11 @@ local function deliver(player, def)
 		end
 		if model.Parent then
 			Vehicles.release(model, player)
+			-- If the seat could not take them (they jumped, or died mid-scene), let them climb in by the door.
+			local prompt = seat:FindFirstChild("DrivePrompt")
+			if prompt and not seat.Occupant then
+				prompt.Enabled = true
+			end
 		end
 		task.wait(0.6)
 		tweenDoor(false)
