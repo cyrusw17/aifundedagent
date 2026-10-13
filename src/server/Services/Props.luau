@@ -4,8 +4,9 @@
 -- tool's handle). Nothing here changes how anything plays: gameplay keeps its own parts, the meshes only ride along.
 -- Callers fall back to their part-built look when a prop is missing, so the game still runs before any import.
 -- Rigged props (vehicles, trailers, conveyors, machines) keep their moving pieces as separate child meshes:
--- Wheel_L1, Wheel_R2, Tailgate, Coupler, Belt, Roller, Drum, Reel, Flywheel, Crank, Shaker. Copies keep that
--- hierarchy; Props.find picks the pieces out and Props.weldTo can leave them loose for a hinge or motor.
+-- Wheel_L1, Wheel_R2, Tailgate, Coupler, Door_L, Door_R (cab doors, hinged at their front edge), Belt, Roller, Drum,
+-- Reel, Flywheel, Crank, Shaker. Copies keep that hierarchy; Props.find picks the pieces out and Props.weldTo can
+-- leave them loose for a hinge or motor. PropRigs.client spins wheels and swings doors by editing their welds.
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")

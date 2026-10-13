@@ -17,6 +17,7 @@ local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Machines = require(script.Parent.Machines)
 local Needle = require(script.Parent.Needle)
+local Props = require(script.Parent.Props)
 
 local Display = {}
 
@@ -46,11 +47,12 @@ function Display.wall(parent, frame, getOwnerId, saved)
 
 	-- The board stands at the back of the cell; its face looks toward the front (-LookVector).
 	local back = frame * CFrame.new(0, 0, -T / 2 + 0.6) * CFrame.Angles(0, math.pi, 0)
-	part(model, "Board", Vector3.new(T - 0.4, HEIGHT, 0.4), back * CFrame.new(0, HEIGHT / 2, 0.2), C.planks, Enum.Material.WoodPlanks)
+	local board = part(model, "Board", Vector3.new(T - 0.4, HEIGHT, 0.4), back * CFrame.new(0, HEIGHT / 2, 0.2), C.planks, Enum.Material.WoodPlanks)
+	local look = { board } -- the part wall the Blender mesh replaces (pegs included, they keep their clicks)
 	for _, x in { -1, 1 } do
-		part(model, "Post", Vector3.new(0.5, HEIGHT + 0.6, 0.6), back * CFrame.new(x * (T / 2 - 0.25), (HEIGHT + 0.6) / 2, 0.3), C.wood, Enum.Material.WoodPlanks)
+		look[#look + 1] = part(model, "Post", Vector3.new(0.5, HEIGHT + 0.6, 0.6), back * CFrame.new(x * (T / 2 - 0.25), (HEIGHT + 0.6) / 2, 0.3), C.wood, Enum.Material.WoodPlanks)
 	end
-	part(model, "Cap", Vector3.new(T + 0.2, 0.4, 1), back * CFrame.new(0, HEIGHT + 0.6, 0.3), C.darkMetal, Enum.Material.Metal)
+	look[#look + 1] = part(model, "Cap", Vector3.new(T + 0.2, 0.4, 1), back * CFrame.new(0, HEIGHT + 0.6, 0.3), C.darkMetal, Enum.Material.Metal)
 	Machines.sign(model.Cap, "NEEDLE DISPLAY", Vector3.new(0, 1.6, 0))
 
 	local slots = {}
@@ -59,10 +61,20 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		local row = math.floor((i - 1) / 3)
 		local at = back * CFrame.new((col - 1) * 1.8, HEIGHT - 2 - row * 3, -0.15)
 		local peg = part(model, "Peg", Vector3.new(0.9, 0.3, 0.3), at, C.metal, Enum.Material.Metal)
+		table.insert(look, peg)
 		local click = Instance.new("ClickDetector")
 		click.MaxActivationDistance = 14
 		click.Parent = peg
 		slots[i] = { peg = peg, at = at * CFrame.new(0, 0.5, -0.2), needle = nil, shown = nil }
+	end
+
+	-- The Blender wall (Config/Props needle_display_wall, needles.py) is built to this layout: same pegs, its board
+	-- face on this board's face, display side toward -Z of back. Each client keeps the part wall until it loads.
+	local mesh = Props.make("needle_display_wall", back * CFrame.new(0, HEIGHT / 2, 0.25))
+	if mesh then
+		Props.restOn(mesh, back.Position.Y)
+		mesh.Parent = model
+		Props.weldTo(mesh, board, look)
 	end
 
 	local function show(slot, n)

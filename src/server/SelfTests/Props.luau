@@ -138,6 +138,30 @@ return function(SelfTest)
 			t.skip("rigged vehicles", "no imported prop has Wheel_, Coupler or Tailgate child meshes (import with the hierarchy kept)")
 		end
 
+		-- 2a. Cab doors: a truck with Door_L / Door_R has both, each on the side it is named for.
+		local doorTrucks = 0
+		for _, name in names do
+			if Props.has(name) then
+				local spot = t.place()
+				local model = Props.make(name, spot)
+				if model then
+					t.cleanup(model)
+					local left, right = Props.find(model, "Door_L"), Props.find(model, "Door_R")
+					if #left > 0 or #right > 0 then
+						doorTrucks += 1
+						local _, center = measure(partsOf(model), spot)
+						local lx = #left > 0 and spot:PointToObjectSpace(left[1].Position).X - center.X
+						local rx = #right > 0 and spot:PointToObjectSpace(right[1].Position).X - center.X
+						t.check(name .. ": has both cab doors", #left > 0 and #right > 0)
+						t.check(name .. ": Door_L on the left (-X), Door_R on the right (+X)", (not lx or lx < 0) and (not rx or rx > 0), ("L %s, R %s"):format(tostring(lx), tostring(rx)))
+					end
+				end
+			end
+		end
+		if doorTrucks == 0 then
+			t.skip("cab doors", "no imported prop has Door_L / Door_R yet")
+		end
+
 		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover, and
 		-- the treat machines' belts and moving parts.
 		for _, want in {

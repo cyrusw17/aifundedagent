@@ -401,28 +401,28 @@ def box_hay_small(f):
 
 
 def field_bale_chute(f):
-    """Field bale chute, 14 wide x 14 tall x 16 deep: a plank hopper on four log legs over a truck
+    """Field bale chute, 14 wide x 14.4 tall x 16 deep: a plank hopper on four log legs over a truck
     lane 12.5 clear wide x 10 clear tall (leg inner faces at x +-6.25, every beam, the spout and the
     gate at or above z 10), so a pickup (10.9 wide) backs under it from the front (-y). Side
     X-braces and low rails stay in the leg planes, outside the lane. The hopper narrows to a short
     plank spout whose floor slopes forward; Gate is the flap across the spout front (hinged at its
     top edge), HayFill the hay heaped in the hopper, Lever the red lever on the driver's-side front
     leg (+x: the backed-in truck faces -y, so its left is +x), pivoting at its bottom."""
-    lx, ly, lr, clear = 6.65, 6.0, 0.4, 10.0       # leg centers; inner faces at 6.25
-    top, hz0, hz1 = 13.4, 11.4, 13.6                # leg tops, hopper mouth and rim
-    hx, hy, mouth = 6.7, 7.7, 1.8                    # hopper top half sizes, mouth half size
+    lx, ly, lr, clear = 6.65, 7.0, 0.4, 10.0       # leg centers; inner faces at 6.25
+    hz0, hz1, top = 11.2, 12.8, 14.0                # spout top / hopper mouth, funnel top (leg tops), bin rim
+    hx, hy, mouth = 5.8, 7.6, 1.8                    # hopper top half sizes, mouth half size
     p = []
     for x in (-lx, lx):
         for y in (-ly, ly):
-            p.append(C(f, "bark", lr, top, (x, y, top / 2), verts=8, rnd=False))
+            p.append(C(f, "bark", lr, hz1, (x, y, hz1 / 2), verts=8, rnd=False))
         for a, b in (((x, -ly, 1.2), (x, ly, 9.4)), ((x, ly, 1.2), (x, -ly, 9.4))):
             p.append(brace(f, "handle", a, b, 0.3))                       # side X-brace, in the leg plane
         p.append(B(f, "handle", (0.35, 2 * ly, 0.5), (x, 0, 1.0), along="y", rnd=False))
-        p.append(B(f, "bark", (0.7, 2 * ly + 0.8, 0.6), (x, 0, top - 0.3), along="y", rnd=False))
+        p.append(B(f, "bark", (0.7, 2 * ly + 0.8, 0.6), (x, 0, hz1 - 0.3), along="y", rnd=False))
     for y in (-ly, ly):
         p.append(B(f, "bark", (2 * lx + 0.8, 0.7, 0.6), (0, y, clear + 0.3), rnd=False))   # lane beams, underside at 10
-        p.append(B(f, "bark", (2 * lx + 0.8, 0.6, 0.6), (0, y, top - 0.3), rnd=False))
-    # Hopper: a plank funnel from the mouth (3.6 square at z 11.4) to the 13.4 x 15.4 top.
+        p.append(B(f, "bark", (2 * lx + 0.8, 0.6, 0.6), (0, y, hz1 - 0.3), rnd=False))
+    # Hopper: a plank funnel from the 3.6-square mouth up to an 11.6 x 15.2 plank bin with an iron band.
     o = buildings.box((2 * buildings.S, 2 * buildings.S, (hz1 - hz0) * buildings.S),
                       (0, 0, (hz0 + hz1) / 2 * buildings.S))
     for v in o.data.vertices:
@@ -430,16 +430,21 @@ def field_bale_chute(f):
         v.co.x *= hx if up else mouth
         v.co.y *= hy if up else mouth
     p.append(f.apply(f.shape(o), "handle", along="z"))
-    for s in (-1, 1):                                                       # rim boards and iron corner straps
-        p.append(B(f, "bark", (2 * hx + 0.4, 0.4, 0.4), (0, s * hy, hz1 + 0.2), rnd=False))
-        p.append(B(f, "bark", (0.4, 2 * hy - 0.4, 0.4), (s * hx, 0, hz1 + 0.2), along="y", rnd=False))
-        p.append(B(f, "metal", (2 * hx + 0.5, 0.45, 0.2), (0, s * hy, hz1 - 0.1), rnd=False))
-    hay = buildings.box(((2 * hx - 0.6) * buildings.S, (2 * hy - 0.6) * buildings.S, 0.8 * buildings.S),
-                        (0, 0, (hz1 - 0.1) * buildings.S))
+    bh, t = top - hz1, 0.3
+    for s in (-1, 1):
+        p.append(B(f, "handle", (2 * hx, t, bh), (0, s * (hy - t / 2), hz1 + bh / 2), rnd=False))
+        p.append(B(f, "handle", (t, 2 * hy - 2 * t, bh), (s * (hx - t / 2), 0, hz1 + bh / 2), along="y", rnd=False))
+        p.append(B(f, "metal", (2 * hx + 0.1, 0.12, 0.3), (0, s * (hy + 0.05), top - 0.35), rnd=False))
+        p.append(B(f, "metal", (0.12, 2 * hy + 0.1, 0.3), (s * (hx + 0.05), 0, top - 0.35), along="y", rnd=False))
+    for x in (-hx, hx):                                                    # bin corner posts
+        for y in (-hy, hy):
+            p.append(B(f, "bark", (0.5, 0.5, bh + 0.2), (x, y, hz1 + (bh + 0.2) / 2), along="z", rnd=False))
+    hay = buildings.box(((2 * hx - 2 * t) * buildings.S, (2 * hy - 2 * t) * buildings.S, 1.8 * buildings.S),
+                        (0, 0, (hz1 + 0.7) * buildings.S))                 # heap peaks at 14.4, above the rim
     for v in hay.data.vertices:
-        if v.co.z > (hz1 - 0.1) * buildings.S:
-            v.co.x *= 0.7
-            v.co.y *= 0.7
+        if v.co.z > (hz1 + 0.7) * buildings.S:
+            v.co.x *= 0.45
+            v.co.y *= 0.55
     p += tag([f.apply(f.shape(hay, round_edges=False), "hay")], "HayFill")
     # Spout under the mouth: plank cheeks and back, a floor sloping down to the front, the Gate across it.
     sw = 2 * mouth
