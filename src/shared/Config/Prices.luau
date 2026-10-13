@@ -272,6 +272,17 @@ Prices.Mutation = {
 	max = 25,
 }
 
+-- Pity (CEO "Addiction push" H3, src/shared/Pity.luau): after `bales` sorted bales in a row that found needles but no
+-- mutated one, the next such bale makes its first needle mutated at `mult` (the smallest mutation), so a dry run always
+-- ends. A roll under Mutation.oneIn's chance times `nearMiss` that just missed flickers gold ("so close").
+-- tests/pity.luau measures what it adds to needle income (not total): hand sieve 3.7%, Meadow conveyor 2.8%, Desert
+-- magnet drum 1.4%, Swamp optical 0.6%, Star optical 0.1%. It fails if any case reaches 5%.
+Prices.Pity = {
+	bales = 40,
+	mult = 3,
+	nearMiss = 3,
+}
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
