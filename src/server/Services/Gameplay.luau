@@ -29,6 +29,11 @@ Players.PlayerRemoving:Connect(function(player)
 	lastHaySale[player] = nil
 end)
 
+-- What rain costs: wet hay sells at Config.WetPriceFactor of the hay price (the needles in it are unharmed).
+local function wetPenalty(wetHay)
+	return math.floor(math.max(wetHay, 0) * Economy.HAY_PRICE * (1 - Config.WetPriceFactor))
+end
+
 local function hasPocketNeedles(player)
 	return Needle ~= nil and Needle.heldCount(player) > 0
 end
@@ -74,11 +79,6 @@ local function sellHay(player)
 		table.insert(parts, pocketCount == 1 and "1 needle" or ("%d needles"):format(pocketCount))
 	end
 	Data.toast(player, ("+$%d · %s"):format(value, table.concat(parts, ", ")))
-end
-
--- What rain costs: wet hay sells at Config.WetPriceFactor of the hay price (the needles in it are unharmed).
-local function wetPenalty(wetHay)
-	return math.floor(math.max(wetHay, 0) * Economy.HAY_PRICE * (1 - Config.WetPriceFactor))
 end
 
 local function sellBale(b)
