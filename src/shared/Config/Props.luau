@@ -36,7 +36,7 @@ return {
 		work_gloves = 1.9,
 		leather_gloves = 1.9,
 		reinforced_gloves = 1.9,
-		iron_gauntlets = 1.9, -- not exported yet; falls back to the placeholder on the stand
+		iron_gauntlets = 2.1,
 		starlight_gloves = 1.9,
 		-- Vehicles and trailers
 		rusty_pickup = 27.5, -- the first truck (Vehicles.luau stretches it over the part-built truck)
