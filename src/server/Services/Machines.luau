@@ -234,6 +234,7 @@ function Machines.needleBin(parent, frame)
 		local count = 0
 		local byType = {}
 		for _, n in Needle.inBox(inside, insideSize) do
+			n:SetAttribute("Binned", true) -- only its owner can pick it up (Needle.pickUp)
 			count += Needle.count(n)
 			local id = n:GetAttribute("NeedleId") or Needle.default.id
 			byType[id] = (byType[id] or 0) + Needle.count(n)
@@ -362,6 +363,9 @@ function Machines.needleBin(parent, frame)
 				local spread = at and 0.7 or 2
 				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
 				token.part = Needle.throw(from, to, ownerId, needleId, grade)
+				if token.part then
+					token.part:SetAttribute("Binned", true)
+				end
 				task.delay(2.5, function()
 					flying[token] = nil -- landed (the longest hover plus flight is 2.1 seconds)
 				end)
@@ -858,7 +862,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 			task.wait(0.25)
 			for _, p in Workspace:GetPartBoundsInBox(zone, Vector3.new(T - 0.8, 6, T - 0.8)) do
 				local sortedBale = Bales.fromPart(p)
-				if sortedBale and sortedBale.sorted and p == sortedBale.body and not sortedBale.gone and not sortedBale.carriedBy then
+				if sortedBale and sortedBale.sorted and p == sortedBale.body and not sortedBale.gone and not sortedBale.carriedBy and not sortedBale.breaking then
 					local hay = sortedBale.sortedHay or 0
 					local value = math.floor(hay * Economy.HAY_PRICE)
 					local ownerId = sortedBale.ownerId
@@ -875,7 +879,8 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					local hay, ownerId, hayType = 0, nil, "meadow"
 					local take = nil
 					local clean = false
-					if b and p == b.body and not b.gone and not b.carriedBy then
+					-- A bale being broken open spills its strands here next: pay for those, not the bale too.
+					if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
 						local seller = ownerId -- who handled the bale, before payTo sends the cash to the plot owner
 						take = function()
