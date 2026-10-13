@@ -223,6 +223,23 @@ return function(SelfTest)
 		Lighting.ClockTime = clockWas
 		Wilds.refreshGhost()
 
+		-- Discoveries -------------------------------------------------------------------------------------------
+		local Discoveries = require(Services.Discoveries)
+		local unfound = {}
+		for _, entry in Discoveries.all() do
+			if entry.kind == "landmark" then
+				local hit = false
+				for _, id in Discoveries.at(Vector3.new(entry.at.X, 20, entry.at.Y)) do
+					hit = hit or id == entry.id
+				end
+				if not hit then
+					table.insert(unfound, entry.id)
+				end
+			end
+		end
+		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
+		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")
