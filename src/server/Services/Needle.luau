@@ -186,11 +186,16 @@ end
 -- Sells everything in the player's pocket. Returns how many needles and how many dollars (the caller pays).
 function Needle.sellHeld(player)
 	local count, value = 0, 0
-	for _, n in Needle.takeHeld(player) do
-		count += 1
-		value += Needle.priceOf(n.id, n.mult, n.polished)
-		Market.sold(n.id, 1)
+	local pocket = pocketOf(player)
+	for key, n in pocket do
+		local id, mult, polished = Needle.parseKey(key)
+		count += n
+		value += Needle.priceOf(id, mult, polished) * n -- priced before Market.sold lowers it, like one sale
 	end
+	for key, n in pocket do
+		Market.sold((Needle.parseKey(key)), n)
+	end
+	Needle.takeHeld(player)
 	return count, value
 end
 

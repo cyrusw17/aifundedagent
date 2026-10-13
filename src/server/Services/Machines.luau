@@ -294,19 +294,37 @@ function Machines.needleBin(parent, frame)
 		end
 	end
 
+	-- Needles on their way into the bin (waiting to be thrown, or in the air), so a save taken mid-throw keeps them.
+	-- clear() bumps generation, so throws queued before it never land in an emptied bin.
+	local flying = {}
+	local generation = 0
+
 	-- Throws count needles from `from` into the bin, owned by ownerId.
 	function bin.add(from, ownerId, count, needleId)
+		local gen = generation
 		for i = 1, count do
+			local token = { ownerId = ownerId, id = needleId or Needle.default.id }
+			flying[token] = true
 			task.delay(i * 0.08, function()
+				if gen ~= generation or not model.Parent then
+					flying[token] = nil
+					return
+				end
 				local at = cornerFor(needleId or Needle.default.id)
 				local spread = at and 0.7 or 2
 				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
-				Needle.throw(from, to, ownerId, needleId)
+				token.part = Needle.throw(from, to, ownerId, needleId)
+				task.delay(2.5, function()
+					flying[token] = nil -- landed (the longest hover plus flight is 2.1 seconds)
+				end)
 			end)
 		end
 	end
 
 	function bin.sell(player)
+		if not Data.get(player) then
+			return -- save still loading: selling now would take needles it can't pay for
+		end
 		local count, value = Needle.sellHeld(player)
 		for _, n in Needle.inBox(inside, insideSize) do
 			if n:GetAttribute("OwnerId") == player.UserId then
@@ -329,10 +347,24 @@ function Machines.needleBin(parent, frame)
 	-- counts as its 10 needles. Everyone's, or only ownerId's.
 	function bin.contents(ownerId)
 		local byKey = {}
-		for _, n in Needle.inBox(inside, insideSize) do
+		local seen = {}
+		local function add(n)
+			seen[n] = true
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
 				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"))
 				byKey[key] = (byKey[key] or 0) + Needle.count(n)
+			end
+		end
+		for _, n in Needle.inBox(inside, insideSize) do
+			add(n)
+		end
+		for token in flying do
+			if token.part then
+				if token.part.Parent and not seen[token.part] then
+					add(token.part)
+				end
+			elseif ownerId == nil or token.ownerId == ownerId then
+				byKey[token.id] = (byKey[token.id] or 0) + 1 -- not thrown yet, so not rolled: saved plain
 			end
 		end
 		return byKey
@@ -358,10 +390,15 @@ function Machines.needleBin(parent, frame)
 			local at = cornerFor(id)
 			if at then
 				-- A split bin keeps each type in its corner: stack them there.
+				-- 3 x 3 spots, five layers high, so the pile stays inside the bin; past that, the shared rows.
 				local stacked = 0
 				local function cornerSpot()
+					if stacked >= 45 then
+						return nextSpot()
+					end
+					local col, row, layer = stacked % 3, (stacked // 3) % 3, stacked // 9
 					stacked += 1
-					return floor * CFrame.new(at + Vector3.new(0, 0.3 + (stacked - 1) * 0.6, 0))
+					return floor * CFrame.new(at + Vector3.new((col - 1) * 0.7, 0.3 + layer * 0.6, (row - 1) * 0.7))
 				end
 				if mult == 1 then
 					while count >= Needle.BUNDLE do
@@ -390,6 +427,13 @@ function Machines.needleBin(parent, frame)
 
 	-- Removes every needle in the bin (the plot was given up).
 	function bin.clear()
+		generation += 1
+		for token in flying do
+			if token.part then
+				token.part:Destroy()
+			end
+		end
+		table.clear(flying)
 		for _, n in Needle.inBox(inside, insideSize) do
 			n:Destroy()
 		end
@@ -397,7 +441,7 @@ function Machines.needleBin(parent, frame)
 	end
 
 	bin.model = model
-	Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, ("SELL NEEDLES\n$%d each"):format(needle.sortedValue), bin.sell)
+	Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, "SELL NEEDLES\nbin and pocket", bin.sell)
 	return bin
 end
 
@@ -592,14 +636,20 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				Bales.consume(bale)
 				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType)
 			elseif #loose > 0 then
-				local ownerId, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
+				-- One owner and one hay type per batch; anything else in the hopper goes next tick.
+				local firstOwner, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
+				local ownerId = firstOwner
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
+				local taken = 0
 				for _, p in loose do
-					Hay.remove(p)
+					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
+						Hay.remove(p)
+						taken += 1
+					end
 				end
-				sort(#loose * Config.HayPerPiece, ownerId, hayType)
+				sort(taken * Config.HayPerPiece, ownerId, hayType)
 			end
 		end
 	end)
@@ -636,7 +686,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						ownerId = payTo(ownerId)
 					end
 					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
-					if ownerId then
+					if ownerId and Players:GetPlayerByUserId(ownerId) then
 						Bales.consume(sortedBale)
 						Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 					end
@@ -663,7 +713,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						ownerId = payTo(ownerId)
 					end
 					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
-					if hay > 0 and ownerId then
+					if hay > 0 and ownerId and Players:GetPlayerByUserId(ownerId) then
 						take()
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }
 						t.hay += hay
@@ -677,12 +727,11 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 				Machines.pay(
 					ownerId,
 					value,
-					("Paid $%d for %d hay. It had %d needles in it, paid at only $%d each. Sort them yourself for $%d each."):format(
+					("Paid $%d for %d hay. It had %d needles in it, paid at only $%d each. Sort them yourself for full price."):format(
 						value,
 						t.hay,
 						t.needles,
-						Economy.RAW_NEEDLE_PRICE,
-						needle.sortedValue
+						Economy.RAW_NEEDLE_PRICE
 					)
 				)
 			end
