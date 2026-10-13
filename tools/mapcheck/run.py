@@ -29,6 +29,8 @@ MODULES = {
     "Services.DayNight": "server/Services/DayNight.luau",
     "Services.WorldClock": "server/Services/WorldClock.luau",
     "Shared.Config.Quests": "shared/Config/Quests.luau",
+    "Shared.Config.Weather": "shared/Config/Weather.luau",
+    "Services.Weather": "server/Services/Weather.luau",
 }
 
 
