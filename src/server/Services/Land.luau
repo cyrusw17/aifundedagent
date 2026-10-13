@@ -237,13 +237,14 @@ local function buildSilo(plot, item, def)
 		local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
 		local pitch = math.rad(35)
 		local roofW = (w - 1) / 2 / math.cos(pitch) + 0.6
+		local look = { body } -- the part barn the mesh replaces; each client hides it once the mesh has loaded
 		for _, side in { -1, 1 } do
-			part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
+			look[#look + 1] = part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
 		end
 		for _, x in { -(w - 1) / 2, (w - 1) / 2 } do
-			part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
+			look[#look + 1] = part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
 		end
-		part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+		look[#look + 1] = part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
 		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
 		label = sign(body, "", Vector3.new(0, wallH / 2 + (w - 1) / 4 + 3, 0))
 		local mesh = Props.make("barn", frame * CFrame.new(0, wallH / 2, 0), Vector3.new(w - 0.5, wallH + (w - 1) / 2, l - 0.5))
@@ -254,7 +255,7 @@ local function buildSilo(plot, item, def)
 					p.CanCollide = false
 				end
 			end
-			Props.weldTo(mesh, body, { body })
+			Props.weldTo(mesh, body, look)
 		end
 	else
 		local height = 20
@@ -2296,8 +2297,30 @@ local function onExpandRemote(player, ...)
 	return onExpand(player, ...)
 end
 
+-- Rate limits on the remotes a script could spam (CEO #31): each is a per-player token bucket (perSecond, burst).
+-- They wrap the remotes only, so the SelfTests can still call the handlers directly.
+local limits = {
+	Crew = RateLimit.new("Land.Crew", 1, 3),
+	CrewAnswer = RateLimit.new("Land.CrewAnswer", 1, 3),
+	Visit = RateLimit.new("Land.Visit", 0.5, 2),
+	Buy = RateLimit.new("Land.Buy", 0.5, 2),
+	Expand = RateLimit.new("Land.Expand", 1, 3),
+	Paste = RateLimit.new("Land.Paste", 1, 3),
+}
+
+local function limited(limiter, fn)
+	return function(player, ...)
+		if not limiter:allow(player) then
+			return false, RateLimit.BUSY
+		end
+		return fn(player, ...)
+	end
+end
+
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	limits = limits,
+	limited = limited,
 	plots = plots,
 	pieces = pieces,
 	farms = farms,
@@ -2361,17 +2384,17 @@ function Land.build(worldFolder)
 			return table.unpack(out, 2, out.n)
 		end
 	end
-	remotes.Buy.OnServerInvoke = guard(onBuyRemote)
+	remotes.Buy.OnServerInvoke = guard(limited(limits.Buy, onBuyRemote))
 	remotes.Place.OnServerInvoke = guard(onPlace)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
-	remotes.Crew.OnServerInvoke = guard(onCrew)
-	remotes.Visit.OnServerInvoke = guard(onVisit)
-	remotes.Expand.OnServerInvoke = guard(onExpandRemote)
-	remotes.CrewAnswer.OnServerInvoke = guard(onCrewAnswer)
+	remotes.Crew.OnServerInvoke = guard(limited(limits.Crew, onCrew))
+	remotes.Visit.OnServerInvoke = guard(limited(limits.Visit, onVisit))
+	remotes.Expand.OnServerInvoke = guard(limited(limits.Expand, onExpandRemote))
+	remotes.CrewAnswer.OnServerInvoke = guard(limited(limits.CrewAnswer, onCrewAnswer))
 	remotes.Pick.OnServerInvoke = guard(onPick)
 	remotes.Move.OnServerInvoke = guard(onMove)
 	remotes.Copy.OnServerInvoke = guard(onCopy)
-	remotes.Paste.OnServerInvoke = guard(onPaste)
+	remotes.Paste.OnServerInvoke = guard(limited(limits.Paste, onPaste))
 	remotes.Undo.OnServerInvoke = guard(onUndo)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
 	remotes.FarmName.OnServerInvoke = guard(onName)

@@ -99,6 +99,13 @@ return function(SelfTest)
 			local spot = Quests.spot(id)
 			local built = spot and spot.model and spot.model.Parent and spot.base
 			local expected = def.pos or def.fallback or def.world or def.wander or def.inMaze
+			if def.npc then
+				for _, model in CollectionService:GetTagged("QuestGiver") do
+					expected = expected or model:GetAttribute("QuestGiver") == def.npc
+				end
+			elseif def.pedestal then
+				expected = #CollectionService:GetTagged("MasterNeedlePedestal") > 0
+			end
 			if not built and (expected or (def.sea and #Regions.fields > 0)) then
 				table.insert(missing, id)
 			elseif built and spot.base.Position.Y < MapConfig.SeaLevel then
@@ -304,6 +311,73 @@ return function(SelfTest)
 						t.check("the Spindle shard's socket lights up", socket:GetAttribute("Lit") == true)
 					end
 				end
+			end
+
+			-- The Weaver, chapters 2 to 6 and the finale (each where its places are built: the isles, Old Wren, the
+			-- Loom Room's pedestal).
+			local function chapter(id, fn)
+				q.active[id] = { step = 1, n = 0, seen = {} }
+				fn(q.active[id])
+				t.check(id .. " gives its reward", q.done[id] == true)
+			end
+			local function built(...)
+				for _, spotId in { ... } do
+					if not Quests.spot(spotId) then
+						return false
+					end
+				end
+				return true
+			end
+			if built("tailor_note", "shore_glint") then
+				chapter("weaver_2", function()
+					Quests.press(player, "tailor_note")
+					Lighting.ClockTime = 22
+					Quests.press(player, "shore_glint")
+				end)
+			end
+			if built("stitched_pine") then
+				chapter("weaver_3", function()
+					Events.fire(player, "bale_broken", 15, { position = Vector3.new(0, -500, 0), hayType = "pine" })
+					t.wait(0.3)
+					Lighting.ClockTime = 12
+					Quests.press(player, "stitched_pine")
+					t.check("the stitched pine waits for dusk", q.active.weaver_3 ~= nil)
+					Lighting.ClockTime = 18
+					Quests.press(player, "stitched_pine")
+				end)
+			end
+			if built("old_wren", "well_glint") then
+				chapter("weaver_4", function()
+					Quests.press(player, "old_wren")
+					Lighting.ClockTime = 23.8
+					Quests.press(player, "well_glint")
+				end)
+			else
+				t.skip("weaver_4 gives its reward", "Old Wren or the hub well is not built")
+			end
+			if built("sunken_stone") then
+				chapter("weaver_5", function(entry)
+					entry.step = 2 -- the breathing reed is a rare find; the offer is what is tested here
+					pocket.bog = 20
+					Lighting.ClockTime = 22
+					Quests.press(player, "sunken_stone")
+					t.equal("the sunken stone takes 20 bog needles", pocket.bog, 0)
+				end)
+			end
+			if built("keys_glint") then
+				chapter("weaver_6", function(entry)
+					entry.step = 2 -- the lanterns are touched by walking; the glint is tested here
+					Lighting.ClockTime = 18.5
+					Quests.press(player, "keys_glint")
+				end)
+			end
+			if built("master_pedestal") then
+				chapter("master_needle", function()
+					Quests.press(player, "master_pedestal")
+				end)
+				t.check("the finale gives the Master Needle", q.earned.master_needle == true)
+			else
+				t.skip("master_needle gives its reward", "the Loom Room's pedestal is not built")
 			end
 
 			-- Timed mazes: a run moves the labyrinth quest on, a slow one doesn't pass the 45 second step, and the

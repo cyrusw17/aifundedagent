@@ -20,6 +20,7 @@ local Avatar = require(Services.Avatar)
 local Bales = require(Services.Bales)
 local Hay = require(Services.Hay)
 local Gloves = require(Services.Gloves)
+local ToolGuide = require(game:GetService("ReplicatedStorage").Shared.ToolGuide)
 local GloveLooks = require(Services.GloveLooks)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
@@ -709,20 +710,30 @@ local function withPlayer(t, player)
 		Bales.breakOpen(player, third)
 		t.wait(1.6)
 		local burst = (spot * CFrame.new(-10, 0, -4)).Position
-		local strands, needles = 0, 0
+		local strands, needles, parts = 0, 0, 0
 		for _, p in strandsNear(burst, 14) do
 			if Hay.isNeedle(p) then
 				needles += 1
-			else
-				strands += 1
+			elseif not Hay.isPile(p) then
+				strands += Hay.strandsIn(p)
+				parts += 1
 			end
 		end
 		t.check("a broken bale spills strands", strands >= Config.PiecesPerBale * 0.8, strands)
+		-- Part budget (Hay #24): the strands come out in clumps, a third of the parts for the same hay.
+		local perClump = Config.StrandsPerClump or 1
+		t.check("a broken bale spills clumps, not single strands", parts <= math.ceil(Config.PiecesPerBale / perClump), parts)
 		t.check("the first bale broken spills a needle", needles >= 1, needles)
 		t.check("breaking it used up the first-bale promise", Gloves.firstBaleBroken(player))
 
 		-- Scoop three times quickly: each scoop picks up hay and the third is bigger (the combo).
 		local shovel = player.Backpack:FindFirstChild("Shovel") or character:FindFirstChild("Shovel")
+		-- Hotbar tooltips come from the configs (ToolGuide, Hay #25), so they never drift from the real numbers.
+		local rake = player.Backpack:FindFirstChild("Rake") or character:FindFirstChild("Rake")
+		if shovel and rake then
+			t.equal("the shovel's tooltip is ToolGuide's", shovel.ToolTip, ToolGuide.tool("Shovel"))
+			t.equal("the rake's tooltip is ToolGuide's", rake.ToolTip, ToolGuide.tool("Rake"))
+		end
 		if shovel and Avatar.onToolActivated then
 			humanoid:EquipTool(shovel)
 			stand(CFrame.new(burst) * CFrame.new(0, 0, 3))
@@ -736,6 +747,9 @@ local function withPlayer(t, player)
 			end
 			t.check("each scoop picks up hay", gains[1] > 0 and gains[2] > 0 and gains[3] > 0, table.concat(gains, ", "))
 			t.check("the third quick scoop is bigger (combo)", gains[3] > gains[1], table.concat(gains, ", "))
+			-- Clumps count as every strand in them, and a scoop never takes more strands than the scoop size allows.
+			local most = (Gloves.scoopSize(player, 0) + Config.ComboMaxBonus) * Config.HayPerPiece
+			t.check("no scoop of clumps tops the scoop size", math.max(gains[1], gains[2], gains[3]) <= most, table.concat(gains, ", "))
 			humanoid:UnequipTools()
 		else
 			t.skip("scoop combo", "no shovel in the backpack")

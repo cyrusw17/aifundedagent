@@ -20,6 +20,7 @@ MODULES = {
     "Shared.Config.Game": "shared/Config/Game.luau",
     "Shared.Config.Gloves": "shared/Config/Gloves.luau",
     "Shared.HayMath": "shared/HayMath.luau",
+    "Shared.ToolGuide": "shared/ToolGuide.luau",
     "Shared.Config.HayLooks": "shared/Config/HayLooks.luau",
     "Shared.Config.Finds": "shared/Config/Finds.luau",
     "Shared.Config.Needles": "shared/Config/Needles.luau",

@@ -350,14 +350,16 @@ function Bales.breakOpen(player, b)
 			)
 		end
 
-		-- The hay pours out in waves so it looks like it spills, not like it teleports.
+		-- The hay pours out in waves so it looks like it spills, not like it teleports. It comes out in clumps of a few
+		-- strands (Config.StrandsPerClump), every strand of the bale accounted for.
 		local waves = 3
-		local perWave = math.ceil(Config.PiecesPerBale / waves)
+		local clumps = HayMath.clumps(Config.PiecesPerBale, Config.StrandsPerClump or 1)
+		local perWave = math.ceil(#clumps / waves)
 		for wave = 1, waves do
-			for _ = 1, perWave do
+			for k = (wave - 1) * perWave + 1, math.min(wave * perWave, #clumps) do
 				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
-				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner, nil, hayType)
+				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner, nil, hayType, clumps[k])
 				piece:SetAttribute("HayType", hayType)
 				if boost ~= 1 then
 					piece:SetAttribute("NeedleBoost", boost)

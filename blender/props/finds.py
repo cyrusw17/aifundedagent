@@ -124,17 +124,128 @@ def lost_ring(f):
 
 
 def fossil(f):
-    """Epic: a flat split stone slab, about 1.4 x 1.0, with a raised spiral ammonite shell on it."""
+    """Epic: a flat split stone slab, about 1.4 x 1.0, with one raised spiral ammonite on it: a single
+    ridged coil that widens outward over about 1.6 turns (B2-4)."""
+    import bmesh
     p = [B(f, "stone", (1.4, 1.0, 0.2), (0, 0, 0.1), rounded=False)]
-    # Ammonite: a widening spiral of short ridged segments, the ribs a shade paler than the slab.
-    n = 14
+    bm = bmesh.new()
+    n = 26
+    rings = []
     for i in range(n):
-        t0 = i / n
-        a = t0 * 3.2 * math.pi
-        rad = 0.05 + 0.38 * t0
-        w = 0.07 + 0.11 * t0
-        p.append(B(f, "paint_cream", (w, 0.08 + 0.14 * t0, 0.12 + 0.08 * t0),
-                   (rad * math.cos(a), rad * math.sin(a), 0.24 + 0.04 * t0), rot=(0, 0, a), rounded=False))
+        t0 = i / (n - 1)
+        a = t0 * 3.3 * math.pi
+        rad = 0.04 + 0.36 * t0
+        w = 0.05 + 0.12 * t0                 # coil width grows outward
+        h = 0.06 + 0.1 * t0                  # and stands taller
+        cx, cy = rad * math.cos(a), rad * math.sin(a)
+        nx, ny = math.cos(a), math.sin(a)    # outward from the coil center
+        ring = [bm.verts.new(s(cx - nx * w / 2, cy - ny * w / 2, 0.2)),
+                bm.verts.new(s(cx, cy, 0.2 + h)),
+                bm.verts.new(s(cx + nx * w / 2, cy + ny * w / 2, 0.2))]
+        rings.append(ring)
+    for r0, r1 in zip(rings, rings[1:]):
+        for k in range(2):
+            bm.faces.new((r0[k], r1[k], r1[k + 1], r0[k + 1]))
+    bm.faces.new(rings[-1])
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new("ammonite")
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new("ammonite", me)
+    bpy.context.collection.objects.link(o)
+    p.append(f.apply(o, "paint_cream", along="x"))
+    return p
+
+
+# ---------------------------------------------------------------- relics (quest rewards, MODEL_SPECS batch 4)
+
+def drowned_compass(f):
+    """Relic, about 0.9 across: a brass pocket compass lying face up with its lid open upright behind it,
+    a green verdigris rim, a cream dial whose needle is a sewing needle, and a few tiny barnacles."""
+    p = [C(f, "brass", 0.42, 0.16, (0, 0, 0.08), verts=12),
+         C(f, "paint_green", 0.44, 0.05, (0, 0, 0.16), verts=12),
+         C(f, "paint_cream", 0.34, 0.02, (0, 0, 0.17), verts=12)]
+    p.append(B(f, "steel", (0.56, 0.035, 0.03), (0.02, 0, 0.195), rot=(0, 0, 0.5), rounded=False))   # sewing needle
+    p.append(B(f, "steel", (0.07, 0.06, 0.03), (-0.24, -0.13, 0.195), rot=(0, 0, 0.5), rounded=False))  # its eye
+    p.append(C(f, "brass", 0.05, 0.08, (0, 0, 0.22), verts=6))                                          # pivot
+    lid = C(f, "brass", 0.42, 0.04, (0, 0, 0), verts=12)
+    lid.data.transform(__import__("mathutils").Matrix.Rotation(math.radians(80), 4, "X"))
+    lid.location = s(0, 0.46, 0.42)
+    p.append(lid)
+    p.append(B(f, "brass", (0.12, 0.08, 0.1), (0, 0.43, 0.08), rounded=False))                         # hinge
+    for x, y, z in ((0.3, -0.2, 0.12), (-0.33, 0.1, 0.1), (0.12, 0.38, 0.6)):                           # barnacles
+        p.append(C(f, "paint_cream", 0.045, 0.05, (x, y, z), verts=5))
+    return p
+
+
+def straw_crown(f):
+    """Relic, 1.4 across x 0.8 tall: a woven straw circlet with six points and one twine knot."""
+    p = ring_of(f, "hay", 0.6, 0.18, 0.12, n=12, h=0.24)
+    for i in range(6):
+        a = i * math.pi / 3
+        x, y = 0.6 * math.cos(a), 0.6 * math.sin(a)
+        p.append(C(f, "hay", 0.12, 0.45, (x, y, 0.55), verts=4))
+        p[-1].data.transform(__import__("mathutils").Matrix.Diagonal((1, 1, 1, 1)))
+        for v in p[-1].data.vertices:      # taper to a point
+            if v.co.z > 0:
+                v.co.x *= 0.1
+                v.co.y *= 0.1
+    p.append(B(f, "twine", (0.16, 0.2, 0.2), (0.62, 0, 0.2), rounded=False))
+    p.append(B(f, "twine", (0.05, 0.05, 0.22), (0.66, 0.05, 0.05), rot=(0.3, 0, 0), rounded=False))
+    return p
+
+
+def corn_moon_charm(f):
+    """Relic, 0.6 wide x 1.0 tall: a pale corn-husk crescent moon hanging from a twine loop, with a tiny
+    dried-kernel eye."""
+    p = []
+    n = 8
+    for i in range(n):
+        a = math.radians(-120 + 240 * i / (n - 1))
+        r = 0.32
+        w = 0.07 + 0.08 * math.cos(math.radians(-120 + 240 * i / (n - 1)) * 0.75)
+        p.append(B(f, "cloth", (w * 2, 0.14, 0.12), (r * math.cos(a) - 0.05, 0, 0.42 + r * math.sin(a)),
+                   rot=(0, -a, 0), rounded=False))
+    p.append(B(f, "paint_yellow", (0.06, 0.04, 0.06), (0.12, -0.08, 0.5), rounded=False))       # kernel eye
+    p.append(B(f, "twine", (0.04, 0.04, 0.16), (-0.05, 0, 0.82), rounded=False))
+    p += ring_of(f, "twine", 0.08, 0.03, 0.0, n=6, h=0.03)
+    p[-6:] = [o for o in p[-6:]]
+    for o in p[-6:]:
+        o.data.transform(__import__("mathutils").Matrix.Translation(s(-0.05, 0, 0.98)) @
+                         __import__("mathutils").Matrix.Rotation(math.pi / 2, 4, "X"))
+    return p
+
+
+def lucky_thimble(f):
+    """Relic, 0.4 across x 0.5 tall: a silver thimble with two rings of dimple bumps and a little green
+    four-leaf clover on its side."""
+    import bmesh
+    from mathutils import Matrix
+    p = []
+    bm = bmesh.new()
+    n = 10
+    lo = [bm.verts.new(s(0.2 * math.cos(2 * math.pi * i / n), 0.2 * math.sin(2 * math.pi * i / n), 0)) for i in range(n)]
+    hi = [bm.verts.new(s(0.16 * math.cos(2 * math.pi * i / n), 0.16 * math.sin(2 * math.pi * i / n), 0.42)) for i in range(n)]
+    top = bm.verts.new(s(0, 0, 0.5))
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
+        bm.faces.new((hi[i], hi[j], top))
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new("thimble")
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new("thimble", me)
+    bpy.context.collection.objects.link(o)
+    p.append(f.apply(o, "steel", along="z"))
+    for z, r in ((0.3, 0.172), (0.4, 0.162)):
+        for i in range(5):
+            a = 2 * math.pi * (i + 0.5 * (z > 0.35)) / 5
+            p.append(B(f, "steel", (0.035, 0.035, 0.035), (r * math.cos(a), r * math.sin(a), z), rot=(0.6, 0.6, a),
+                       rounded=False))
+    for a in (0.785, -0.785):     # four-leaf clover: two crossed leaf pairs
+        p.append(B(f, "paint_green", (0.11, 0.02, 0.045), (0, -0.185, 0.16), rot=(0.12, a, 0), rounded=False))
     return p
 
 
@@ -145,4 +256,8 @@ PROPS = {
     "old_radio": old_radio,
     "lost_ring": lost_ring,
     "fossil": fossil,
+    "drowned_compass": drowned_compass,
+    "straw_crown": straw_crown,
+    "corn_moon_charm": corn_moon_charm,
+    "lucky_thimble": lucky_thimble,
 }

@@ -27,6 +27,8 @@
 -- (and Region = the region name) moves that spot onto the part, for hand-placed spots in Studio.
 -- showWhen = a time window: the spot is only visible then (its prompt still answers, with "come back at ...").
 -- inMaze = placed by the corn maze it stands in, not by a position here.
+-- npc = a QuestGiver id (Regions townsperson): the spot stands at that person and their Talk prompt answers it.
+-- pedestal = built on the part tagged MasterNeedlePedestal (SpindleDoor's Loom Room).
 -- sea = (X, Z) out on the water: the spot floats at sea level there once the world map (and its sea) is built.
 local Quests = {}
 
@@ -151,6 +153,86 @@ Quests.Spots = {
 		world = Vector2.new(262, -880), -- the west shore of Mirror Lake
 		showWhen = "midnight",
 		item = true,
+	},
+	-- The Weaver, chapters 2 to 6 and the finale: one Master Needle shard per chapter, region by region.
+	tailor_note = {
+		region = "Meadow Shore",
+		name = "The tailor's note",
+		look = "page",
+		world = Vector2.new(-238, 668), -- beside the Tailor's Shack
+		radius = 8,
+	},
+	shore_glint = {
+		region = "Meadow Shore",
+		name = "Glint under the lighthouse",
+		look = "shardglint",
+		world = Vector2.new(412, 875),
+		showWhen = "night",
+		item = true,
+	},
+	stitched_pine = {
+		region = "Pine Forest",
+		name = "Stitched pine",
+		look = "stitchedpine",
+		world = Vector2.new(-1110, 90),
+		radius = 10,
+	},
+	old_wren = {
+		region = "Homestead Valley",
+		name = "Old Wren",
+		look = "marker",
+		npc = "elder",
+		radius = 8,
+	},
+	well_glint = {
+		region = "Homestead Valley",
+		name = "Glint in the hub well",
+		look = "shardglint",
+		world = Vector2.new(4, -1444),
+		showWhen = "midnight",
+		item = true,
+	},
+	sunken_stone = {
+		region = "Swamp",
+		name = "Sunken stone",
+		look = "stone",
+		world = Vector2.new(1120, 470),
+		radius = 10,
+	},
+	keys_bead_1 = {
+		region = "Thimble Keys",
+		name = "Bead lantern",
+		look = "lantern",
+		world = Vector2.new(3020, -250),
+		radius = 10,
+	},
+	keys_bead_2 = {
+		region = "Thimble Keys",
+		name = "Bead lantern",
+		look = "lantern",
+		world = Vector2.new(3110, -130),
+		radius = 10,
+	},
+	keys_bead_3 = {
+		region = "Thimble Keys",
+		name = "Bead lantern",
+		look = "lantern",
+		world = Vector2.new(3200, -240),
+		radius = 10,
+	},
+	keys_glint = {
+		region = "Thimble Keys",
+		name = "Glint on the string",
+		look = "shardglint",
+		world = Vector2.new(3100, -200),
+		showWhen = "dusk",
+		item = true,
+	},
+	master_pedestal = {
+		region = "The Spindle",
+		name = "The Master Needle's pedestal",
+		look = "masterneedle",
+		pedestal = true,
 	},
 	golden_bale = {
 		region = "Meadow",
@@ -459,17 +541,42 @@ Quests.Rewards = {
 		name = "Master Needle shard: Spindle",
 		blurb = "Wound back into the door on a thread from still water. It hums when you face the lake.",
 	},
+	master_needle = {
+		kind = "relic",
+		name = "The Master Needle",
+		blurb = "Whole again. The isles feel stitched a little tighter.",
+	},
 	shard_snow = { kind = "relic", name = "Master Needle shard: Snow", blurb = "One of twelve." },
 	shard_volcano = { kind = "relic", name = "Master Needle shard: Volcano", blurb = "One of twelve." },
 	shard_desert = { kind = "relic", name = "Master Needle shard: Desert", blurb = "One of twelve." },
 	shard_haunted = { kind = "relic", name = "Master Needle shard: Haunted", blurb = "One of twelve." },
 	shard_bobbin = { kind = "relic", name = "Master Needle shard: Bobbin Rock", blurb = "One of twelve." },
-	-- Shards for later chapters of the Weaver mystery: in the collection (and the Spindle door) as ??? until then.
-	shard_pine = { kind = "relic", name = "Master Needle shard: Pine Forest", blurb = "One of twelve." },
-	shard_homestead = { kind = "relic", name = "Master Needle shard: Homestead", blurb = "One of twelve." },
-	shard_swamp = { kind = "relic", name = "Master Needle shard: Swamp", blurb = "One of twelve." },
-	shard_keys = { kind = "relic", name = "Master Needle shard: Thimble Keys", blurb = "One of twelve." },
-	shard_shore = { kind = "relic", name = "Master Needle shard: Shore", blurb = "One of twelve." },
+	-- The shards from the Weaver's later chapters (weaver_2 to weaver_6).
+	shard_pine = {
+		kind = "relic",
+		name = "Master Needle shard: Pine Forest",
+		blurb = "Cut from the heart of a pine that was sewn shut.",
+	},
+	shard_homestead = {
+		kind = "relic",
+		name = "Master Needle shard: Homestead",
+		blurb = "Old Wren's grandmother saw it fall into the well.",
+	},
+	shard_swamp = {
+		kind = "relic",
+		name = "Master Needle shard: Swamp",
+		blurb = "It breathes, slowly, like the reeds.",
+	},
+	shard_keys = {
+		kind = "relic",
+		name = "Master Needle shard: Thimble Keys",
+		blurb = "Strung between three lanterns like a bead.",
+	},
+	shard_shore = {
+		kind = "relic",
+		name = "Master Needle shard: Shore",
+		blurb = "Found where the lighthouse beam looks every night.",
+	},
 }
 
 -- The order mystery items appear in the collection. Unfound ones show as ??? with a hint.
@@ -492,12 +599,14 @@ Quests.Collection = {
 	{ id = "shard_swamp", hint = "Below the fog, the reeds hold their breath." },
 	{ id = "shard_keys", hint = "Out where the islands are strung like beads." },
 	{ id = "shard_shore", hint = "The lighthouse looks at it every night." },
+	{ id = "master_needle", hint = "Twelve shards, a door, and an empty pedestal." },
 }
 
 -- Rare finds for "find" steps: a glowing part that pops out of a broken bale. Only the finder can pick it up.
 Quests.Finds = {
 	beacon_part = { name = "Beacon part", color = { 120, 210, 255 } },
 	frozen_bobbin = { name = "Frozen Bobbin", color = { 190, 225, 255 } },
+	breathing_reed = { name = "Breathing reed", color = { 150, 190, 120 } },
 }
 Quests.FindSeconds = 60 -- a find that is not picked up fades after this long
 
@@ -875,6 +984,166 @@ Quests.List = {
 			},
 		},
 		reward = { relic = "shard_spindle" },
+	},
+	{
+		id = "weaver_2",
+		name = "The Weaver, Chapter 2: The Tailor's Note",
+		giver = "The Spindle door",
+		region = "Meadow Shore",
+		requires = { "weaver_1" },
+		blurb = "Old Wren says the tailor on the south shore knew the Weaver. She left before anyone could ask.",
+		steps = {
+			{
+				kind = "talk",
+				spot = "tailor_note",
+				say = '"The light looks at the same place every night. I could never bring myself to fetch it." (signed T.)',
+				hint = "The Tailor's Shack is on the south shore, west of the beach.",
+				text = "Read the note at the Tailor's Shack",
+			},
+			{
+				kind = "collect",
+				spot = "shore_glint",
+				when = "night",
+				hint = "What does a lighthouse look at? Go after dark.",
+				text = "Find what the light looks at",
+			},
+		},
+		reward = { relic = "shard_shore" },
+	},
+	{
+		id = "weaver_3",
+		name = "The Weaver, Chapter 3: The Stitched Pine",
+		giver = "The Spindle door",
+		region = "Pine Forest",
+		requires = { "weaver_2" },
+		blurb = "Somewhere in the Pine Forest, one tree was sewn shut with gold thread.",
+		steps = {
+			{
+				kind = "event",
+				event = "bale_broken",
+				count = 15,
+				filter = { hayType = "pine" },
+				hint = "Pine hay grows in the west woods. Break the bales open and listen.",
+				text = "Break 15 pine bales and follow the thread",
+			},
+			{
+				kind = "talk",
+				spot = "stitched_pine",
+				when = "dusk",
+				say = "The gold stitches loosen at sunset. Something drops into your hand.",
+				hint = "The stitches only loosen at sunset.",
+				text = "Open the stitched pine at dusk",
+			},
+		},
+		reward = { relic = "shard_pine" },
+	},
+	{
+		id = "weaver_4",
+		name = "The Weaver, Chapter 4: The First Bale",
+		giver = "The Spindle door",
+		region = "Homestead Valley",
+		requires = { "weaver_3" },
+		blurb = "The oldest townsfolk remember who wove the first bale.",
+		steps = {
+			{
+				kind = "talk",
+				spot = "old_wren",
+				say = 'Old Wren: "My grandmother saw the Weaver drop something shiny down our well. At midnight, mind. She said it winked."',
+				hint = "Old Wren stands by the well in the middle of Homestead. The free Hay Wagon from Base Camp stops there.",
+				text = "Ask Old Wren about the first bale",
+			},
+			{
+				kind = "collect",
+				spot = "well_glint",
+				when = "midnight",
+				hint = "Old Wren said midnight.",
+				text = "Look into the hub well at midnight",
+			},
+		},
+		reward = { relic = "shard_homestead" },
+	},
+	{
+		id = "weaver_5",
+		name = "The Weaver, Chapter 5: Holding Breath",
+		giver = "The Spindle door",
+		region = "Swamp",
+		requires = { "weaver_4" },
+		blurb = "Below the fog, the reeds hold their breath.",
+		steps = {
+			{
+				kind = "find",
+				item = "breathing_reed",
+				count = 1,
+				chance = 1 / 40,
+				pity = 80,
+				filter = { hayType = "swamp" },
+				hint = "Break swamp bales. One reed in the hay still breathes. Grab it before it fades.",
+				text = "Find a reed that still breathes",
+			},
+			{
+				kind = "offer",
+				spot = "sunken_stone",
+				when = "night",
+				needles = { bog = 20 },
+				text = "Lay the reed and 20 bog needles on the sunken stone at night",
+			},
+		},
+		reward = { relic = "shard_swamp" },
+	},
+	{
+		id = "weaver_6",
+		name = "The Weaver, Chapter 6: Beads on a String",
+		giver = "The Spindle door",
+		region = "Thimble Keys",
+		requires = { "weaver_5" },
+		blurb = "Out where the islands are strung like beads, three lanterns hold a thread between them.",
+		steps = {
+			{
+				kind = "visit",
+				spots = { "keys_bead_1", "keys_bead_2", "keys_bead_3" },
+				hint = "Three lanterns on three of the Thimble Keys. Take the ferry from Swamp Port.",
+				text = "Touch the 3 bead lanterns",
+			},
+			{
+				kind = "collect",
+				spot = "keys_glint",
+				when = "dusk",
+				hint = "The thread between the lanterns catches the sunset.",
+				text = "Take the bead from the thread at dusk",
+			},
+		},
+		reward = { relic = "shard_keys" },
+	},
+	{
+		id = "master_needle",
+		name = "The Master Needle",
+		giver = "The Spindle door",
+		region = "The Spindle",
+		requires = {
+			"scarecrow_bargain",
+			"weaver_1",
+			"weaver_2",
+			"weaver_3",
+			"weaver_4",
+			"weaver_5",
+			"weaver_6",
+			"frozen_door",
+			"eruption",
+			"graveyard_of_ships",
+			"buried_garage",
+			"lanterns",
+		},
+		blurb = "Twelve shards. The Spindle door knows you now.",
+		steps = {
+			{
+				kind = "talk",
+				spot = "master_pedestal",
+				say = "The twelve shards slide together on the pedestal. The Master Needle is whole.",
+				hint = "Through the Spindle door, at the end of the Loom Room.",
+				text = "Set the shards on the pedestal in the Loom Room",
+			},
+		},
+		reward = { relic = "master_needle", cash = 100000 }, -- about 15 minutes of Volcano-stage income: the biggest one-time payout (Econ)
 	},
 	{
 		id = "straw_labyrinth",

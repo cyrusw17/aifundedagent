@@ -479,7 +479,7 @@ def swamp_stilt_house(f):
 # ---------------------------------------------------------------- The Spindle (center)
 
 def the_spindle(f):
-    """The Spindle, the giant tower at the center of the map, about 40 x 40 x 62 studs: a stone plinth
+    """The Spindle, the giant tower at the center of the map, about 40 x 40 x 120 studs: a stone plinth
     with 12 shard sockets in a ring (tagged Socket..Socket12), a huge bobbin with flanges top and bottom
     wound with red thread, and a steel spindle shaft rising to a needle eye. A sealed stone slab door
     (tagged Door, 6 x 9) opens when all 12 shards are placed."""
@@ -500,12 +500,13 @@ def the_spindle(f):
     for k in range(5):
         p.append(brace(f, "paint_red", (10.2 + k * 0.4, -2 - k * 1.2, 30 - k * 5), (10.6 + k * 0.4, -3.2 - k * 1.2, 25 - k * 5), 0.6))
     # Spindle shaft: steel cone up to a needle eye.
-    p.append(T(f, "steel", 3.2, 0.9, 43.6, 58.0, verts=12))
+    # The shaft tops every silo at about 120 studs so it works as the map's skyline compass (B2-3).
+    p.append(T(f, "steel", 3.4, 1.3, 43.6, 112.0, verts=12))
     p.append(C(f, "steel", 1.0, 0.8, (0, 0, 44.0), verts=12, rnd=False))
     for s in (-1, 1):
-        p.append(B(f, "steel", (0.6, 0.8, 4.0), (s * 1.0, 0, 60.0), along="z"))
-    p.append(B(f, "steel", (2.6, 0.8, 0.6), (0, 0, 62.0)))
-    p.append(B(f, "steel", (2.6, 0.8, 0.6), (0, 0, 58.0)))
+        p.append(B(f, "steel", (0.9, 1.0, 7.0), (s * 1.4, 0, 115.5), along="z"))
+    p.append(B(f, "steel", (3.7, 1.0, 0.8), (0, 0, 119.4)))
+    p.append(B(f, "steel", (3.7, 1.0, 0.8), (0, 0, 112.0)))
     # Sealed door in the plinth front.
     p.append(B(f, "stone", (8.4, 1.0, 10.4), (0, -13.4, 5.2)))
     p += tag([B(f, "stone", (6.0, 0.8, 9.0), (0, -14.0, 1.2 + 4.5)),

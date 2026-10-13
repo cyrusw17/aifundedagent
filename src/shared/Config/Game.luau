@@ -16,6 +16,9 @@ return {
 	-- Per spill wave (3 per bale): a needle you can see and pick up. A quarter of a bale's hidden needles on average.
 	VisibleNeedleChance = Prices.NeedlesPerBale.meadow * Prices.VisibleNeedleShare / 3,
 	PiecesPerBale = 90, -- small straw strands spilled by one bale
+	-- A burst bale spills its strands in clumps of this many (one part each, worth every strand in it), so a crew
+	-- breaking ten bales at once makes 300 parts, not 900, and the loose cap no longer eats hay. 1 = single strands.
+	StrandsPerClump = 3,
 	MaxHayPiles = 30, -- raked piles past this lose their oldest, so piles can't pile up without end
 	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away

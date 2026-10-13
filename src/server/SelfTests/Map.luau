@@ -82,6 +82,21 @@ return function(SelfTest)
 			end
 		end
 		t.check("a fall anywhere lands on a dry road", #wet == 0, #wet > 0 and table.concat(wet, "; ") or nil)
+		-- Signpost distances (#23): every place a junction sign names is reachable by road.
+		local noRoute = {}
+		for _, j in Regions.junctions or {} do
+			local ok, text, numbers = pcall(Regions.junctionText, j)
+			local wanted = 0
+			for _, line in j[4] do
+				if line[3] then
+					wanted += 1
+				end
+			end
+			if not ok or #numbers < wanted then
+				table.insert(noRoute, ok and text or tostring(text))
+			end
+		end
+		t.check("every junction sign has a road distance to each place", #noRoute == 0, #noRoute > 0 and table.concat(noRoute, "; ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}
@@ -240,6 +255,22 @@ return function(SelfTest)
 			end
 		end
 		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		-- Fronts (#25): rain, snow and dust only come as one front at a time; the front on now (if any) is published.
+		local frontKinds = {}
+		for _, f in WeatherConfig.Fronts do
+			frontKinds[f.kind] = true
+		end
+		local everydayFront = {}
+		for id, choices in WeatherConfig.Regions do
+			for kind in choices do
+				if frontKinds[kind] then
+					table.insert(everydayFront, id .. ":" .. kind)
+				end
+			end
+		end
+		t.check("rain, snow and dust only come as fronts", #everydayFront == 0, #everydayFront > 0 and table.concat(everydayFront, ", ") or nil)
+		local front = Weather.front()
+		t.equal("the front on the map is published", ReplicatedStorage:GetAttribute("WeatherFront"), front and front.region or nil)
 		local desertWas = Weather.get("desert")
 		Weather.force("desert", "dust", 1)
 		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")

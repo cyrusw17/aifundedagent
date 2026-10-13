@@ -300,3 +300,47 @@ end
 print(("REACH roads %d/%d, highway %s, sky %s, fields %d ok %d bad, landmarks %d, steepest road %.3f; %s"):format(
 	roadsReached, #RMap.Roads, tostring(reached.highway), tostring(reached.sky), fieldsOk, fieldsBad, landmarksOk, steepest,
 	problems == 0 and "ok" or (problems .. " problems")))
+
+-- Signpost distances (#23): every junction sign's places are reachable by road, and each distance is at least the
+-- straight line and not an absurd detour.
+do
+	local RegionsS = require({ __path = "Services.Regions" })
+	local signsOk, count = true, 0
+	for _, j in RegionsS.junctions do
+		local text, numbers = RegionsS.junctionText(j)
+		for _, n in numbers do
+			count += 1
+			local RoadGraphS = require({ __path = "Services.RoadGraph" })
+			local snapped = RoadGraphS.nodes()[RoadGraphS.nearest(n.target)]
+			local straight = (Vector2.new(snapped.x, snapped.z) - Vector2.new(j[1], j[2])).Magnitude
+			if n.distance + 30 < straight or n.distance > straight * 3 + 300 then
+				signsOk = false
+				print("WARN signpost distance looks wrong", n.name, n.distance, "straight", math.floor(straight))
+			end
+		end
+		print("SIGN", (text:gsub("\n", " | ")))
+	end
+	print(("signpost distances %d %s"):format(count, signsOk and "ok" or "WRONG"))
+end
+
+-- First-visit pans (#24): every region but the cave has a focus on dry ground or the sky platform.
+do
+	local Disc = require({ __path = "Services.Discoveries" })
+	local MapC = require({ __path = "Shared.Config.WorldMap" })
+	local ok, n = true, 0
+	for _, entry in Disc.all() do
+		if entry.kind == "region" then
+			local focus = Disc.focus(entry.id)
+			if entry.id == "cave" then
+				if focus then ok = false print("WARN the cave should have no pan") end
+			elseif not focus then
+				ok = false
+				print("WARN no first-visit pan focus for", entry.id)
+			else
+				n += 1
+				if focus.Y < MapC.SeaLevel then ok = false print("WARN pan focus under the sea", entry.id) end
+			end
+		end
+	end
+	print(("region intro pans %d %s"):format(n, ok and "ok" or "WRONG"))
+end
