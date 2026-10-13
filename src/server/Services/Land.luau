@@ -35,6 +35,7 @@ local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Baler = require(script.Parent.Baler)
 local Vault = require(script.Parent.Vault)
+local Blueprints = require(script.Parent.Blueprints)
 local Display = require(script.Parent.Display)
 local Mixer = require(script.Parent.Mixer)
 local LineStats = require(script.Parent.LineStats)
@@ -1792,6 +1793,7 @@ function Land.build(worldFolder)
 	end
 
 	buildOffice(folder)
+	Blueprints.init() -- named presets for the COPY / PASTE tools
 	for i, def in LandConfig.Plots do
 		buildPlot(folder, i, def)
 	end
