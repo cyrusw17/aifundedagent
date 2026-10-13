@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Data = require(script.Parent.Data)
+local GloveLooks = require(script.Parent.GloveLooks)
 
 local Gloves = {}
 
@@ -253,6 +254,7 @@ function Gloves.buildStand(parent, cframe)
 			end)
 		end
 	end
+	GloveLooks.dressStand(stand) -- the Rustic glove meshes, when imported
 	return stand
 end
 
