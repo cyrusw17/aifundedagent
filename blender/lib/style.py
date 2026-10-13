@@ -39,7 +39,24 @@ RUSTIC = {
     "handle": ((0.60, 0.50, 0.38), (0.50, 0.41, 0.30), (0.36, 0.29, 0.21)),
     "metal": ((0.50, 0.46, 0.42), (0.42, 0.37, 0.33), (0.40, 0.26, 0.16)),  # rusty
     "twine": ((0.45, 0.40, 0.32), (0.38, 0.33, 0.26), (0.28, 0.24, 0.18)),
+    # Weathered paint, stone and cloth for vehicles, machines and buildings.
+    "paint_red": ((0.62, 0.30, 0.24), (0.52, 0.24, 0.19), (0.36, 0.18, 0.14)),
+    "paint_green": ((0.42, 0.50, 0.34), (0.34, 0.42, 0.28), (0.24, 0.30, 0.20)),
+    "paint_blue": ((0.40, 0.48, 0.55), (0.32, 0.39, 0.46), (0.22, 0.27, 0.32)),
+    "paint_cream": ((0.86, 0.82, 0.70), (0.78, 0.73, 0.60), (0.60, 0.55, 0.44)),
+    "paint_yellow": ((0.82, 0.68, 0.34), (0.72, 0.58, 0.26), (0.52, 0.40, 0.18)),
+    "stone": ((0.66, 0.63, 0.58), (0.56, 0.53, 0.49), (0.40, 0.38, 0.35)),
+    "cloth": ((0.84, 0.80, 0.68), (0.74, 0.70, 0.58), (0.56, 0.52, 0.42)),
+    # Flat, untextured.
+    "tire": (None, (0.13, 0.12, 0.11), None),
+    "glass": (None, (0.20, 0.26, 0.28), None),
+    "glow": (None, (0.55, 0.95, 0.90), None),
 }
+# Kinds that stay flat even in textured finishes, and their extra material settings.
+FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3},
+        "glow": {"roughness": 0.4, "emission": 2.0}}
+# Kinds that use the blotchy weathered texture.
+WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth")
 SOFT = {
     "hay": (None, (1.00, 0.86, 0.55), None),
     "bark": (None, (0.66, 0.45, 0.34), None),
@@ -150,6 +167,19 @@ def metal_texture(pal, c, rusty):
     return fn
 
 
+def weathered_texture(pal, c, seed):
+    """Faded paint / stone / canvas: soft blotches plus fine speckle."""
+    lite, mid, dark = pal
+    big, fine = noise(seed, 16), noise(seed + 1, 256)
+
+    def fn(u, v):
+        b = smooth_lookup(big, (u * 2 + smooth_lookup(big, v * 3 % 1) * 0.5) % 1)
+        k = contrast(0.5 + (b - 0.5) * 0.8 + (fine[int((u * 13 + v * 7) * 256) % 256] - 0.5) * 0.25, c)
+        return mix(dark, mid, k * 2) if k < 0.5 else mix(mid, lite, (k - 0.5) * 2)
+
+    return fn
+
+
 def rolled_hay_texture(pal, c):
     lite, mid, dark = pal
     return lambda u, v: mix(lite, dark, contrast(0.5 + 0.5 * math.sin(math.hypot(u - 0.5, v - 0.5) * 70), c * 0.8))
@@ -180,7 +210,8 @@ class Finish:
               "wood": lambda: end_grain_texture(pal, c, self.pal["bark"][1]),
               "handle": lambda: plank_texture(pal, c),
               "metal": lambda: metal_texture(pal, c, rusty),
-              "rolled": lambda: rolled_hay_texture(self.pal["hay"], c)}[kind]()
+              "rolled": lambda: rolled_hay_texture(self.pal["hay"], c)}.get(kind)
+        fn = fn() if fn else weathered_texture(pal, c, 10 + WEATHERED.index(kind))
         return common.make_texture(f"{self.name}_{kind}", 256 if kind in ("hay", "bark") else 128, fn)
 
     def shape(self, obj, round_edges=True):
@@ -200,7 +231,23 @@ class Finish:
         return obj
 
     def apply(self, obj, kind, along="x", uv="box"):
+        """Give a part its material. kind is one of the palette keys (hay, bark, wood, handle, metal,
+        twine, paint_red/green/blue/cream/yellow, stone, cloth, tire, glass, glow)."""
         metallic = 0.5 if kind == "metal" else 0.0
+        if kind in FLAT:
+            opts = FLAT[kind]
+
+            def make():
+                m = common.material(kind, common.srgb(self.pal[kind][1]), roughness=opts["roughness"],
+                                    metallic=opts.get("metallic", 0.0))
+                if "emission" in opts:
+                    bsdf = m.node_tree.nodes.get("Principled BSDF")
+                    bsdf.inputs["Emission Color"].default_value = (*common.srgb(self.pal[kind][1]), 1)
+                    bsdf.inputs["Emission Strength"].default_value = opts["emission"]
+                return m
+
+            common.assign(obj, self._mat(kind, make))
+            return obj
         if self.textured and kind != "twine":
             key = "rolled" if uv == "rolled" else kind
             mat = self._mat(key, lambda: common.texture_material(f"{self.name}_{key}", self._texture(key),

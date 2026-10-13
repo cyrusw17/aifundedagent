@@ -1,5 +1,5 @@
 """Square hay bale in the Lumber Tycoon 2 look: a simple block of hay tied with
-two twine bands. Flat top and bottom and exact stud sizes so bales stack.
+two twine bands. Flat top and bottom and the game's stud sizes so bales stack.
 
 Shape only: props/rustic_props.py builds and exports it in the house style.
 """
@@ -12,10 +12,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import common  # noqa: E402
 
 STUD = 0.28
-# 4 x 2 x 2 studs: two bales side by side match one bale lengthwise, so they stack in bonds.
-SIZE = (4 * STUD, 2 * STUD, 2 * STUD)
+# Matches the game's bale part (Bales.luau / BaseLine.luau): 4.6 long, 3.2 wide, 2.6 high studs.
+SIZE = (4.6 * STUD, 3.2 * STUD, 2.6 * STUD)
 BEVEL = 0.025
-TWINE_X = (-0.3, 0.3)        # band positions along the length, as a fraction of the length
+TWINE_X = (-0.26, 0.26)       # band positions along the length, as a fraction of the length
 TWINE_WIDTH = 0.025
 TWINE_PROUD = 0.004          # how far bands stand off the hay
 

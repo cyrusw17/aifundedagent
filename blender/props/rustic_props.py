@@ -1,10 +1,12 @@
 """Every game prop in the house style (LT2 shapes, Rustic finish).
 
-Each prop is exported on its own to <out>/<name>.glb, and a catalog render of
-all of them is written to <out>/catalog.png.
+Hay and hand tools are built here; vehicles.py, storage.py, buildings.py and
+machines.py each add a category. Each prop is exported on its own to
+<out>/<name>.glb, and each category gets a catalog render <out>/catalog_<category>.png.
 
 Run:
-  blender --background --python blender/props/rustic_props.py -- --out blender/exports/rustic [--only basic_shovel,log]
+  blender --background --python blender/props/rustic_props.py -- --out blender/exports/rustic
+  ... [--category vehicles] [--only basic_shovel,log] [--no-catalog]
 """
 import math
 import os
@@ -44,7 +46,7 @@ def d_grip(f, z):
 # ---------------------------------------------------------------- hay
 
 def hay_bale_prop(f):
-    """4 x 2 x 2 studs, flat top and bottom: two side by side match one lengthwise."""
+    """4.6 x 3.2 x 2.6 studs like the game's bale part, flat top and bottom so bales stack."""
     hay_bale.BEVEL = max(f.bevel, 0.001)
     hay = f.apply(f.shape(hay_bale.build_hay(), round_edges=False), "hay")
     return [hay] + [f.apply(b, "twine") for b in hay_bale.build_twine()]
@@ -204,7 +206,7 @@ def log(f):
     return parts
 
 
-PROPS = {
+HAY_AND_TOOLS = {
     "hay_bale": hay_bale_prop,
     "round_bale": round_bale,
     "basic_shovel": basic_shovel,
@@ -218,39 +220,80 @@ PROPS = {
 }
 
 
+CATEGORIES = ("hay_and_tools", "vehicles", "storage", "buildings", "machines")
+
+
+def categories(wanted=CATEGORIES):
+    """category name -> {prop key: builder}. Only the wanted category modules are imported."""
+    cats = {"hay_and_tools": HAY_AND_TOOLS} if "hay_and_tools" in wanted else {}
+    for name in wanted:
+        if name == "hay_and_tools":
+            continue
+        try:
+            mod = __import__(name)
+        except ImportError:
+            continue
+        cats[name] = mod.PROPS
+    return cats
+
+
 def object_name(key):
     return "".join(w.capitalize() for w in key.split("_"))
+
+
+def catalog(props, path):
+    """Render a category: props laid out left to right in rows, small things in front."""
+    common.reset_scene()
+    f = style.rustic()
+    objs = []
+    for k, build in props.items():
+        o = common.join(build(f), object_name(k))
+        xs = [v.co.x + o.location.x for v in o.data.vertices]
+        ys = [v.co.y + o.location.y for v in o.data.vertices]
+        objs.append((o, max(xs) - min(xs), (max(xs) + min(xs)) / 2, max(ys) - min(ys), (max(ys) + min(ys)) / 2))
+    # Biggest footprint at the back.
+    objs.sort(key=lambda t: -(t[1] * t[3]))
+    row_width = max(4.0, math.sqrt(sum(w * d for _, w, _, d, _ in objs)) * 1.6)
+    gap = 0.3
+    rows, row, used = [], [], 0.0
+    for t in objs:
+        if row and used + t[1] > row_width:
+            rows.append(row)
+            row, used = [], 0.0
+        row.append(t)
+        used += t[1] + gap
+    rows.append(row)
+    y = 0.0
+    for row in rows:
+        depth = max(t[3] for t in row)
+        total = sum(t[1] for t in row) + gap * (len(row) - 1)
+        x = -total / 2
+        for o, w, cx, d, cy in row:
+            o.location.x += x + w / 2 - cx
+            o.location.y += y - depth / 2 - cy
+            x += w + gap
+        y -= depth + gap * 2
+    common.render_preview(path, 1600, ground=GRASS)
 
 
 def main():
     args = common.parse_args("rustic")
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
-    only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else list(PROPS)
+    cats = categories(argv[argv.index("--category") + 1].split(",") if "--category" in argv else CATEGORIES)
+    only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
     out = args.out
     args.formats = "glb"
 
-    for key in only:
-        common.reset_scene()
-        obj = common.join(PROPS[key](style.rustic()), object_name(key))
-        args.name = key
-        common.export([obj], args)
-
-    # Catalog: big props in a back row, hand tools in a front row, laid out by width.
-    common.reset_scene()
-    f = style.rustic()
-    tools = {"basic_shovel", "wide_scoop", "garden_rake", "pitchfork", "hay_hook"}
-    rows = [[k for k in PROPS if k not in tools], [k for k in PROPS if k in tools]]
-    for row, keys in enumerate(rows):
-        objs = [common.join(PROPS[k](f), object_name(k)) for k in keys]
-        widths = [max(v.co.x for v in o.data.vertices) - min(v.co.x for v in o.data.vertices) for o in objs]
-        gap = 0.4 if row == 0 else 0.25
-        total = sum(widths) + gap * (len(objs) - 1)
-        x = -total / 2
-        for o, w in zip(objs, widths):
-            o.location.x += x + w / 2 - (max(v.co.x for v in o.data.vertices) + min(v.co.x for v in o.data.vertices)) / 2
-            o.location.y += -row * 1.4
-            x += w + gap
-    common.render_preview(os.path.join(out, "catalog.png"), 1600, ground=GRASS)
+    for cat, props in cats.items():
+        for key, build in props.items():
+            if only and key not in only:
+                continue
+            common.reset_scene()
+            obj = common.join(build(style.rustic()), object_name(key))
+            args.name = key
+            common.export([obj], args)
+        if "--no-catalog" not in argv:
+            catalog(props, os.path.join(out, f"catalog_{cat}.png"))
 
 
 if __name__ == "__main__":

@@ -140,6 +140,7 @@ def render_preview(out, res=600, ground=None):
     """
     from mathutils import Vector
 
+    bpy.context.view_layer.update()  # make matrix_world reflect any moved objects
     objs = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     pts = [o.matrix_world @ v.co for o in objs for v in o.data.vertices]
     lo = Vector([min(p[i] for p in pts) for i in range(3)])
