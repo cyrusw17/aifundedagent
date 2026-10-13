@@ -181,6 +181,44 @@ end
 check("the lamp fuzz saw every color", seen.green > 0 and seen.amber > 0 and seen.red > 0)
 print(("lamps: green %d, amber %d, red %d"):format(seen.green, seen.amber, seen.red))
 
+-- A million found needles (CEO #32): the mutation rate, the multiplier spread and the payout match Needle.MUTATION.
+do
+	local NeedleM = require({ __path = "Services.Needle" })
+	local MarketM = require({ __path = "Services.Market" })
+	local LineMathM = require({ __path = "Shared.LineMath" })
+	local PricesM = require({ __path = "Shared.Config.Prices" })
+	local m = NeedleM.MUTATION
+	local N = 1000000
+	local mutated, multSum, lo, hi, whole = 0, 0, math.huge, 0, true
+	for _ = 1, N do
+		local mult = NeedleM.rollMutation()
+		if mult > 1 then
+			mutated += 1
+			multSum += mult
+			lo, hi = math.min(lo, mult), math.max(hi, mult)
+			whole = whole and mult == math.floor(mult)
+		end
+	end
+	local want = N * m.chance
+	local sd = math.sqrt(N * m.chance * (1 - m.chance))
+	check("mutation rate is Needle.MUTATION.chance (5 sd)", math.abs(mutated - want) <= 5 * sd, ("%d mutated, want %.0f +- %.0f"):format(mutated, want, 5 * sd))
+	local mean = multSum / math.max(mutated, 1)
+	local spread = math.sqrt(((m.max - m.min + 1) ^ 2 - 1) / 12) / math.sqrt(math.max(mutated, 1))
+	check("mutation multipliers average the middle of min..max", math.abs(mean - (m.min + m.max) / 2) <= 5 * spread, ("mean x%.2f"):format(mean))
+	check("multipliers reach both ends and are whole", lo == m.min and hi == m.max and whole, ("x%d..x%d"):format(lo, hi))
+	-- Payouts: a mutated needle sells for exactly mult times a plain one, at every market price.
+	for _, def in require({ __path = "Shared.Config.Needles" }) do
+		for _, mult in { m.min, 12, m.max } do
+			local got = NeedleM.priceOf(def.id, mult)
+			local wantPrice = LineMathM.price(def.sortedValue, mult, false, PricesM.PolishBonus, MarketM.multiplier(def.id), 0)
+			check("x" .. mult .. " " .. def.id .. " pays mult times list at today's market", got == wantPrice, ("%d vs %d"):format(got, wantPrice))
+		end
+	end
+	-- What mutation adds to a needle on average: 1 - chance + chance * mean multiplier.
+	print(("mutations: %d of %d needles (1 in %.0f), x%d..x%d, mean x%.2f; a needle is worth %.3fx list on average"):format(
+		mutated, N, N / math.max(mutated, 1), lo, hi, mean, 1 - mutated / N + multSum / N))
+end
+
 print(("linecheck: %d random keys, %d pocket operations over 300 players (%d sales paying $%d, %d needles out); %d failures"):format(5000, ops, allSales, allPaid, allTaken, failures))
 check("the fuzz really sold and took needles", allSales > 100 and allPaid > 0 and allTaken > 1000)
 if failures > 0 then
