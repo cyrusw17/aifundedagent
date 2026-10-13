@@ -22,6 +22,7 @@ local RoadPolish = require(script.Parent.RoadPolish)
 local HayWagon = require(script.Parent.HayWagon)
 local Discoveries = require(script.Parent.Discoveries)
 local SpindleDoor = require(script.Parent.SpindleDoor)
+local FallSafety = require(script.Parent.FallSafety)
 
 local WorldMap = {}
 
@@ -232,6 +233,7 @@ function WorldMap.build(worldFolder)
 	RegionEvents.start()
 	Discoveries.start()
 	SpindleDoor.start()
+	FallSafety.start()
 end
 
 return WorldMap

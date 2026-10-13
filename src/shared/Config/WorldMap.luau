@@ -401,4 +401,36 @@ return {
 
 	-- The rich field: every RichMinutes, one field on the server glows on the map and its bales carry 2x needles.
 	RichMinutes = 20,
+
+	-- Part budget (#21). Health's Workspace budget is 40,000 parts (Main.server.luau); the map's share is 12,000.
+	-- Each container under Needlewood.StitchedIsles (and each region under Isles) gets a slice; mapcheck and the Map
+	-- self-test fail any container over its slice. "Field bales" is the hay lying in the region fields.
+	-- Regions are plain Models (Default streaming): parts stream in and out one by one. Only buildings, windmill
+	-- sails and vehicles are Atomic, and only the skyline labels and the rich-field beam are Persistent.
+	PartBudget = {
+		["Meadow Shore"] = 600,
+		["Mirror Lake Valley"] = 800,
+		["Homestead Valley"] = 700,
+		["The Spindle"] = 400,
+		["Pine Forest"] = 1100,
+		["Haunted Grove"] = 800,
+		["Snow Peak"] = 1100,
+		["Volcano"] = 400,
+		["Desert Dunes"] = 600,
+		["Swamp"] = 800,
+		["Thimble Keys"] = 800,
+		["Bobbin Rock"] = 300,
+		["Crystal Cave"] = 200,
+		["Graveyard of Ships"] = 150,
+		["Sky Island"] = 200,
+		["Signs"] = 150,
+		["Longstitch Highway"] = 400,
+		["Ferries"] = 400,
+		["Wilds"] = 300,
+		["RoadPolish"] = 300,
+		["HayWagon"] = 100,
+		["Field bales"] = 400,
+		["Lighting"] = 400, -- landmark lights at night (#26)
+	} :: { [string]: number },
+	PartShare = 12000, -- the slices above must add up to no more than this
 }
