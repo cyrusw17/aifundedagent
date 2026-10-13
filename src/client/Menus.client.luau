@@ -17,6 +17,7 @@ local Waypoint = require(UI:WaitForChild("Waypoint"))
 local Places = require(UI:WaitForChild("Places"))
 local Catalog = require(UI:WaitForChild("Catalog"))
 local Hud = require(UI:WaitForChild("Hud"))
+local DiscoveryList = require(UI:WaitForChild("DiscoveryList"))
 local Meadow = require(Config:WaitForChild("Meadow"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Rustic = require(Config:WaitForChild("Rustic"))
@@ -465,6 +466,7 @@ end
 local worldCanvas = nil
 local weatherLabels = {} -- region id -> label under its name on the WORLD map
 local worldEvent = nil
+local stamps = {} -- discovery id -> its stamp on the WORLD map
 local worldMe = nil
 local worldMarker = nil
 local worldRich = nil
@@ -660,6 +662,28 @@ if WorldMap then
 	worldRich.TextStrokeTransparency = 0
 	worldRich.ZIndex = 8
 
+	-- Discovery stamps: a gold ◆ on each landmark you have found, a ✓ above each region you have visited.
+	for _, d in DiscoveryList.all() do
+		local stamp = Kit.label(worldCanvas, d.kind == "region" and "✓" or "◆", {
+			size = d.kind == "region" and 12 or 11,
+			font = F.Title,
+			color = C.Hay,
+			align = "center",
+			wrap = false,
+		})
+		stamp.AnchorPoint = Vector2.new(0.5, 0.5)
+		stamp.Size = UDim2.fromOffset(14, 14)
+		stamp.Position = toWorld(d.at.X, d.at.Y)
+		if d.kind == "region" then
+			stamp.Position += UDim2.fromOffset(0, -13)
+		end
+		stamp.TextStrokeColor3 = C.Ink
+		stamp.TextStrokeTransparency = 0
+		stamp.ZIndex = 8
+		stamp.Visible = false
+		stamps[d.id] = stamp
+	end
+
 	-- A region event (Hay Fever, Sandstorm...) while one runs.
 	worldEvent =
 		Kit.label(worldCanvas, "", { size = 11, font = F.Title, color = C.Cream, align = "center", wrap = false })
@@ -698,6 +722,14 @@ Waypoint.changed.Event:Connect(function(position)
 		end
 	end
 end)
+
+local function refreshStamps()
+	local found = DiscoveryList.found(player)
+	for id, stamp in stamps do
+		stamp.Visible = found[id] == true
+	end
+end
+player:GetAttributeChangedSignal("Discovered"):Connect(refreshStamps)
 
 local function refreshRich()
 	if not worldRich then
@@ -788,6 +820,7 @@ local _, selectView = Kit.tabs(viewRow, { "MEADOW", "WORLD" }, function(index)
 	refreshRich()
 	refreshWeather()
 	refreshEvent()
+	refreshStamps()
 end)
 
 -- Regions: every one on Config/WorldMap, with the one you're in marked.

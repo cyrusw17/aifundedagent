@@ -1,8 +1,9 @@
 --!nonstrict
--- The collection book (BOOK under the HUD, or K). Three pages:
+-- The collection book (BOOK under the HUD, or K). Four pages:
 --   FINDS   every foreign object from a burst bale (Config/Finds), kept ones from the "Finds" attribute (Finds.luau)
 --   NEEDLES every needle type (Config/Needles), found ones from "CodexNeedles" (Codex.luau)
 --   HAY     every hay type (Config/Gloves HayTypes), broken-open ones from "CodexHay" (Codex.luau)
+--   PLACES  every region and landmark (UI/DiscoveryList), found ones from "Discovered" (Discoveries.luau)
 -- Found things show in full; the rest are dark shapes with a hint. A finished page shows its title.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +17,7 @@ local FindsConfig = require(Config:WaitForChild("Finds"))
 local NeedleTypes = require(Config:WaitForChild("Needles"))
 local Gloves = require(Config:WaitForChild("Gloves"))
 local HayLooks = require(Config:WaitForChild("HayLooks"))
+local DiscoveryList = require(UI:WaitForChild("DiscoveryList"))
 
 local C, F, T = Kit.Theme.Colors, Kit.Theme.Fonts, Kit.Theme.Text
 local player = Players.LocalPlayer
@@ -160,6 +162,39 @@ do
 			return set("CodexHay")
 		end,
 		title = "Hay Connoisseur",
+	})
+end
+
+do
+	local entries = {}
+	for _, d in DiscoveryList.all() do
+		local region = d.kind == "region"
+		table.insert(entries, {
+			id = d.id,
+			name = d.name,
+			-- A little patch of land for a region, a standing stone for a landmark.
+			size = region and Vector3.new(3, 0.6, 3) or Vector3.new(0.8, 2.4, 0.8),
+			color = region and Color3.fromRGB(110, 132, 82) or Color3.fromRGB(150, 140, 120),
+			material = region and Enum.Material.Grass or Enum.Material.Slate,
+			lines = function(found)
+				if found then
+					return region and "Region visited" or ("Landmark near %s"):format(d.near or "the isles"),
+						("Finder's pay: %s"):format(Kit.money(d.reward))
+				end
+				return region and "A region of the isles" or ("Somewhere near %s"):format(d.near or "the isles"),
+					("Pays %s the first time"):format(Kit.money(d.reward))
+			end,
+		})
+	end
+	table.insert(PAGES, {
+		tab = "PLACES",
+		intro = "Every region and landmark of the Stitched Isles. Your first visit to each pays out and stamps your map.",
+		entries = entries,
+		attribute = "Discovered",
+		read = function()
+			return DiscoveryList.found(player)
+		end,
+		title = "Isle Explorer",
 	})
 end
 
