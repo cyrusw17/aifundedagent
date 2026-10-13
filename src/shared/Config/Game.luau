@@ -57,8 +57,8 @@ return {
 	TossMinPower = 0.12, -- charge below this (0..1) just sets the bale down
 	TossChargeSeconds = 0.9, -- holding this long is full power
 	TossFlightSeconds = 2.5, -- the server flies a thrown bale this long, then Roblox picks its owner again
-	GoldenBaleOneIn = 150, -- a field bale grows golden 1 time in this many
-	GoldenBaleNeedles = 3, -- a golden bale spills this many times the needles
+	GoldenBaleOneIn = Prices.GoldenBale.oneIn, -- a field bale grows golden 1 time in this many (Config/Prices)
+	GoldenBaleNeedles = Prices.GoldenBale.needles, -- a golden bale spills this many times the needles
 	DoubleCarryTier = 3, -- gloves of this tier (Reinforced) and up carry two bales, one on top of the other
 	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long

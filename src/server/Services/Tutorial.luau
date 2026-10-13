@@ -80,10 +80,12 @@ function Tutorial.unmark(player, flag)
 	end
 end
 
--- For piece placement (Land.onPlace): marks "sorter" when the piece is a needle separator.
+-- For piece placement (Land.onPlace): marks "sorter" and "built_<id>" when the piece is a needle separator.
 function Tutorial.placed(player, pieceId)
 	if separators[pieceId] then
 		Tutorial.mark(player, "sorter")
+		-- Which sorters you have ever built, for the goal bar ("built_shaker_table").
+		Tutorial.mark(player, "built_" .. pieceId)
 	end
 end
 
@@ -97,6 +99,7 @@ local function onLoaded(player)
 		for _, item in s.land.items do
 			if typeof(item) == "table" and separators[item.id] then
 				t.flags.sorter = true
+				t.flags["built_" .. item.id] = true
 			end
 		end
 	end

@@ -292,7 +292,10 @@ function Conveyors.finish(grid)
 		local top = ground + Vector3.new(0, topAt(level), 0)
 		local left, right = Conveyors.sides(tile.d)
 		local sides = { left, right }
-		if not tile.openBack then
+		-- A feeder (a plot loading dock) right behind, pushing this way, keeps the back open like openBack.
+		local feeder = grid.feeders and grid.feeders[key(tile.gx - tile.d.X, tile.gz - tile.d.Z, 0)]
+		local fedFromBehind = level == 0 and feeder ~= nil and (feeder - tile.d).Magnitude < 0.01
+		if not tile.openBack and not fedFromBehind then
 			table.insert(sides, -tile.d)
 		end
 		local fed = 0
@@ -322,6 +325,13 @@ function Conveyors.finish(grid)
 		end
 		dressTile(grid, tile, (tile.kind == "splitter" and "splitter") or (fed == 2 and "merger") or (fed == 0 and "conveyor_straight") or nil)
 	end
+end
+
+-- Marks a cell as a feeder that pushes loads in direction dir (a Vector3 from Dirs) onto the tile in front of it, so
+-- finish() leaves that tile's back rail off. nil dir clears it.
+function Conveyors.setFeeder(grid, gx, gz, dir)
+	grid.feeders = grid.feeders or {}
+	grid.feeders[key(gx, gz, 0)] = dir
 end
 
 -- Lays a straight run of tiles from (gx, gz) for count cells in dir, on level (default 0).

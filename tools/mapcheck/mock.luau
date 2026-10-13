@@ -157,6 +157,8 @@ typeof = function(v)
 	return type(v)
 end
 
+TweenInfo = { new = function(...) return { ... } end }
+
 -- Random: a plain LCG, deterministic per seed.
 Random = {
 	new = function(seed)
@@ -378,7 +380,7 @@ local services = {
 	},
 	Players = { GetPlayers = function() return {} end, GetPlayerByUserId = function() return nil end, PlayerAdded = signal(), PlayerRemoving = signal() },
 	RunService = { IsStudio = function() return true end, IsServer = function() return true end, Heartbeat = signal(), Stepped = signal() },
-	TweenService = { Create = function() return { Play = function() end } end },
+	TweenService = { Create = function(_, inst, _, goal) return { Play = function() for k, v in goal do inst[k] = v end end, Completed = { Wait = function() end } } end },
 	Debris = { AddItem = function() end },
 	Lighting = newInstance("Lighting"),
 }

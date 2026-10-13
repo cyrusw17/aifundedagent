@@ -444,6 +444,45 @@ local copyStart = nil -- first corner { gx, gz } of a copy
 local clipboard = nil -- { list = { { id, dx, dz, dir } }, total } from the last copy
 local aim = nil -- screen point { x, y, viewport = bool } the ghost follows
 local target = nil -- { gx, gz, valid } under the aim
+-- Drag-to-place for belts: where the mouse went down, and the run of cells from there to the aim.
+local DRAG_MAX = 60 -- the server's paste limit
+local dragStart = nil -- { gx, gz }
+local dragRun = nil -- { { gx, gz, dir }, ... }
+
+-- An L-shaped run of belt cells from a to b: along the longer axis first, then the other. Each belt faces the next
+-- cell; the last keeps the way the one before it faced (or the chosen turn when the run is a single cell).
+local function beltRun(ax, az, bx, bz, lastDir)
+	local cells = {}
+	local x, z = ax, az
+	table.insert(cells, { x, z })
+	local function walk(tx, tz)
+		while (x ~= tx or z ~= tz) and #cells < DRAG_MAX do
+			if x ~= tx then
+				x += if tx > x then 1 else -1
+			else
+				z += if tz > z then 1 else -1
+			end
+			table.insert(cells, { x, z })
+		end
+	end
+	if math.abs(bx - ax) >= math.abs(bz - az) then
+		walk(bx, az)
+		walk(bx, bz)
+	else
+		walk(ax, bz)
+		walk(bx, bz)
+	end
+	for i, cell in cells do
+		local nextCell = cells[i + 1]
+		if nextCell then
+			local dx, dz = nextCell[1] - cell[1], nextCell[2] - cell[2]
+			cell[3] = if dx > 0 then "E" elseif dx < 0 then "W" elseif dz > 0 then "S" else "N"
+		else
+			cell[3] = if i > 1 then cells[i - 1][3] else lastDir
+		end
+	end
+	return cells
+end
 
 local ghost = Instance.new("Model")
 ghost.Name = "BuildGhost"
@@ -654,6 +693,14 @@ local function updateGhost()
 	elseif tool == "move" or removing then
 		cells = { { gx, gz, { 0, 1 } } }
 		picking = true
+		showArrow = false
+	elseif dragStart and selected and selected.kind == "belt" then
+		dragRun = beltRun(dragStart.gx, dragStart.gz, gx, gz, dir)
+		for _, cell in dragRun do
+			table.insert(cells, { cell[1], cell[2], levelsOf(selected) })
+		end
+		cost = selected.price * #dragRun
+		setInfo(("Drag: %d belt%s, $%d. Let go to build."):format(#dragRun, #dragRun == 1 and "" or "s", cost))
 		showArrow = false
 	else
 		cells = withLevels(cellsFor(selected, gx, gz, dir), levelsOf(selected))
@@ -955,12 +1002,40 @@ pasteButton.Activated:Connect(function()
 	setTool("paste")
 end)
 
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1 or not dragStart then
+		return
+	end
+	local run = dragRun
+	dragStart, dragRun = nil, nil
+	if not building or not selected or busy then
+		return
+	end
+	if not run or #run <= 1 then
+		act() -- a click: one belt, facing the chosen way
+		return
+	end
+	local list = {}
+	local ax, az = run[1][1], run[1][2]
+	for _, cell in run do
+		table.insert(list, { id = selected.id, dx = cell[1] - ax, dz = cell[2] - az, dir = cell[3] })
+	end
+	report(call(pasteRemote, list, ax, az))
+	describeSelection()
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not building or gameProcessed then
 		return
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		aim = nil
+		if not tool and not removing and selected and selected.kind == "belt" and target and not busy then
+			-- Belts build on release, so a drag lays a run of them.
+			dragStart = { gx = target.gx, gz = target.gz }
+			dragRun = nil
+			return
+		end
 		act()
 	elseif input.UserInputType == Enum.UserInputType.Touch then
 		-- On a touch screen a tap moves the ghost; PLACE builds it.

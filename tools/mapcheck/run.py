@@ -32,6 +32,7 @@ MODULES = {
     "Shared.Config.Weather": "shared/Config/Weather.luau",
     "Services.Weather": "server/Services/Weather.luau",
     "Services.RegionEvents": "server/Services/RegionEvents.luau",
+    "Services.Wilds": "server/Services/Wilds.luau",
 }
 
 

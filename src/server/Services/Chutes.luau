@@ -24,6 +24,7 @@ local Chutes = {}
 
 local BALE = Vector3.new(4.6, 2.6, 3.2) -- Bales.luau SIZE: lying lengthwise in a bed, 3.2 across and 4.6 along
 local SLOT_ACROSS, SLOT_ALONG = 3.25, 4.7
+local ROAD_CLEAR = 18 -- from a road's center line to a field chute's center: half a road plus the chute's half width
 
 local chutes = {}
 
@@ -252,8 +253,9 @@ local function spotFor(field, WorldShape)
 				break
 			end
 		end
+		-- Close to a road so a truck can pull in, but never standing on it.
 		local road = WorldShape.nearestRoad(p.X, p.Z)
-		if flat and road and (not bestRoad or road < bestRoad) then
+		if flat and road and road >= ROAD_CLEAR and (not bestRoad or road < bestRoad) then
 			best, bestRoad = CFrame.lookAt(Vector3.new(p.X, h, p.Z), Vector3.new(p.X, h, p.Z) + lane), road
 		end
 	end
