@@ -206,6 +206,14 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
+-- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
+-- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
+-- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+Prices.Trade = {
+	Fee = 25, -- per side, per trade
+	CashShare = 0.05, -- of the cash a side gives
+}
+
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
 -- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
 -- Longstitch Highway, stay free.
