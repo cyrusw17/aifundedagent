@@ -197,6 +197,7 @@ local function stateFrom(saved)
 			needles = countMap(saved.land.needles),
 			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
 			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
+			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
 		}
 	end
 	return state

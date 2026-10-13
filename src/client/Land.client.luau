@@ -509,6 +509,25 @@ local function cellsFor(def, gx, gz, dir)
 	return cells
 end
 
+-- The belt levels a piece takes, as on the server: a ramp both, a raised belt level 1, the rest the ground.
+local function levelsOf(def)
+	if def.kind == "ramp" then
+		return { 0, 1 }
+	end
+	return { def.level or 0 }
+end
+
+local function cellKey(x, z, level)
+	return level > 0 and ("%d,%d,%d"):format(x, z, level) or (x .. "," .. z)
+end
+
+local function withLevels(cells, levels)
+	for _, cell in cells do
+		cell[3] = levels
+	end
+	return cells
+end
+
 local function takenSet(info)
 	local set = {}
 	for k in string.gmatch(info:GetAttribute("Taken") or "", "[^;]+") do
@@ -588,9 +607,11 @@ local function updateGhost()
 	if tool == "move" and moving then
 		local def = pieceDefs[moving.id]
 		for _, cell in cellsFor(def, moving.gx, moving.gz, moving.dir) do
-			own[cell[1] .. "," .. cell[2]] = true
+			for _, level in levelsOf(def) do
+				own[cellKey(cell[1], cell[2], level)] = true
+			end
 		end
-		cells = cellsFor(def, gx, gz, dir)
+		cells = withLevels(cellsFor(def, gx, gz, dir), levelsOf(def))
 	elseif tool == "copy" then
 		local sx, sz = copyStart and copyStart.gx or gx, copyStart and copyStart.gz or gz
 		for x = math.min(sx, gx), math.max(sx, gx) do
@@ -602,7 +623,8 @@ local function updateGhost()
 	elseif tool == "paste" then
 		if clipboard then
 			for _, entry in clipboard.list do
-				for _, cell in cellsFor(pieceDefs[entry.id], gx + entry.dx, gz + entry.dz, entry.dir) do
+				local def = pieceDefs[entry.id]
+				for _, cell in withLevels(cellsFor(def, gx + entry.dx, gz + entry.dz, entry.dir), levelsOf(def)) do
 					table.insert(cells, cell)
 				end
 			end
@@ -613,17 +635,22 @@ local function updateGhost()
 		end
 		showArrow = false
 	elseif tool == "move" or removing then
-		cells = { { gx, gz } }
+		cells = { { gx, gz, { 0, 1 } } }
 		picking = true
 		showArrow = false
 	else
-		cells = cellsFor(selected, gx, gz, dir)
+		cells = withLevels(cellsFor(selected, gx, gz, dir), levelsOf(selected))
 		cost = selected.price
 	end
 	for _, cell in cells do
 		local x, z = cell[1], cell[2]
-		local k = x .. "," .. z
-		local free = not taken[k] or own[k]
+		local free = true
+		for _, level in cell[3] or {} do
+			local k = cellKey(x, z, level)
+			if taken[k] and not own[k] then
+				free = false
+			end
+		end
 		if not onPlot(x, z) or (picking and free) or (not picking and tool ~= "copy" and not free) then
 			valid = false
 		end

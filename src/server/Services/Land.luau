@@ -52,8 +52,38 @@ local vehiclesFolder = nil
 local part = Machines.part
 local sign = Machines.sign
 
-local function key(gx, gz)
+-- A tile's key, as Conveyors.luau keys its grid: "gx,gz" on the ground, "gx,gz,1" on the raised belt level.
+local addBinPrompt -- defined with the plot setup below
+
+local function key(gx, gz, level)
+	if level and level > 0 then
+		return ("%d,%d,%d"):format(gx, gz, level)
+	end
 	return gx .. "," .. gz
+end
+
+-- The belt levels a piece takes: a ramp both, a raised belt level 1, everything else the ground.
+local function levelsOf(def)
+	if def.kind == "ramp" then
+		return { 0, 1 }
+	end
+	return { def.level or 0 }
+end
+
+-- The piece at a tile, the raised one first (it is the one on top).
+local function itemAt(plot, gx, gz)
+	return plot.taken[key(gx, gz, 1)] or plot.taken[key(gx, gz)]
+end
+
+-- The piece with this id anchored at (gx, gz), on either level.
+local function anchoredAt(plot, id, gx, gz)
+	for _, level in { 1, 0 } do
+		local item = plot.taken[key(gx, gz, level)]
+		if item and item.id == id and item.gx == gx and item.gz == gz then
+			return item
+		end
+	end
+	return nil
 end
 
 local function step(dir)
@@ -427,10 +457,12 @@ end
 local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
-	if def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
+	if def.kind == "ramp" then
+		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
-			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir)
+			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
 			table.insert(item.instances, belt.Parent)
 		end
 	end
@@ -455,20 +487,29 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, buildBlueprint(plot, item, def))
 	end
 	for _, cell in item.cells do
-		plot.taken[key(cell[1], cell[2])] = item
+		for _, level in levelsOf(def) do
+			plot.taken[key(cell[1], cell[2], level)] = item
+		end
 	end
 	table.insert(plot.list, item)
 	return item
 end
 
 local function destroyItem(plot, item)
+	local models = {}
 	for _, instance in item.instances do
+		models[instance] = true
 		instance:Destroy()
 	end
-	for _, cell in item.cells do
-		local k = key(cell[1], cell[2])
-		plot.taken[k] = nil
-		plot.grid.tiles[k] = nil
+	for k, it in plot.taken do
+		if it == item then
+			plot.taken[k] = nil
+		end
+	end
+	for k, tile in plot.grid.tiles do
+		if models[tile.model] then
+			plot.grid.tiles[k] = nil
+		end
 	end
 	local i = table.find(plot.list, item)
 	if i then
@@ -486,8 +527,21 @@ end
 local function fits(plot, def, gx, gz, dir, ignore)
 	for _, cell in cellsFor(def, gx, gz, dir) do
 		local x, z = cell[1], cell[2]
-		local taken = plot.taken[key(x, z)]
-		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or (taken and taken ~= ignore) then
+		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z then
+			return false
+		end
+		for _, level in levelsOf(def) do
+			local taken = plot.taken[key(x, z, level)]
+			if taken and taken ~= ignore then
+				return false
+			end
+		end
+		-- Only a plain belt runs under a raised belt; machines are too tall.
+		local below, above = plot.taken[key(x, z)], plot.taken[key(x, z, 1)]
+		if def.level == 1 and below and below ~= ignore and pieces[below.id].kind ~= "belt" then
+			return false
+		end
+		if def.kind ~= "ramp" and (def.level or 0) == 0 and def.kind ~= "belt" and above and above ~= ignore then
 			return false
 		end
 		if rowFromBack(plot, z) < (plot.locked or 0) then
@@ -515,6 +569,7 @@ local function saveItems(player, plot)
 	s.land.items = items
 	s.land.plot = plot.index
 	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
+	s.land.binSorted = plot.binSorted or nil
 	s.land.needles = plot.bin.contents(player.UserId)
 	local crew = {}
 	for userId in plot.crew do
@@ -583,6 +638,42 @@ local function drawLocks(plot)
 	end
 end
 
+-- The owner can buy dividers that sort the plot's needle bin by type.
+addBinPrompt = function(plot)
+	local floor = plot.bin.model:FindFirstChild("Floor")
+	if not floor then
+		return
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DividerPrompt"
+	prompt.ActionText = ("Add type dividers $%d"):format(LandConfig.BinDividersPrice)
+	prompt.ObjectText = "Needle bin"
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = floor
+	prompt.Triggered:Connect(function(player)
+		if plot.owner ~= player then
+			Data.toast(player, "Only the farm's owner can add dividers to its bin.")
+			return
+		end
+		if plot.binSorted then
+			return
+		end
+		local paid, why = Bank.charge(player, LandConfig.BinDividersPrice, "Land: bin dividers")
+		if not paid then
+			Data.toast(player, why or "Not enough money.")
+			return
+		end
+		plot.binSorted = true
+		plot.bin.splitByType()
+		prompt.Enabled = false
+		saveItems(player, plot)
+		Data.toast(player, "Your needle bin now sorts needles into a corner per type.")
+	end)
+	plot.binPrompt = prompt
+end
+
 local function release(plot)
 	if plot.owner then
 		plotOf[plot.owner] = nil
@@ -596,7 +687,14 @@ local function release(plot)
 		end
 	end
 	clearPlot(plot)
-	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
+	plot.bin.clear()
+	if plot.binSorted then
+		-- Dividers belong to the owner's save; the next owner gets a plain bin.
+		plot.bin.model:Destroy()
+		plot.bin = Machines.needleBin(plot.model, plot.binFrame)
+		plot.binSorted = nil
+		addBinPrompt(plot)
+	end -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
 	plot.crew = {}
 	plot.locked = 0
@@ -624,6 +722,13 @@ local function claim(plot, player, saved)
 	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
+	if saved.binSorted then
+		plot.binSorted = true
+		plot.bin.splitByType()
+		if plot.binPrompt then
+			plot.binPrompt.Enabled = false
+		end
+	end
 	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
 		if typeof(userId) == "number" and userId ~= player.UserId then
 			plot.crew[userId] = true
@@ -757,7 +862,7 @@ local function onRemove(player, gx, gz)
 	if not isCell(gx) or not isCell(gz) then
 		return false, nil
 	end
-	local item = plot.taken[key(gx, gz)]
+	local item = itemAt(plot, gx, gz)
 	if not item then
 		return false, "Nothing built there."
 	end
@@ -783,7 +888,7 @@ end
 -- The piece covering a tile: { id, gx, gz, dir } of its anchor, so the client can pick it up to move it.
 local function onPick(player, gx, gz)
 	local plot = plotOf[player]
-	local item = plot and isCell(gx) and isCell(gz) and plot.taken[key(gx, gz)]
+	local item = plot and isCell(gx) and isCell(gz) and itemAt(plot, gx, gz)
 	if not item then
 		return false, "Nothing built there."
 	end
@@ -800,7 +905,10 @@ local function onMove(player, fromX, fromZ, gx, gz, dir)
 	if not isCell(fromX) or not isCell(fromZ) or not isCell(gx) or not isCell(gz) or typeof(dir) ~= "string" or not Conveyors.Dirs[dir] then
 		return false, nil
 	end
-	local item = plot.taken[key(fromX, fromZ)]
+	local item = itemAt(plot, fromX, fromZ)
+	if item and (item.gx ~= fromX or item.gz ~= fromZ) then
+		item = plot.taken[key(fromX, fromZ)]
+	end
 	if not item or item.gx ~= fromX or item.gz ~= fromZ then
 		return false, "That piece isn't there any more."
 	end
@@ -861,11 +969,13 @@ local function onPaste(player, list, gx, gz)
 			return false, "Part of that doesn't fit there."
 		end
 		for _, cell in cellsFor(def, ax, az, entry.dir) do
-			local k = key(cell[1], cell[2])
-			if claimed[k] then
-				return false, "Part of that doesn't fit there."
+			for _, level in levelsOf(def) do
+				local k = key(cell[1], cell[2], level)
+				if claimed[k] then
+					return false, "Part of that doesn't fit there."
+				end
+				claimed[k] = true
 			end
-			claimed[k] = true
 		end
 		total += def.price
 		table.insert(todo, { def = def, gx = ax, gz = az, dir = entry.dir })
@@ -899,8 +1009,8 @@ local function onUndo(player)
 	if entry.kind == "place" then
 		local gone, back = 0, 0
 		for _, a in entry.anchors do
-			local item = plot.taken[key(a.gx, a.gz)]
-			if item and item.id == a.id and item.gx == a.gx and item.gz == a.gz then
+			local item = anchoredAt(plot, a.id, a.gx, a.gz)
+			if item then
 				destroyItem(plot, item)
 				gone += 1
 				back += a.price -- pieces removed since were already refunded, so only those still standing count
@@ -927,9 +1037,9 @@ local function onUndo(player)
 		afterEdit(player, plot)
 		return true, ("Put the %s back."):format(def.name:lower())
 	elseif entry.kind == "move" then
-		local item = plot.taken[key(entry.to.gx, entry.to.gz)]
+		local item = anchoredAt(plot, entry.id, entry.to.gx, entry.to.gz)
 		local def = pieces[entry.id]
-		if not item or item.id ~= entry.id or item.gx ~= entry.to.gx or item.gz ~= entry.to.gz
+		if not item
 			or not fits(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, item) then
 			return false, "Can't move it back now."
 		end
@@ -1114,11 +1224,13 @@ local function buildPlot(parent, index, def)
 		ownerName = nil,
 		grid = Conveyors.newGrid(model, corner),
 		bin = Machines.needleBin(model, binFrame),
+		binFrame = binFrame,
 		list = {},
 		taken = {},
 		crew = {},
 	}
 	plots[index] = plot
+	addBinPrompt(plot)
 	likePrompt.Triggered:Connect(function(player)
 		local ownerId = plot.ownerId
 		if not ownerId then

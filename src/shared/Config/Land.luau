@@ -26,6 +26,7 @@ return {
 	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
 	ExpansionRows = 2,
 	ExpansionPrice = Prices.PlotExpansion,
+	BinDividersPrice = Prices.BinDividers, -- the needle bin's type dividers (Machines bin.splitByType)
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
 	OfficeCenter = Vector3.new(-20, 0, 49),
@@ -43,6 +44,9 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "raised_belt", kind = "belt", level = 1, name = "Raised belt", price = Prices.Pieces.raised_belt, size = { 1, 1 }, blurb = "A belt on stilts, high enough for a loaded belt to run underneath." },
+		{ id = "ramp_up", kind = "ramp", up = true, name = "Ramp up", price = Prices.Pieces.ramp_up, size = { 1, 2 }, blurb = "Two tiles long. Lifts loads from the ground belts up to raised belts." },
+		{ id = "ramp_down", kind = "ramp", up = false, name = "Ramp down", price = Prices.Pieces.ramp_down, size = { 1, 2 }, blurb = "Two tiles long. Brings loads from raised belts back down to the ground." },
 		{ id = "splitter", kind = "splitter", rule = "alternate", name = "Splitter", price = Prices.Pieces.splitter, size = { 1, 1 }, blurb = "Sends loads out its left and right sides in turn. Put belts on both sides." },
 		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
