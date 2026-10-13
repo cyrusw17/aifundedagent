@@ -170,6 +170,45 @@ local function spawnSortedBale(cframe, ownerId, hay, hayType)
 end
 Machines.spawnSortedBale = spawnSortedBale
 
+-- Price holds (CEO #26): a player can tell their needle bins to keep their needles until this server's market pays a
+-- share of list price. state.needleHold is an index into HOLD_STEPS (nil or 0 is off, sell at any price).
+local HOLD_STEPS = { 1, 1.05, 1.1, 1.15 } -- the market swings 0.8 to 1.2 of list (Prices.Market.Swing)
+
+local function holdOf(player)
+	local state = Data.get(player)
+	local i = state and state.needleHold
+	return typeof(i) == "number" and HOLD_STEPS[i] or nil
+end
+
+-- Today's price of a plain B-grade needle of each type in byType, the market's arrow, as lines for a sign.
+local function priceLines(byType)
+	local ids = {}
+	for id in byType do
+		table.insert(ids, id)
+	end
+	table.sort(ids, function(a, b)
+		return byType[a] > byType[b]
+	end)
+	local lines = ""
+	for i = 1, math.min(#ids, 4) do
+		local id = ids[i]
+		local m = Market.multiplier(id)
+		local arrow = m > 1.02 and "▲" or m < 0.98 and "▼" or "•"
+		lines ..= ("\n%s $%d %s%d%%"):format(Needle.info(id).name, math.floor(Needle.priceOf(id) + 0.5), arrow, math.round((m - 1) * 100))
+	end
+	return lines
+end
+
+-- "30 Steel until $55 (now $48)" for each type a hold kept back.
+local function heldText(held, hold)
+	local parts = {}
+	for id, count in held do
+		local info = Needle.info(id)
+		table.insert(parts, ("%d %s until $%d (now $%d)"):format(count, info.name, math.ceil(info.sortedValue * hold), math.floor(Needle.priceOf(id) + 0.5)))
+	end
+	return #parts > 0 and table.concat(parts, ", ") or nil
+end
+
 -- Needle bin: one cell, open on top. Sorters throw real needles into it (Needle.luau) and they pile up.
 -- It comes with a SELL NEEDLES pad in front (local +Z side) that pays the full sorted price for your needles in the
 -- bin and any you picked up and carry.
@@ -189,13 +228,20 @@ function Machines.needleBin(parent, frame)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
 	local corners = nil -- needleId -> corner index, once the needle-type splitter is fitted
+	local padLabel = nil -- the SELL NEEDLES pad's sign, set once the pad is built below
 	local function refresh()
 		Needle.bundleIn(inside, insideSize)
 		local count = 0
+		local byType = {}
 		for _, n in Needle.inBox(inside, insideSize) do
 			count += Needle.count(n)
+			local id = n:GetAttribute("NeedleId") or Needle.default.id
+			byType[id] = (byType[id] or 0) + Needle.count(n)
 		end
 		label.Text = ("NEEDLE BIN\n%d needles%s"):format(count, corners and ", by type" or "")
+		if padLabel then
+			padLabel.Text = "SELL NEEDLES\nbin and pocket" .. priceLines(byType)
+		end
 	end
 	refresh()
 	task.spawn(function()
@@ -323,27 +369,107 @@ function Machines.needleBin(parent, frame)
 		end
 	end
 
+	-- Sells the player's needles in the bin, except types their price hold keeps back. Each sale lowers the market as
+	-- it goes, so a big pile can stop partway once the price drops under the hold. Returns count, value, { [id] = held }.
+	local function sellFromBin(player)
+		local hold = holdOf(player)
+		local count, value, held = 0, 0, {}
+		for _, n in Needle.inBox(inside, insideSize) do
+			if n:GetAttribute("OwnerId") == player.UserId then
+				local id = n:GetAttribute("NeedleId") or Needle.default.id
+				if hold and Market.multiplier(id) < hold then
+					held[id] = (held[id] or 0) + Needle.count(n)
+				else
+					count += Needle.count(n)
+					value += Needle.value(n)
+					Market.sold(id, Needle.count(n))
+					n:Destroy()
+				end
+			end
+		end
+		return count, value, held
+	end
+
 	function bin.sell(player)
 		if not Data.get(player) then
 			return -- save still loading: selling now would take needles it can't pay for
 		end
 		local count, value = Needle.sellHeld(player)
-		for _, n in Needle.inBox(inside, insideSize) do
-			if n:GetAttribute("OwnerId") == player.UserId then
-				count += Needle.count(n)
-				value += Needle.value(n)
-				Market.sold(n:GetAttribute("NeedleId"), Needle.count(n))
-				n:Destroy()
-			end
-		end
+		local inBin, binValue, held = sellFromBin(player)
+		count += inBin
+		value += binValue
 		refresh()
+		local holding = heldText(held, holdOf(player) or 1)
 		if count == 0 then
-			Data.toast(player, "You have no needles in this bin or your pocket. Run some hay through a sorter.")
+			Data.toast(player, holding and ("Holding %s. Change the hold at the bin to sell now."):format(holding)
+				or "You have no needles in this bin or your pocket. Run some hay through a sorter.")
 			return
 		end
-		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
+		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d.%s"):format(count, value, holding and (" Holding " .. holding .. ".") or ""), "Sorted needles")
 		Events.fire(player, "needles_sold", count)
 	end
+
+	-- Held needles sell by themselves once the market reaches the hold (only while their owner is in the game).
+	task.spawn(function()
+		while model.Parent do
+			task.wait(5)
+			for _, player in Players:GetPlayers() do
+				local hold = holdOf(player)
+				if not hold then
+					continue
+				end
+				local ready = false
+				for _, n in Needle.inBox(inside, insideSize) do
+					if n:GetAttribute("OwnerId") == player.UserId and Market.multiplier(n:GetAttribute("NeedleId") or Needle.default.id) >= hold then
+						ready = true
+						break
+					end
+				end
+				if ready then
+					local count, value = sellFromBin(player)
+					if count > 0 then
+						refresh()
+						Machines.pay(player.UserId, value, ("The market hit your price: your bin sold %d needles for $%d."):format(count, value), "Sorted needles")
+						Events.fire(player, "needles_sold", count)
+					end
+				end
+			end
+		end
+	end)
+
+	-- Cycles the player's price hold: off, then at list price, then 5%, 10% and 15% over it.
+	local holdPrompt = Instance.new("ProximityPrompt")
+	holdPrompt.Name = "PriceHold"
+	holdPrompt.ActionText = "Change price hold"
+	holdPrompt.ObjectText = "Needle bin"
+	holdPrompt.HoldDuration = 0.2
+	holdPrompt.MaxActivationDistance = 9
+	holdPrompt.RequiresLineOfSight = false
+	holdPrompt.Parent = model.Floor
+	holdPrompt.Triggered:Connect(function(player)
+		local state = Data.get(player)
+		if not state then
+			return
+		end
+		local i = typeof(state.needleHold) == "number" and state.needleHold or 0
+		i = (i + 1) % (#HOLD_STEPS + 1)
+		state.needleHold = i ~= 0 and i or nil
+		local hold = HOLD_STEPS[i]
+		if not hold then
+			Data.toast(player, "Price hold off: SELL NEEDLES sells at today's price.")
+			return
+		end
+		local mine = {}
+		for _, n in Needle.inBox(inside, insideSize) do
+			if n:GetAttribute("OwnerId") == player.UserId then
+				local id = n:GetAttribute("NeedleId") or Needle.default.id
+				mine[id] = (mine[id] or 0) + Needle.count(n)
+			end
+		end
+		local example = heldText(mine, hold)
+		Data.toast(player, ("Your bins hold needles until they pay %d%% of list%s. They sell by themselves when it gets there."):format(
+			math.round(hold * 100), example and (": " .. example) or ""))
+	end)
 
 	-- Drops one existing needle (a visible one a sorter caught) into the bin as it is.
 	function bin.put(ownerId, needleId, mult, polished, grade)
@@ -453,7 +579,9 @@ function Machines.needleBin(parent, frame)
 	end
 
 	bin.model = model
-	Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, "SELL NEEDLES\nbin and pocket", bin.sell)
+	local _, padSign = Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, "SELL NEEDLES\nbin and pocket", bin.sell)
+	padLabel = padSign
+	refresh()
 	return bin
 end
 

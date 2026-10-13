@@ -117,9 +117,22 @@ return function(SelfTest)
 		t.equal("4 thrown needles landed in the bin", total(GHOST - 1), 4)
 		local player = t.player(2)
 		if player and require(Services.Data).get(player) then
+			local state = require(Services.Data).get(player)
+			local hadHold = state.needleHold
+			-- A price hold above what the market can pay (1.2 of list) keeps the needles in the bin.
+			state.needleHold = 4
 			bin.add(Conveyors.cellCenter(grid, 1, 0) + Vector3.new(0, 8, 0), player.UserId, 2, "steel")
 			t.wait(3)
+			local Market = require(Services.Market)
+			if Market.multiplier("steel") < 1.15 then
+				bin.sell(player)
+				t.equal("a price hold keeps needles under the target", total(player.UserId), 2)
+			else
+				t.skip("a price hold keeps needles", "steel is above the top hold on this server right now")
+			end
+			state.needleHold = nil
 			bin.sell(player)
+			state.needleHold = hadHold
 			t.equal("SELL NEEDLES takes the seller's needles", total(player.UserId), 0)
 			t.equal("and leaves everyone else's", total(GHOST - 1), 4)
 		else
