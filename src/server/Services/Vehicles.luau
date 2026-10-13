@@ -13,6 +13,7 @@ local CollectionService = game:GetService("CollectionService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rustic = require(Shared.Config.Rustic)
 local Trucks = require(Shared.Config.Trucks)
+local TrailerDefs = require(Shared.Config.Trailers)
 local Props = require(script.Parent.Props)
 local Bales = require(script.Parent.Bales)
 
@@ -62,7 +63,13 @@ end
 local ROLLER = PhysicalProperties.new(0.7, 0, 0, 100, 1) -- wheels slide over the ground; the drive force moves them
 local BED_GRIP = PhysicalProperties.new(0.7, 0.9, 0, 1, 1) -- with a bale's 1.2 grip, cargo holds through normal driving
 
+local HITCH_Y = 2.2 -- height of every hitch ball and trailer coupler above level ground
+local BALE_LONG, BALE_WIDE = 4.6, 3.2
+local WALL_T = 0.35 -- bed wall thickness
+
 local owned = {} -- player -> their truck model
+local ownedTrailers = {} -- player -> their trailer model
+local spawnFolder = nil -- where spawned player vehicles go (Vehicles.init)
 
 function Vehicles.get(id)
 	for _, def in Trucks do
@@ -82,7 +89,6 @@ function Vehicles.build(def, pivot, parent)
 	local paint = Rustic[def.paint] or Rustic.PaintRed
 	local L = def.length
 	local front = -L / 2
-	local body = {} -- parts whose look the Blender mesh replaces
 	local S = shapeOf(def)
 	local WHEEL_RADIUS, TRACK, DECK, HOOD, BED_W = S.wheel, S.track, S.deck, S.hood, S.bedW
 	local CAB_W, CAB_H, CAB_D = S.cabW, S.cabH, S.cabD
@@ -103,7 +109,6 @@ function Vehicles.build(def, pivot, parent)
 			p.Shape = shape
 		end
 		p.Parent = model
-		table.insert(body, p)
 		return p
 	end
 	local function box(name, size, x, y, z, color, material, collide)
@@ -255,13 +260,16 @@ function Vehicles.build(def, pivot, parent)
 	local meshSize = S.meshSize or Vector3.new(6, cabTop, L + 0.6)
 	local mesh = Props.make(def.id, pivot * CFrame.new(0, meshSize.Y / 2, 0), meshSize, def.meshTurn and CFrame.Angles(0, math.rad(def.meshTurn), 0))
 	if mesh then
-		for _, p in body do
-			if p ~= chassis then
-				p.Transparency = 1
-			end
-		end
-		Props.weldTo(mesh, chassis)
+		-- The parts stay visible until this client has loaded the mesh (PropMeshes.client.luau), then hide.
+		Props.weldTo(mesh, chassis, model)
 	end
+
+	-- Hitch ball behind the rear bumper. Trailers couple to it (Vehicles.hitch). It never collides, so a tight
+	-- turn cannot snag the coupler on it.
+	local hitchZ = L / 2 + 0.9
+	box("Drawbar", Vector3.new(0.5, 0.4, 1.4), 0, HITCH_Y - 0.35, L / 2 + 0.3, Rustic.Metal, Enum.Material.Metal, false)
+	add("HitchBall", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, HITCH_Y, hitchZ), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Ball, false)
+	model:SetAttribute("HitchOffset", CFrame.new(0, HITCH_Y - (DECK - 0.4), hitchZ)) -- from the chassis center
 
 	model:SetAttribute("Wheels", #wheels)
 	model:SetAttribute("Length", L)
@@ -341,6 +349,11 @@ function Vehicles.makeDrivable(model, owner)
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "DriveAttachment"
 	attachment.Parent = chassis
+
+	local hitch = Instance.new("Attachment")
+	hitch.Name = "HitchAttachment"
+	hitch.CFrame = model:GetAttribute("HitchOffset") or CFrame.new(0, 0, def.length / 2 + 0.9)
+	hitch.Parent = chassis
 
 	local drive = Instance.new("LinearVelocity")
 	drive.Name = "Drive"
@@ -422,6 +435,261 @@ function Vehicles.setTailgate(model, open)
 	return true
 end
 
+-- Trailers -------------------------------------------------------------------------------------------------------
+-- A trailer is its own physics body: a bed on real wheels that spin on hinges, so it rolls along behind the truck
+-- and resists sliding sideways like a real one. A ball joint at the hitch is the only link to the truck, so it
+-- swings through turns and follows the ground on its own. Bales ride loose in the bed, exactly as in a truck.
+
+function Vehicles.getTrailer(id)
+	for _, def in TrailerDefs do
+		if def.id == id then
+			return def
+		end
+	end
+	return nil
+end
+
+local function trailerSize(def)
+	local inside = Vector3.new(def.across * BALE_WIDE + 0.6, def.wall, def.length or def.along * BALE_LONG + 0.8)
+	return inside, inside.X + WALL_T * 2, inside.Z + WALL_T * 2
+end
+
+-- Builds a trailer with its bed centered over pivot (on the ground, tongue toward pivot's LookVector). Anchored
+-- until makeTrailerLive.
+function Vehicles.buildTrailer(def, pivot, parent)
+	local model = Instance.new("Model")
+	model.Name = def.name
+	model:SetAttribute("TrailerId", def.id)
+	local inside, W, L = trailerSize(def)
+	local floorTop = DEFAULT_SHAPE.bedFloor
+	local sideColor = Rustic[def.color] or Rustic.Wood
+	local sideMaterial = def.color == "Metal" and Enum.Material.Metal or Enum.Material.WoodPlanks
+	local front = -L / 2
+
+	local function box(name, size, x, y, z, color, material, collide)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = pivot * CFrame.new(x, y, z)
+		p.Color = color
+		p.Material = material
+		p.Anchored = true
+		p.CanCollide = collide ~= false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = model
+		return p
+	end
+
+	-- The frame rails under the floor; the chassis between them is the trailer's root and carries its weight.
+	local railX = math.min(W * 0.32, 2.4)
+	local railY = floorTop - 0.4 - 0.3
+	local chassis = box("TrailerChassis", Vector3.new(railX * 2, 0.6, L - 1), 0, railY, 0, Rustic.Metal, Enum.Material.Metal, false)
+	chassis.Transparency = 1
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(1.5, 0.3, 0, 1, 1)
+	model.PrimaryPart = chassis
+	for _, side in { -1, 1 } do
+		box("Rail", Vector3.new(0.4, 0.6, L), side * railX, railY, 0, Rustic.Metal, Enum.Material.Metal)
+	end
+
+	-- The bed: floor, sides, a front wall and a tailgate the dock can fold down (setTailgate).
+	local floor = box("BedFloor", Vector3.new(W, 0.4, L), 0, floorTop - 0.2, 0, Rustic.WoodDark, Enum.Material.WoodPlanks)
+	floor.CustomPhysicalProperties = BED_GRIP
+	for _, side in { -1, 1 } do
+		local wall = box("BedSide", Vector3.new(WALL_T, def.wall, L), side * (W / 2 - WALL_T / 2), floorTop + def.wall / 2, 0, sideColor, sideMaterial)
+		wall.CustomPhysicalProperties = BED_GRIP
+	end
+	box("BedFront", Vector3.new(W, def.wall, WALL_T), 0, floorTop + def.wall / 2, front + WALL_T / 2, sideColor, sideMaterial)
+	local tailZ = L / 2 - WALL_T / 2
+	local tailgate = box("Tailgate", Vector3.new(W, def.wall, WALL_T), 0, floorTop + def.wall / 2, tailZ, sideColor, sideMaterial)
+	tailgate.CustomPhysicalProperties = BED_GRIP
+	CollectionService:AddTag(tailgate, "Tailgate")
+	model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + def.wall / 2 - railY, tailZ))
+	model:SetAttribute(
+		"TailgateOpen",
+		CFrame.new(0, floorTop - WALL_T / 2 - railY, L / 2 + def.wall / 2) * CFrame.Angles(math.pi / 2, 0, 0)
+	)
+	local zoneH = math.max(6, def.wall + 2) -- tall racks hold three layers
+	model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + zoneH / 2 - railY, 0))
+	model:SetAttribute("CargoSize", Vector3.new(inside.X - 0.4, zoneH, inside.Z - 0.4))
+	for _, side in { -1, 1 } do
+		box("Reflector", Vector3.new(0.6, 0.3, 0.1), side * (W / 2 - 0.6), floorTop - 0.5, L / 2 + 0.05, Rustic.PaintRed, Enum.Material.Neon, false)
+	end
+
+	-- Wheels tucked under the bed, on hinges added by makeTrailerLive.
+	local wheelX = railX + 0.35 + 0.5
+	for _, dz in def.axles do
+		box("Axle", Vector3.new(wheelX * 2 - 0.4, 0.3, 0.3), 0, def.wheel, dz, Rustic.Metal, Enum.Material.Metal, false)
+		for _, side in { -1, 1 } do
+			local wheel = box("Wheel", Vector3.new(0.9, def.wheel * 2, def.wheel * 2), side * wheelX, def.wheel, dz, Rustic.Tire, Enum.Material.SmoothPlastic)
+			wheel.Shape = Enum.PartType.Cylinder
+			wheel.CustomPhysicalProperties = PhysicalProperties.new(0.7, 1, 0, 1, 1)
+			box("Hub", Vector3.new(0.95, def.wheel * 0.8, def.wheel * 0.8), side * (wheelX + 0.02), def.wheel, dz, Rustic.Metal, Enum.Material.Metal, false).Shape =
+				Enum.PartType.Cylinder
+		end
+	end
+
+	-- A-frame tongue to the coupler, and a jack foot that props the nose up when it is unhitched. Neither
+	-- collides near the truck, so a sharp turn swings the trailer instead of jamming it.
+	local tipZ = front - def.tongue
+	local tip = Vector3.new(0, HITCH_Y, tipZ)
+	for _, side in { -1, 1 } do
+		local from = Vector3.new(side * railX, railY, front + 0.6)
+		local beam = box("Tongue", Vector3.new(0.4, 0.4, (tip - from).Magnitude), 0, 0, 0, Rustic.Metal, Enum.Material.Metal, false)
+		beam.CFrame = pivot * CFrame.lookAt((from + tip) / 2, tip)
+	end
+	box("Coupler", Vector3.new(0.8, 0.5, 1.0), 0, HITCH_Y + 0.1, tipZ, Rustic.Metal, Enum.Material.Metal, false)
+	local jackZ = tipZ + def.tongue * 0.35
+	box("JackPost", Vector3.new(0.35, HITCH_Y - 0.4, 0.35), 0.5, (HITCH_Y - 0.4) / 2 + 0.6, jackZ, Rustic.Metal, Enum.Material.Metal, false)
+	box("JackFoot", Vector3.new(0.9, 0.2, 0.9), 0.5, 0.7, jackZ, Rustic.Metal, Enum.Material.Metal)
+	model:SetAttribute("CouplerOffset", CFrame.new(0, HITCH_Y - railY, tipZ)) -- from the chassis center
+	model:SetAttribute("Length", L + def.tongue)
+
+	local mesh = Props.make(def.id, pivot * CFrame.new(0, (floorTop + def.wall) / 2, -def.tongue / 2), Vector3.new(W + 1.2, floorTop + def.wall, L + def.tongue))
+	if mesh then
+		Props.weldTo(mesh, chassis, model)
+	end
+
+	model.Parent = parent
+	return model
+end
+
+local function giveTrailerTo(trailer, player)
+	for _, p in trailer:GetDescendants() do
+		if p:IsA("BasePart") and not p.Anchored then
+			pcall(function()
+				p:SetNetworkOwner(player)
+			end)
+		end
+	end
+end
+
+-- Welds the bed into one body, puts the wheels on free hinges, adds the Hitch / Unhitch button and lets it go.
+function Vehicles.makeTrailerLive(model, owner)
+	local chassis = model.PrimaryPart
+	for _, p in model:GetChildren() do
+		if p:IsA("BasePart") and p ~= chassis then
+			if p.Name == "Wheel" then
+				local axle = Instance.new("Attachment")
+				axle.Name = "Axle"
+				axle.CFrame = chassis.CFrame:ToObjectSpace(p.CFrame)
+				axle.Parent = chassis
+				local hub = Instance.new("Attachment")
+				hub.Name = "Hub"
+				hub.Parent = p
+				local hinge = Instance.new("HingeConstraint")
+				hinge.Attachment0 = axle
+				hinge.Attachment1 = hub
+				hinge.Parent = p
+			else
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = chassis
+				weld.Part1 = p
+				weld.Parent = p
+				p.Massless = true
+			end
+			p.Anchored = false
+		end
+	end
+
+	local coupler = Instance.new("Attachment")
+	coupler.Name = "CouplerAttachment"
+	coupler.CFrame = model:GetAttribute("CouplerOffset")
+	coupler.Parent = chassis
+	local joint = Instance.new("BallSocketConstraint")
+	joint.Name = "Hitch"
+	joint.Attachment1 = coupler
+	joint.Enabled = false
+	joint.Parent = chassis
+
+	model:SetAttribute("OwnerId", owner.UserId)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "HitchPrompt"
+	prompt.ActionText = "Hitch"
+	prompt.ObjectText = owner.Name .. "'s trailer"
+	prompt.HoldDuration = 0.3
+	prompt.KeyboardKeyCode = Enum.KeyCode.H
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = model:FindFirstChild("Coupler") or chassis
+	prompt.Triggered:Connect(function(player)
+		if player ~= owner then
+			return
+		end
+		if model:GetAttribute("HitchedTo") then
+			Vehicles.unhitch(model)
+		else
+			local truck = owned[player]
+			local ball = truck and truck.PrimaryPart and truck.PrimaryPart:FindFirstChild("HitchAttachment")
+			if not ball or (ball.WorldPosition - coupler.WorldPosition).Magnitude > 8 then
+				prompt.ObjectText = "Back your truck up to it"
+				task.delay(2, function()
+					prompt.ObjectText = owner.Name .. "'s trailer"
+				end)
+				return
+			end
+			Vehicles.hitch(truck, model)
+		end
+	end)
+
+	chassis.Anchored = false
+	giveTrailerTo(model, owner)
+	return model
+end
+
+-- Couples a live trailer to a truck's hitch ball. The trailer slides over so the coupler sits on the ball first.
+function Vehicles.hitch(truck, trailer)
+	local ball = truck.PrimaryPart and truck.PrimaryPart:FindFirstChild("HitchAttachment")
+	local chassis = trailer.PrimaryPart
+	local coupler = chassis and chassis:FindFirstChild("CouplerAttachment")
+	local joint = chassis and chassis:FindFirstChild("Hitch")
+	if not ball or not coupler or not joint then
+		return false
+	end
+	trailer:PivotTo(CFrame.new(ball.WorldPosition - coupler.WorldPosition) * trailer:GetPivot())
+	joint.Attachment0 = ball
+	joint.Enabled = true
+	trailer:SetAttribute("HitchedTo", truck:GetAttribute("TruckId"))
+	local prompt = trailer:FindFirstChild("HitchPrompt", true)
+	if prompt then
+		prompt.ActionText = "Unhitch"
+	end
+	local owner = Players:GetPlayerByUserId(trailer:GetAttribute("OwnerId") or 0)
+	if owner and not truck.PrimaryPart.Anchored then
+		giveTrailerTo(trailer, owner)
+	end
+	return true
+end
+
+-- Drops the trailer off the hitch where it stands; its jack foot holds the nose up.
+function Vehicles.unhitch(trailer)
+	local joint = trailer.PrimaryPart and trailer.PrimaryPart:FindFirstChild("Hitch")
+	if joint then
+		joint.Enabled = false
+		joint.Attachment0 = nil
+	end
+	trailer:SetAttribute("HitchedTo", nil)
+	local prompt = trailer:FindFirstChild("HitchPrompt", true)
+	if prompt then
+		prompt.ActionText = "Hitch"
+	end
+end
+
+-- The player's trailer in the world, or nil.
+function Vehicles.trailerOf(player)
+	return ownedTrailers[player]
+end
+
+-- One trailer per player in the world. A new one replaces the old.
+function Vehicles.setOwnedTrailer(player, model)
+	local old = ownedTrailers[player]
+	if old and old ~= model then
+		old:Destroy()
+	end
+	ownedTrailers[player] = model
+end
+
 -- The player's truck in the world, or nil.
 function Vehicles.ownedBy(player)
 	return owned[player]
@@ -431,6 +699,11 @@ end
 function Vehicles.all()
 	local list = {}
 	for player, model in owned do
+		if model.Parent then
+			list[model] = player
+		end
+	end
+	for player, model in ownedTrailers do
 		if model.Parent then
 			list[model] = player
 		end
@@ -456,6 +729,10 @@ function Vehicles.release(model, owner)
 	pcall(function()
 		chassis:SetNetworkOwner(owner)
 	end)
+	local trailer = ownedTrailers[owner]
+	if trailer and trailer:GetAttribute("HitchedTo") == model:GetAttribute("TruckId") then
+		giveTrailerTo(trailer, owner)
+	end
 end
 
 -- One truck per player in the world. A new one replaces the old.
@@ -475,7 +752,7 @@ local riding = {} -- bale record -> true
 
 local function updateCargo()
 	local now = {}
-	for player, model in owned do
+	for model, player in Vehicles.all() do
 		local chassis = model.PrimaryPart
 		local offset, size = model:GetAttribute("CargoOffset"), model:GetAttribute("CargoSize")
 		-- While the dock unloads (tailgate open), the dock owns the cargo's physics; leave it alone.
@@ -510,11 +787,55 @@ local function updateCargo()
 	riding = now
 end
 
-function Vehicles.init()
+-- Puts a player's truck in the world ready to drive, parked at cframe (a spot on the ground; the truck faces its
+-- LookVector), with their trailer hitched behind it when opts.trailer names one. Replaces any truck and trailer they
+-- already had out. Used for saves that already own vehicles, e.g. by the land plots when a save loads:
+--   Vehicles.spawnOwned(player, "rusty_pickup", plotSpot, { trailer = "small_trailer" })
+-- Returns the truck and the trailer (or nil).
+function Vehicles.spawnOwned(player, truckId, cframe, opts)
+	opts = opts or {}
+	local def = Vehicles.get(truckId)
+	assert(def, "unknown truck " .. tostring(truckId))
+	local parent = opts.parent or spawnFolder or workspace
+	local truck = Vehicles.build(def, cframe, parent)
+	truck.Name = player.Name .. "'s " .. def.name
+	Vehicles.makeDrivable(truck, player)
+	Vehicles.setOwned(player, truck)
+
+	local trailer = nil
+	local trailerDef = opts.trailer and Vehicles.getTrailer(opts.trailer)
+	if trailerDef then
+		local _, _, bedLength = trailerSize(trailerDef)
+		local behind = def.length / 2 + 0.9 + trailerDef.tongue + bedLength / 2
+		trailer = Vehicles.buildTrailer(trailerDef, cframe * CFrame.new(0, 0, behind), parent)
+		trailer.Name = player.Name .. "'s " .. trailerDef.name
+		Vehicles.makeTrailerLive(trailer, player)
+		Vehicles.setOwnedTrailer(player, trailer)
+		Vehicles.hitch(truck, trailer)
+	elseif opts.trailer then
+		warn("[Needlewood] unknown trailer " .. tostring(opts.trailer))
+	end
+
+	Vehicles.release(truck, player)
+	local seat = truck:FindFirstChild("DriverSeat")
+	local prompt = seat and seat:FindFirstChild("DrivePrompt")
+	if prompt then
+		prompt.Enabled = true -- nobody is in it yet
+	end
+	return truck, trailer
+end
+
+-- folder: where player trucks and trailers go.
+function Vehicles.init(folder)
+	spawnFolder = folder
 	Players.PlayerRemoving:Connect(function(player)
 		if owned[player] then
 			owned[player]:Destroy()
 			owned[player] = nil
+		end
+		if ownedTrailers[player] then
+			ownedTrailers[player]:Destroy()
+			ownedTrailers[player] = nil
 		end
 	end)
 	task.spawn(function()
