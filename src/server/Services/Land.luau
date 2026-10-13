@@ -26,6 +26,7 @@ local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
 local Vehicles = require(script.Parent.Vehicles)
 local Likes = require(script.Parent.Likes)
+local Needle = require(script.Parent.Needle)
 
 local Land = {}
 
@@ -238,6 +239,135 @@ end
 
 -- Parking pad -------------------------------------------------------------------------------------------------------
 
+-- Blueprints: a see-through template that turns solid once it is filled. Bales dropped into it make thatch; needles
+-- used from your pocket at it make iron. item.stored counts what is in so far and item.fill is the material.
+local BLUEPRINT_GHOST = Color3.fromRGB(150, 185, 215)
+local FILLS = {
+	hay = { color = Color3.fromRGB(205, 182, 120), material = Enum.Material.Fabric, label = "thatch" },
+	needle = { color = Color3.fromRGB(128, 117, 105), material = Enum.Material.DiamondPlate, label = "iron" },
+}
+
+local function blueprintShape(frame, shape)
+	if shape == "post" then
+		return Vector3.new(1.2, 5, 1.2), frame * CFrame.new(0, 2.5, 0)
+	elseif shape == "wall" then
+		return Vector3.new(T, 6, 0.6), frame * CFrame.new(0, 3, T / 2 - 0.3)
+	end
+	return Vector3.new(T, 0.6, T), frame * CFrame.new(0, 0.3, 0)
+end
+
+-- Takes up to n needles from a player's pocket. Returns how many it took.
+local function takeNeedles(player, n)
+	local pocket = Needle.held(player)
+	local took = 0
+	for key, count in pocket do
+		local use = math.min(count, n - took)
+		pocket[key] = count - use > 0 and count - use or nil
+		took += use
+		if took >= n then
+			break
+		end
+	end
+	Data.sync(player)
+	return took
+end
+
+local function buildBlueprint(plot, item, def)
+	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
+	local model = Instance.new("Model")
+	model.Name = "Blueprint"
+	model.Parent = plot.items
+	local size, cframe = blueprintShape(frame, def.shape)
+	local body = part(model, "Body", size, cframe, BLUEPRINT_GHOST, Enum.Material.ForceField)
+	body.CanCollide = false
+	local label = sign(body, "", Vector3.new(0, 3, 0))
+	if not FILLS[item.fill] then
+		item.fill = nil
+	end
+
+	local function needed()
+		return item.fill == "needle" and def.needles or def.bales
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "FillPrompt"
+	prompt.ActionText = "Fill with needles"
+	prompt.ObjectText = def.name
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = body
+
+	local function refresh()
+		item.stored = math.clamp(item.stored or 0, 0, needed())
+		local done = item.stored >= needed()
+		if done then
+			local look = FILLS[item.fill]
+			body.Color = look.color
+			body.Material = look.material
+			body.Transparency = 0
+			body.CanCollide = true
+			label.Text = ""
+			prompt.Enabled = false
+		elseif item.fill then
+			body.Transparency = 0.45 - 0.3 * item.stored / needed()
+			label.Text = item.fill == "hay" and ("%d / %d bales"):format(item.stored, def.bales)
+				or ("%d / %d needles"):format(item.stored, def.needles)
+			prompt.Enabled = item.fill == "needle"
+		else
+			body.Transparency = 0.5
+			label.Text = ("BLUEPRINT\n%d bales or %d needles"):format(def.bales, def.needles)
+			prompt.Enabled = true
+		end
+		return done
+	end
+	refresh()
+
+	prompt.Triggered:Connect(function(player)
+		if plot.owner ~= player and not plot.crew[player.UserId] then
+			Data.toast(player, "Only the farm's owner and crew can fill its blueprints.")
+			return
+		end
+		if item.fill == "hay" then
+			Data.toast(player, "This one is being filled with bales. Drop bales into it.")
+			return
+		end
+		local took = takeNeedles(player, def.needles - (item.stored or 0))
+		if took == 0 then
+			Data.toast(player, "You have no needles in your pocket. Pick some up from a bin.")
+			return
+		end
+		item.fill = "needle"
+		item.stored = (item.stored or 0) + took
+		plot.dirty = true
+		if refresh() then
+			Data.toast(player, ("Built an iron %s."):format(def.shape))
+		end
+	end)
+
+	-- Bales dropped into the template fill it with thatch.
+	local intakeSize = size + Vector3.new(3, 4, 3)
+	task.spawn(function()
+		while model.Parent and (item.stored or 0) < needed() do
+			task.wait(0.3)
+			if item.fill ~= "needle" then
+				for _, p in Workspace:GetPartBoundsInBox(cframe, intakeSize) do
+					local b = Bales.fromPart(p)
+					if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and (item.stored or 0) < def.bales then
+						Bales.consume(b)
+						item.fill = "hay"
+						item.stored = (item.stored or 0) + 1
+						plot.dirty = true
+						if refresh() and plot.owner then
+							Data.toast(plot.owner, ("Built a thatch %s."):format(def.shape))
+						end
+					end
+				end
+			end
+		end
+	end)
+	return model
+end
+
 local function buildParking(plot, item, def)
 	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
 	local model = Instance.new("Model")
@@ -257,8 +387,8 @@ end
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
-local function spawnItem(plot, def, gx, gz, dir, stored)
-	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored }
+local function spawnItem(plot, def, gx, gz, dir, stored, fill)
+	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "belt" or def.kind == "separator" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
@@ -275,6 +405,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored)
 		table.insert(item.instances, buildSilo(plot, item, def))
 	elseif def.kind == "parking" then
 		table.insert(item.instances, buildParking(plot, item, def))
+	elseif def.kind == "blueprint" then
+		table.insert(item.instances, buildBlueprint(plot, item, def))
 	end
 	for _, cell in item.cells do
 		plot.taken[key(cell[1], cell[2])] = item
@@ -318,7 +450,7 @@ local function saveItems(player, plot)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
-		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored })
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -414,7 +546,7 @@ local function claim(plot, player, saved)
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
 			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
 			if fits(plot, def, gx, gz, dir) then
-				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil)
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil)
 			else
 				table.insert(plot.leftOut, s)
 			end
