@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
+local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Machines = require(script.Parent.Machines)
 local Needle = require(script.Parent.Needle)
@@ -26,21 +27,7 @@ local C = Machines.Colors
 local part = Machines.part
 
 local function plaque(parent, text)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(150, 34)
-	gui.StudsOffset = Vector3.new(0, -0.9, 0)
-	gui.MaxDistance = 30
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Text = text
-	label.Parent = gui
-	return label
+	return WorldLabel.billboard(parent, text, { offset = Vector3.new(0, -0.9, 0), kind = "tag", distance = 30 })
 end
 
 local function describe(n)

@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local WorldShape = require(script.Parent.WorldShape)
 
 local Highway = {}
@@ -43,20 +44,7 @@ end
 
 local function sign(parent, cframe, text, width)
 	local board = part(parent, "Sign", Vector3.new(width or 18, 4, 0.4), cframe, Rustic.PaintGreen, Enum.Material.WoodPlanks)
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(board.Size.X * 50, board.Size.Y * 50)
-		gui.Parent = board
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(236, 230, 210)
-		label.Text = text
-		label.Parent = gui
-	end
+	WorldLabel.surface(board, text, { Enum.NormalId.Front, Enum.NormalId.Back }, { color = Color3.fromRGB(236, 230, 210) })
 	return board
 end
 

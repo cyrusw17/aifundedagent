@@ -419,6 +419,248 @@ canvas.InputBegan:Connect(function(input)
 	Waypoint.set(Vector3.new(x, 0, z), "Marked spot")
 end)
 
+-- World view: every region of the Stitched Isles from Config/WorldMap ("Full world map build"), when it is there.
+local WorldMap = nil
+do
+	local module = Config:FindFirstChild("WorldMap")
+	if module then
+		local ok, result = pcall(require, module)
+		if ok and typeof(result) == "table" and result.Regions and result.Bounds then
+			WorldMap = result
+		end
+	end
+end
+
+local worldCanvas = nil
+local worldMe = nil
+local worldMarker = nil
+local worldRich = nil
+local toWorld = nil
+
+-- The region a world position is in (same rules as RegionBanner.client.luau).
+local function regionAt(position)
+	if not WorldMap then
+		return "Meadow Farm"
+	end
+	local sky = WorldMap.SkyIsland
+	if
+		sky
+		and position.Y > sky.top - 60
+		and (Vector2.new(position.X, position.Z) - sky.center).Magnitude < sky.radius + 40
+	then
+		return "Sky Island"
+	end
+	local cave = WorldMap.Cave and WorldMap.Cave.chamber
+	if cave and (position - cave.center).Magnitude < cave.radius * 1.2 then
+		return "Crystal Cave"
+	end
+	if math.abs(position.X) < HALF and math.abs(position.Z) < HALF then
+		return "Meadow Farm"
+	end
+	local best, bestValue = nil, 0
+	for _, r in WorldMap.Regions do
+		local dx = (position.X - r.center.X) / r.radius.X
+		local dz = (position.Z - r.center.Y) / r.radius.Y
+		local value = 1 - math.sqrt(dx * dx + dz * dz)
+		if value > bestValue then
+			best, bestValue = r.name, value
+		end
+	end
+	return best or "Open sea"
+end
+
+if WorldMap then
+	local bmin, bmax = WorldMap.Bounds.min, WorldMap.Bounds.max
+	local span = bmax - bmin
+	local wscale = CANVAS / math.max(span.X, span.Y)
+	local offsetY = (CANVAS - span.Y * wscale) / 2
+	toWorld = function(x, z)
+		return UDim2.fromOffset((x - bmin.X) * wscale, (z - bmin.Y) * wscale + offsetY)
+	end
+
+	worldCanvas = Instance.new("TextButton")
+	worldCanvas.Name = "WorldCanvas"
+	worldCanvas.Text = ""
+	worldCanvas.AutoButtonColor = false
+	worldCanvas.Size = UDim2.fromOffset(CANVAS, CANVAS)
+	worldCanvas.BackgroundColor3 = Rustic.Water
+	worldCanvas.ClipsDescendants = true
+	worldCanvas.Visible = false
+	worldCanvas.Parent = mapBody
+	Kit.corner(worldCanvas, 6)
+	Kit.stroke(worldCanvas, C.Ink, 2)
+
+	local MATERIAL = {
+		LeafyGrass = Rustic.LeafyGrass,
+		Grass = Rustic.Grass,
+		Mud = Rustic.Mud,
+		Sand = Rustic.Sand,
+		Rock = Rustic.Rock,
+		Ground = Rustic.Dirt,
+	}
+	local function colorOf(region)
+		local top = region.materials and region.materials.top
+		return MATERIAL[top] or (WorldMap.Colors and WorldMap.Colors[top]) or Rustic.Grass
+	end
+
+	local function oval(center, radius, color, z)
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = toWorld(center.X, center.Y)
+		f.Size = UDim2.fromOffset(radius.X * 2 * wscale, radius.Y * 2 * wscale)
+		f.BackgroundColor3 = color
+		f.BorderSizePixel = 0
+		f.ZIndex = z or 2
+		f.Parent = worldCanvas
+		Kit.corner(f, 999)
+		return f
+	end
+
+	local function line(a, b, width, color, z)
+		local mid = (a + b) / 2
+		local d = b - a
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = toWorld(mid.X, mid.Y)
+		f.Size = UDim2.fromOffset(d.Magnitude * wscale, math.max(width * wscale, 2))
+		f.Rotation = math.deg(math.atan2(d.Y, d.X))
+		f.BackgroundColor3 = color
+		f.BorderSizePixel = 0
+		f.ZIndex = z or 4
+		f.Parent = worldCanvas
+		return f
+	end
+
+	for _, region in WorldMap.Regions do
+		oval(region.center, region.radius, colorOf(region), 2)
+	end
+	-- Meadow Farm itself, the square in the middle.
+	local meadow = Instance.new("Frame")
+	meadow.Position = toWorld(-HALF, -HALF)
+	meadow.Size = UDim2.fromOffset(HALF * 2 * wscale, HALF * 2 * wscale)
+	meadow.BackgroundColor3 = Rustic.Grass
+	meadow.BorderSizePixel = 0
+	meadow.ZIndex = 3
+	meadow.Parent = worldCanvas
+	if WorldMap.SkyIsland then
+		local sky = oval(
+			WorldMap.SkyIsland.center,
+			Vector2.new(WorldMap.SkyIsland.radius, WorldMap.SkyIsland.radius),
+			C.Cream,
+			5
+		)
+		sky.BackgroundTransparency = 0.45
+	end
+
+	for _, road in WorldMap.Roads or {} do
+		for i = 1, #road.points - 1 do
+			line(road.points[i], road.points[i + 1], WorldMap.RoadWidth or 16, Rustic.Dirt, 4)
+		end
+	end
+	for _, road in Meadow.Roads do
+		for i = 1, #road.points - 1 do
+			line(road.points[i], road.points[i + 1], Meadow.RoadWidth, Rustic.Dirt, 4)
+		end
+	end
+	if WorldMap.Highway then
+		line(WorldMap.Highway.from, WorldMap.Highway.to, WorldMap.Highway.width or 22, Rustic.StoneDark, 4)
+	end
+	for _, route in WorldMap.Ferry and WorldMap.Ferry.Routes or {} do
+		local f = line(route.a.pierEnd, route.b.pierEnd, 8, C.Cream, 4)
+		f.BackgroundTransparency = 0.3
+	end
+	if WorldMap.Zeppelin then
+		local a, b = WorldMap.Zeppelin.a.pos, WorldMap.Zeppelin.b.pos
+		local f = line(Vector2.new(a.X, a.Z), Vector2.new(b.X, b.Z), 8, C.Cream, 6)
+		f.BackgroundTransparency = 0.3
+	end
+
+	local function worldText(text, at, size, z)
+		local l = Kit.label(
+			worldCanvas,
+			text,
+			{ size = size or 10, font = F.Bold, color = C.Cream, align = "center", wrap = false }
+		)
+		l.AnchorPoint = Vector2.new(0.5, 0.5)
+		l.Position = toWorld(at.X, at.Y)
+		l.Size = UDim2.fromOffset(120, 14)
+		l.TextStrokeColor3 = C.Ink
+		l.TextStrokeTransparency = 0.2
+		l.ZIndex = z or 7
+		return l
+	end
+	for _, region in WorldMap.Regions do
+		worldText(region.name, region.center, 10)
+	end
+	worldText("Meadow Farm", Vector2.new(0, 0), 11)
+	if WorldMap.SkyIsland then
+		worldText("Sky Island", WorldMap.SkyIsland.center + Vector2.new(0, -WorldMap.SkyIsland.radius - 60), 10)
+	end
+
+	worldMe =
+		Kit.label(worldCanvas, "▲", { size = 16, font = F.Title, color = C.Red, align = "center", wrap = false })
+	worldMe.AnchorPoint = Vector2.new(0.5, 0.5)
+	worldMe.Size = UDim2.fromOffset(18, 18)
+	worldMe.TextStrokeColor3 = C.Cream
+	worldMe.TextStrokeTransparency = 0
+	worldMe.ZIndex = 9
+
+	worldMarker =
+		Kit.label(worldCanvas, "✕", { size = 14, font = F.Title, color = C.Red, align = "center", wrap = false })
+	worldMarker.AnchorPoint = Vector2.new(0.5, 0.5)
+	worldMarker.Size = UDim2.fromOffset(16, 16)
+	worldMarker.TextStrokeColor3 = C.Cream
+	worldMarker.TextStrokeTransparency = 0
+	worldMarker.ZIndex = 8
+	worldMarker.Visible = false
+
+	-- The rich field (2x needles), moved by the server every 20 minutes.
+	worldRich =
+		Kit.label(worldCanvas, "★ 2x", { size = 11, font = F.Title, color = C.Hay, align = "center", wrap = false })
+	worldRich.AnchorPoint = Vector2.new(0.5, 0.5)
+	worldRich.Size = UDim2.fromOffset(40, 14)
+	worldRich.TextStrokeColor3 = C.Ink
+	worldRich.TextStrokeTransparency = 0
+	worldRich.ZIndex = 8
+
+	worldCanvas.InputBegan:Connect(function(input)
+		local kind = input.UserInputType
+		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
+			return
+		end
+		local local2 = (Vector2.new(input.Position.X, input.Position.Y) - worldCanvas.AbsolutePosition)
+			/ worldCanvas.AbsoluteSize
+			* CANVAS
+		local x = local2.X / wscale + bmin.X
+		local z = (local2.Y - offsetY) / wscale + bmin.Y
+		if x < bmin.X or x > bmax.X or z < bmin.Y or z > bmax.Y then
+			return
+		end
+		Waypoint.set(Vector3.new(x, 0, z), "Marked spot")
+	end)
+end
+
+Waypoint.changed.Event:Connect(function(position)
+	if worldMarker then
+		worldMarker.Visible = position ~= nil
+		if position then
+			worldMarker.Position = toWorld(position.X, position.Z)
+		end
+	end
+end)
+
+local function refreshRich()
+	if not worldRich then
+		return
+	end
+	local rich = ReplicatedStorage:GetAttribute("RichField")
+	worldRich.Visible = typeof(rich) == "Vector3"
+	if typeof(rich) == "Vector3" then
+		worldRich.Position = toWorld(rich.X, rich.Z)
+	end
+end
+ReplicatedStorage:GetAttributeChangedSignal("RichField"):Connect(refreshRich)
+
 -- Side column: regions, places, clear.
 local side = Instance.new("Frame")
 side.Position = UDim2.fromOffset(CANVAS + 12, 0)
@@ -433,43 +675,83 @@ local function heading(text, order)
 	return h
 end
 
--- Regions come from Config/Regions when the world map thread adds it: a list of { name, open, blurb }.
-local regions = nil
-local regionsModule = Config:FindFirstChild("Regions")
-if regionsModule then
-	local ok, list = pcall(require, regionsModule)
-	if ok and typeof(list) == "table" then
-		regions = list.List or list
+-- MEADOW / WORLD switch (the world view needs Config/WorldMap).
+local mapTitle = mapPanel:FindFirstChild("TitleBar") and mapPanel.TitleBar:FindFirstChildOfClass("TextLabel")
+local worldView = false
+local viewRow = Instance.new("Frame")
+viewRow.Size = UDim2.new(1, 0, 0, 30)
+viewRow.BackgroundTransparency = 1
+viewRow.LayoutOrder = 0
+viewRow.Visible = worldCanvas ~= nil
+viewRow.Parent = sideList
+local _, selectView = Kit.tabs(viewRow, { "MEADOW", "WORLD" }, function(index)
+	worldView = index == 2 and worldCanvas ~= nil
+	canvas.Visible = not worldView
+	if worldCanvas then
+		worldCanvas.Visible = worldView
 	end
+	if mapTitle then
+		mapTitle.Text = worldView and "MAP  ·  THE STITCHED ISLES" or "MAP  ·  MEADOW FARM"
+	end
+	refreshRich()
+end)
+
+-- Regions: every one on Config/WorldMap, with the one you're in marked.
+local regionLabels = {}
+local regionList = {}
+table.insert(regionList, { name = "Meadow Farm", blurb = "Starter fields, the dealer, the bank and land for sale." })
+if WorldMap then
+	for _, r in WorldMap.Regions do
+		table.insert(regionList, { name = r.name, center = r.center })
+	end
+	if WorldMap.SkyIsland then
+		table.insert(regionList, { name = "Sky Island", blurb = "By zeppelin from Homestead Valley." })
+	end
+else
+	table.insert(regionList, { name = "Homestead Valley", blurb = "North road. Coming soon." })
+	table.insert(regionList, { name = "Pine Forest", blurb = "South road. Coming soon." })
 end
-regions = regions
-	or {
-		{ name = "Meadow Farm", open = true, blurb = "Starter fields, the dealer and land for sale." },
-		{ name = "Homestead Valley", open = false, blurb = "North road. Coming soon." },
-		{ name = "Pine Forest", open = false, blurb = "South road. Coming soon." },
-	}
 
 heading("REGIONS", 1)
-for i, region in regions do
+for i, region in regionList do
 	local card = Kit.card(sideList, 0)
 	card.AutomaticSize = Enum.AutomaticSize.Y
 	card.LayoutOrder = 1 + i
-	card.BackgroundColor3 = region.open and C.Card or C.CardDim
-	Kit.pad(card, 8)
+	Kit.pad(card, 6)
 	local cardLayout = Instance.new("UIListLayout")
 	cardLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	cardLayout.Parent = card
-	local name = region.name or region.id or "?"
-	local here = name == "Meadow Farm"
-	local title = Kit.label(card, name .. (here and "  ·  you are here" or region.open and "" or "  ·  soon"), {
-		size = T.Small + 1,
-		font = F.Bold,
-		color = region.open and C.Ink or C.InkSoft,
-	})
+	local title = Kit.label(card, region.name, { size = T.Small + 1, font = F.Bold })
 	title.LayoutOrder = 1
+	regionLabels[region.name] = { label = title, card = card }
 	if region.blurb then
 		local b = Kit.label(card, region.blurb, { size = T.Small, color = C.InkSoft, auto = true })
 		b.LayoutOrder = 2
+	end
+	if region.center then
+		-- Click a far region to mark its middle.
+		local hit = Instance.new("TextButton")
+		hit.Size = UDim2.fromScale(1, 1)
+		hit.BackgroundTransparency = 1
+		hit.Text = ""
+		hit.ZIndex = 3
+		hit.Parent = card
+		hit.Activated:Connect(function()
+			Waypoint.set(Vector3.new(region.center.X, 0, region.center.Y), region.name)
+		end)
+	end
+end
+
+local shownRegion = nil
+local function markRegion(name)
+	if name == shownRegion then
+		return
+	end
+	shownRegion = name
+	for regionName, r in regionLabels do
+		local here = regionName == name
+		r.label.Text = regionName .. (here and "  ·  you are here" or "")
+		r.card.BackgroundColor3 = here and C.Picked or C.Card
 	end
 end
 
@@ -515,6 +797,12 @@ Menus.register("Map", function(open)
 		return
 	end
 	plotButton.Visible = Places.myPlot() ~= nil
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local outside = root and regionAt(root.Position) ~= "Meadow Farm"
+	selectView(outside and worldCanvas and 2 or 1)
+	if root then
+		markRegion(regionAt(root.Position))
+	end
 	refreshPlots()
 	placeLandmarks()
 	refreshTrucks()
@@ -524,12 +812,20 @@ Menus.register("Map", function(open)
 		me.Visible = root ~= nil
 		if root then
 			local look = Workspace.CurrentCamera.CFrame.LookVector
+			local yaw = math.deg(math.atan2(look.X, -look.Z))
 			me.Position = toMap(root.Position.X, root.Position.Z)
-			me.Rotation = math.deg(math.atan2(look.X, -look.Z))
+			me.Rotation = yaw
+			if worldMe then
+				worldMe.Position = toWorld(root.Position.X, root.Position.Z)
+				worldMe.Rotation = yaw
+			end
 		end
 		if os.clock() - lastTrucks > 1 then
 			lastTrucks = os.clock()
 			refreshTrucks()
+			if root then
+				markRegion(regionAt(root.Position))
+			end
 		end
 	end)
 end)

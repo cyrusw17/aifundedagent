@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local Vehicles = require(script.Parent.Vehicles)
 local WorldShape = require(script.Parent.WorldShape)
 
@@ -47,22 +48,9 @@ local function part(parent, name, size, cframe, color, material, collide)
 	return p
 end
 
+-- Floating text goes through the shared WorldLabel helper.
 local function boardLabel(parent, offset, distance)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(300, 70)
-	gui.StudsOffset = offset
-	gui.MaxDistance = distance or 220
-	gui.LightInfluence = 0
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(240, 232, 210)
-	label.TextStrokeTransparency = 0.35
-	label.Parent = gui
-	return label
+	return WorldLabel.billboard(parent, "", { offset = offset, kind = "sign", distance = distance or 220, color = Color3.fromRGB(240, 232, 210) })
 end
 
 local function yawOf(cframe)
