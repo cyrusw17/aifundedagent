@@ -119,8 +119,9 @@ return {
 					{ id = "shaker_table", gx = 4, gz = 5, dir = "E" },
 					{ id = "belt", gx = 6, gz = 5, dir = "E" },
 					{ id = "hay_buyer", gx = 7, gz = 5, dir = "E" },
-					-- Truck and hitched trailer park along the right side, facing the lane.
-					{ id = "parking", gx = 11, gz = 2, dir = "S" },
+					-- Truck and hitched trailer park near the right fence, facing the lane, with the driver's door on the
+					-- free column 11, so getting out stays inside the fence.
+					{ id = "parking", gx = 10, gz = 2, dir = "S" },
 				} :: { any }),
 			},
 		},

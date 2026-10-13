@@ -606,9 +606,12 @@ local function parkVehicles(player, plot)
 		end
 	end
 	if not at then
-		-- No parking pad: on the lane in front of the plot, facing east.
-		local gate = Vector3.new(plot.corner.X + plot.size.X / 2, 0, plot.laneZ)
-		at = CFrame.lookAt(gate, gate + Vector3.xAxis) * CFrame.new(0, 0, -10)
+		-- No parking pad: on the lane in front of the plot. Plots across the lane from each other share a middle, so
+		-- the south row parks west of it facing east and the north row east of it facing west: nose to nose, 6 apart,
+		-- each on its own side of the lane.
+		local away = if plot.def.open == "S" then -1 else 1
+		local nose = Vector3.new(plot.corner.X + plot.size.X / 2 + away * 3, 0, plot.laneZ + away * 3)
+		at = CFrame.lookAt(nose, nose - Vector3.xAxis * away)
 	end
 	-- The truck's middle sits half its length back from the front of the pad.
 	local truckCF = at * CFrame.new(0, 0.3, def.length / 2) -- on top of the pad
@@ -696,14 +699,14 @@ local function release(plot)
 		end
 	end
 	clearPlot(plot)
-	plot.bin.clear()
+	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	if plot.binSorted then
 		-- Dividers belong to the owner's save; the next owner gets a plain bin.
 		plot.bin.model:Destroy()
 		plot.bin = Machines.needleBin(plot.model, plot.binFrame)
 		plot.binSorted = nil
 		addBinPrompt(plot)
-	end -- the owner's needles are in their save; nobody else's should sit on a free plot
+	end
 	plot.leftOut = nil
 	plot.crew = {}
 	plot.locked = 0
