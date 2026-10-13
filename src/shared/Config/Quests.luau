@@ -15,6 +15,8 @@
 --   pattern hay bales standing on the spot's pads: "stones" (four stones) or "daily" (tonight's 3 x 3 sign).
 --           The bales are taken when it completes.
 --   find    a rare item that can drop when you break a bale: chance per bale, pity = guaranteed by this many bales
+--   run     run a timed maze spot (Quests.Runs): cross its start line, reach its heart. seconds = only a run at least
+--           that fast counts
 -- when = "day", "dusk", "night" or "midnight" limits a step to that part of the day (see Time below).
 -- hint = one line shown under the current step in the quest log; place = a UI Places id (dealer, landoffice, plot...)
 -- for steps that send you to a building rather than a quest spot, so GO and "Show the way" work there too.
@@ -24,6 +26,7 @@
 -- (and Region = the region name) moves that spot onto the part, for hand-placed spots in Studio.
 -- showWhen = a time window: the spot is only visible then (its prompt still answers, with "come back at ...").
 -- inMaze = placed by the corn maze it stands in, not by a position here.
+-- sea = (X, Z) out on the water: the spot floats at sea level there once the world map (and its sea) is built.
 local Quests = {}
 
 -- The day and night cycle (src/server/Services/DayNight.luau). Hours are game hours, 0-24.
@@ -115,6 +118,22 @@ Quests.Spots = {
 		inMaze = true,
 		item = true,
 		showWhen = "night",
+	},
+	-- The Straw Labyrinth, in the far south-west of Meadow: a new maze every UTC day, run against the clock.
+	straw_labyrinth = {
+		region = "Meadow",
+		name = "Straw Labyrinth bell",
+		look = "labyrinth",
+		pos = Vector3.new(-280, 0, -330),
+		radius = 4,
+	},
+	-- The Drowned Rows: old pilings standing out of the sea south of the Meadow beach. Swim in from the beach side.
+	drowned_rows = {
+		region = "Meadow",
+		name = "Drowned Rows chest",
+		look = "rows",
+		sea = Vector2.new(300, 1085),
+		radius = 5,
 	},
 	golden_bale = {
 		region = "Meadow",
@@ -403,6 +422,16 @@ Quests.Rewards = {
 		name = "Corn Moon Charm",
 		blurb = "Three corn keys tied with twine. The crop circle answers to it.",
 	},
+	straw_crown = {
+		kind = "relic",
+		name = "Straw Crown",
+		blurb = "Woven from the walls of a maze that is gone by morning.",
+	},
+	drowned_compass = {
+		kind = "relic",
+		name = "Drowned Compass",
+		blurb = "Its needle points at the shore, whichever way you hold it.",
+	},
 	shard_meadow = {
 		kind = "relic",
 		name = "Master Needle shard: Meadow",
@@ -422,6 +451,8 @@ Quests.Collection = {
 	{ id = "golden_hay_bale", hint = "Follow the signal." },
 	{ id = "star_beacon", hint = "Deep in a bale, something hums." },
 	{ id = "corn_moon_charm", hint = "The corn has paths only the night can show." },
+	{ id = "straw_crown", hint = "A maze that changes every day. Be quick." },
+	{ id = "drowned_compass", hint = "Rows of old posts stand in the sea past the beach." },
 	{ id = "shard_snow", hint = "Behind a door in the snow." },
 	{ id = "shard_volcano", hint = "Where the mountain breathes." },
 	{ id = "shard_desert", hint = "Under the dunes." },
@@ -779,6 +810,47 @@ Quests.List = {
 		reward = { relic = "corn_moon_charm" },
 	},
 	{
+		id = "straw_labyrinth",
+		name = "The Straw Labyrinth",
+		giver = "The labyrinth sign",
+		region = "Meadow",
+		requires = { "first_haul" },
+		blurb = "Far south-west of camp, a maze of straw walls is rebuilt every night. A bell waits at its heart.",
+		steps = {
+			{
+				kind = "run",
+				spot = "straw_labyrinth",
+				hint = "Cross the start line at the entrance, then find the bell. The walls change every day.",
+				text = "Run the Straw Labyrinth and ring the bell",
+			},
+			{
+				kind = "run",
+				spot = "straw_labyrinth",
+				seconds = 45,
+				hint = "Leave your hay behind: a heavy load slows you down.",
+				text = "Ring the bell within 45 seconds of the start line",
+			},
+		},
+		reward = { relic = "straw_crown", cash = 500 },
+	},
+	{
+		id = "drowned_rows",
+		name = "The Drowned Rows",
+		giver = "The beach",
+		region = "Meadow",
+		requires = { "first_haul" },
+		blurb = "Past the south beach, rows of old pilings stand in the sea. Something was left on a raft in the middle.",
+		steps = {
+			{
+				kind = "run",
+				spot = "drowned_rows",
+				hint = "Swim in between the two red buoys and find a way through the pilings to the raft.",
+				text = "Swim the Drowned Rows to the raft",
+			},
+		},
+		reward = { relic = "drowned_compass", cash = 750 },
+	},
+	{
 		id = "alien_offering",
 		name = "The Offering",
 		giver = "The crop circle",
@@ -918,6 +990,14 @@ Quests.List = {
 -- never resets. Rosettes are cosmetic. From LuckyField.fromDays on, each day you also get a personal lucky field (one
 -- of the hay fields out on the isles, shown in the Bounties tab): bales you break there sometimes spill an extra
 -- needle, a few times a day.
+-- Timed maze runs (step kind "run"): the first finish each UTC day pays `cash` (once per maze per save). About six
+-- Meadow bales for a minute or two of running: a daily treat, never a living (hauling earns about $6,500 an hour).
+-- abandon = a run that has gone on this long (seconds), or wandered this far from the maze (studs), is called off.
+Quests.Runs = {
+	straw_labyrinth = { name = "Straw Labyrinth", cash = 300, abandon = 600, range = 120 },
+	drowned_rows = { name = "Drowned Rows", cash = 400, abandon = 600, range = 140 },
+}
+
 Quests.Streak = {
 	Milestones = {
 		{ days = 3, reward = "streak_rosette_bronze" },

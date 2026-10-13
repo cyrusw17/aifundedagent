@@ -1091,6 +1091,123 @@ def starbeam_collector(f):
     return parts
 
 
+# ---------------------------------------------------------------- region machines (Treat.luau)
+# Each sits over two belt tiles (12 x 6, belt along x, top 3.5) and leaves 5 studs of clear height over
+# the belt so a bale rides through.
+
+def thawing_shed(f):
+    """Thawing shed (Frozen hay): a plank shed over two belt tiles with a tin gable roof, a glowing
+    stove firebox in the side wall, a stovepipe and a spinning roof ventilator (Vent)."""
+    parts = belt_run(f, -TILE, TILE)
+    top = 10.0
+    for y in (-2.75, 2.75):
+        parts.append(bx(f, (12.0, 0.4, top), (0, y, top / 2), "handle", along="x"))
+        for x in (-5.75, 0, 5.75):
+            parts.append(bx(f, (0.5, 0.5, top), (x, y, top / 2), "handle", along="z", rnd=False))
+    # Gable ends above the bale door (clear to 9.0), then the roof.
+    for x in (-5.9, 5.9):
+        parts.append(bx(f, (0.3, 5.6, 1.0), (x, 0, top - 0.5), "handle", along="y", rnd=False))
+        parts.append(extrude(f, [(-2.8, top), (2.8, top), (0, top + 2.4)], "yz", x - 0.15, x + 0.15, "handle",
+                             rnd=False))
+    for side in (-1, 1):
+        a = math.atan2(2.4, 2.8)
+        parts.append(bx(f, (12.4, 3.6, 0.2), (0, side * 1.45, top + 1.25), "metal", rot=(-side * a, 0, 0),
+                        rnd=False))
+    # Stove firebox glowing through the -y wall, with a little iron door frame.
+    parts.append(bx(f, (2.0, 0.08, 1.2), (-2.5, -2.97, 2.0), "lava", rnd=False))
+    for z in (1.3, 2.7):
+        parts.append(bx(f, (2.4, 0.08, 0.2), (-2.5, -2.98, z), "metal", rnd=False))
+    for x in (-3.6, -1.4):
+        parts.append(bx(f, (0.2, 0.08, 1.6), (x, -2.98, 2.0), "metal", rnd=False))
+    # Stovepipe out through the roof above the stove.
+    parts.append(cy(f, 0.35, 2.6, (-2.5, -1.4, top + 2.0), "metal", verts=8))
+    parts.append(cone(f, 0.55, 0.2, 0.5, (-2.5, -1.4, top + 3.5), "metal", verts=8))
+    # Ridge ventilator: a drum of vanes that spins in the steam.
+    vent = [cy(f, 0.9, 1.2, (2.5, 0, top + 3.0), "metal", verts=10)]
+    for k in range(6):
+        a = k * math.pi / 3
+        vent.append(bx(f, (0.6, 0.12, 1.2), (2.5 + 0.95 * math.cos(a), 0.95 * math.sin(a), top + 3.0), "metal",
+                       rot=(0, 0, a + 0.6), rnd=False))
+    vent.append(cone(f, 1.0, 0.2, 0.5, (2.5, 0, top + 3.85), "metal", verts=10))
+    parts += tag(vent, "Vent")
+    parts.append(cy(f, 0.5, 1.0, (2.5, 0, top + 2.0), "metal", verts=8))
+    # A few icicles melting off the eaves.
+    for x in (-4.5, -1.0, 3.5):
+        for y in (-2.95, 2.95):
+            parts.append(cone(f, 0.12, 0.0, 0.6, (x, y, top - 0.6), "metal", verts=4))
+    return parts
+
+
+def drying_rack(f):
+    """Drying rack (Bog reed): an open timber frame over two belt tiles with reed bundles hung on
+    poles to dry, and a big wooden paddle fan under the top beam (Fan, spins about the vertical)."""
+    parts = belt_run(f, -TILE, TILE)
+    top = 10.5
+    for x in (-5.7, 5.7):
+        for y in (-2.7, 2.7):
+            parts.append(bx(f, (0.6, 0.6, top), (x, y, top / 2), "handle", along="z", rnd=False))
+            parts.append(obox(f, (x, y, top - 2.0), (x * 0.75, y, top - 0.3), 0.3, 0.3, "handle", rnd=False))
+        parts.append(bx(f, (0.6, 6.0, 0.6), (x, 0, top - 0.3), "handle", along="y", rnd=False))
+    for y in (-2.7, 2.7):
+        parts.append(bx(f, (12.0, 0.6, 0.6), (0, y, top - 0.3), "handle", along="x", rnd=False))
+    parts.append(bx(f, (12.0, 0.5, 0.5), (0, 0, top - 0.3), "handle", along="x", rnd=False))
+    # Hanging poles along the sides, clear of the bale lane, with reed bundles hung over them.
+    for y in (-2.3, 2.3):
+        parts.append(cy(f, 0.14, 11.4, (0, y, 8.6), "metal", axis="x", verts=6))
+        for i in range(6):
+            x = -4.6 + i * 1.84
+            parts.append(frustum(f, (x, y), 5.6, (0.5, 0.35), 8.6, (0.9, 0.5), "hay"))
+            parts.append(bx(f, (0.95, 0.55, 0.15), (x, y, 8.0), "metal", rnd=False))
+    # Paddle fan under the center beam.
+    fan = [cy(f, 0.35, 0.6, (0, 0, top - 1.2), "handle", verts=8)]
+    for k in range(4):
+        a = k * math.pi / 2
+        fan.append(bx(f, (2.4, 0.6, 0.1), (1.5 * math.cos(a), 1.5 * math.sin(a), top - 1.3), "handle",
+                      rot=(0.2, 0, a), rnd=False))
+    parts += tag(fan, "Fan")
+    parts.append(cy(f, 0.1, 0.9, (0, 0, top - 0.6), "metal", verts=6))
+    return parts
+
+
+def ash_sifter(f):
+    """Ash sifter (Ashen hay): an iron hood over two belt tiles with a shaking sieve screen (Shaker),
+    a rotary brush across the belt (Drum) knocking the ash out, and an ash tray of glowing embers
+    under the belt."""
+    parts = belt_run(f, -TILE, TILE)
+    top = 9.5
+    # Iron hood: side plates and a flat top with a hopper-style stack.
+    for y in (-2.75, 2.75):
+        parts.append(bx(f, (11.0, 0.25, top - BELT_Z), (0, y, (top + BELT_Z) / 2), "metal", rnd=False))
+        for x in (-5.4, -1.8, 1.8, 5.4):
+            parts.append(bx(f, (0.4, 0.4, top), (x, y * 1.01, top / 2), "metal", along="z", rnd=False))
+    parts.append(bx(f, (11.6, 6.0, 0.3), (0, 0, top + 0.15), "metal", rnd=False))
+    parts.append(frustum(f, (0, 0), top + 0.3, (5.0, 4.0), top + 2.0, (2.0, 1.6), "metal"))
+    parts.append(cy(f, 0.6, 1.6, (0, 0, top + 2.8), "metal", verts=8))
+    # Sieve screen above the lane: a frame with slats, hung on four rods so it can shake.
+    sieve = []
+    for y in (-2.4, 2.4):
+        sieve.append(bx(f, (8.0, 0.25, 0.4), (-1.5, y, 9.0), "metal", rnd=False))
+    for x in (-5.5, 2.5):
+        sieve.append(bx(f, (0.25, 5.0, 0.4), (x, 0, 9.0), "metal", rnd=False))
+    for i in range(9):
+        sieve.append(bx(f, (0.12, 4.8, 0.08), (-5.0 + i * 0.85, 0, 8.9), "metal", rnd=False))
+    parts += tag(sieve, "Shaker")
+    # Rotary brush across the belt at the out end, bristles as short spokes.
+    drum = [cy(f, 0.45, 5.2, (3.8, 0, BELT_Z + 1.9), "metal", axis="y", verts=8)]
+    for k in range(8):
+        a = k * math.pi / 4
+        drum.append(bx(f, (0.12, 4.8, 0.9), (3.8 + 0.7 * math.cos(a), 0, BELT_Z + 1.9 + 0.7 * math.sin(a)), "metal",
+                       rot=(0, -a, 0), rnd=False))
+    parts += tag(drum, "Drum")
+    for y in (-2.75, 2.75):
+        parts.append(cy(f, 0.3, 0.3, (3.8, y, BELT_Z + 1.9), "metal", axis="y", verts=8))
+    # Ash tray under the belt with embers.
+    parts.append(frustum(f, (0, 0), 0.3, (9.0, 4.2), 1.5, (10.0, 4.6), "metal", wall=0.15, closed=True))
+    for x, y in ((-3.0, 0.8), (-1.2, -1.0), (0.6, 0.4), (2.4, -0.6), (3.6, 1.1)):
+        parts.append(bx(f, (0.6, 0.5, 0.25), (x, y, 1.2), "lava", rot=(0, 0, x), rnd=False))
+    return parts
+
+
 PROPS = {
     "conveyor_straight": low_poly(conveyor_straight),
     "conveyor_corner": low_poly(conveyor_corner),
@@ -1112,6 +1229,9 @@ PROPS = {
     "sorter_boost_oil": sorter_boost_oil,
     "alien_collector": alien_collector,
     "starbeam_collector": low_poly(starbeam_collector),
+    "thawing_shed": low_poly(thawing_shed),
+    "drying_rack": low_poly(drying_rack),
+    "ash_sifter": low_poly(ash_sifter),
 }
 
 
