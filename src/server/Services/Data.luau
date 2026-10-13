@@ -277,6 +277,9 @@ local function stateFrom(saved)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		-- finder's rewards already paid in this slot, { [findId] = 1 }: paid once per kind, ever, even if the find is
+		-- later traded away (Finds.luau)
+		findsPaid = countMap(saved.findsPaid),
 		-- earned tool skins (ToolSkins.luau): { owned = { id, ... }, worn = { Shovel = id?, Rake = id? } }
 		skins = {
 			owned = stringList(typeof(saved.skins) == "table" and saved.skins.owned or nil),
@@ -328,6 +331,7 @@ local function toSave(state)
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
+		findsPaid = state.findsPaid,
 		skins = state.skins,
 		secrets = state.secrets,
 		discovered = state.discovered,

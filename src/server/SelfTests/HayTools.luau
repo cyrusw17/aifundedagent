@@ -564,6 +564,33 @@ local function edgeCases(t, player, state, root, stand)
 	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
 
+	-- A finder's reward pays once per kind for good: trading the find away and finding another pays nothing more.
+	local keepFinds, keepPaid = table.clone(state.finds or {}), table.clone(state.findsPaid or {})
+	state.finds = state.finds or {}
+	state.findsPaid = state.findsPaid or {}
+	state.finds.boot, state.findsPaid.boot = nil, nil
+	local reward = Finds.info("boot").reward
+	local cash0 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	local paidFirst = Bank.wallet(state) - cash0
+	t.equal("the first boot marks its reward paid", state.findsPaid.boot, 1)
+	-- A bank loan can take its share of any earning, so the wallet rises by the reward or a little less.
+	t.check("the first boot pays its finder's reward", paidFirst > 0 and paidFirst <= reward, ("+$%d of $%d"):format(paidFirst, reward))
+	state.finds.boot = nil -- traded away (Trade.luau takes it off the shelf)
+	local cash1 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	t.equal("finding another after trading it away pays nothing", Bank.wallet(state) - cash1, 0)
+	t.equal("...and the reward stays marked paid", state.findsPaid.boot, 1)
+	t.equal("...though it is kept", state.finds.boot, 1)
+	-- The test's reward is not real money: put the wallet back where it was.
+	if Config.InfiniteMoney then
+		state.savedCash = cash0
+	else
+		state.cash = cash0
+	end
+	Data.sync(player)
+	state.finds, state.findsPaid = keepFinds, keepPaid
+
 	-- Crew hand-off: a bale thrown by a teammate that flies close to bare hands is caught; a stranger's is not.
 	local catchSpot = t.place()
 	stand(catchSpot)
