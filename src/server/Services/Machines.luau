@@ -191,18 +191,13 @@ function Machines.needleBin(parent, frame)
 	end
 
 	function bin.sell(player)
-		local byType = Needle.takeHeld(player)
+		local count, value = Needle.sellHeld(player)
 		for _, n in Needle.inBox(inside, insideSize) do
 			if n:GetAttribute("OwnerId") == player.UserId then
-				local id = n:GetAttribute("NeedleId") or Needle.default.id
-				byType[id] = (byType[id] or 0) + 1
+				count += 1
+				value += Needle.value(n)
 				n:Destroy()
 			end
-		end
-		local count, value = 0, 0
-		for id, k in byType do
-			count += k
-			value += k * Needle.info(id).sortedValue
 		end
 		refresh()
 		if count == 0 then
