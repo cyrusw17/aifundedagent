@@ -2161,6 +2161,23 @@ function Land.build(worldFolder)
 		end
 		return false
 	end
+	-- Crew hand-offs (Tools): a thrown bale can be caught by anyone working the same farm, owner or crew.
+	(Bales :: any).isTeammate = function(thrower, catcher)
+		if thrower == catcher then
+			return false
+		end
+		for _, plot in plots do
+			if plot.ownerId then
+				local function onFarm(player)
+					return plot.ownerId == player.UserId or plot.crew[player.UserId] == true
+				end
+				if onFarm(thrower) and onFarm(catcher) then
+					return true
+				end
+			end
+		end
+		return false
+	end
 
 	Data.loaded.Event:Connect(onLoaded)
 	for _, player in Players:GetPlayers() do

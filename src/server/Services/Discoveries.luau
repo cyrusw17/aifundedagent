@@ -48,6 +48,14 @@ for _, d in Map.Discoveries do
 	end
 end
 
+-- A discovery made by finding something rather than by walking up to it (Wilds hidden spots): stamped by
+-- Discoveries.discover when it's found; kind "hidden" pays nothing here (the find pays its own reward).
+function Discoveries.addHidden(id, name)
+	if not byId[id] then
+		add({ id = id, name = name, kind = "hidden" })
+	end
+end
+
 function Discoveries.all()
 	return list
 end
@@ -92,7 +100,9 @@ function Discoveries.discover(player, id)
 	for _ in state.discovered do
 		count += 1
 	end
-	Data.toast(player, ("Discovered: %s! +$%d   (%d of %d)"):format(entry.name, reward, count, #list))
+	if entry.kind ~= "hidden" then -- a hidden find already said so
+		Data.toast(player, ("Discovered: %s! +$%d   (%d of %d)"):format(entry.name, reward, count, #list))
+	end
 	publish(player)
 	return true
 end

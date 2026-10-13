@@ -379,6 +379,23 @@ loan takes its share of sales after that.
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
 which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
 
+### Checked against the pacing simulator
+
+Conveyor's `tools/pacing_sim.py` plays a new save second by second on the real Meadow layout and configs (20 seeded
+maps). Its medians land 13 to 23% ahead of the table above: Work Gloves at 2 minutes, Wheelbarrow 9, Pickup on a loan
+15, Wagon 23, Plot with a sieve and first line 50, Shaker 71, Leather Gloves 92, Flatbed 104, Small trailer 127, and
+the conveyor sorter after 3 hours. Ahead is the safe side, so no prices changed. Two gaps were looked at on purpose:
+
+- **Work Gloves at 2 minutes (target was 6).** Kept. The "6 minutes" came from rounding the table to 0.1 h. The first
+  purchase should land almost at once: it teaches the shop loop and makes the next bale feel lighter right away.
+  Raising it to $500 to reach 6 minutes would push every later step back for no gain.
+- **The plot at 50 minutes (CEO target 35 to 45).** Kept at $2,500. The simulator buys the plot with cash and doesn't
+  model bale toss or field chutes, both of which speed up truck loading, so the real game lands nearer 43 minutes. A
+  player who takes the land loan ($500 down, allowed alongside the truck loan) gets there in about 35. Cutting the plot
+  to $2,000 would gain about 3 minutes and make the first land feel cheap next to a $1,500 wagon.
+
+Re-run `python3 tools/pacing_sim.py` after any change to an early price.
+
 ## Open choices for Cyrus
 
 1. **Pickup price.** V8 proposed $600. With 90-strand bales a player earns about $110 a minute by hand, so $600 would be
