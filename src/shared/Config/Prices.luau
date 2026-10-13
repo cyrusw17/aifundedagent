@@ -173,6 +173,38 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
+-- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
+-- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
+-- Longstitch Highway, stay free.
+Prices.Travel = {
+	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
+	barge = 0, -- the Captain's Barge is earned by quest and free to use
+	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
+-- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+Prices.Robux = {
+	Trucks = {
+		homestead_classic = 399, -- skin of the Rusty Pickup tier
+		timber_wolf = 799, -- Farm Flatbed tier
+		midnight_express = 1199, -- Box Truck tier
+		prairie_schooner = 1799, -- Heavy Hauler tier
+		founders_semi = 2499, -- Semi tier, launch edition
+	},
+	Passes = {
+		vip = 249,
+		auto_dock = 299,
+		big_silo = 199,
+		paint_studio = 149,
+		plot_themes = 199,
+		truck_radio = 99,
+	},
+	HarvestPass = 499,
+	ServerBoost = 99,
+	PrivateServer = 100, -- a month
+}
+
 -- The bank -----------------------------------------------------------------------------------------------------------
 
 Prices.Bank = {
