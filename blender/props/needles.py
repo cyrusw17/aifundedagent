@@ -13,7 +13,7 @@ Sizes match the game (Needle.luau): a needle is 1.2 studs long and 0.15 thick, a
   needle_bundle      3 x 0.6 x 0.6: ten grey needles, eyes at one end, two twine bands
   needle_bin         6 x 6 stud open wooden bin (one conveyor tile), iron corners; pile is "NeedleFill"
   bale_<region>      the standard 4.6 x 2.6 x 3.2 bale in each region's hay (9 regions)
-  needle_display_wall 12 x 8 x 1 plank wall with 12 velvet-lined framed needle slots
+  needle_display_wall 6 x 1 x 7.8 one-tile wall (Display.luau): 6 pegs on red velvet, brass plaques
 
 Every prop uses 4 materials or fewer.
 Region bales use the house straw texture with a region palette (a local material, not a new kind
@@ -317,11 +317,11 @@ def needle_coral(f):
 
 
 def needle_brass(f):
-    """1.2 x 0.23 x 0.15 studs: Bobbin Rock needle in polished brass, a slot eye with a few turns of red
-    thread wound below it."""
-    parts, n = needle(f, "brass", tip_kind="steel")
-    for i in range(3):
-        parts.append(C(f, "paint_red", n["r"] + 0.012, 0.025, (n["a"] + 0.05 + i * 0.035, 0, n["z"]), verts=6))
+    """1.2 x 0.23 x 0.15 studs: Bobbin Rock needle in old brass (181, 148, 72), brass to the point, with a
+    couple of dark thread turns under the slot eye."""
+    parts, n = needle(f, "brass")
+    for i in range(2):
+        parts.append(C(f, "twine", n["r"] + 0.008, 0.02, (n["a"] + 0.05 + i * 0.03, 0, n["z"]), verts=6))
     return parts
 
 
@@ -433,34 +433,33 @@ def needle_bin(f):
 
 
 def needle_display_wall(f):
-    """12 x 8 x 1 studs, under 2k tris: plank wall between two posts with a cap and base rail, and
-    12 framed slots (4 across, 3 high) lined in dark red velvet (paint_red), each with a brass rest
-    bar for a needle and a small brass label plate (paint_yellow)."""
-    W, H, D = 12.0, 8.0, 1.0
+    """6 wide x 1 deep x 7.8 tall, under 2k tris: one plot tile, built like Display.luau (TileSize 6,
+    HEIGHT 7). A 5.6 x 7 plank board between two round wooden posts 7.6 tall, a grey iron cap
+    (6.2 x 1 x 0.4, top at 7.8) and a red name board under it. Six iron pegs (0.9 x 0.3 x 0.3) in two
+    rows of 3 at x -1.8/0/1.8, z 5 and 2, stand 0.15 proud of the board on dark red velvet backs
+    (paint_red), each with a brass plaque (paint_yellow) below. The display side faces -y. Wood is
+    one kind (planks) so the wall stays at 4 kinds."""
+    T, HEIGHT = 6.0, 7.0
+    y0 = -0.25                       # Display.luau's board face plane (its local z 0), centered for depth
     parts = []
-    nb = 8
-    for i in range(nb):                                                                          # back planks
-        z = 0.4 + (H - 0.8) / nb * (i + 0.5)
-        parts.append(B(f, "handle", (W - 0.8, 0.35, (H - 0.8) / nb - 0.05), (0, 0.2, z)))
-    for x in (-1, 1):                                                                            # posts
-        parts.append(B(f, "handle", (0.5, 0.8, H - 0.4), (x * (W / 2 - 0.25), 0.1, H / 2 - 0.2), along="z", rounded=True))
-    parts.append(B(f, "handle", (W, D, 0.4), (0, 0.0, H - 0.2), rounded=True))                 # cap
-    parts.append(B(f, "handle", (W - 1.0, 0.7, 0.45), (0, 0.1, 0.225), rounded=True))          # base rail
-    for x in (-3.0, 3.0):                                                                        # back battens
-        parts.append(B(f, "bark", (0.4, 0.1, H - 1.0), (x, 0.42, H / 2), along="z"))
-    cols, rows = 4, 3
-    sw, sh, pitch_x, pitch_z = 2.2, 1.6, 2.6, 2.15
-    for r in range(rows):
-        for c in range(cols):
-            x = (c - (cols - 1) / 2) * pitch_x
-            z = 0.75 + 0.35 + r * pitch_z + sh / 2
-            parts.append(B(f, "paint_red", (sw - 0.1, 0.04, sh - 0.1), (x, 0.0, z)))           # velvet
-            for dz in (-1, 1):
-                parts.append(B(f, "bark", (sw + 0.15, 0.4, 0.15), (x, -0.18, z + dz * sh / 2)))
-            for dx in (-1, 1):
-                parts.append(B(f, "bark", (0.15, 0.4, sh), (x + dx * sw / 2, -0.18, z), along="z"))
-            parts.append(B(f, "paint_yellow", (1.4, 0.12, 0.06), (x, -0.08, z - 0.25)))          # needle rest
-            parts.append(B(f, "paint_yellow", (0.5, 0.03, 0.18), (x, -0.4, z - sh / 2 - 0.2)))  # label plate
+    nb = 6
+    bh = HEIGHT / nb
+    for i in range(nb):                                                                     # board planks
+        parts.append(B(f, "handle", (T - 0.4, 0.4, bh - 0.06), (0, y0 + 0.2, bh * (i + 0.5))))
+    for x in (-1, 1):                                                                       # posts
+        parts.append(C(f, "handle", 0.3, HEIGHT + 0.6, (x * (T / 2 - 0.25), y0 + 0.3, (HEIGHT + 0.6) / 2),
+                       axis="z", verts=8))
+    parts.append(B(f, "metal", (T + 0.2, 1.0, 0.4), (0, y0 + 0.3, HEIGHT + 0.6), rounded=True))   # iron cap
+    parts.append(B(f, "paint_red", (3.6, 0.12, 0.6), (0, y0 - 0.06, HEIGHT - 0.35)))                # name board
+    for z in (HEIGHT - 0.7, HEIGHT):
+        parts.append(B(f, "metal", (3.8, 0.16, 0.12), (0, y0 - 0.08, z)))                           # its iron trim
+    for row in range(2):
+        pz = HEIGHT - 2 - row * 3                                                           # peg heights 5, 2
+        for col in range(3):
+            x = (col - 1) * 1.8
+            parts.append(B(f, "paint_red", (1.55, 0.06, 2.2), (x, y0 - 0.03, pz + 0.1)))          # velvet back
+            parts.append(B(f, "metal", (0.9, 0.3, 0.3), (x, y0 - 0.15, pz)))                     # peg
+            parts.append(B(f, "paint_yellow", (0.9, 0.06, 0.32), (x, y0 - 0.09, pz - 0.65)))       # brass plaque
     return parts
 
 
