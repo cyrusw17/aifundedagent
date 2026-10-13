@@ -6,7 +6,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
-local BaseLine = require(script.Parent.BaseLine)
+local SellShop = require(script.Parent.SellShop)
 
 local World = {}
 
@@ -133,8 +133,8 @@ function World.build()
 	addSign(dropOff, "BALE DROP-OFF", Vector3.new(0, 5, 0))
 	Bales.setDropOff(dropOff)
 
-	-- The starter base with its conveyor line, east of base camp.
-	BaseLine.build(folder)
+	-- The public hay sell shop with its conveyor line, east of base camp.
+	SellShop.build(folder)
 end
 
 return World
