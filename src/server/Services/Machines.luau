@@ -212,34 +212,45 @@ function Machines.needleBin(parent, frame)
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
 	end
 
-	-- Needles in the bin, as { [key] = count } keyed like the pocket (Needle.keyOf): everyone's, or only ownerId's.
-	-- A bundle counts as its needles.
+	-- Needles in the bin, as { [key] = count } with Needle.keyOf keys ("steel", or "steel*12" when mutated); a bundle
+	-- counts as its 10 needles. Everyone's, or only ownerId's.
 	function bin.contents(ownerId)
-		local byType = {}
+		local byKey = {}
 		for _, n in Needle.inBox(inside, insideSize) do
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
 				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"))
-				byType[key] = (byType[key] or 0) + Needle.count(n)
+				byKey[key] = (byKey[key] or 0) + Needle.count(n)
 			end
 		end
-		return byType
+		return byKey
 	end
 
-	-- Puts saved needles straight back in the bin, laid in rows on the floor (anchored, so a big pile can't spill).
-	function bin.fill(ownerId, byType)
+	-- Puts saved needles ({ [key] = count }, as contents returns) straight back in the bin, plain ones tied in bundles,
+	-- laid in rows on the floor (anchored, so a big pile can't spill).
+	function bin.fill(ownerId, byKey)
 		local perRow, rows = 4, 24
 		local placed = 0
-		for key, count in byType do
+		local function nextSpot()
+			local col = placed % perRow
+			local row = math.floor(placed / perRow) % rows
+			local layer = math.floor(placed / (perRow * rows))
+			placed += 1
+			return floor * CFrame.new(-1.95 + col * 1.3, 0.3 + layer * 0.6, -2.3 + row * 0.2)
+		end
+		for key, count in byKey do
 			local id, mult = Needle.parseKey(key)
+			if typeof(count) ~= "number" then
+				continue
+			end
+			if mult == 1 then
+				while count >= Needle.BUNDLE do
+					Needle.bundle(nextSpot(), ownerId, id).Anchored = true
+					count -= Needle.BUNDLE
+				end
+			end
 			for _ = 1, count do
-				local col = placed % perRow
-				local row = math.floor(placed / perRow) % rows
-				local layer = math.floor(placed / (perRow * rows))
-				local at = floor * CFrame.new(-1.95 + col * 1.3, 0.1 + layer * 0.16, -2.3 + row * 0.2)
-				local n = Needle.spawn(at.Position, ownerId, id, mult)
-				n.CFrame = at
+				local n = Needle.make(nextSpot(), ownerId, id, mult)
 				n.Anchored = true
-				placed += 1
 			end
 		end
 		refresh()
