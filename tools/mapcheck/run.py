@@ -39,10 +39,12 @@ MODULES = {
     "Services.HayWagon": "server/Services/HayWagon.luau",
     "Services.Discoveries": "server/Services/Discoveries.luau",
     "Services.SpindleDoor": "server/Services/SpindleDoor.luau",
+    "Services.FallSafety": "server/Services/FallSafety.luau",
+    "Services.RoadGraph": "server/Services/RoadGraph.luau",
 }
 
 
-EXTRA_CHECKS = ["reach.luau"]  # run after check.luau, on the map it built
+EXTRA_CHECKS = ["reach.luau", "budget.luau", "safety.luau"]  # run after check.luau, on the map it built
 
 
 def bundle(entry):

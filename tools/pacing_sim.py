@@ -11,6 +11,9 @@ What is real (read from src/shared/Config):
   + carrySpeed, never under MinWalkSpeed. The wheelbarrow carries WheelbarrowBales and you feel WheelbarrowLoadFactor.
 - Prices: gloves, wheelbarrow, trucks, trailers, plot, pieces, sorter speeds and recovery, needles per bale, hay and
   raw needle prices, loans (DownPayment, interest, repayShare).
+v2 (CEO #30) adds a second table that turns on, one at a time, what the game has beyond v1: bale toss loading and the
+Meadow field chute (Config/Chutes stock, refill and drop gap), the needle market (Prices.Market, as Market.luau), the
+land loan for the plot (Prices.Bank) and a 2-player crew sharing one save's purchases and one line.
 What is assumed (marked ASSUMED below): seconds to lift or set a bale, seconds to load a truck by hand, truck trip
 overhead and drive speed, and the order a sensible new player buys things in.
 """
@@ -117,15 +120,58 @@ def dist(b, at=SELL_PAD):
     return math.hypot(b[0] - at[0], b[1] - at[1])
 
 
-def play(seed, hours, verbose=False):
+CHUTE = read("Chutes.luau")
+CHUTE_AT = tuple(float(v) for v in re.search(r"Meadow = \{ at = Vector2.new\((-?[\d.]+), (-?[\d.]+)\)", CHUTE).groups())
+CHUTE_STOCK, CHUTE_REFILL, CHUTE_GAP = num(CHUTE, "Stock"), num(CHUTE, "RefillSeconds"), num(CHUTE, "DropGap")
+TOSS_LOAD = 3.0  # ASSUMED: seconds per bale tossed into a bed from beside it (Game Toss*: about a second of charge,
+#                 a short walk to the next bale), against TRUCK_LOAD for carrying each one up and setting it down
+MARKET = line_sim.block(PRICES, "Market")
+SWING, HALF_LIFE, NORMAL, MIN_NORMAL = num(MARKET, "Swing"), num(MARKET, "HalfLifeSeconds"), num(MARKET, "NormalSales"), num(MARKET, "MinNormalSales")
+
+QUEUE_CAP = 300  # ASSUMED: seconds of bales a player lets wait at the line before selling the rest raw
+
+SCENARIOS = [
+    # name, toss and chute, land loan, players, needle market
+    ("v1 (solo, hand loading)", False, False, 1, False),
+    ("+ toss + chute", True, False, 1, False),
+    ("+ needle market", True, False, 1, True),
+    ("+ land loan", True, True, 1, True),
+    ("+ 2-player crew", True, True, 2, True),
+]
+
+
+class Market:
+    """Market.luau for one needle type: sales push the price down, the push halves every HalfLifeSeconds."""
+
+    def __init__(self, list_value):
+        self.p, self.t = 0.0, 0.0
+        self.k = max(MIN_NORMAL, NORMAL * 100 / list_value)
+
+    def multiplier(self, now):
+        self.p *= 0.5 ** ((now - self.t) / HALF_LIFE)
+        self.t = now
+        return 1 + SWING - 2 * SWING * self.p / (self.p + self.k)
+
+    def sell(self, now, count):
+        m = self.multiplier(now)
+        self.p += count
+        return m
+
+
+def play(seed, hours, toss=False, land_loan=False, players=1, market=False, verbose=False):
     rng = random.Random(seed)
     bales = scatter(rng)
     raw = line_sim.raw_bale("meadow")
-    t, cash, owned, owed = 0.0, 0.0, set(), {}
+    cash, owned, owed = 0.0, set(), {}
     landed = {}
     plan = list(PLAN)
     stage = "hands"
     sorter = None
+    steel = Market(P["needle_value"][line_sim.NEEDLE_FOR_HAY["meadow"]])
+    chute = {"stock": CHUTE_STOCK, "t": 0.0}
+    free = [0.0] * players  # when each player is back from their trip
+    line_free = [0.0]  # when the sorter line has worked through its queue
+    hay_value = P["hay_per_bale"] * P["hay_price"]
 
     def earn(amount):
         nonlocal cash
@@ -135,15 +181,33 @@ def play(seed, hours, verbose=False):
             amount -= pay
         cash += amount
 
-    while t < hours * 3600 and plan:
-        # One trip of the current stage.
+    def chute_trip(t):
+        # Refill since the last visit, then drop up to a bed's worth.
+        chute["stock"] = min(CHUTE_STOCK, chute["stock"] + (t - chute["t"]) / CHUTE_REFILL)
+        chute["t"] = t
+        n = int(min(TRUCK_BALES, chute["stock"]))
+        far = math.hypot(CHUTE_AT[0] - SELL_PAD[0], CHUTE_AT[1] - SELL_PAD[1])
+        return n, TRUCK_OVERHEAD + n * CHUTE_GAP + 2 * far / TRUCK_SPEED
+
+    while plan:
+        who = min(range(players), key=lambda i: free[i])
+        t = free[who]
+        if t >= hours * 3600:
+            break
         gloves = "leather" if "Leather Gloves" in owned else ("work" if "Work Gloves" in owned else "bare")
-        if stage == "truck":
+        # The crew shares one truck: the second player hauls by barrow (or by hand) while the first drives.
+        mine = stage if who == 0 or stage != "truck" else ("barrow" if "Wheelbarrow" in owned else "hands")
+        if mine == "truck":
             group = nearest(bales, t, TRUCK_BALES)
             far = sum(dist(b) for b in group) / max(1, len(group))
-            trip = TRUCK_OVERHEAD + len(group) * TRUCK_LOAD + 2 * far / TRUCK_SPEED
+            trip = TRUCK_OVERHEAD + len(group) * (TOSS_LOAD if toss else TRUCK_LOAD) + 2 * far / TRUCK_SPEED
             moved = len(group)
-        elif stage == "barrow":
+            if toss:
+                n, chute_time = chute_trip(t)
+                if n / chute_time > moved / max(trip, 1):
+                    group, moved, trip = [], n, chute_time
+                    chute["stock"] -= n
+        elif mine == "barrow":
             group = nearest(bales, t, BARROW_BALES)
             far = max((dist(b) for b in group), default=0)
             trip = far / WALK + far / carry_speed(gloves, BARROW_FEEL) + len(group) * BARROW_LOAD + HANDLE
@@ -154,28 +218,41 @@ def play(seed, hours, verbose=False):
             trip = far / WALK + far / carry_speed(gloves) + HANDLE
             moved = len(group)
         if moved == 0:
-            t += 5
+            free[who] = t + 5
             continue
         for b in group:
             b[2] = t + REFILL  # gone, and a fresh one grows back
+        free[who] = t + trip
         t += trip
         if sorter:
-            rate = P["bales_per_min"][sorter] * trip / 60  # bales the line can sort while you were out
-            done = min(moved, rate)
-            per = line_sim.line("meadow", sorter)["per_bale"]
-            earn(done * per + (moved - done) * raw)
+            # The line sorts R bales a minute for everyone. A delivery queues behind what is already waiting; bales
+            # that would wait more than QUEUE_CAP go to the public shop raw instead.
+            r = line_sim.line("meadow", sorter)
+            per_bale_s = 60 / r["bales"]
+            start = max(line_free[0], t)
+            done = max(0, min(moved, int((t + QUEUE_CAP - start) / per_bale_s)))
+            line_free[0] = start + done * per_bale_s
+            found = done * r["needles"] / r["bales"]
+            per_needle = (r["per_bale"] - hay_value) / max(r["needles"] / r["bales"], 1e-9)
+            mult = steel.sell(t, found) if market else 1
+            earn(done * hay_value + found * per_needle * mult + (moved - done) * raw)
         else:
             earn(moved * raw)
 
         # Buy whatever is next as soon as it is affordable (a loan needs DownPayment in cash).
         while plan:
             name, price, loan, target = plan[0]
-            need = price * DOWN + owed.get(loan, 0) if loan else price
+            financed = 0
+            if loan:
+                financed = price
+            elif land_loan and name.startswith("Plot"):
+                loan, financed = "land", PLOT
+            need = price - financed * (1 - DOWN) + (owed.get(loan, 0) if loan else 0)
             if cash < need:
                 break
             cash -= need
             if loan:
-                owed[loan] = price * (1 - DOWN) * (1 + LOAN[loan][0])
+                owed[loan] = financed * (1 - DOWN) * (1 + LOAN[loan][0])
             owned.add(name)
             landed[name] = t / 3600
             plan.pop(0)
@@ -194,6 +271,14 @@ def play(seed, hours, verbose=False):
     return landed
 
 
+def medians(results):
+    out = {}
+    for name, *_ in PLAN:
+        times = sorted(r[name] for r in results if name in r)
+        out[name] = times[len(times) // 2] if len(times) * 2 > len(results) else None
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--hours", type=float, default=3)
@@ -201,7 +286,7 @@ def main():
     ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
 
-    results = [play(seed, a.hours, a.verbose) for seed in range(1, a.runs + 1)]
+    results = [play(seed, a.hours, verbose=a.verbose) for seed in range(1, a.runs + 1)]
     print(f"\n### First {a.hours:g} hours of a new save ({a.runs} seeded Meadow maps)\n")
     print("| Buy | Price | Lands (median) | Range | ECONOMY.md target | Off by |")
     print("|---|---|---|---|---|---|")
@@ -220,9 +305,20 @@ def main():
               f" {times[0]:.2f} to {times[-1]:.2f} h | {target:.1f} h | {off:+.0%}{flag} |")
         if flag:
             gaps.append(f"{name}: lands at {med * 60:.0f} min, target {target * 60:.0f} min ({off:+.0%})")
+
+    # v2 (CEO #30): the same save with the game's faster loading, a land loan, a crew and the needle market.
+    print(f"\n### What changes it (minutes to each buy, median of {a.runs} maps)\n")
+    cols = [medians([play(seed, a.hours, toss, land, players, market) for seed in range(1, a.runs + 1)])
+            for _, toss, land, players, market in SCENARIOS]
+    print("| Buy | Target | " + " | ".join(name for name, *_ in SCENARIOS) + " |")
+    print("|---|---|" + "---|" * len(SCENARIOS))
+    for name, _, _, target in PLAN:
+        cells = [f"{c[name] * 60:.0f}" if c[name] is not None else f"over {a.hours * 60:.0f}" for c in cols]
+        print(f"| {name} | {target * 60:.0f} | " + " | ".join(cells) + " |")
     print()
     print(f"Carrying a bale: {carry_speed('bare'):.1f} studs/s bare, {carry_speed('work'):.1f} with Work Gloves;"
-          f" pushing a full barrow {carry_speed('work', BARROW_FEEL):.1f}. A raw Meadow bale sells for {line_sim.money(line_sim.raw_bale('meadow'))}.")
+          f" pushing a full barrow {carry_speed('work', BARROW_FEEL):.1f}. A raw Meadow bale sells for {line_sim.money(line_sim.raw_bale('meadow'))}."
+          f" A crew's second player hauls by barrow while the first drives; the pickup carries {TRUCK_BALES} bales.")
     if gaps:
         print("\nOff target by more than half (send to Economy):")
         for g in gaps:

@@ -878,11 +878,11 @@ local function refreshPresets()
 			child:Destroy()
 		end
 	end
-	local ok, saved = pcall(function()
+	local ok, saved, why = pcall(function()
 		return blueprintRemotes.List:InvokeServer()
 	end)
 	if not ok or typeof(saved) ~= "table" then
-		presetMessage.Text = "Couldn't reach the server."
+		presetMessage.Text = typeof(why) == "string" and why or "Couldn't reach the server." -- why: the rate limit's "slow down"
 		return
 	end
 	for _, preset in saved do

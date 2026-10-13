@@ -1214,17 +1214,59 @@ local function skyIsland(folder, rng)
 end
 
 -- Signs where the roads branch, so nobody gets lost.
+-- Junction signs: where they stand, which way they face, and the places they point to. Each line is an arrow, a
+-- name and a target; the driving distance is worked out from the road graph (RoadGraph.luau) when the map builds, so
+-- "HOMESTEAD 880" can never drift from the roads. A line with no target is plain text.
+local function regionCenter(id)
+	local r = WorldShape.region(id)
+	return r and Vector2.new(r.cx, r.cz) or Vector2.zero
+end
+local HOMESTEAD = Vector2.new(0, -1470)
+local ASH_DOCK = Vector2.new(1585, -1225)
 local JUNCTIONS = {
-	{ -30, -600, Vector2.new(0, 1), "^ HOMESTEAD VALLEY\nMIRROR LAKE  >" },
-	{ 100, -748, Vector2.new(0, 1), "< HOMESTEAD   DESERT >" },
-	{ 150, 610, Vector2.new(0, -1), "< PINE FOREST   SWAMP >" },
-	{ -1190, -740, Vector2.new(1, 0), "^ HOMESTEAD   WRECK >" },
-	{ -620, -1320, Vector2.new(1, 0), "< SNOW PEAK   HOMESTEAD >" },
-	{ 220, -1475, Vector2.new(-1, 0), "VOLCANO, ASH DOCK >" },
-	{ 1300, -400, Vector2.new(0, -1), "< HIGHWAY   SWAMP v" },
-	{ 1560, 500, Vector2.new(-1, 0), "SWAMP PORT >\nFerry to Thimble Keys" },
-	{ 1480, -1170, Vector2.new(-1, 0), "ASH DOCK >\nFerry to Bobbin Rock" },
+	{ -30, -600, Vector2.new(0, 1), { { "^", "HOMESTEAD VALLEY", HOMESTEAD }, { ">", "MIRROR LAKE", Vector2.new(400, -880) } } },
+	{ 100, -748, Vector2.new(0, 1), { { "<", "HOMESTEAD", HOMESTEAD }, { ">", "DESERT", function() return regionCenter("desert") end } } },
+	{ 150, 610, Vector2.new(0, -1), { { "<", "PINE FOREST", function() return regionCenter("pine") end }, { ">", "SWAMP", function() return regionCenter("swamp") end } } },
+	{ -1190, -740, Vector2.new(1, 0), { { "^", "HOMESTEAD", HOMESTEAD }, { ">", "WRECK", Vector2.new(-1765, -860) } } },
+	{ -620, -1320, Vector2.new(1, 0), { { "<", "SNOW PEAK", Vector2.new(-650, -1600) }, { ">", "HOMESTEAD", HOMESTEAD } } },
+	{ 220, -1475, Vector2.new(-1, 0), { { ">", "VOLCANO", function() return regionCenter("volcano") end }, { ">", "ASH DOCK", ASH_DOCK } } },
+	{ 1300, -400, Vector2.new(0, -1), { { "<", "HIGHWAY", Map.Highway.from }, { "v", "SWAMP", function() return regionCenter("swamp") end } } },
+	{ 1560, 500, Vector2.new(-1, 0), { { ">", "SWAMP PORT", Vector2.new(1685, 520) }, { "", "Ferry to Thimble Keys" } } },
+	{ 1480, -1170, Vector2.new(-1, 0), { { ">", "ASH DOCK", ASH_DOCK }, { "", "Ferry to Bobbin Rock" } } },
 }
+
+-- A junction sign's text: one line per place, "^ HOMESTEAD 880" or "MIRROR LAKE 340 >" (arrows keep their side).
+-- Distances are rounded to 10 studs. Returns the text and the distances for the self-tests.
+local function junctionText(j)
+	local RoadGraph = require(script.Parent.RoadGraph)
+	local dist = RoadGraph.distances(Vector2.new(j[1], j[2]))
+	local lines, numbers = {}, {}
+	for _, line in j[4] do
+		local arrow, name, target = line[1], line[2], line[3]
+		if type(target) == "function" then
+			target = target()
+		end
+		if not target then
+			table.insert(lines, name)
+			continue
+		end
+		local d = dist[RoadGraph.nearest(target)]
+		if d == math.huge then
+			table.insert(lines, (arrow == ">" and "%s >" or "%s %s"):format(name, arrow))
+			continue
+		end
+		local n = math.max(10, math.floor(d / 10 + 0.5) * 10)
+		table.insert(numbers, { name = name, distance = n, target = target })
+		if arrow == ">" then
+			table.insert(lines, ("%s %d >"):format(name, n))
+		else
+			table.insert(lines, ("%s %s %d"):format(arrow, name, n))
+		end
+	end
+	return table.concat(lines, "\n"), numbers
+end
+Regions.junctions = JUNCTIONS
+Regions.junctionText = junctionText
 
 -- A sign at the roadside wherever a road crosses into another region: its name and the hay that grows there.
 local function borderSigns(folder)
@@ -1315,7 +1357,9 @@ function Regions.build(worldFolder)
 	local trees, made = 0, 0
 
 	for _, r in WorldShape.regions do
-		local sub = Instance.new("Folder")
+		-- A plain Model per region (Default streaming, never Atomic): parts stream one by one, and the region can be
+		-- found, pivoted or budgeted as a unit (Config/WorldMap PartBudget).
+		local sub = Instance.new("Model")
 		sub.Name = r.name
 		sub.Parent = folder
 		palette = PALETTE[r.id] or {}
@@ -1342,26 +1386,35 @@ function Regions.build(worldFolder)
 		task.wait() -- spread the work out so the server keeps ticking
 	end
 
-	local cave = Instance.new("Folder")
+	local cave = Instance.new("Model")
 	cave.Name = "Crystal Cave"
 	cave.Parent = folder
 	LANDMARKS.cave(cave, rng)
 
-	local sea = Instance.new("Folder")
+	local sea = Instance.new("Model")
 	sea.Name = "Graveyard of Ships"
 	sea.Parent = folder
 	graveyard(sea, rng)
 
-	local sky = Instance.new("Folder")
+	local sky = Instance.new("Model")
 	sky.Name = "Sky Island"
 	sky.Parent = folder
 	skyIsland(sky, rng)
 
-	local signs = Instance.new("Folder")
+	local signs = Instance.new("Model")
 	signs.Name = "Signs"
 	signs.Parent = folder
 	for _, j in JUNCTIONS do
-		signpost(signs, j[1], j[2], j[3], j[4], 12)
+		local ok, text = pcall(junctionText, j)
+		if not ok then
+			warn("[Needlewood] junction sign distances failed: " .. tostring(text))
+			local names = {}
+			for _, line in j[4] do
+				table.insert(names, line[2])
+			end
+			text = table.concat(names, "\n")
+		end
+		signpost(signs, j[1], j[2], j[3], text, 14)
 	end
 	local ok, borders = pcall(borderSigns, signs)
 	if not ok then

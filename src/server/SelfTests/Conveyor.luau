@@ -91,6 +91,8 @@ return function(SelfTest)
 		t.wait(12)
 		t.equal("first sorter sorted all 3 bales", a:GetAttribute("Sorted") or 0, 3)
 		t.equal("second sorter sorted nothing twice", b:GetAttribute("Sorted") or 0, 0)
+		-- 12 s after its last bale, with nothing queued, the first sorter's lamp reads starved (CEO #29).
+		t.equal("an idle sorter's lamp is amber", a:GetAttribute("Lamp"), "amber")
 
 		-- Both sorted bales should have passed B and be waiting in the buyer, unpaid, because their owner is away.
 		local atBuyer = 0
