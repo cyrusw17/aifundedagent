@@ -229,7 +229,11 @@ local function renderAccount()
 	local w = label(top, ("Wallet\n%s"):format(money(s.wallet)), 20, CREAM)
 	w.Position = UDim2.fromOffset(14, 10)
 	w.Size = UDim2.fromOffset(240, 60)
-	local bal = label(top, ("In the bank\n%s"):format(money(s.balance)), 20, GREEN)
+	local bankText = ("In the bank\n%s"):format(money(s.balance))
+	if (s.held or 0) > 0 then
+		bankText ..= ("  +%s loan to spend"):format(money(s.held))
+	end
+	local bal = label(top, bankText, 20, GREEN)
 	bal.Position = UDim2.fromOffset(270, 10)
 	bal.Size = UDim2.fromOffset(240, 60)
 

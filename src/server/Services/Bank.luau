@@ -69,8 +69,24 @@ function Bank.wallet(state)
 	return wallet(state)
 end
 
-function Bank.spendable(state)
+-- Loan money the bank holds for purchases: a loan pays out the item's price (your down payment plus the principal)
+-- as shop credit, so it can buy things but can't be withdrawn, traded or paid back into the loan as if it were yours.
+function Bank.held(state)
+	local total = 0
+	for _, loan in account(state).loans do
+		total += loan.held or 0
+	end
+	return total
+end
+
+-- Your own money: wallet plus bank balance. Trades, withdrawals, down payments and early loan payments use this.
+function Bank.liquid(state)
 	return wallet(state) + account(state).balance
+end
+
+-- What shops can take: your own money plus any loan money held for purchases.
+function Bank.spendable(state)
+	return Bank.liquid(state) + Bank.held(state)
 end
 
 function Bank.owed(state)
@@ -134,6 +150,7 @@ function Bank.earn(player, amount, note)
 			net -= pay
 			repaid += pay
 			if loan.owed <= 0 then
+				a.balance += loan.held or 0 -- anything it still held is yours once the loan is paid
 				a.loans[kind] = nil
 				record(state, "loan", 0, ("%s for the %s paid off"):format(terms.name, loan.item or "farm"))
 				Data.toast(player, ("Your %s is paid off. Every sale is all yours again."):format(terms.name:lower()))
@@ -151,14 +168,33 @@ function Bank.earn(player, amount, note)
 	return net, repaid
 end
 
--- Money that is not earnings (a refund, test cash): straight to the wallet, no loan share, no credit.
+-- Money that is not earnings (a refund, test cash): to the wallet, no loan share, no credit. While a loan is running,
+-- a refund pays it down first: selling back something the bank financed repays the bank before it reaches you, so
+-- loan money can't be turned into cash by buying and refunding.
 function Bank.give(player, amount, note)
 	local state = player and Data.get(player)
 	amount = math.floor(tonumber(amount) or 0)
 	if not state or amount <= 0 then
 		return
 	end
-	setWallet(state, wallet(state) + amount)
+	local a = account(state)
+	local left = amount
+	for _, kind in { "truck", "land" } do
+		local loan = a.loans[kind]
+		if loan and left > 0 then
+			local pay = math.min(loan.owed, left)
+			loan.owed -= pay
+			left -= pay
+			if pay > 0 then
+				record(state, "repay", -pay, "Refund toward your " .. Terms.Loans[kind].name:lower())
+			end
+			if loan.owed <= 0 then
+				a.balance += loan.held or 0 -- anything it still held is yours once the loan is paid
+				a.loans[kind] = nil
+			end
+		end
+	end
+	setWallet(state, wallet(state) + left)
 	record(state, "refund", amount, note or "Refund")
 	Data.sync(player)
 end
@@ -191,9 +227,19 @@ function Bank.charge(player, amount, note)
 		return false, ("You need %s more."):format(money(amount - have))
 	end
 	local a = account(state)
-	local fromWallet = math.min(wallet(state), amount)
+	local left = amount
+	-- Loan money first (it is only good for purchases), then the wallet, then the bank.
+	for _, kind in { "truck", "land" } do
+		local loan = a.loans[kind]
+		if loan and (loan.held or 0) > 0 and left > 0 then
+			local use = math.min(loan.held, left)
+			loan.held -= use
+			left -= use
+		end
+	end
+	local fromWallet = math.min(wallet(state), left)
 	setWallet(state, wallet(state) - fromWallet)
-	a.balance -= amount - fromWallet
+	a.balance -= left - fromWallet
 	record(state, "spend", -amount, note or "Purchase")
 	Data.sync(player)
 	return true
@@ -302,20 +348,26 @@ function Bank.takeLoan(player, kind, itemId)
 		return false, "You can't finance that right now."
 	end
 	local down, principal, payback = offer(kind, item)
-	if Bank.spendable(state) < down then
-		return false, ("Put %s of your own toward the %s first. You have %s."):format(money(down), item.name, money(Bank.spendable(state)))
+	if Bank.liquid(state) < down then
+		return false, ("Put %s of your own toward the %s first. You have %s."):format(money(down), item.name, money(Bank.liquid(state)))
 	end
 	if payback > Bank.creditLeft(state) then
 		return false, ("The bank can lend you up to %s right now. Every sale you make raises it."):format(money(Bank.creditLeft(state)))
 	end
-	a.balance += principal
-	a.loans[kind] = { owed = payback, principal = principal, item = item.name, takenAt = os.time() }
+	-- The down payment leaves your own money, and the bank holds the whole price (down payment plus principal) for
+	-- purchases only, so loan money can't be withdrawn or traded away. Real money even with InfiniteMoney on.
+	local fromWallet = math.min(wallet(state), down)
+	setWallet(state, wallet(state) - fromWallet)
+	a.balance -= down - fromWallet
+	a.loans[kind] = { owed = payback, principal = principal, held = item.price, item = item.name, takenAt = os.time() }
+	record(state, "spend", -down, ("Down payment on the %s"):format(item.name))
 	record(state, "loan", principal, ("%s for the %s"):format(terms.name, item.name))
 	Data.sync(player)
 	return true,
-		("Approved! %s is in your account for the %s. You pay back %s, %d%% of each sale until it's done."):format(
-			money(principal),
+		("Approved! %s is set aside for the %s (your %s down plus the loan). You pay back %s, %d%% of each sale until it's done."):format(
+			money(item.price),
 			item.name,
+			money(down),
 			money(payback),
 			math.round(terms.repayShare * 100)
 		)
@@ -329,23 +381,33 @@ function Bank.payLoan(player, kind)
 	if not loan then
 		return false, "You don't have that loan."
 	end
-	local pay = math.min(loan.owed, Bank.spendable(state))
-	if pay <= 0 then
+	-- Loan money not yet spent goes back to the bank first.
+	local unspent = math.min(loan.held or 0, loan.owed)
+	if unspent > 0 then
+		loan.held -= unspent
+		loan.owed -= unspent
+		record(state, "repay", -unspent, "Unspent loan money returned")
+	end
+	local pay = math.min(loan.owed, Bank.liquid(state))
+	if pay <= 0 and unspent <= 0 then
 		return false, "You have no money to pay with."
 	end
 	local fromBank = math.min(a.balance, pay)
 	a.balance -= fromBank
 	setWallet(state, wallet(state) - (pay - fromBank))
 	loan.owed -= pay
-	record(state, "repay", -pay, "Early loan payment")
+	if pay > 0 then
+		record(state, "repay", -pay, "Early loan payment")
+	end
 	local name = Terms.Loans[kind].name
 	if loan.owed <= 0 then
+		a.balance += loan.held or 0
 		a.loans[kind] = nil
 		Data.sync(player)
 		return true, ("Your %s is paid off."):format(name:lower())
 	end
 	Data.sync(player)
-	return true, ("Paid %s. You still owe %s."):format(money(pay), money(loan.owed))
+	return true, ("Paid %s. You still owe %s."):format(money(pay + unspent), money(loan.owed))
 end
 
 -- Trades -------------------------------------------------------------------------------------------------------------
@@ -389,11 +451,12 @@ function Bank.settleTrade(a, b, terms)
 		return false, "That amount of cash isn't valid."
 	end
 	local aOwes, bOwes = aCash + Bank.tradeFee(aCash), bCash + Bank.tradeFee(bCash)
-	if Bank.spendable(sa) < aOwes then
-		return false, ("%s needs %s more for this trade."):format(a.DisplayName, money(aOwes - Bank.spendable(sa)))
+	-- Only your own money trades; loan money held for purchases doesn't (Bank.held).
+	if Bank.liquid(sa) < aOwes then
+		return false, ("%s needs %s more for this trade."):format(a.DisplayName, money(aOwes - Bank.liquid(sa)))
 	end
-	if Bank.spendable(sb) < bOwes then
-		return false, ("%s needs %s more for this trade."):format(b.DisplayName, money(bOwes - Bank.spendable(sb)))
+	if Bank.liquid(sb) < bOwes then
+		return false, ("%s needs %s more for this trade."):format(b.DisplayName, money(bOwes - Bank.liquid(sb)))
 	end
 
 	local function pay(state, amount)
@@ -500,6 +563,7 @@ function Bank.snapshot(player)
 	return {
 		wallet = wallet(state),
 		balance = a.balance,
+		held = Bank.held(state), -- loan money set aside for purchases
 		owed = Bank.owed(state),
 		creditLeft = Bank.creditLeft(state),
 		nextInterest = Bank.interestOn(a.balance),

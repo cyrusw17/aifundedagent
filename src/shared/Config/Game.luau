@@ -7,8 +7,9 @@ return {
 	AutosaveSeconds = 60,
 
 	-- TESTING: every player has endless cash, so shops can be tried without grinding. Real balances are kept and
-	-- saved as normal underneath; set this to false before launch.
-	InfiniteMoney = true,
+	-- saved as normal underneath. Studio only, so a live server never hands out free money (refunds of free buys
+	-- would otherwise mint real cash). Set it to true or false outright to change that (ECONOMY.md, "Test money").
+	InfiniteMoney = game:GetService("RunService"):IsStudio(),
 
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,

@@ -297,8 +297,12 @@ a real boost and stays small next to a big farm's income.
 | Truck loan | Trucks and trailers you don't own | 10% | 25% of each sale |
 | Land loan | A plot, while you own none | 8% | 20% of each sale |
 
-You need 20% of the price yourself. The bank deposits the other 80%, adds its fee once, and takes its share out of each
-sale until the loan is paid. There are no due dates, no missed payments and no penalties, and you can pay the rest off
+You pay 20% of the price yourself when you take the loan. The bank then sets the whole price aside for you (your down
+payment plus its 80%), adds its fee once, and takes its share out of each sale until the loan is paid. The money it
+sets aside is for purchases only: shops spend it first, but it can't be withdrawn, traded at the trading post or used
+for anything but buying. If you sell back something the loan paid for, the refund repays the loan before any of it
+reaches you, and paying off early returns any loan money you haven't spent first. Without these rules a player could
+borrow, cash the loan out to a second account and never sell anything again (the health check found this). There are no due dates, no missed payments and no penalties, and you can pay the rest off
 at the window any time. You can have one of each kind at a time. Worked example: the $6,000 Rusty Pickup with $1,200
 down means borrowing $4,800 and paying back $5,280, a quarter of every sale until it's done (about two hours at pickup
 earnings).
@@ -312,7 +316,10 @@ the pickup once it has earned its down payment, and big loans come once you have
 
 **Test money.** With `InfiniteMoney` on, shops are free and the HUD shows the test balance as before. The wallet, bank,
 loans and history underneath stay real and are saved, so the bank can be tested with real numbers. (Before this change,
-anything earned while test money was on was thrown away.)
+anything earned while test money was on was thrown away.) Test money is on in Roblox Studio only
+(`InfiniteMoney = RunService:IsStudio()` in Config/Game), so a live server never hands out free money: a free purchase
+followed by a remove-and-refund would mint real cash there. That is a safe default while Cyrus decides how test money
+should work, and easy to reverse: set it back to `true` (everyone, everywhere) or `false` (nobody) in Config/Game.
 
 ## Travel fares (for the rest of the map)
 
