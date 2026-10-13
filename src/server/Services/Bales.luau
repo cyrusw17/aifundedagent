@@ -17,6 +17,20 @@ local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
+local Needle = require(script.Parent.Needle)
+local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
+local NeedleTypes = require(ReplicatedStorage.Shared.Config.Needles)
+
+-- Which needle each hay grows: the Config/Needles type from the same map (Pine straw -> Pine needles). Hay with no
+-- needle of its own (Meadow, and any new hay) gives the default steel.
+local needleOfHay = {}
+for hayId, hay in GloveConfig.HayTypes do
+	for _, n in NeedleTypes do
+		if n.map == hay.map then
+			needleOfHay[hayId] = n.id
+		end
+	end
+end
 
 local Bales = {}
 
@@ -302,6 +316,11 @@ function Bales.breakOpen(player, b)
 					baleOwner,
 					"Needle"
 				)
+				local needleId = needleOfHay[hayType]
+				if needleId and needle:GetAttribute("NeedleId") then
+					needle:SetAttribute("NeedleId", needleId)
+					needle.Color, needle.Material = Needle.look(needleId, needle:GetAttribute("Mutation"))
+				end
 				Feedback.needle(needle, Hay.needleValue(needle))
 			end
 			task.wait(0.22)
