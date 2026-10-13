@@ -13,7 +13,7 @@ return {
 	Wood = rgb(0.70, 0.60, 0.45),
 	WoodDark = rgb(0.52, 0.43, 0.32),
 	Handle = rgb(0.50, 0.41, 0.30),
-	Metal = rgb(0.48, 0.48, 0.47), -- clean weathered grey iron, no rust (BUILD_REGISTRY art style; the Blender meshes)
+	Metal = rgb(0.48, 0.48, 0.47), -- clean weathered grey iron, no rust (STYLE.md, BUILD_REGISTRY art style)
 	Rust = rgb(0.40, 0.26, 0.16),
 	Twine = rgb(0.38, 0.33, 0.26),
 	PaintRed = rgb(0.52, 0.24, 0.19),

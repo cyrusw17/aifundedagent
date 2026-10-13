@@ -33,8 +33,8 @@ World.build()
 
 print("[Needlewood] server started. Base camp is ready.")
 
--- Part budget. StreamingEnabled is off, so every client loads every part in the Workspace; past this many, phones
--- stutter and slow PCs take long to join. The count prints at start and again once the meadow has settled.
+-- Part budget. StreamingEnabled is on (default.project.json), but the server still holds every part and a client
+-- streams in everything within the target radius; past this many, phones stutter and slow PCs take long to join. The count prints at start and again once the meadow has settled.
 local PART_BUDGET = 40000
 local function countParts(when)
 	local parts = 0
@@ -45,7 +45,7 @@ local function countParts(when)
 	end
 	local line = ("[Needlewood] %d parts in the Workspace %s (budget %d)"):format(parts, when, PART_BUDGET)
 	if parts > PART_BUDGET then
-		warn(line .. ": over budget. Merge decor into meshes or turn on StreamingEnabled.")
+		warn(line .. ": over budget. Merge decor into meshes or cut decor parts.")
 	else
 		print(line)
 	end

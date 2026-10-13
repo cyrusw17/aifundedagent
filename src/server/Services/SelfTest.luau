@@ -31,6 +31,9 @@
 -- t.cleanup(instance)           destroyed after the suite
 -- t.wait(seconds)
 -- A suite that errors, or runs longer than 120 s, is one FAIL line and the next suite still runs.
+-- Suites play on the tester's real slot (sales, quests, settings, the book), so every saved field but the farm itself
+-- is snapshotted before the run and put back after it: a self-test run never changes the save. The farm (land, land2)
+-- is left alone because its placed pieces are live; suites undo what they build there.
 local RunService = game:GetService("RunService")
 
 local SelfTest = {}
@@ -137,6 +140,70 @@ local function runSuite(index, suite, totals)
 	end
 end
 
+-- Saved fields of each player's slot, copied before the suites run (see the header).
+local function deepCopy(value)
+	if typeof(value) ~= "table" then
+		return value
+	end
+	local out = {}
+	for k, v in value do
+		out[k] = deepCopy(v)
+	end
+	return out
+end
+
+local FARM = { land = true, land2 = true }
+
+local function snapshotSaves()
+	local Players = game:GetService("Players")
+	local Data = require(script.Parent.Data)
+	local snaps = {}
+	for _, player in Players:GetPlayers() do
+		local state = Data.get(player)
+		if state then
+			local snap = { fields = {}, savedCash = state.savedCash }
+			for key in Data.test.toSave(state) do
+				if not FARM[key] then
+					snap.fields[key] = deepCopy(state[key])
+				end
+			end
+			snaps[player] = { state = state, snap = snap }
+		end
+	end
+	return snaps
+end
+
+local function restoreSaves(snaps)
+	local Data = require(script.Parent.Data)
+	local Settings = require(script.Parent.Settings)
+	for player, entry in snaps do
+		local state = Data.get(player)
+		if state ~= entry.state then
+			continue -- left, or switched slots mid-run: that slot was saved as it was
+		end
+		-- Every saved key now or then, so a field a suite created (quests, contracts) goes back to nil too.
+		local keys = {}
+		for key in Data.test.toSave(state) do
+			keys[key] = true
+		end
+		for key in entry.snap.fields do
+			keys[key] = true
+		end
+		for key in keys do
+			if not FARM[key] then
+				state[key] = deepCopy(entry.snap.fields[key])
+			end
+		end
+		state.savedCash = entry.snap.savedCash
+		Data.sync(player)
+		-- Settings publish as attributes; put those back too (a key never set shows its default).
+		for key, def in Settings.Keys do
+			local value = (state.settings or {})[key]
+			player:SetAttribute(def[1], if value == nil then def[2] else value)
+		end
+	end
+end
+
 -- Runs every suite once. Suites in src/server/SelfTests are loaded the first time.
 local loaded = false
 function SelfTest.runAll()
@@ -164,8 +231,16 @@ function SelfTest.runAll()
 	local totals = { passed = 0, failed = 0, skipped = 0 }
 	local started = os.clock()
 	print(("[SelfTest] running %d suites"):format(#suites))
+	local snaps = snapshotSaves()
 	for index, suite in suites do
 		runSuite(index, suite, totals)
+	end
+	local okRestore, restoreErr = pcall(restoreSaves, snaps)
+	if okRestore then
+		print("[SelfTest] put every tester's save back as it was before the run")
+	else
+		totals.failed += 1
+		warn("[SelfTest] FAIL restoring testers' saves: " .. tostring(restoreErr))
 	end
 	local summary = ("[SelfTest] DONE %d passed, %d failed, %d skipped in %d suites (%.1f s)"):format(
 		totals.passed,
