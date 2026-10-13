@@ -393,6 +393,7 @@ return function(SelfTest)
 	-- the dealer lot; a second tow inside the cooldown is refused.
 	SelfTest.register("Biome recovery", function(t)
 		local Meadow = require(ReplicatedStorage.Shared.Config.Meadow)
+		local ChuteCfg = require(ReplicatedStorage.Shared.Config.Chutes)
 		local lane = 0
 		for _, def in require(ReplicatedStorage.Shared.Config.Trucks) do
 			if not def.available then
@@ -416,6 +417,9 @@ return function(SelfTest)
 			t.check(def.id .. " flip is accepted", flipped, why)
 			t.wait(1.5)
 			t.check(def.id .. " is upright after the flip", chassis.CFrame.UpVector.Y > 0.95, ("up.Y %.2f"):format(chassis.CFrame.UpVector.Y))
+			-- Upright on flat ground: it must fit through a bale chute's lane (Config/Chutes, the mesh's legs and beams).
+			local _, box = truck:GetBoundingBox()
+			t.check(def.id .. " fits under a bale chute", box.Y < ChuteCfg.Clearance and box.X < ChuteCfg.LaneWidth, ("%.1f wide x %.1f tall, lane %.2f x %.2f"):format(box.X, box.Y, ChuteCfg.LaneWidth, ChuteCfg.Clearance))
 			local towed, msg = Vehicles.recover(owner, "tow")
 			t.check(def.id .. " tow is accepted", towed, msg)
 			t.wait(1)

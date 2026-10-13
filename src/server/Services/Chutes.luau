@@ -10,6 +10,7 @@
 --   Chutes.build(worldFolder) -- after WorldMap.build, so Regions.fields is filled
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cfg = require(Shared.Config.Chutes)
@@ -26,6 +27,8 @@ local Chutes = {}
 
 local BALE = Vector3.new(4.6, 2.6, 3.2) -- Bales.luau SIZE: lying lengthwise in a bed, 3.2 across and 4.6 along
 local SLOT_ACROSS, SLOT_ALONG = 3.25, 4.7
+local GATE_OPEN = math.rad(70) -- the flap swings out toward the front while bales drop
+local LEVER_PULLED = math.rad(45) -- the lever's top swings back toward the hopper
 local ROAD_CLEAR = 18 -- from a road's center line to a field chute's center: half a road plus the chute's half width
 
 local chutes = {}
@@ -149,6 +152,12 @@ function Chutes.pull(chute, player)
 			end
 		end
 	end
+	if chute.swingLever then
+		chute.swingLever(LEVER_PULLED, 0.25)
+	end
+	if chute.swingGate then
+		chute.swingGate(GATE_OPEN, 0.4)
+	end
 	task.spawn(function()
 		local dropped = 0
 		for _, slot in slots do
@@ -176,6 +185,12 @@ function Chutes.pull(chute, player)
 			refreshLabel(chute)
 			task.wait(Cfg.DropGap)
 		end
+		if chute.swingGate then
+			chute.swingGate(0, 0.6)
+		end
+		if chute.swingLever then
+			chute.swingLever(0, 0.4)
+		end
 		chute.busy = false
 		if dropped > 0 then
 			tell(player, ("%d bales in the bed."):format(dropped))
@@ -184,27 +199,91 @@ function Chutes.pull(chute, player)
 	return math.min(#slots, chute.stock)
 end
 
+-- The Blender chute (blender/props/hub.py field_bale_chute; rigs.json) in its own units: 14.1 wide, 14.45 tall and
+-- 15.95 deep, facing -Z. Legs at x +-6.65 and z +-7 (inner faces at +-6.25), lane beams with their underside at 10,
+-- a plank hopper and bin from 11.2 up to 14, the Gate flap across the spout front (hinged at its top edge) and the red
+-- Lever on the front-left leg (pivots at its base). Chutes are built at Cfg.Scale, and the collision parts below follow
+-- the same numbers, so the posts you bump into are the posts you see.
+local MESH = {
+	depth = 15.95,
+	legX = 6.65,
+	legZ = 7.0,
+	legTop = 12.8,
+	beamY = 10.3,
+	binW = 11.6,
+	binD = 15.2,
+	binY0 = 11.2,
+	binY1 = 14.0,
+	lever = Vector3.new(-6.66, 4.15, -7.85), -- base of the lever
+	leverH = 2.86,
+}
+
+-- The box around some parts, in world axes.
+local function boxOf(parts)
+	local low, high = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, p in parts do
+		local half = p.Size / 2
+		for _, x in { -1, 1 } do
+			for _, y in { -1, 1 } do
+				for _, z in { -1, 1 } do
+					local corner = p.CFrame * Vector3.new(half.X * x, half.Y * y, half.Z * z)
+					low, high = low:Min(corner), high:Max(corner)
+				end
+			end
+		end
+	end
+	return low, high
+end
+
+-- Joins a moving piece of the mesh (Gate, Lever) to the hopper through a hinge at hingeAt, across the lane. Returns
+-- a function that swings it to an angle in radians.
+local function hinge(pieces, anchor, frame, hingeAt)
+	local pivot = CFrame.fromMatrix(hingeAt, frame.RightVector, frame.UpVector)
+	local welds = {}
+	for _, p in pieces do
+		local weld = Instance.new("Weld")
+		weld.Part0 = anchor
+		weld.Part1 = p
+		weld.C0 = anchor.CFrame:ToObjectSpace(pivot)
+		weld.C1 = p.CFrame:ToObjectSpace(pivot)
+		weld.Parent = p
+		table.insert(welds, weld)
+	end
+	local base = anchor.CFrame:ToObjectSpace(pivot)
+	return function(angle, seconds)
+		for _, weld in welds do
+			TweenService:Create(weld, TweenInfo.new(seconds, Enum.EasingStyle.Quad), { C0 = base * CFrame.Angles(angle, 0, 0) }):Play()
+		end
+	end
+end
+
 -- frame: ground CFrame in the middle of the lane, LookVector along the lane.
 function Chutes.make(parent, frame, field, name)
 	local model = Instance.new("Model")
 	model.Name = name or "BaleChute"
-	local W, Lz, H = Cfg.LaneWidth, Cfg.LaneLength, Cfg.Clearance
-	local postX, postZ = W / 2 + 0.6, Lz * 0.3
+	local S = Cfg.Scale
+	local look = {} -- the part-built chute each client hides once the mesh has loaded (not the lantern)
+	local function add(...)
+		local p = part(model, ...)
+		table.insert(look, p)
+		return p
+	end
+	local legX, legZ = MESH.legX * S, MESH.legZ * S
 	for _, sx in { -1, 1 } do
 		for _, sz in { -1, 1 } do
-			part(model, "Post", Vector3.new(1.2, H + 6, 1.2), frame * CFrame.new(sx * postX, (H + 6) / 2 - 1, sz * postZ), Rustic.WoodDark, Enum.Material.Wood)
+			add("Post", Vector3.new(0.8, MESH.legTop, 0.8) * S, frame * CFrame.new(sx * legX, MESH.legTop * S / 2, sz * legZ), Rustic.WoodDark, Enum.Material.Wood)
 		end
-		part(model, "Beam", Vector3.new(1, 1, Lz * 0.6 + 2), frame * CFrame.new(sx * postX, H + 0.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+		-- The X-braces and low rail stand in the leg plane, outside the lane: one wall each side keeps people out.
+		add("SideBrace", Vector3.new(0.4, 8.4 * S, 2 * legZ), frame * CFrame.new(sx * legX, 5.2 * S, 0), Rustic.Wood, Enum.Material.WoodPlanks).Transparency = 0.6
+		add("Beam", Vector3.new(14.1 * S, 0.6 * S, 0.7 * S), frame * CFrame.new(0, MESH.beamY * S, sx * legZ), Rustic.WoodDark, Enum.Material.Wood)
 	end
-	local hopper = part(model, "Hopper", Vector3.new(W - 1, 5, Lz * 0.6), frame * CFrame.new(0, H + 3, 0), Rustic.Wood)
-	part(model, "Roof", Vector3.new(W + 3, 0.6, Lz * 0.6 + 3), frame * CFrame.new(0, H + 6.2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
-	part(model, "Spout", Vector3.new(W - 4, 0.4, 4), frame * CFrame.new(0, H - 0.4, 0) * CFrame.Angles(math.rad(-20), 0, 0), Rustic.Wood, nil, false)
-	-- The pull rope hangs in the middle of the lane, low enough to reach from a truck's cab.
-	local rope = part(model, "PullRope", Vector3.new(0.3, H - 8.5, 0.3), frame * CFrame.new(-2, 8.5 + (H - 8.5) / 2, -Lz * 0.3 + 1), Rustic.Wood, Enum.Material.Fabric, false)
-	local handle = part(model, "Handle", Vector3.new(1.2, 0.5, 0.5), frame * CFrame.new(-2, 8.4, -Lz * 0.3 + 1), Rustic.PaintRed, Enum.Material.Wood, false)
-	rope.CanQuery = false
-	-- A lantern on a front post so the chute is easy to find at night (WorldClock lights anything named Lantern).
-	local lantern = part(model, "Lantern", Vector3.new(0.8, 1.2, 0.8), frame * CFrame.new(-postX, H - 1, -postZ - 0.8), Rustic.PaintCream, Enum.Material.Neon, false)
+	local binH = MESH.binY1 - MESH.binY0
+	local hopper = add("Hopper", Vector3.new(MESH.binW, binH, MESH.binD) * S, frame * CFrame.new(0, (MESH.binY0 + binH / 2) * S, 0), Rustic.Wood)
+	add("Spout", Vector3.new(3.6, 1.2, 3.6) * S, frame * CFrame.new(0, 10.6 * S, 0), Rustic.Wood, nil, false)
+	local leverBase = MESH.lever * S
+	local handle = add("Handle", Vector3.new(0.5, MESH.leverH, 0.5) * S, frame * CFrame.new(leverBase + Vector3.new(0, MESH.leverH * S / 2, 0)), Rustic.PaintRed, Enum.Material.Wood, false)
+	-- A lantern on the other front leg so the chute is easy to find at night (WorldClock lights anything named Lantern).
+	local lantern = part(model, "Lantern", Vector3.new(0.8, 1.2, 0.8), frame * CFrame.new(legX, 9 * S, -legZ - 0.8), Rustic.PaintCream, Enum.Material.Neon, false)
 	local light = Instance.new("PointLight")
 	light.Range = 22
 	light.Brightness = 1.4
@@ -212,13 +291,25 @@ function Chutes.make(parent, frame, field, name)
 	light.Parent = lantern
 	model.Parent = parent
 
-	-- The Blender chute (art-review/MODEL_SPECS.md: 12 x 16 x 14, faces -Z) at 1.2x, so its 11 x 9.5 clearance opens
-	-- to about 13 x 11.4 and a box truck fits under. The parts above stay as the collisions; each client hides them
-	-- once the mesh has loaded (PropMeshes.client.luau).
-	local fit = 16 * 1.2
-	local mesh = Props.make("field_bale_chute", frame * CFrame.new(0, fit / 2, 0), fit)
+	-- The mesh at Cfg.Scale, standing on the ground. Its Gate and Lever stay unwelded so they can swing on a pull.
+	local swingGate, swingLever
+	local mesh = Props.make("field_bale_chute", frame * CFrame.new(0, MESH.binY1 * S / 2, 0), MESH.depth * S)
 	if mesh then
-		Props.weldTo(mesh, hopper, model)
+		Props.restOn(mesh, frame.Position.Y)
+		local gate, lever = Props.find(mesh, "Gate"), Props.find(mesh, "Lever")
+		local loose = table.clone(gate)
+		table.move(lever, 1, #lever, #loose + 1, loose)
+		Props.weldTo(mesh, hopper, look, loose)
+		if #gate > 0 then
+			local low, high = boxOf(gate)
+			swingGate = hinge(gate, hopper, frame, Vector3.new((low.X + high.X) / 2, high.Y, (low.Z + high.Z) / 2))
+		end
+		if #lever > 0 then
+			local low, high = boxOf(lever)
+			-- The prompt sits where the mesh's lever really is, whichever way the import turned it.
+			handle.CFrame = CFrame.new((low + high) / 2) * frame.Rotation
+			swingLever = hinge(lever, hopper, frame, Vector3.new((low.X + high.X) / 2, low.Y, (low.Z + high.Z) / 2))
+		end
 	end
 
 	local prompt = Instance.new("ProximityPrompt")
@@ -238,6 +329,8 @@ function Chutes.make(parent, frame, field, name)
 		stock = Cfg.Stock,
 		busy = false,
 		prompt = prompt,
+		swingGate = swingGate,
+		swingLever = swingLever,
 		label = WorldLabel.billboard(hopper, "", { kind = "sign", offset = Vector3.new(0, 6, 0) }),
 	}
 	refreshLabel(chute)

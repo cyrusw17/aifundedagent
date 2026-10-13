@@ -7,9 +7,12 @@ return {
 	Stock = 18, -- bales a full chute holds (two pickup layers)
 	RefillSeconds = 6, -- one bale back every this many seconds (10 a minute)
 	DropGap = 0.35, -- seconds between bales falling, so a layer lands in about 3 seconds
-	LaneWidth = 14, -- between the posts; the widest bed (the large trailer) is about 11
+	-- The Blender chute's lane is 12.5 wide and 10 tall at scale 1. The box truck and the heavy hauler both stand 10.2
+	-- tall and the hauler is 12.2 wide (blender SIZES.md), so chutes are built 10% up: 13.75 x 11 clear.
+	Scale = 1.1,
+	LaneWidth = 12.5 * 1.1, -- between the legs' inner faces
 	LaneLength = 18,
-	Clearance = 13, -- the hopper's underside; the box truck stands about 11 tall
+	Clearance = 10 * 1.1, -- the lane beams' underside
 	-- The meadow chute, on the trailer road between the plots and the sell dock. lane is the way trucks drive through.
 	Meadow = { at = Vector2.new(120, 110), lane = Vector2.new(0, 1) },
 }
