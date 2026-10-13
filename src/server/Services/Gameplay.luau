@@ -1,6 +1,7 @@
 --!nonstrict
 -- The sell pad by the hay shop. Step on it with hay, set a whole bale on it, or rake loose hay onto it.
--- No buttons or prompts. Every sale is decided here, never on the client.
+-- No buttons or prompts. Every sale is decided here, never on the client. Needles in your pocket sell here too,
+-- at Economy.HAND_NEEDLE_SHARE of their full value, so a new player is never stuck holding one.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -12,15 +13,23 @@ local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
+local Feedback = require(script.Parent.Feedback)
+-- The shared needle (from the conveyor work) when present: needles clicked up into a pocket sell here too.
+local NeedleModule = script.Parent:FindFirstChild("Needle")
+local Needle = NeedleModule and require(NeedleModule)
 
 local Gameplay = {}
 
 local rng = Random.new()
 local lastHaySale = {}
 
+local function hasPocketNeedles(player)
+	return Needle ~= nil and Needle.heldCount(player) > 0
+end
+
 local function sellHay(player)
 	local state = Data.get(player)
-	if not state or state.loadHay <= 0 then
+	if not state or (state.loadHay <= 0 and not hasPocketNeedles(player)) then
 		return
 	end
 	if os.clock() - (lastHaySale[player] or 0) < 1 then
@@ -29,14 +38,28 @@ local function sellHay(player)
 	lastHaySale[player] = os.clock()
 
 	local hay, needles = state.loadHay, state.loadNeedles
-	local value = Economy.rawLoadValue(hay, needles)
+	local value = hay > 0 and Economy.rawLoadValue(hay, needles) or 0
 	state.loadHay = 0
 	state.loadNeedles = 0
+
+	local pocketCount, pocketValue = 0, 0
+	if hasPocketNeedles(player) then
+		local count, full = Needle.sellHeld(player)
+		pocketCount = count
+		pocketValue = math.floor(full * Economy.HAND_NEEDLE_SHARE)
+	end
+	value += pocketValue
 	Bank.earn(player, value, "Hay shop")
-	Data.toast(
-		player,
-		("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
-	)
+	Feedback.sale(player, value)
+
+	local parts = {}
+	if hay > 0 then
+		table.insert(parts, ("%d hay"):format(hay))
+	end
+	if pocketCount > 0 then
+		table.insert(parts, pocketCount == 1 and "1 needle" or ("%d needles"):format(pocketCount))
+	end
+	Data.toast(player, ("+$%d · %s"):format(value, table.concat(parts, ", ")))
 end
 
 local function sellBale(b)
@@ -52,10 +75,8 @@ local function sellBale(b)
 	local state = owner and Data.get(owner)
 	if state then
 		Bank.earn(owner, value, "Hay shop")
-		Data.toast(
-			owner,
-			("Sold a bale: %d hay for $%d. The shop found %d needles and paid $1 each."):format(hay, value, needles)
-		)
+		Feedback.sale(owner, value)
+		Data.toast(owner, ("+$%d · a bale"):format(value))
 	end
 end
 
@@ -81,7 +102,8 @@ local function sellPieces(pieces)
 			local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 			local value = Economy.rawLoadValue(hay, needles) + (needlesByOwner[ownerId] or 0)
 			Bank.earn(owner, value, "Hay shop")
-			Data.toast(owner, ("Sold %d loose hay for $%d. The shop found %d needles."):format(hay, value, needles))
+			Feedback.sale(owner, value)
+			Data.toast(owner, ("+$%d · %d loose hay"):format(value, hay))
 		end
 	end
 end

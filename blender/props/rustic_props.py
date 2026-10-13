@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 sys.path.insert(0, HERE)
 import common  # noqa: E402
+import rig  # noqa: E402
 import hay_bale  # noqa: E402
 import style  # noqa: E402
 from style import box, cap_uv, cyl  # noqa: E402
@@ -289,9 +290,15 @@ def main():
             if only and key not in only:
                 continue
             common.reset_scene()
-            obj = common.join(build(style.rustic()), object_name(key))
+            parts = build(style.rustic())
+            flip = getattr(sys.modules.get(build.__module__), "RIG_FLIP", False)
+            if flip or rig.is_rigged(parts):
+                obj = rig.assemble(parts, object_name(key), common.join, flip=flip)
+                objs = [obj] + list(obj.children)
+            else:
+                objs = [common.join(parts, object_name(key))]
             args.name = key
-            common.export([obj], args)
+            common.export(objs, args)
         if "--no-catalog" not in argv:
             catalog(props, os.path.join(out, f"catalog_{cat}.png"))
 

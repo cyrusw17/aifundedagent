@@ -24,6 +24,8 @@ local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
+local Skins = require(script.Parent.Skins)
+local Feedback = require(script.Parent.Feedback)
 
 local Machines = {}
 
@@ -102,6 +104,7 @@ function Machines.pay(ownerId, amount, text, note)
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
 	Data.toast(owner, text)
+	Feedback.sale(owner, amount)
 end
 
 -- A tycoon button: a round pad on the ground that fires once each time a player steps onto it.
@@ -171,7 +174,12 @@ function Machines.needleBin(parent, frame)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
 	local function refresh()
-		label.Text = ("NEEDLE BIN\n%d needles"):format(#Needle.inBox(inside, insideSize))
+		Needle.bundleIn(inside, insideSize)
+		local count = 0
+		for _, n in Needle.inBox(inside, insideSize) do
+			count += Needle.count(n)
+		end
+		label.Text = ("NEEDLE BIN\n%d needles"):format(count)
 	end
 	refresh()
 	task.spawn(function()
@@ -192,18 +200,13 @@ function Machines.needleBin(parent, frame)
 	end
 
 	function bin.sell(player)
-		local byType = Needle.takeHeld(player)
+		local count, value = Needle.sellHeld(player)
 		for _, n in Needle.inBox(inside, insideSize) do
 			if n:GetAttribute("OwnerId") == player.UserId then
-				local id = n:GetAttribute("NeedleId") or Needle.default.id
-				byType[id] = (byType[id] or 0) + 1
+				count += Needle.count(n)
+				value += Needle.value(n)
 				n:Destroy()
 			end
-		end
-		local count, value = 0, 0
-		for id, k in byType do
-			count += k
-			value += k * Needle.info(id).sortedValue
 		end
 		refresh()
 		if count == 0 then
@@ -213,13 +216,14 @@ function Machines.needleBin(parent, frame)
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
 	end
 
-	-- Needles in the bin, as { [needleId] = count }: everyone's, or only ownerId's.
+	-- Needles in the bin, as { [key] = count } keyed like the pocket (Needle.keyOf): everyone's, or only ownerId's.
+	-- A bundle counts as its needles.
 	function bin.contents(ownerId)
 		local byType = {}
 		for _, n in Needle.inBox(inside, insideSize) do
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
-				local id = n:GetAttribute("NeedleId") or Needle.default.id
-				byType[id] = (byType[id] or 0) + 1
+				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"))
+				byType[key] = (byType[key] or 0) + Needle.count(n)
 			end
 		end
 		return byType
@@ -229,13 +233,14 @@ function Machines.needleBin(parent, frame)
 	function bin.fill(ownerId, byType)
 		local perRow, rows = 4, 24
 		local placed = 0
-		for id, count in byType do
+		for key, count in byType do
+			local id, mult = Needle.parseKey(key)
 			for _ = 1, count do
 				local col = placed % perRow
 				local row = math.floor(placed / perRow) % rows
 				local layer = math.floor(placed / (perRow * rows))
 				local at = floor * CFrame.new(-1.95 + col * 1.3, 0.1 + layer * 0.16, -2.3 + row * 0.2)
-				local n = Needle.spawn(at.Position, ownerId, id)
+				local n = Needle.spawn(at.Position, ownerId, id, mult)
 				n.CFrame = at
 				n.Anchored = true
 				placed += 1
@@ -275,6 +280,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local model = Instance.new("Model")
 	model.Name = "NeedleSorter"
 	model:SetAttribute("Tier", tier.id)
+	model:SetAttribute("Running", false) -- the machine mesh's moving pieces turn only while this is true
 	model.Parent = parent
 
 	local height = 7
@@ -290,6 +296,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
 	local label = sign(roof, tier.name:upper(), Vector3.new(0, 4, 0))
+	-- The tier's Blender machine, when it was imported (the hand sieve is a hand tool, not a machine).
+	if tier.id ~= "hand_sieve" then
+		Skins.dress(tier.id, roof, model, center)
+	end
 
 	local dust = Instance.new("ParticleEmitter")
 	dust.Rate = 0
@@ -306,6 +316,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local sorted = 0
 
 	local function sort(hay, ownerId)
+		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
 		local started = os.clock()
@@ -315,6 +326,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		end
 		roof.CFrame = rest
 		dust.Rate = 0
+		model:SetAttribute("Running", false)
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
 		local hidden = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)

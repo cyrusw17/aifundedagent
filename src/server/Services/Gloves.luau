@@ -22,6 +22,7 @@ end
 
 local owned = {} -- player -> { [gloveId] = true }
 local worn = {} -- player -> gloveId
+local brokeFirstBale = {} -- player -> true once their first bale has been broken (it always spills a needle)
 local store = nil
 do
 	local ok, result = pcall(function()
@@ -112,7 +113,7 @@ local function save(player)
 	for id in owned[player] do
 		table.insert(list, id)
 	end
-	state.gloves = { owned = list, worn = worn[player] }
+	state.gloves = { owned = list, worn = worn[player], brokeFirstBale = brokeFirstBale[player] }
 end
 
 local function legacyGloves(player)
@@ -145,6 +146,7 @@ local function load(player)
 	owned[player] = { bare = true }
 	worn[player] = "bare"
 	if typeof(saved) == "table" then
+		brokeFirstBale[player] = saved.brokeFirstBale == true or nil
 		for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
 			if byId[id] then
 				owned[player][id] = true
@@ -184,6 +186,17 @@ function Gloves.buyOrWear(player, id)
 	worn[player] = id
 	publish(player)
 	save(player)
+end
+
+-- True the first time a player ever breaks a bale, so that bale can promise them a needle. Kept with the gloves
+-- record so it survives leaving.
+function Gloves.firstBaleBreak(player)
+	if brokeFirstBale[player] or not owned[player] then
+		return false
+	end
+	brokeFirstBale[player] = true
+	task.spawn(save, player)
+	return true
 end
 
 function Gloves.owns(player, id)
@@ -297,6 +310,7 @@ function Gloves.init()
 	Players.PlayerRemoving:Connect(function(player)
 		owned[player] = nil
 		worn[player] = nil
+		brokeFirstBale[player] = nil
 	end)
 end
 
