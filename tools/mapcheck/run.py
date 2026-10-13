@@ -30,9 +30,11 @@ MODULES = {
     "Services.WorldClock": "server/Services/WorldClock.luau",
     "Shared.Config.Quests": "shared/Config/Quests.luau",
     "Shared.Config.Weather": "shared/Config/Weather.luau",
+    "Shared.WorldRegions": "shared/WorldRegions.luau",
     "Services.Weather": "server/Services/Weather.luau",
     "Services.RegionEvents": "server/Services/RegionEvents.luau",
     "Services.Wilds": "server/Services/Wilds.luau",
+    "Services.Discoveries": "server/Services/Discoveries.luau",
 }
 
 
