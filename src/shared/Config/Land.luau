@@ -113,6 +113,10 @@ return {
 
 	SiloCapacity = 60, -- bales
 	SiloFeedSeconds = 3, -- one bale out every this many seconds while the belt in front is clear
+	-- Play-together bonus (CEO H12): bales on your plot hold this many times the needles while a friend or crew
+	-- member is standing on it. Helpers count only once their own slot has sold TogetherMinSold (the trading post's
+	-- alt rule, Prices.Trade.MinSoldToGiveCash), so a fresh alt account can't switch it on.
+	TogetherBonus = 1.1,
 
 	-- Preset saves: an empty save slot for these players starts as this farm instead of from nothing.
 	-- items are in plot tiles (from 0) as seen with the lane to the south: gx left to right, gz from the back fence to the
