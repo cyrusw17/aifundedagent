@@ -37,8 +37,10 @@ local SHAPES = {
 	-- Rusty Pickup: bed 14.6 long x 10.2 wide inside, 3.2 walls, floor top 3.5 (BUILD_REGISTRY.md). Bales lie
 	-- lengthwise, three along and three across (3 x 4.6 = 13.8 long, 3 x 3.2 = 9.6 wide), 9 to a layer.
 	rusty_pickup = {
-		wheel = 1.65,
-		track = 4.3,
+		-- Wheels match the Blender rig (Wheel_L1/R1.. in rusty_pickup.glb), so the welded mesh wheels sit on the rollers.
+		wheel = 1.62,
+		track = 3.9,
+		axles = { -11.2, 8.8 },
 		deck = 2.6,
 		cabW = 9.0,
 		cabH = 6.6,
@@ -129,11 +131,14 @@ function Vehicles.build(def, pivot, parent)
 
 	-- Chassis: the root of the vehicle. Invisible underneath, so terrain bumps never snag it.
 	local chassis = box("Chassis", Vector3.new(BED_W * 0.5, 0.8, L - 2), 0, DECK - 0.4, 0, Rustic.Metal, Enum.Material.Metal, false)
+	-- Light like wood, not steel: every other body part is massless, so the chassis is nearly all the truck's weight.
+	-- At Metal's density it weighed ~850 and the drive force could not climb the meadow's slopes.
+	chassis.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0, 1, 1)
 	model.PrimaryPart = chassis
 
 	-- Wheels double as the rollers the truck rides on.
-	local axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 2 }
-	if def.style == "hauler" then
+	local axles = S.axles or { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 2 }
+	if def.style == "hauler" and not S.axles then
 		axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 4.2, L / 2 - WHEEL_RADIUS * 1.6 }
 	end
 	local wheels = {}
@@ -232,12 +237,10 @@ function Vehicles.build(def, pivot, parent)
 		local tailgate = box("Tailgate", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, tailZ, paint, Enum.Material.Metal)
 		tailgate.CustomPhysicalProperties = BED_GRIP
 		CollectionService:AddTag(tailgate, "Tailgate") -- the conveyor dock (PR #13 Dock.luau) drops it while unloading
-		-- Closed and folded-down spots, from the chassis center. Open, it lies flat behind the bed at floor level.
+		-- Closed and dropped spots, from the chassis center. Open, it hangs straight down behind the bed with its top
+		-- edge at the floor, so a truck backed flush to the dock has nothing in the way of the belt.
 		model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + wall / 2 - (DECK - 0.4), tailZ))
-		model:SetAttribute(
-			"TailgateOpen",
-			CFrame.new(0, floorTop - 0.175 - (DECK - 0.4), tailZ + 0.175 + wall / 2) * CFrame.Angles(math.pi / 2, 0, 0)
-		)
+		model:SetAttribute("TailgateOpen", CFrame.new(0, floorTop - wall / 2 - (DECK - 0.4), tailZ + 0.35))
 		-- The cargo zone, from the chassis center (which sits DECK - 0.4 above the ground).
 		model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + 3 - (DECK - 0.4), backZ))
 		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.7, 6, backLength - 0.7))
@@ -481,6 +484,8 @@ function Vehicles.setTailgate(model, open)
 		weld:Destroy()
 	end
 	tailgate.CFrame = chassis.CFrame * spot
+	-- A dropped gate is out of the cargo's way and never pushes against the dock.
+	tailgate.CanCollide = not open
 	if weld then
 		local new = Instance.new("WeldConstraint")
 		new.Part0 = chassis
@@ -561,10 +566,9 @@ function Vehicles.buildTrailer(def, pivot, parent)
 	tailgate.CustomPhysicalProperties = BED_GRIP
 	CollectionService:AddTag(tailgate, "Tailgate")
 	model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + def.wall / 2 - railY, tailZ))
-	model:SetAttribute(
-		"TailgateOpen",
-		CFrame.new(0, floorTop - WALL_T / 2 - railY, L / 2 + def.wall / 2) * CFrame.Angles(math.pi / 2, 0, 0)
-	)
+	-- Open, it hangs down behind the bed (a tall rack's gate is cut off at the ground).
+	local hang = math.min(def.wall, floorTop - 0.3)
+	model:SetAttribute("TailgateOpen", CFrame.new(0, floorTop - hang / 2 - railY, tailZ + WALL_T))
 	local zoneH = math.max(6, def.wall + 2) -- tall racks hold three layers
 	model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + zoneH / 2 - railY, 0))
 	model:SetAttribute("CargoSize", Vector3.new(inside.X - 0.4, zoneH, inside.Z - 0.4))
@@ -784,6 +788,10 @@ end
 -- One truck per player in the world. A new one replaces the old.
 function Vehicles.setOwned(player, model)
 	local old = owned[player]
+	local trailer = ownedTrailers[player]
+	if old and old ~= model and trailer and trailer:GetAttribute("HitchedTo") then
+		Vehicles.unhitch(trailer) -- its truck is going away; leave it parked, not hitched to nothing
+	end
 	if old and old ~= model then
 		old:Destroy()
 	end
@@ -796,32 +804,84 @@ end
 -- falls or is lifted out.
 local riding = {} -- bale record -> true
 
+-- Who simulates a vehicle right now: the player in its driver's seat, or its owner when it is parked. A trailer
+-- follows the truck it is hitched to.
+local function driverOf(model, owner)
+	local truck = model
+	if model:GetAttribute("TrailerId") then
+		truck = model:GetAttribute("HitchedTo") and owned[owner]
+		if not truck then
+			return owner
+		end
+	end
+	local seat = truck:FindFirstChild("DriverSeat")
+	local humanoid = seat and seat.Occupant
+	local player = humanoid and Players:GetPlayerFromCharacter(humanoid.Parent)
+	return player or owner
+end
+
 local function updateCargo()
 	local now = {}
+	local load = {} -- model -> mass of the bales riding in it
 	for model, player in Vehicles.all() do
 		local chassis = model.PrimaryPart
 		local offset, size = model:GetAttribute("CargoOffset"), model:GetAttribute("CargoSize")
-		-- While the dock unloads (tailgate open), the dock owns the cargo's physics; leave it alone.
-		if not chassis or not offset or chassis.Anchored or model:GetAttribute("TailgateIsOpen") then
+		if not chassis or chassis.Anchored then
 			continue
 		end
+		-- Lashed on a ferry (Ferry.luau) the truck is part of the server's ferry, so it and its cargo are too.
+		local simulator = if model:GetAttribute("OnFerry") then nil else driverOf(model, player)
+		-- Keep the driver simulating the truck they sit in. Ownership can be reset (anchoring, a ferry ride), and a
+		-- truck the server simulates ignores the driver's controls.
+		if simulator and not model:GetAttribute("TrailerId") then
+			local seat = model:FindFirstChild("DriverSeat")
+			if seat and seat.Occupant then
+				pcall(function()
+					if chassis:GetNetworkOwner() ~= simulator then
+						chassis:SetNetworkOwner(simulator)
+					end
+				end)
+			end
+		end
+		-- While the dock unloads (tailgate open), the dock owns the cargo's physics; leave it alone.
+		if not offset or model:GetAttribute("TailgateIsOpen") then
+			continue
+		end
+		local mass = 0
 		for _, p in workspace:GetPartBoundsInBox(chassis.CFrame * offset, size) do
 			local b = Bales.fromPart(p)
 			if b and not b.gone and not b.carriedBy and not b.breaking and not now[b] and not b.body.Anchored then
 				now[b] = true
+				mass += b.body.AssemblyMass
 				if not riding[b] then
 					b.body:SetAttribute("InTruck", true)
 				end
 				-- Whoever hauls a bale gets paid for it at the sell shop, even if it was pushed in rather than carried.
 				b.ownerId = b.ownerId or player.UserId
-				-- Lashed on a ferry (Ferry.luau) the truck is part of the server's ferry, so its cargo is too.
-				local simulator = if model:GetAttribute("OnFerry") then nil else player
 				pcall(function()
 					if b.body:GetNetworkOwner() ~= simulator then
 						b.body:SetNetworkOwner(simulator)
 					end
 				end)
 			end
+		end
+		load[model] = mass
+	end
+	-- What each truck pulls besides itself: its own load, plus a hitched trailer and that trailer's load. The driving
+	-- client scales the drive force by it (Truck.client.luau), so a full rig still climbs.
+	for player, truck in owned do
+		local extra = load[truck] or 0
+		local trailer = ownedTrailers[player]
+		if trailer and trailer.Parent and trailer.PrimaryPart and trailer:GetAttribute("HitchedTo") == truck:GetAttribute("TruckId") then
+			extra += trailer.PrimaryPart.AssemblyMass + (load[trailer] or 0)
+			for _, p in trailer:GetChildren() do
+				if p.Name == "Wheel" and p:IsA("BasePart") then
+					extra += p.AssemblyMass
+				end
+			end
+		end
+		if truck.Parent then
+			truck:SetAttribute("PullMass", math.floor(extra))
 		end
 	end
 	for b in riding do

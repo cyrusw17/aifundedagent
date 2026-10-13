@@ -212,7 +212,7 @@ return {
 			name = "North Road", -- Meadow's north exit, past Mirror Lake and the Spindle, into Homestead
 			points = {
 				Vector2.new(-30, -512), Vector2.new(-30, -620), Vector2.new(90, -760), Vector2.new(170, -900),
-				Vector2.new(190, -1080), Vector2.new(120, -1260), Vector2.new(0, -1330),
+				Vector2.new(190, -1080), Vector2.new(120, -1260), Vector2.new(0, -1330), Vector2.new(0, -1390),
 			},
 		},
 		{
@@ -233,12 +233,12 @@ return {
 			name = "Pine Road", -- Pine Forest north through Haunted Grove to Homestead
 			points = {
 				Vector2.new(-1150, 160), Vector2.new(-1200, -120), Vector2.new(-1180, -420), Vector2.new(-1120, -760),
-				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1420), Vector2.new(-180, -1400),
+				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1420), Vector2.new(-125, -1400),
 			},
 		},
 		{
 			name = "Wreck Lane",
-			points = { Vector2.new(-1180, -760), Vector2.new(-1500, -840), Vector2.new(-1730, -860) },
+			points = { Vector2.new(-1120, -760), Vector2.new(-1500, -840), Vector2.new(-1730, -860) },
 		},
 		{
 			name = "Snow Road",
@@ -269,7 +269,7 @@ return {
 		},
 		{
 			name = "Zeppelin Lane",
-			points = { Vector2.new(200, -1560), Vector2.new(320, -1640), Vector2.new(320, -1680) },
+			points = { Vector2.new(120, -1545), Vector2.new(200, -1580), Vector2.new(320, -1640), Vector2.new(320, -1680) },
 		},
 		{
 			name = "Keys Road", -- off the highway, across Thimble Keys to the harbor

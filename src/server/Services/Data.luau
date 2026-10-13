@@ -161,6 +161,25 @@ local function summarize(saved)
 	}
 end
 
+-- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, savedAt }.
+local function landFrom(land)
+	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
+		return nil
+	end
+	return {
+		owned = land.owned == true,
+		plot = typeof(land.plot) == "number" and land.plot or nil,
+		items = land.items,
+		needles = countMap(land.needles),
+		crew = typeof(land.crew) == "table" and land.crew or {}, -- farm crew user ids
+		expansions = typeof(land.expansions) == "number" and land.expansions or nil, -- rows bought
+		binSorted = land.binSorted == true or nil, -- the needle bin has type dividers
+		binPolisher = land.binPolisher == true or nil, -- the needle bin has a polishing wheel
+		theme = typeof(land.theme) == "string" and land.theme or nil, -- plot theme id
+		savedAt = typeof(land.savedAt) == "number" and land.savedAt or nil, -- os.time() of the last save
+	}
+end
+
 -- A fresh state from a saved table (or an empty one).
 local function stateFrom(saved)
 	saved = typeof(saved) == "table" and saved or {}
@@ -196,19 +215,8 @@ local function stateFrom(saved)
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 	}
 	state.savedCash = state.cash
-	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
-		state.land = {
-			owned = saved.land.owned == true,
-			plot = typeof(saved.land.plot) == "number" and saved.land.plot or nil,
-			items = saved.land.items,
-			needles = countMap(saved.land.needles),
-			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
-			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
-			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
-			theme = typeof(saved.land.theme) == "string" and saved.land.theme or nil, -- plot theme id
-			savedAt = typeof(saved.land.savedAt) == "number" and saved.land.savedAt or nil, -- os.time() of the last save
-		}
-	end
+	state.land = landFrom(saved.land)
+	state.land2 = landFrom(saved.land2) -- a second farm, bought once the first one is outgrown
 	return state
 end
 
@@ -362,6 +370,7 @@ function Data.save(player)
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
+		land2 = state.land2,
 		bank = state.bank,
 		tutorial = state.tutorial,
 		settings = state.settings,
