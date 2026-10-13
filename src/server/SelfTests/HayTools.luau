@@ -20,6 +20,7 @@ local Avatar = require(Services.Avatar)
 local Bales = require(Services.Bales)
 local Hay = require(Services.Hay)
 local Gloves = require(Services.Gloves)
+local GloveLooks = require(Services.GloveLooks)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
 local Bank = require(Services.Bank)
@@ -89,6 +90,56 @@ local function noPlayerChecks(t)
 	t.check("...glints", gold.body:FindFirstChildOfClass("Sparkles") ~= nil)
 	t.check("...and says so in its button", gold.prompt.ObjectText:sub(1, 6) == "Golden", gold.prompt.ObjectText)
 	t.check("golden bales are rare and hold more needles", Config.GoldenBaleOneIn >= 50 and Config.GoldenBaleNeedles > 1)
+
+	-- The glove ladder: every tier up carries faster, takes more of the hay-weight slowdown away, and looks different
+	-- on the hands (its own cuff color and material, with or without the Blender mesh).
+	local tiers = GloveConfig.Tiers
+	local baleLoad = Gloves.baleWeight(gold.body)
+	local heavy = Config.PiecesPerBale * Config.HayPerPiece * GloveConfig.HayTypes.sky.weight * GloveConfig.BaleWeightFactor
+	for i = 2, #tiers do
+		local lo, hi = tiers[i - 1], tiers[i]
+		local label = ("%s beats %s"):format(hi.name, lo.name)
+		t.check(label .. " at carry speed", (hi.carrySpeed or 0) > (lo.carrySpeed or 0), hi.carrySpeed)
+		t.check(label .. " at the hay-weight slowdown", hi.relief > lo.relief, hi.relief)
+		local slowLo, slowHi = Gloves.speedFor(lo, 16, baleLoad, 0), Gloves.speedFor(hi, 16, baleLoad, 0)
+		t.check(label .. " carrying a meadow bale", slowHi > slowLo, ("%.2f -> %.2f"):format(slowLo, slowHi))
+		local heavyLo, heavyHi = Gloves.speedFor(lo, 16, heavy, 5), Gloves.speedFor(hi, 16, heavy, 5)
+		-- Both can bottom out at the minimum walk speed with hay this far above them; then neither may be slower.
+		local better = heavyHi > heavyLo or (heavyLo <= GloveConfig.MinWalkSpeed and heavyHi >= heavyLo)
+		t.check(label .. " carrying a cloud hay bale", better, ("%.2f -> %.2f"):format(heavyLo, heavyHi))
+	end
+	local dummy = Instance.new("Model")
+	dummy.Name = "GloveDummy"
+	for _, side in { "Right", "Left" } do
+		local hand = Instance.new("Part")
+		hand.Name = side .. "Hand"
+		hand.Anchored = true
+		hand.Size = Vector3.new(0.3, 0.3, 0.3)
+		hand.CFrame = t.place() * CFrame.new(side == "Right" and 1 or -1, 3, 0)
+		hand.Parent = dummy
+	end
+	dummy.Parent = workspace
+	t.cleanup(dummy)
+	local seen = {}
+	for _, def in tiers do
+		GloveLooks.dress(dummy, def.id)
+		local worn = dummy.RightHand:FindFirstChild("WornGlove")
+		local wornLeft = dummy.LeftHand:FindFirstChild("WornGlove")
+		if def.id == "bare" then
+			t.check("bare hands wear nothing", worn == nil and wornLeft == nil)
+		else
+			local cuff = worn and worn:FindFirstChild("Cuff")
+			t.check(("%s show on both hands"):format(def.name), worn ~= nil and wornLeft ~= nil and cuff ~= nil)
+			if cuff then
+				local key = ("%s/%s"):format(tostring(cuff.Color), cuff.Material.Name)
+				t.check(("%s look unlike any lower tier"):format(def.name), not seen[key], key)
+				seen[key] = true
+				t.check(("%s cuff rides the hand"):format(def.name), not cuff.Anchored and cuff:FindFirstChildOfClass("Weld") ~= nil)
+			end
+		end
+	end
+	GloveLooks.dress(dummy, "bare")
+	t.check("taking gloves off clears the hands", dummy.RightHand:FindFirstChild("WornGlove") == nil)
 
 	-- Strands take their hay's shape.
 	local strand = Hay.spawnPiece(spot.Position + Vector3.new(10, 2, 0), Vector3.zero, 0, nil, "pine")

@@ -147,8 +147,7 @@ function Mixer.build(parent, frame)
 			return
 		end
 		local r = Alloys[pick]
-		local held = Needle.held(player)
-		if (held[r.a] or 0) < r.each or (held[r.b] or 0) < r.each then
+		if Needle.plainCount(player, r.a) < r.each or Needle.plainCount(player, r.b) < r.each then
 			Data.toast(player, ("%s needs %d plain %s and %d plain %s needles in your pocket."):format(
 				r.name,
 				r.each,

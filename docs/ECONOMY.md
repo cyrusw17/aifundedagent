@@ -374,7 +374,7 @@ beat a steady haul over an hour. A raw event bale is worth hay plus needles × b
 | Event | Hay | Bales | Boost | Worth sorted | Extra over normal bales | Stage income | Minutes of income |
 |---|---|---|---|---|---|---|---|
 | Hay Fever (Shore) | Meadow | 10 | 1.5x | $3,450 | $1,000 | $25k/h (shaker) | 8 |
-| Low Tide (Keys) | Meadow | 10 | 1.5x | $3,450 | $1,000 | $25k/h | 8 |
+| Low Tide (Swamp) | Swamp | 10 | 1.5x | $15,750 | $5,100 | $151k/h | 6 |
 | Meteor Shower (Valley, nights) | Meadow | 8 | 3x | $5,160 | $3,200 | $25k/h | 12 |
 | Windfall (Pine) | Pine | 12 | 1.5x | $6,480 | $1,980 | $22k/h | 18 |
 | Sandstorm (Desert) | Desert | 10 | 2x | $11,650 | $5,600 | $41k/h | 17 |
@@ -385,9 +385,52 @@ Two changes from Map's first numbers. The Meteor Shower went from 6 bales at 2.5
 at night and was the weakest event in the game. The Eruption went from 8 bales to 10, because the Volcano is the
 hardest region to reach and 8 bales was under 7 minutes of income there. The rest stay as Map set them.
 
-Note for Map: Thimble Keys and Bobbin Rock use the hay types `keys` and `bobbin`. Neither has a row in
-`Prices.NeedlesPerBale`, `Config/Gloves.HayTypes` or `Config/Needles`, so they fall back to Meadow hay with steel
-needles. That's fine for launch, but they need their own rows if they are meant to be their own tier.
+## Thimble Keys and Bobbin Rock
+
+Map's two ferry islands get their own hay and needles, so a ferry trip is worth its fare:
+
+| Hay | Region | Glove tier | Weight | Needles/bale | Needle | Sorted value | Bale sorted |
+|---|---|---|---|---|---|---|---|
+| Bog reed | Swamp | 3 | 2.4 | 6 | Bog | $170 | $1,065 |
+| **Sea grass** | **Thimble Keys** | 3 | 2.2 | 6 | **Coral** | **$220** | **$1,365** |
+| Ashen hay | Volcano | 4 | 3.0 | 8 | Obsidian | $300 | $2,445 |
+| **Thread grass** | **Bobbin Rock** | 4 | 3.2 | 9 | **Brass** | **$320** | **$2,925** |
+| Crystal hay | Cave | 4 | 3.4 | 10 | Geode | $340 | $3,445 |
+
+Sea grass beats Swamp's bog reed by about 28% a bale and is lighter. That's the ferry's reward: the $250 fare each way
+is under 2% of a box-truck load, but the crossing takes time, so the island has to pay a little better than the
+mainland beside it. Bobbin Rock fits between Volcano and Cave on value and weight, as an island alternative to the
+crater.
+
+## Region secrets
+
+Map's four one-time secrets (`Prices.Secrets`) pay once per save slot through `Bank.earn`. Map's first numbers were
+$2,000 to $3,000, which is under 30 seconds of income in those regions, so finding one felt like nothing. The rule now:
+a secret is worth the trip on its own. For a player who walks there early it's about the price of the next mid-game
+buy, and for one who arrives on schedule it's a few minutes of income. Secrets behind a gate pay more.
+
+| Secret | Where | What gates it | Reward |
+|---|---|---|---|
+| Ember Cache | Volcano crater | Tier 4 gloves ($75,000 Iron Gauntlets) | $40,000 |
+| Lost Kite | Under Sky Island's rim | $1,000 zeppelin fare | $25,000 |
+| Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
+| Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
+
+## Golden bales
+
+The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
+needles. On average that adds (3 − 1) / 150 = 1.3% to needle income, which is too small to change any stage's
+earnings or the timeline, so the odds and the multiplier stay as built. What matters is the moment:
+
+| Hay | Plain bale, sorted | Golden bale, sorted | Golden bale sold raw at the public shop |
+|---|---|---|---|
+| Meadow (2 needles) | $245 | $645 | $51 |
+| Desert (4) | $605 | $1,725 | $57 |
+| Volcano (8) | $2,445 | $7,245 | $69 |
+
+A golden bale only pays off if you sort it or break it by hand (hand-found needles pay full value), never if you sell
+it raw. That's the right lesson for a new player: the first golden bale shows them what sorting is worth. On a rich
+field the two boosts stack (2x × 3x = 6x), which is still a single bale.
 
 ## The trading post
 
@@ -411,6 +454,8 @@ side can't pay, nothing moves and the post cancels the trade. Trading is free wh
 | Gloves | `Gloves` | `Config/Gloves` |
 | Trade fee | `Trade` | `Services/Bank` (settleTrade) |
 | Region events | `RegionEvents` | `Services/RegionEvents` |
+| Region secrets | `Secrets` | `Services/Wilds` |
+| Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |

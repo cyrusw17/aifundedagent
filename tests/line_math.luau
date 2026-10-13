@@ -26,6 +26,20 @@ check("bare id", id, "geode")
 check("bare mult", mult, 1)
 check("bare polish", polished, false)
 
+-- Grades: B is the default and adds nothing to the key; A and S go last.
+check("A grade key", LineMath.keyOf("steel", 1, false, "A"), "steel#A")
+check("B grade key is plain", LineMath.keyOf("steel", 1, false, "B"), "steel")
+check("everything key", LineMath.keyOf("ice", 3, true, "S"), "ice*3!#S")
+local gid, gmult, gpol, grade = LineMath.parseKey("ice*3!#S")
+check("graded id", gid, "ice")
+check("graded mult", gmult, 3)
+check("graded polish", gpol, true)
+check("graded grade", grade, "S")
+local _, _, _, oldGrade = LineMath.parseKey("steel*5")
+check("old keys read as B", oldGrade, "B")
+check("plain keys", table.concat(LineMath.plainKeys("pine"), ","), "pine,pine#A,pine#S,pine!,pine!#A,pine!#S")
+check("S grade price", LineMath.price(100, 1, false, 0.25, 1, 0.25), 125)
+
 -- Prices: steel $100, x12 mutation, 25% polish, market +10%.
 check("plain price", LineMath.price(100, 1, false, 0.25, 1), 100)
 check("mutated price", LineMath.price(100, 12, false, 0.25, 1), 1200)

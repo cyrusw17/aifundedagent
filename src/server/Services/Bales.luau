@@ -64,10 +64,14 @@ local function buildBale(position, hayType)
 
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
-	local mesh = Props.make("hay_bale", body.CFrame, SIZE)
+	-- Each region's hay has its own bale mesh (bale_pine, bale_star, ...); the meadow bale is hay_bale.
+	local regionalName = ("bale_%s"):format(hayType)
+	local regional = hayType ~= "meadow" and Props.has(regionalName)
+	local mesh = Props.make(regional and regionalName or "hay_bale", body.CFrame, SIZE)
 	if mesh then
-		-- Tint the mesh for rarer hay (an untextured mesh takes the color; a textured one keeps its own).
-		if hayType ~= "meadow" then
+		-- Tint the meadow mesh for rarer hay that has no mesh of its own (an untextured mesh takes the color; a
+		-- textured one keeps its own).
+		if hayType ~= "meadow" and not regional then
 			for _, d in mesh:GetDescendants() do
 				if d:IsA("MeshPart") then
 					d.Color = body.Color

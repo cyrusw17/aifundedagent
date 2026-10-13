@@ -9,6 +9,7 @@
 --   BaleBurst     "hay bale break" or "straw rustle"      Scoop         "shovel dig dirt"
 --   Rake          "rake leaves" or "rake gravel"          NeedleDing    "small bell ding" or "metal ping"
 --   CashRegister  "cash register"                         TruckEngine   "truck engine idle loop" (must loop cleanly)
+--   TruckHorn     "truck horn" or "old car horn"
 -- A sound that fails to load stays silent; the game keeps running.
 return {
 	BaleLift = { id = "rbxasset://sounds/swoosh.wav", volume = 0.5, pitch = 0.7, distance = 50 },
@@ -29,4 +30,7 @@ return {
 	EngineIdlePitch = 0.16,
 	EngineTopPitch = 0.42,
 	EngineTopSpeed = 60, -- studs per second where the engine reaches its top pitch
+	-- Q while driving (Vehicles.luau plays it on the truck so everyone near hears it). Placeholder: a ping pitched
+	-- right down; swap in a "truck horn" id.
+	TruckHorn = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.8, pitch = 0.32, distance = 140 },
 }

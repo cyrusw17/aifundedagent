@@ -63,6 +63,8 @@ RUSTIC = {
     "sand": ((0.82, 0.73, 0.56), (0.76, 0.66, 0.49), (0.62, 0.52, 0.38)),         # Desert ground
     "lilac": ((0.70, 0.57, 0.78), (0.60, 0.47, 0.69), (0.44, 0.33, 0.52)),        # Epic needle tier #9A78B0
     "gold": ((0.90, 0.76, 0.42), (0.79, 0.65, 0.29), (0.58, 0.46, 0.18)),         # quest gold #C9A54A, no glow
+    "coral": ((0.93, 0.62, 0.52), (0.85, 0.50, 0.42), (0.62, 0.34, 0.28)),        # Thimble Keys coral needle
+    "brass": ((0.80, 0.66, 0.38), (0.66, 0.52, 0.26), (0.46, 0.35, 0.17)),        # Bobbin Rock brass needle
     # Flat, untextured.
     "tire": (None, (0.13, 0.12, 0.11), None),
     "glass": (None, (0.20, 0.26, 0.28), None),
@@ -76,7 +78,8 @@ FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3}
         "firefly": {"roughness": 0.4, "emission": 3.0}}
 # Kinds that use the blotchy weathered texture.
 WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt", "leather", "greywood",
-             "leaf_oak", "leaf_pine", "leaf_snow", "leaf_desert", "leaf_swamp", "bark_pine", "bark_swamp", "snow", "sand", "lilac", "gold")
+             "leaf_oak", "leaf_pine", "leaf_snow", "leaf_desert", "leaf_swamp", "bark_pine", "bark_swamp", "snow", "sand", "lilac", "gold",
+             "coral", "brass")
 SOFT = {
     "hay": (None, (1.00, 0.86, 0.55), None),
     "bark": (None, (0.66, 0.45, 0.34), None),

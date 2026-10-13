@@ -16,6 +16,8 @@
 --           The bales are taken when it completes.
 --   find    a rare item that can drop when you break a bale: chance per bale, pity = guaranteed by this many bales
 -- when = "day", "dusk", "night" or "midnight" limits a step to that part of the day (see Time below).
+-- hint = one line shown under the current step in the quest log; place = a UI Places id (dealer, landoffice, plot...)
+-- for steps that send you to a building rather than a quest spot, so GO and "Show the way" work there too.
 -- Spots belong to a region. `pos` is a Meadow Farm spot; `world` (X, Z) is a spot out on the Stitched Isles, set on the
 -- ground there once the world map is built. A spot whose region is not built yet stands at its `fallback` in Meadow,
 -- or waits (its quest says "Opens when ... is built"). A part tagged "QuestAnchor" with attribute SpotId = a spot id
@@ -352,6 +354,32 @@ Quests.Rewards = {
 		name = "Starbeam Collector",
 		blurb = "A beacon over one belt tile that pulls a bale of Star hay out of the sky now and then. Build it on your land.",
 	},
+	-- Daily streak rosettes (Streak below): a little ribbon pinned to your chest, the best one you have earned.
+	streak_rosette_bronze = {
+		kind = "cosmetic",
+		name = "Bronze Rosette",
+		blurb = "3 streak days. Pinned to your chest.",
+		color = { 176, 124, 72 },
+	},
+	streak_rosette_silver = {
+		kind = "cosmetic",
+		name = "Silver Rosette",
+		blurb = "7 streak days. Pinned to your chest.",
+		color = { 196, 200, 204 },
+	},
+	streak_rosette_gold = {
+		kind = "cosmetic",
+		name = "Gold Rosette",
+		blurb = "14 streak days. Pinned to your chest.",
+		color = { 230, 186, 74 },
+	},
+	streak_rosette_star = {
+		kind = "cosmetic",
+		name = "Starlight Rosette",
+		blurb = "30 streak days. It glows a little at night.",
+		color = { 150, 170, 255 },
+		glow = true,
+	},
 	captains_barge = {
 		kind = "unlock",
 		name = "Captain's Barge",
@@ -420,10 +448,35 @@ Quests.List = {
 		region = "Meadow",
 		blurb = "Every bale hides needles. The shop only pays $1 for the ones it finds. You can do better.",
 		steps = {
-			{ kind = "event", event = "bale_lifted", count = 1, text = "Lift a hay bale (Pick up)" },
-			{ kind = "event", event = "bale_sold", count = 1, text = "Sell a whole bale on the SELL HERE pad" },
-			{ kind = "event", event = "bale_broken", count = 1, text = "Break a bale open with the shovel" },
-			{ kind = "event", event = "needle_found", count = 1, text = "Pick up a needle that spills out" },
+			{
+				kind = "event",
+				event = "bale_lifted",
+				count = 1,
+				hint = "Walk up to any bale and press F to lift it.",
+				text = "Lift a hay bale (Pick up)",
+			},
+			{
+				kind = "event",
+				event = "bale_sold",
+				count = 1,
+				hint = "Carry it onto the SELL HERE pad at camp.",
+				place = "sellpad",
+				text = "Sell a whole bale on the SELL HERE pad",
+			},
+			{
+				kind = "event",
+				event = "bale_broken",
+				count = 1,
+				hint = "Equip the shovel and click a bale.",
+				text = "Break a bale open with the shovel",
+			},
+			{
+				kind = "event",
+				event = "needle_found",
+				count = 1,
+				hint = "Look for a glint in the straw and click it.",
+				text = "Pick up a needle that spills out",
+			},
 		},
 		reward = { cash = 150 }, -- about three bales: a thank-you, not a shortcut
 	},
@@ -439,9 +492,17 @@ Quests.List = {
 				kind = "own",
 				what = "gloves_tier",
 				value = 1,
+				hint = "The glove stand is next to the sell pad.",
+				place = "gloves",
 				text = "Wear Work Gloves or better (glove stand by the shop)",
 			},
-			{ kind = "event", event = "bale_broken", count = 5, text = "Break open 5 bales" },
+			{
+				kind = "event",
+				event = "bale_broken",
+				count = 5,
+				hint = "Any bale in the meadow counts.",
+				text = "Break open 5 bales",
+			},
 		},
 		reward = { cash = 250 }, -- pays back the Work Gloves (Prices.Gloves.work)
 	},
@@ -453,8 +514,21 @@ Quests.List = {
 		requires = { "first_haul" },
 		blurb = "Walking bales one at a time won't make you rich. A truck bed holds nine.",
 		steps = {
-			{ kind = "own", what = "truck", text = "Buy a truck at Homestead Motors" },
-			{ kind = "event", event = "bale_sold", count = 9, text = "Sell a truckload: 9 bales" },
+			{
+				kind = "own",
+				what = "truck",
+				hint = "The dealer is west of camp. The Rusty Pickup is the starter truck.",
+				place = "dealer",
+				text = "Buy a truck at Homestead Motors",
+			},
+			{
+				kind = "event",
+				event = "bale_sold",
+				count = 9,
+				hint = "Load the bed, back up to the HAY SELL SHOP dock and step on UNLOAD.",
+				place = "sellshop",
+				text = "Sell a truckload: 9 bales",
+			},
 		},
 		reward = { cash = 600 }, -- a tenth of the Rusty Pickup
 	},
@@ -466,9 +540,29 @@ Quests.List = {
 		requires = { "wheels" },
 		blurb = "Sorted needles sell for $100 each. You need land and a sorter to get them out.",
 		steps = {
-			{ kind = "own", what = "plot", text = "Buy a plot at the Land Office" },
-			{ kind = "own", what = "piece_kind", value = "separator", text = "Build a needle sorter on your land" },
-			{ kind = "event", event = "needles_sold", count = 10, text = "Sell 10 sorted needles" },
+			{
+				kind = "own",
+				what = "plot",
+				hint = "The Land Office is just north of the plots. The bank lends for land too.",
+				place = "landoffice",
+				text = "Buy a plot at the Land Office",
+			},
+			{
+				kind = "own",
+				what = "piece_kind",
+				value = "separator",
+				hint = "On your plot press BUILD and place a hand sieve on a belt.",
+				place = "plot",
+				text = "Build a needle sorter on your land",
+			},
+			{
+				kind = "event",
+				event = "needles_sold",
+				count = 10,
+				hint = "Sorted needles land in your bin. Step on SELL NEEDLES next to it.",
+				place = "plot",
+				text = "Sell 10 sorted needles",
+			},
 		},
 		reward = { cash = 1250 }, -- half the plot (Prices.Plot)
 	},
@@ -485,6 +579,7 @@ Quests.List = {
 				spot = "wander_scarecrow",
 				count = 5,
 				distinct = true,
+				hint = "He moves to a new field every 4 minutes. Each new field counts once.",
 				text = "Find the wandering scarecrow 5 times (he moves every few minutes)",
 			},
 		},
@@ -502,6 +597,7 @@ Quests.List = {
 			{
 				kind = "visit",
 				spot = "old_scarecrow",
+				hint = "Head north-west from the dealer, past the road.",
 				text = "Find the Old Scarecrow's stone ring, north-west past the dealer",
 			},
 			{
@@ -509,12 +605,14 @@ Quests.List = {
 				spot = "old_scarecrow",
 				pads = "stones",
 				when = "dusk",
+				hint = "One bale per stone, all four at once, while it's dusk.",
 				text = "Set a hay bale on each of the four stones",
 			},
 			{
 				kind = "offer",
 				spot = "old_scarecrow",
 				needles = { steel = 5 },
+				hint = "Keep loose needles in your pocket: click them to pick up.",
 				text = "Give the Old Scarecrow 5 steel needles",
 			},
 		},
@@ -528,7 +626,12 @@ Quests.List = {
 		requires = { "first_haul" },
 		blurb = '"The Tailor lost his journal in the wind. Three pages, three corners of the meadow."',
 		steps = {
-			{ kind = "collect", spots = { "journal_1", "journal_2", "journal_3" }, text = "Find the 3 journal pages" },
+			{
+				kind = "collect",
+				spots = { "journal_1", "journal_2", "journal_3" },
+				hint = "One by the pond, one in the north woods, one west of the dealer.",
+				text = "Find the 3 journal pages",
+			},
 			{ kind = "visit", spot = "old_barn", text = "Read them at the Old Barn, east of camp" },
 		},
 		reward = { gear = "thread_rake" },
@@ -547,6 +650,7 @@ Quests.List = {
 				spot = "old_well",
 				needles = { steel = 10 },
 				when = "midnight",
+				hint = "Midnight lasts about 2 real minutes. Wait by the well.",
 				text = "Drop 10 steel needles down the old well",
 			},
 		},
@@ -565,9 +669,16 @@ Quests.List = {
 			{
 				kind = "collect",
 				spots = { "bessie_carb", "bessie_radiator", "bessie_spring" },
+				hint = "Pine Mill in Pine Forest, the oasis camp in the desert, and the Snow Peak lodge.",
 				text = "Bring back a carburetor, a radiator and a seat spring",
 			},
-			{ kind = "offer", spot = "old_barn", cash = 2500, text = "Pay $2,500 for the rebuild" },
+			{
+				kind = "offer",
+				spot = "old_barn",
+				cash = 2500,
+				hint = "Cash comes from your wallet first, then the bank.",
+				text = "Pay $2,500 for the rebuild",
+			},
 		},
 		reward = { truck = "old_bessie" },
 	},
@@ -587,6 +698,7 @@ Quests.List = {
 				kind = "visit",
 				spots = { "signal_pine", "signal_valley", "signal_grove" },
 				when = "night",
+				hint = "They stand in Pine Forest, Homestead Valley and Haunted Grove, glowing blue.",
 				text = "Touch the three signal stones",
 			},
 		},
@@ -620,6 +732,7 @@ Quests.List = {
 				count = 3,
 				chance = 1 / 120,
 				pity = 250,
+				hint = "About 1 bale in 120 hides one, and you're sure to find one within 250. Grab it before it fades.",
 				text = "Find 3 beacon parts by breaking bales",
 			},
 		},
@@ -639,6 +752,7 @@ Quests.List = {
 				spot = "crop_circle",
 				pads = "daily",
 				when = "midnight",
+				hint = "The sign post shows today's 3 x 3 pattern. Filled squares need a bale, empty ones must stay clear.",
 				text = "Lay bales on tonight's sign in the crop circle",
 			},
 		},
@@ -657,6 +771,7 @@ Quests.List = {
 				kind = "collect",
 				spots = { "maze_key_1", "maze_key_2", "maze_key_3" },
 				when = "night",
+				hint = "The keys sit in the deepest dead ends and only show after dark.",
 				text = "Find the 3 corn keys in the maze",
 			},
 			{ kind = "talk", spot = "corn_maze", when = "night", text = "Bring them to the heart of the maze" },
@@ -702,6 +817,7 @@ Quests.List = {
 				chance = 1 / 60,
 				pity = 120,
 				filter = { hayType = "snow" },
+				hint = "Break the frozen hay bales on Snow Peak.",
 				text = "Find a Frozen Bobbin in frozen hay",
 			},
 			{ kind = "talk", spot = "snow_door", text = "Open the hidden door on Snow Peak" },
@@ -722,6 +838,7 @@ Quests.List = {
 				event = "bale_broken",
 				count = 20,
 				filter = { hayType = "volcano" },
+				hint = "Ashen hay grows on the Volcano's slopes. Good gloves help with the weight.",
 				text = "Break 20 bales of ashen hay",
 			},
 		},
@@ -769,6 +886,7 @@ Quests.List = {
 				event = "bale_broken",
 				count = 15,
 				filter = { hayType = "desert" },
+				hint = "Desert grass grows around the dunes and the oasis.",
 				text = "Dig it out: break 15 bales of desert grass",
 			},
 			{ kind = "talk", spot = "pyramid_mechanic", text = "Talk to the old mechanic" },
@@ -787,12 +905,27 @@ Quests.List = {
 				kind = "visit",
 				spots = { "lantern_1", "lantern_2", "lantern_3" },
 				when = "night",
+				hint = "They stand along the Haunted Grove road. Visit each one at night.",
 				text = "Light the 3 lanterns",
 			},
 			{ kind = "visit", spot = "haunted_crossroads", when = "midnight", text = "Wait at the crossroads" },
 		},
 		reward = { truck = "ghost_hauler", relic = "shard_haunted" },
 	},
+}
+
+-- The gentle daily streak. Finishing any one bounty on a UTC day counts that day. A missed day pauses the streak; it
+-- never resets. Rosettes are cosmetic. From LuckyField.fromDays on, each day you also get a personal lucky field (one
+-- of the hay fields out on the isles, shown in the Bounties tab): bales you break there sometimes spill an extra
+-- needle, a few times a day.
+Quests.Streak = {
+	Milestones = {
+		{ days = 3, reward = "streak_rosette_bronze" },
+		{ days = 7, reward = "streak_rosette_silver" },
+		{ days = 14, reward = "streak_rosette_gold" },
+		{ days = 30, reward = "streak_rosette_star" },
+	},
+	LuckyField = { fromDays = 2, radius = 22, chance = 0.3, perDay = 10 },
 }
 
 -- Daily bounties: three a day from this pool, the same three for everyone, new at midnight UTC. Cash only.

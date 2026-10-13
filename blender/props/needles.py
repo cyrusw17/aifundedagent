@@ -302,6 +302,29 @@ def needle_anchor(f):
     return parts
 
 
+def needle_coral(f):
+    """1.2 x 0.26 x 0.2 studs: Thimble Keys needle grown from coral: a coral-pink shaft and point with
+    little knobbly cream polyps along it and a ring eye."""
+    parts, n = needle(f, "coral", eye="ring")
+    rng = random.Random(41)
+    for i in range(5):
+        x = n["a"] + 0.08 + i * (n["b"] - n["a"] - 0.1) / 4
+        side = (-1, 1)[i % 2]
+        parts.append(B(f, "paint_cream", (0.05, 0.05, 0.05), (x, side * (n["r"] + 0.01), n["z"] + rng.uniform(0, 0.03)),
+                       rot=(0.6, 0.6, i)))
+    parts.append(B(f, "coral", (0.12, 0.035, 0.035), (n["a"] + 0.3, 0.07, n["z"] + 0.03), rot=(0, 0, 0.9)))  # branch
+    return parts
+
+
+def needle_brass(f):
+    """1.2 x 0.23 x 0.15 studs: Bobbin Rock needle in polished brass, a slot eye with a few turns of red
+    thread wound below it."""
+    parts, n = needle(f, "brass", tip_kind="steel")
+    for i in range(3):
+        parts.append(C(f, "paint_red", n["r"] + 0.012, 0.025, (n["a"] + 0.05 + i * 0.035, 0, n["z"]), verts=6))
+    return parts
+
+
 # ---------------------------------------------------------------- mutations
 
 def needle_rainbow(f):
@@ -456,6 +479,8 @@ REGION_HAY = {   # sRGB (light, mid, dark) for the straw texture
     "sky": ((0.90, 0.88, 0.80), (0.78, 0.76, 0.66), (0.60, 0.58, 0.50)),
     "haunted": ((0.62, 0.58, 0.66), (0.48, 0.45, 0.53), (0.31, 0.29, 0.36)),
     "star": ((0.36, 0.36, 0.46), (0.25, 0.25, 0.35), (0.13, 0.13, 0.21)),
+    "seagrass": ((0.66, 0.74, 0.58), (0.50, 0.60, 0.46), (0.30, 0.40, 0.32)),   # Thimble Keys sea grass
+    "thread": ((0.86, 0.76, 0.66), (0.74, 0.62, 0.52), (0.52, 0.42, 0.36)),     # Bobbin Rock thread grass
 }
 
 
@@ -637,6 +662,30 @@ def bale_star(f):
         scatter(f, ["paint_blue"], SIDES, 6, 0.4, 18)
 
 
+def bale_seagrass(f):
+    """4.6 x 2.6 x 3.2 studs: Thimble Keys sea grass hay, sea-green with dark kelp strands, a dusting
+    of sand on the bottom and a couple of small shells."""
+    parts = bale(f, "seagrass") + scatter(f, ["paint_green"], SIDES, 16, 0.1, 21, aspect=8)
+    for face, u in (("front", -1.2), ("back", 0.8), ("left", 0.0)):
+        parts.append(patch(f, "sand", face, u, -H / 2 + 0.2, 1.3, 0.3))
+    for kind, face, u, v in (("paint_cream", "front", 1.1, 0.3), ("coral", "top", -0.9, 0.4),
+                             ("paint_cream", "right", 0.2, -0.2)):
+        parts.append(patch(f, kind, face, u, v, 0.28, 0.22, round_=True))
+    return parts
+
+
+def bale_thread(f):
+    """4.6 x 2.6 x 3.2 studs: Bobbin Rock thread grass, a pale linen hay wrapped with loose strands of
+    red, blue and cream thread."""
+    parts = bale(f, "thread")
+    rng = random.Random(23)
+    for i, kind in enumerate(("paint_red", "paint_blue", "paint_cream", "paint_red", "paint_blue")):
+        for face in ("front", "top", "back"):
+            parts.append(patch(f, kind, face, rng.uniform(-L2 + 0.4, L2 - 0.4), rng.uniform(-0.5, 0.5),
+                               rng.uniform(1.2, 2.4), 0.05, a=rng.uniform(-0.6, 0.6), t=0.02))
+    return parts
+
+
 PROPS = {
     "needle_common": needle_common,
     "rarity_needle": needle_common,  # the name Config/Props registers; tiers recolor it in game
@@ -656,6 +705,8 @@ PROPS = {
     "needle_cosmic": needle_cosmic,
     "needle_pearl": needle_pearl,
     "needle_anchor": needle_anchor,
+    "needle_coral": needle_coral,
+    "needle_brass": needle_brass,
     "needle_rainbow": needle_rainbow,
     "needle_giant": needle_giant,
     "needle_glitch": needle_glitch,
@@ -671,4 +722,6 @@ PROPS = {
     "bale_sky": bale_sky,
     "bale_haunted": bale_haunted,
     "bale_star": bale_star,
+    "bale_seagrass": bale_seagrass,
+    "bale_thread": bale_thread,
 }

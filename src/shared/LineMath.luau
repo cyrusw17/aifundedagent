@@ -3,29 +3,52 @@
 -- (luau tests/line_math.luau). Needle.luau and Machines.luau use these.
 local LineMath = {}
 
--- Pocket and save key for a needle: its id, or "id*mult" when mutated, with a trailing "!" when polished.
-function LineMath.keyOf(id: string, mult: number?, polished: boolean?): string
+-- Pocket and save key for a needle: its id, or "id*mult" when mutated, then "!" when polished, then "#A" or "#S" for
+-- a grade above B (B, the default, adds nothing, so keys from before grades still read as B).
+function LineMath.keyOf(id: string, mult: number?, polished: boolean?, grade: string?): string
 	local key = (mult and mult > 1) and ("%s*%d"):format(id, mult) or id
-	return if polished then key .. "!" else key
+	if polished then
+		key ..= "!"
+	end
+	if grade and grade ~= "B" then
+		key ..= "#" .. grade
+	end
+	return key
 end
 
--- The id, multiplier and polish of a key from keyOf.
-function LineMath.parseKey(key: string): (string, number, boolean)
+-- The id, multiplier, polish and grade of a key from keyOf.
+function LineMath.parseKey(key: string): (string, number, boolean, string)
+	local grade = "B"
+	local base, g = string.match(key, "^(.*)#(%u)$")
+	if base then
+		key, grade = base, g :: string
+	end
 	local polished = string.sub(key, -1) == "!"
 	if polished then
 		key = string.sub(key, 1, -2)
 	end
 	local id, mult = string.match(key, "^(.-)%*(%d+)$")
 	if id then
-		return id, tonumber(mult) :: number, polished
+		return id, tonumber(mult) :: number, polished, grade
 	end
-	return key, 1, polished
+	return key, 1, polished, grade
 end
 
--- Dollars for one needle: list value x mutation x polish x market, rounded to whole dollars.
-function LineMath.price(listValue: number, mult: number?, polished: boolean?, polishBonus: number, market: number): number
+-- Every key a plain (unmutated) needle of this id can have, cheapest first: B, A, S, then the polished ones.
+function LineMath.plainKeys(id: string): { string }
+	local keys = {}
+	for _, polished in { false, true } do
+		for _, grade in { "B", "A", "S" } do
+			table.insert(keys, LineMath.keyOf(id, 1, polished, grade))
+		end
+	end
+	return keys
+end
+
+-- Dollars for one needle: list value x mutation x polish x grade x market, rounded to whole dollars.
+function LineMath.price(listValue: number, mult: number?, polished: boolean?, polishBonus: number, market: number, gradeBonus: number?): number
 	local polish = if polished then 1 + polishBonus else 1
-	return math.floor(listValue * (mult or 1) * polish * market + 0.5)
+	return math.floor(listValue * (mult or 1) * polish * (1 + (gradeBonus or 0)) * market + 0.5)
 end
 
 -- Seconds a sorter spends on `hay` strands at hayPerMin (math.huge for the Alien collector), before oil.
