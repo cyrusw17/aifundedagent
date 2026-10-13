@@ -52,8 +52,11 @@ local SHAPES = {
 		meshSize = Vector3.new(10.9, 9.2, 27.5), -- the box the Blender mesh is stretched over
 	},
 	-- The other trucks keep the default body; these widths match their re-exported Blender meshes.
-	farm_flatbed = { bedW = 11.4, meshW = 11.4 },
-	box_truck = { bedW = 11.1, meshW = 11.1 },
+	-- meshSize is each .glb's own box (/mnt/project-files/art-review/IN_GAME_CHECK.md), so no mesh is stretched taller
+	-- than it was modeled; the default body's cab and box stand taller than these meshes.
+	farm_flatbed = { bedW = 11.4, meshSize = Vector3.new(11.4, 8.3, 24.4) },
+	box_truck = { bedW = 11.1, meshSize = Vector3.new(11.1, 10.2, 29.4) },
+	semi_rig = { meshSize = Vector3.new(9.8, 10.4, 25.3) },
 	heavy_hauler = { meshW = 12.2 }, -- bed stays 10.2 inside; the mesh's extra width is fenders and racks
 }
 
