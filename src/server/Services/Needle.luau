@@ -24,12 +24,14 @@ local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
 local Market = require(script.Parent.Market)
+local Props = require(script.Parent.Props)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
 
 local Needle = {}
 
 local SIZE = Vector3.new(1.2, 0.15, 0.15)
+local LITE_SIZE = Vector3.new(1.2, 0.15, 0.17) -- needle_lite, long along X like the cylinder
 local PICKUP_REACH = 10
 local MUTATION_CHANCE = 1 / Prices.Mutation.oneIn
 local MUTATION_MIN, MUTATION_MAX = Prices.Mutation.min, Prices.Mutation.max
@@ -389,10 +391,17 @@ end
 function Needle.spawn(position, ownerId, needleId, mult, polished)
 	needleId = needleId or Needle.default.id
 	mult = mult or 1
-	local n = Instance.new("Part")
+	-- The low-poly Blender needle (Config/Props needle_lite) when imported: one shared mesh, tinted by Color, so a
+	-- field or bin of thousands stays cheap. Otherwise a plain cylinder of the same size.
+	local n = Props.meshPart("needle_lite")
+	if n then
+		n.Size = (mult > 1 and 1.6 or 1) * LITE_SIZE
+	else
+		n = Instance.new("Part")
+		n.Shape = Enum.PartType.Cylinder
+		n.Size = mult > 1 and SIZE * 1.6 or SIZE
+	end
 	n.Name = "Needle"
-	n.Shape = Enum.PartType.Cylinder
-	n.Size = mult > 1 and SIZE * 1.6 or SIZE
 	n.CFrame = CFrame.new(position)
 	n.Color, n.Material = Needle.look(needleId, mult)
 	n.CollisionGroup = Groups.Loose

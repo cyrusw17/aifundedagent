@@ -307,6 +307,17 @@ return function(SelfTest)
 			end
 		end
 
+		-- 3d. Spawned needles share the low-poly needle_lite mesh: thousands draw as one batch.
+		if not Props.has("needle_lite") then
+			t.skip("spawned needles use needle_lite", "not imported")
+		else
+			local Needle = require(script.Parent.Parent.Services.Needle)
+			local n = Needle.spawn(t.place().Position)
+			t.cleanup(n)
+			t.check("spawned needles use needle_lite", n:IsA("MeshPart") and not n.CastShadow, n.ClassName)
+			t.near("a needle is 1.2 long", n.Size.X, 1.2, 0.05)
+		end
+
 		-- 4. Nothing Import 3D made is left lying in the Workspace.
 		local stray = {}
 		if Workspace:FindFirstChild("Scene") then
