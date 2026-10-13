@@ -23,6 +23,7 @@ local Events = require(script.Parent.Events)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
 local Wheelbarrow = require(script.Parent.Wheelbarrow)
+local Vehicles = require(script.Parent.Vehicles)
 
 local Tools = {}
 
@@ -366,6 +367,14 @@ function Tools.init()
 	Gloves.init()
 	Finds.init()
 	Wheelbarrow.init(currentAim)
+	-- Crew hand-offs (Bales): until Land says exactly who shares a farm, a teammate is anyone allowed to drive the
+	-- other's truck, either way round (a farm's owner and its crew).
+	if not Bales.isTeammate then
+		Bales.isTeammate = function(a, b)
+			local canDrive = Vehicles.canDrive
+			return canDrive ~= nil and (canDrive(a, b) == true or canDrive(b, a) == true)
+		end
+	end
 	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")

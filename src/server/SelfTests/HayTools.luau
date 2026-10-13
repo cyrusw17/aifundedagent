@@ -33,6 +33,7 @@ local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
 local BALE = Vector3.new(4.6, 2.6, 3.2)
+local KEEP_TEAMMATE = Bales.isTeammate -- the hand-off checks swap it; it is always put back
 local DOUBLE_CARRY_TIER = Config.DoubleCarryTier -- the double-carry checks change it; it is always put back
 
 -- Bales made by a test, consumed at the end so Bales' own tables forget them too.
@@ -514,6 +515,37 @@ local function edgeCases(t, player, state, root, stand)
 	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
 
+	-- Crew hand-off: a bale thrown by a teammate that flies close to bare hands is caught; a stranger's is not.
+	local catchSpot = t.place()
+	stand(catchSpot)
+	local keepTeammate = Bales.isTeammate
+	local thrower = { Name = "SelfTestThrower", UserId = -2 }
+	local function lob(b)
+		-- From 8 studs off, arcing in to land at the player's feet.
+		Bales.releaseAt(b, CFrame.new(root.Position + Vector3.new(0, 2, 8)))
+		local flight = 0.6
+		local target = root.Position
+		b.body.AssemblyLinearVelocity = (target - b.body.Position - 0.5 * Vector3.new(0, -workspace.Gravity, 0) * flight * flight) / flight
+		Bales.watchForCatch(b, thrower)
+	end
+	Bales.isTeammate = function(fromPlayer, toPlayer)
+		return fromPlayer == thrower and toPlayer == player
+	end
+	local passed = bale(catchSpot * CFrame.new(0, 0, 20))
+	lob(passed)
+	t.wait(1)
+	t.check("a teammate's thrown bale is caught", state.carryBale == passed and passed.carriedBy == player)
+	Bales.drop(player)
+	Bales.isTeammate = function()
+		return false
+	end
+	stand(catchSpot * CFrame.new(10, 0, 0))
+	local stranger = bale(catchSpot * CFrame.new(10, 0, 20))
+	lob(stranger)
+	t.wait(1)
+	t.check("a stranger's thrown bale is not caught", state.carryBale == nil and stranger.carriedBy == nil)
+	Bales.isTeammate = keepTeammate
+
 	-- Double carry: two bales with good enough gloves, one without; both go down as a stack of two.
 	local carrySpot = t.place()
 	stand(carrySpot)
@@ -712,6 +744,7 @@ local function withPlayer(t, player)
 	if state.carryBale then
 		Bales.drop(player)
 	end
+	Bales.isTeammate = KEEP_TEAMMATE
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier
