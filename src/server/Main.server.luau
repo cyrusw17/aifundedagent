@@ -1,9 +1,11 @@
---!strict
--- Server entry point. Every scoop, sale and save will go through here so the server owns the truth.
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+--!nonstrict
+-- Server entry point. Every scoop, sale and save goes through the services so the server owns the truth.
+local Services = script.Parent.Services
 
-local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Economy = require(Shared.Economy)
+local Data = require(Services.Data)
+local World = require(Services.World)
 
-print("[Needlewood] server started")
-print(("[Needlewood] sample: 100 hay with 20 needles is worth $%d raw"):format(Economy.rawLoadValue(100, 20)))
+Data.start()
+World.build()
+
+print("[Needlewood] server started. Base camp is ready.")

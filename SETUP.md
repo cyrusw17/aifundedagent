@@ -25,3 +25,9 @@ cargo install stylua --locked
 ```
 
 Checked so far: `rojo build default.project.json -o test.rbxl` builds the project, and `stylua --check src` parses and formats all Luau files.
+
+## What to expect in the first slice
+
+Press Play. You spawn on a small pad at base camp. Walk to the three hay barrels, hold the prompt ("Scoop hay") and your wheelbarrow fills (HUD, top left). Walk to the hay shop on the right and press "Sell hay". The toast says how many hidden needles the shop found in your hay and paid $1 each for. Barrels refill 30 seconds after they run empty.
+
+Saving: DataStores only work in Studio if the place is published to Roblox and Game Settings > Security > "Enable Studio Access to API Services" is on. Otherwise you will see a warning in Output and progress simply will not save. The game still plays.
