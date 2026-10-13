@@ -46,3 +46,17 @@ python blender/launch/finish2.py
 
 Note: these scenes assume the vehicle .glbs as exported on 2026-10-13 (front toward Blender -Y). If the Blender
 thread's rig re-export flips vehicles to face the other way, turn them 180 degrees in `shots.rig` and the store shots.
+
+## Character batch (main set)
+
+`avatar.py` is an R15-style avatar: fifteen rounded parts on a joint tree (waist, neck, shoulders, elbows,
+wrists, hips, knees, ankles), five outfits and three faces. `R15("farmer", "grin").pose(r_shoulder=(-160, 30, 0))
+.place(loc, yaw)`; `hold(obj, "r")` puts a prop in a hand. Pose angles are degrees: x swings a limb forward (-)
+or back (+), y splays it sideways (raised arms: left -, right +).
+
+    python blender/launch/shots4.py -- --samples 64            # 7 hero shots, 1920x1080
+    python blender/launch/shots4.py -- --res 1024x1024 --only icon_hero,icon_hero_golden
+    python blender/launch/finish4.py /mnt/project-files/launch-art
+
+Run each shot in its own process when a full run stops early. `finish4.py` also copies the clean haul shot to
+`loading_screen.png`. `shots3.py` (scenery-only golden, Spindle and Hay Wagon) is kept for reference.
