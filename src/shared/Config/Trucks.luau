@@ -11,6 +11,7 @@ export type Truck = {
 	paint: string, -- key in Rustic.luau
 	length: number,
 	maxSpeed: number, -- studs per second
+	meshTurn: number?,
 }
 
 local Trucks: { Truck } = {
@@ -22,7 +23,8 @@ local Trucks: { Truck } = {
 		available = true,
 		style = "pickup",
 		paint = "PaintRed",
-		length = 16, -- bed holds two bales crosswise
+		length = 19.1, -- bed holds 2 x 2 bales lengthwise (BUILD_REGISTRY.md), same as the Blender mesh
+		meshTurn = 0, -- degrees; set to 180 if the imported mesh faces backwards
 		maxSpeed = 46,
 	},
 	{

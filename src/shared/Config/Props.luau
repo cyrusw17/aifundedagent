@@ -19,7 +19,7 @@ return {
 		wheelbarrow = 5.6,
 		hay_crate = 3.3,
 		log = 5.1,
-		rusty_pickup = 16, -- the first truck (Vehicles.luau stretches it over the part-built truck)
+		rusty_pickup = 19.7, -- the first truck (Vehicles.luau stretches it over the part-built truck)
 	},
 
 	-- Held tools: how far below the hand the end of the handle sits.
