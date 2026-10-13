@@ -117,6 +117,12 @@ Prices.Pieces = {
 }
 Prices.RefundShare = 0.5
 
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
+
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.
 Prices.SorterOil = {
