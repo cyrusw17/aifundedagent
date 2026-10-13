@@ -24,6 +24,7 @@ local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
+local Tutorial = require(script.Parent.Tutorial)
 local Vehicles = require(script.Parent.Vehicles)
 local Likes = require(script.Parent.Likes)
 local Needle = require(script.Parent.Needle)
@@ -642,6 +643,7 @@ local function onPlace(player, id, gx, gz, dir)
 	publish(plot)
 	saveItems(player, plot)
 	Data.sync(player)
+	Tutorial.placed(player, def.id)
 	return true, ("Built a %s for $%d."):format(def.name:lower(), def.price)
 end
 
@@ -904,7 +906,7 @@ local function buildOffice(parent)
 			task.wait(30)
 		end
 	end)
-	sign(roof, "MEADOW LAND OFFICE\nBuy a plot, build a farm", Vector3.new(0, 4, 0))
+	sign(roof, "MEADOW LAND OFFICE\nBuy a plot, build a farm", Vector3.new(0, 4, 0), "sign")
 end
 
 -- A save was picked: give back its farm, if it owns land.

@@ -169,14 +169,20 @@ local function stateFrom(saved)
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
-		-- gloves: { owned = { id, ... }, worn = id }, kept by Gloves.luau. nil in saves from before gloves were saved.
-		gloves = typeof(saved.gloves) == "table" and { owned = stringList(saved.gloves.owned), worn = saved.gloves.worn }
-			or nil,
+		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
+		-- before gloves were saved.
+		gloves = typeof(saved.gloves) == "table" and {
+			owned = stringList(saved.gloves.owned),
+			worn = saved.gloves.worn,
+			brokeFirstBale = saved.gloves.brokeFirstBale == true or nil,
+		} or nil,
 		-- bank: { balance, earned, loans = { truck|land = { owed, principal, item, takenAt } }, history } (Bank.luau)
 		bank = bankFrom(saved.bank),
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... }, needles = { [id] = count } }
 		-- once a plot is bought. needles are the ones in the plot's bin.
 		land = nil,
+		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
+		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -332,6 +338,7 @@ function Data.save(player)
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
+		tutorial = state.tutorial,
 	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}

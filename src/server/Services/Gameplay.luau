@@ -1,7 +1,7 @@
 --!nonstrict
 -- The sell pad by the hay shop. Step on it with hay, set a whole bale on it, or rake loose hay onto it.
 -- No buttons or prompts. Every sale is decided here, never on the client. Needles in your pocket sell here too,
--- at Economy.HAND_NEEDLE_SHARE of their full value, so a new player is never stuck holding one.
+-- at Prices.HandFoundNeedleShare of their full value, so a new player is never stuck holding one.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Economy = require(Shared.Economy)
+local Prices = require(Shared.Config.Prices)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
@@ -17,6 +18,7 @@ local Feedback = require(script.Parent.Feedback)
 -- The shared needle (from the conveyor work) when present: needles clicked up into a pocket sell here too.
 local NeedleModule = script.Parent:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
+local Tutorial = require(script.Parent.Tutorial)
 
 local Gameplay = {}
 
@@ -46,11 +48,13 @@ local function sellHay(player)
 	if hasPocketNeedles(player) then
 		local count, full = Needle.sellHeld(player)
 		pocketCount = count
-		pocketValue = math.floor(full * Economy.HAND_NEEDLE_SHARE)
+		pocketValue = math.floor(full * Prices.HandFoundNeedleShare)
 	end
 	value += pocketValue
 	Bank.earn(player, value, "Hay shop")
 	Feedback.sale(player, value)
+	Tutorial.mark(player, "sold")
+	Tutorial.earned(player, value)
 
 	local parts = {}
 	if hay > 0 then
@@ -76,6 +80,8 @@ local function sellBale(b)
 	if state then
 		Bank.earn(owner, value, "Hay shop")
 		Feedback.sale(owner, value)
+		Tutorial.mark(owner, "sold")
+		Tutorial.earned(owner, value)
 		Data.toast(owner, ("+$%d · a bale"):format(value))
 	end
 end
@@ -86,7 +92,8 @@ local function sellPieces(pieces)
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
 		if Hay.isNeedle(piece) then
-			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0) + Hay.needleValue(piece)
+			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0)
+				+ math.floor(Hay.needleValue(piece) * Prices.HandFoundNeedleShare)
 			byOwner[ownerId] = byOwner[ownerId] or 0
 		else
 			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1

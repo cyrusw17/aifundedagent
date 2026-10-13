@@ -9,9 +9,12 @@
 --   Machines.sorter(parent, frame, "conveyor_sorter", bin)                 -- covers this cell and the next one along
 --   Machines.hayBuyer(parent, frame, "HAY BUYER")                          -- end-of-line hopper, pays on drop
 --   Machines.stepPad(parent, position, color, text, function(player) end)  -- tycoon floor button
+--   Machines.splitter(grid, gx, gz, dir, "alternate" | "sorted")           -- a belt tile with two ways out (before finish)
+-- A merger needs no piece: a belt tile fed from both sides merges them (and wears the merger mesh).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
@@ -19,12 +22,15 @@ local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
+local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Tutorial = require(script.Parent.Tutorial)
 local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
+local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
 
 local Machines = {}
@@ -76,22 +82,9 @@ function Machines.part(parent, name, size, cframe, color, material)
 end
 local part = Machines.part
 
-function Machines.sign(parent, text, offset)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(260, 60)
-	gui.StudsOffset = offset
-	gui.MaxDistance = 120
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
-	return label
+-- A floating label (shared WorldLabel helper). kind is "status" unless given ("sign" for place names).
+function Machines.sign(parent, text, offset, kind)
+	return WorldLabel.billboard(parent, text, { offset = offset, kind = kind or "status" })
 end
 local sign = Machines.sign
 
@@ -103,6 +96,8 @@ function Machines.pay(ownerId, amount, text, note)
 		return
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
+	Tutorial.mark(owner, "sold")
+	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
 	Feedback.sale(owner, amount)
 end
@@ -296,6 +291,21 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
 	local label = sign(roof, tier.name:upper(), Vector3.new(0, 4, 0))
+
+	-- The oil can on the right side: click it to buy a can of oil, and the sorter works faster for a while.
+	local canModel = Instance.new("Model")
+	canModel.Name = "OilCan"
+	canModel.Parent = model
+	local canBase = center * CFrame.new(T / 2 + 0.6, TOP - 0.6, 1)
+	part(canModel, "Shelf", Vector3.new(1.4, 0.2, 1.6), canBase * CFrame.new(0, -0.1, 0), C.wood, Enum.Material.WoodPlanks)
+	local can = part(canModel, "Can", Vector3.new(1.3, 0.9, 0.9), canBase * CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.pi / 2), C.darkMetal, Enum.Material.Metal)
+	can.Shape = Enum.PartType.Cylinder
+	part(canModel, "Spout", Vector3.new(0.15, 0.15, 0.9), canBase * CFrame.new(0, 1.4, -0.35) * CFrame.Angles(math.rad(-35), 0, 0), C.metal, Enum.Material.Metal)
+	local oilClick = Instance.new("ClickDetector")
+	oilClick.MaxActivationDistance = 14
+	oilClick.Parent = can
+	Skins.dress("sorter_boost_oil", can, canModel, canBase)
+	local oiled = 0 -- bales left that sort faster
 	-- The tier's Blender machine, when it was imported (the hand sieve is a hand tool, not a machine).
 	if tier.id ~= "hand_sieve" then
 		Skins.dress(tier.id, roof, model, center)
@@ -315,12 +325,48 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local out = center * CFrame.new(0, TOP + 1.45, -T + 2) * CFrame.Angles(0, math.pi / 2, 0)
 	local sorted = 0
 
+	local function refreshLabel()
+		label.Text = ("%s\n%d bales sorted, finds %d%%%s"):format(
+			tier.name:upper(),
+			sorted,
+			math.round(tier.recovery * 100),
+			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or ""
+		)
+		can.Color = oiled > 0 and C.go or C.darkMetal
+	end
+
+	oilClick.MouseClick:Connect(function(player)
+		local state = Data.get(player)
+		if not state then
+			return
+		end
+		if oiled + Factory.OilBales > Factory.OilMaxBales then
+			Data.toast(player, ("This sorter is already well oiled (%d bales)."):format(oiled))
+			return
+		end
+		if state.cash < Factory.OilPrice then
+			Data.toast(player, ("Sorter oil costs $%d. You have $%d."):format(Factory.OilPrice, state.cash))
+			return
+		end
+		state.cash -= Factory.OilPrice
+		Data.sync(player)
+		oiled += Factory.OilBales
+		refreshLabel()
+		Feedback.play("Scoop", can)
+		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Factory.OilSpeedup * 100), Factory.OilBales))
+	end)
+
 	local function sort(hay, ownerId)
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
 		local started = os.clock()
-		while os.clock() - started < Machines.sortSeconds(tier.id, hay) do
+		local seconds = Machines.sortSeconds(tier.id, hay)
+		if oiled > 0 then
+			seconds /= 1 + Factory.OilSpeedup
+			oiled -= 1
+		end
+		while os.clock() - started < seconds do
 			roof.CFrame = rest * CFrame.new(rng:NextNumber(-0.08, 0.08), rng:NextNumber(-0.05, 0.05), 0)
 			task.wait(0.05)
 		end
@@ -341,7 +387,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		end
 		spawnSortedBale(out, ownerId, hay)
 		sorted += 1
-		label.Text = ("%s\n%d bales sorted, finds %d%%"):format(tier.name:upper(), sorted, math.round(tier.recovery * 100))
+		refreshLabel()
 	end
 
 	task.spawn(function()
@@ -448,6 +494,81 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 		end
 	end)
 	return model
+end
+
+-- A splitter tile: loads come in from behind and leave through its left or right side onto the tiles there.
+-- rule "alternate" sends them left, right, left...; rule "sorted" sends sorted bales left and everything else
+-- (unsorted bales, loose hay, needles) right, so unsorted hay can loop back to a sorter. A side with no tile is skipped.
+-- Lay it before Conveyors.finish(grid), like any tile. Returns the tile's model.
+function Machines.splitter(grid, gx, gz, dir, rule)
+	local belt = Conveyors.place(grid, gx, gz, dir)
+	local tile = Conveyors.makeSplitter(grid, gx, gz)
+	belt.AssemblyLinearVelocity = Vector3.zero -- the splitter pushes each load itself
+	belt:SetAttribute("Speed", 0)
+	local left, right = Conveyors.sides(tile.d)
+	local center = Conveyors.cellCenter(grid, gx, gz)
+	local zone = CFrame.new(center + Vector3.new(0, TOP + 2.5, 0))
+	local zoneSize = Vector3.new(T - 0.4, 5, T - 0.4)
+	local label = sign(belt, rule == "sorted" and "SPLITTER\nsorted left" or "SPLITTER", Vector3.new(0, 4, 0))
+	label.Parent.MaxDistance = 40
+
+	local function open(side)
+		return Conveyors.tileAt(grid, gx + math.round(side.X), gz + math.round(side.Z)) ~= nil
+	end
+
+	local going = {} -- part -> side it is being pushed out of
+	local nextLeft = true
+	local function pick(p)
+		local want
+		if rule == "sorted" then
+			local b = Bales.fromPart(p)
+			want = (b and b.sorted) and left or right
+		else
+			want = nextLeft and left or right
+			nextLeft = not nextLeft
+		end
+		local other = want == left and right or left
+		if not open(want) and open(other) then
+			return other
+		end
+		return want
+	end
+
+	task.spawn(function()
+		local nextScan = 0
+		while tile.model.Parent do
+			if os.clock() >= nextScan then
+				nextScan = os.clock() + 0.15
+				local seen = {}
+				for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
+					local b = Bales.fromPart(p)
+					local load = (b and p == b.body and not b.gone and not b.carriedBy) or Hay.isPiece(p) or Needle.isNeedle(p)
+					if load and not p.Anchored then
+						seen[p] = true
+						if not going[p] then
+							going[p] = pick(p)
+							pcall(function()
+								p:SetNetworkOwner(nil)
+							end)
+						end
+					end
+				end
+				for p in going do
+					if not seen[p] then
+						going[p] = nil
+					end
+				end
+			end
+			for p, side in going do
+				if p.Parent then
+					local v = p.AssemblyLinearVelocity
+					p.AssemblyLinearVelocity = side * Factory.BeltSpeed + Vector3.new(0, math.min(v.Y, 0), 0)
+				end
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+	return tile.model
 end
 
 return Machines

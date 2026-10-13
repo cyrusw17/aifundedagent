@@ -6,9 +6,6 @@ local Economy = {}
 
 Economy.HAY_PRICE = Prices.HayPrice -- dollars per strand of hay
 Economy.RAW_NEEDLE_PRICE = Prices.RawNeedlePrice -- the basic shop only pays this for needles it cannot see
--- A needle you found by hand and carry in your pocket sells at the public pad for this share of its sorted value.
--- Full value: finding one is rare and it is the first hook.
-Economy.HAND_NEEDLE_SHARE = 1
 
 -- Value of a load sold raw at the basic shop.
 function Economy.rawLoadValue(hay: number, needlesInside: number): number

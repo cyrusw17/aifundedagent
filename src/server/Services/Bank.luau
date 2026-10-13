@@ -22,6 +22,7 @@ local Trucks = require(Shared.Config.Trucks)
 local Trailers = require(Shared.Config.Trailers)
 local LandConfig = require(Shared.Config.Land)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 
 local Bank = {}
@@ -445,21 +446,9 @@ local function part(parent, name, size, cframe, color, material)
 	return p
 end
 
-local function sign(parent, text, offset, size)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = size or UDim2.fromOffset(300, 70)
-	gui.StudsOffset = offset
-	gui.MaxDistance = 140
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
+-- Floating text goes through the shared WorldLabel helper.
+local function sign(parent, text, offset)
+	return WorldLabel.billboard(parent, text, { offset = offset, kind = "sign" })
 end
 
 -- A small stone-and-plank bank on the main road, east of the plot road, its open front facing north to the road.

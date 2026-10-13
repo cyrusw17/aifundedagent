@@ -100,8 +100,27 @@ function Conveyors.place(grid, gx, gz, dir, openBack)
 
 	model.PrimaryPart = belt
 	model.Parent = grid.folder
-	grid.tiles[key(gx, gz)] = { gx = gx, gz = gz, dir = dir, d = d, model = model, openBack = openBack }
+	grid.tiles[key(gx, gz)] = { gx = gx, gz = gz, dir = dir, d = d, model = model, openBack = openBack, outs = { d } }
 	return belt
+end
+
+-- The tile laid at a cell, or nil.
+function Conveyors.tileAt(grid, gx, gz)
+	return grid.tiles[key(gx, gz)]
+end
+
+-- The directions to a tile's left and right, seen facing its flow.
+function Conveyors.sides(d)
+	return Vector3.new(d.Z, 0, -d.X), Vector3.new(-d.Z, 0, d.X)
+end
+
+-- Turns a laid tile into a splitter: loads come in from behind and leave through its left and right sides (moved by
+-- Machines.splitter), so finish() leaves both sides open and puts a rail across the front.
+function Conveyors.makeSplitter(grid, gx, gz)
+	local tile = grid.tiles[key(gx, gz)]
+	tile.kind = "splitter"
+	tile.outs = { Conveyors.sides(tile.d) }
+	return tile
 end
 
 local function addRail(tile, side, top)
@@ -114,27 +133,46 @@ end
 
 -- Adds rails once the whole line is laid. A side gets a rail unless a tile there feeds into this one.
 -- The back gets a rail unless something feeds in from behind. The front is left open so loads move on.
--- Straight tiles (nothing feeding in from a side) also get the conveyor_straight mesh when it was imported.
+-- Tiles also get their Blender mesh when it was imported: conveyor_straight when nothing feeds in from a side, merger
+-- when both sides feed in, splitter on a splitter. Corners and T-joins keep the part-built look.
 function Conveyors.finish(grid)
 	for _, tile in grid.tiles do
 		local top = Conveyors.cellCenter(grid, tile.gx, tile.gz) + Vector3.new(0, Factory.BeltTop, 0)
-		local sides = { Vector3.new(tile.d.Z, 0, -tile.d.X), Vector3.new(-tile.d.Z, 0, tile.d.X) }
+		local left, right = Conveyors.sides(tile.d)
+		local sides = { left, right }
 		if not tile.openBack then
 			table.insert(sides, -tile.d)
 		end
-		local straight = true
+		local fed = 0
 		for i, side in sides do
 			local n = grid.tiles[key(tile.gx + math.round(side.X), tile.gz + math.round(side.Z))]
-			local feedsIn = n and (n.d + side).Magnitude < 0.01
-			if not feedsIn then
+			local feedsIn = false
+			for _, out in n and n.outs or {} do
+				feedsIn = feedsIn or (out + side).Magnitude < 0.01
+			end
+			if tile.kind == "splitter" and i <= 2 then
+				-- A splitter's sides are its ways out: open wherever there is a tile to take the load.
+				if not n then
+					addRail(tile, side, top)
+				end
+			elseif not feedsIn then
 				addRail(tile, side, top)
 			elseif i <= 2 then
-				straight = false
+				fed += 1
 			end
 		end
-		if straight then
-			-- The mesh's belt runs along its own X axis.
-			Skins.dress("conveyor_straight", tile.model.Frame, tile.model, Conveyors.frame(grid, tile.gx, tile.gz, tile.dir), CFrame.Angles(0, math.pi / 2, 0))
+		if tile.kind == "splitter" then
+			addRail(tile, tile.d, top)
+		end
+		-- The meshes' belts run along their own X axis, in at -X and out at +X.
+		local frame = Conveyors.frame(grid, tile.gx, tile.gz, tile.dir)
+		local turn = CFrame.Angles(0, math.pi / 2, 0)
+		if tile.kind == "splitter" then
+			Skins.dress("splitter", tile.model.Frame, tile.model, frame, turn)
+		elseif fed == 2 then
+			Skins.dress("merger", tile.model.Frame, tile.model, frame, turn)
+		elseif fed == 0 then
+			Skins.dress("conveyor_straight", tile.model.Frame, tile.model, frame, turn)
 		end
 	end
 end
