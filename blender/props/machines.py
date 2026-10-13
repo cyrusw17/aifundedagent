@@ -71,8 +71,8 @@ def bx(f, size, loc, kind, along=None, rot=(0, 0, 0), rnd=True):
 AXIS_ROT = {"x": (0, math.pi / 2, 0), "y": (math.pi / 2, 0, 0), "z": (0, 0, 0)}
 
 
-def cy(f, r, depth, loc, kind, axis="z", verts=12, rnd=True, along=None):
-    if LOW[0]:
+def cy(f, r, depth, loc, kind, axis="z", verts=12, rnd=True, along=None, exact=False):
+    if LOW[0] and not exact:
         verts = min(verts, 6)
     o = cyl(r * S, depth * S, tuple(c * S for c in loc), verts=verts, rot=AXIS_ROT[axis])
     return part(f, o, kind, along or axis, rnd)
@@ -446,8 +446,8 @@ def hopper_feeder(f):
 
 # ---------------------------------------------------------------- sorters (tiers 1-6)
 
-def hand_sieve(f):
-    """Tier 1: a wooden sieve frame with an iron mesh on four splayed legs, handles to shake it."""
+def hand_sieve_table(f):
+    """Decor (was tier 1): a wooden sieve frame with an iron mesh on four splayed legs, handles to shake it."""
     parts = []
     w, d, z = 4.4, 3.0, 3.0
     for y in (-d / 2, d / 2):
@@ -476,8 +476,8 @@ def hand_sieve(f):
     return parts
 
 
-def shaker_table(f):
-    """Tier 2: slatted table on spring legs, shaken by a crank wheel and pitman arm."""
+def shaker_table_small(f):
+    """Decor (was tier 2): slatted table on spring legs, shaken by a crank wheel and pitman arm."""
     parts = []
     w, d, z = 6.4, 4.0, 3.5
     # Slats with gaps.
@@ -581,8 +581,8 @@ def conveyor_sorter(f):
     return parts
 
 
-def magnet_drum(f):
-    """Tier 4: belt feeds a big rotating iron drum (red magnet poles); hay drops off the end,
+def magnet_drum_small(f):
+    """Decor (was tier 4): belt feeds a big rotating iron drum (red magnet poles); hay drops off the end,
     needles cling to the drum and fall into a chute. 1 x 2 tiles."""
     parts = belt_run(f, -TILE, 0.0)
     dc, r, L = (2.6, 0.0, 4.6), 2.4, 4.8
@@ -632,6 +632,190 @@ def magnet_drum(f):
     parts += needles(f, (dc[0] - 0.6, -3.9), 4, 0.9, spread=0.3, length=0.7, seed=9)
     # Hay that came off the drum.
     parts += hay_lump(f, (dc[0] + 2.4, -0.5), (1.6, 2.4, 0.8), 0.0)
+    return parts
+
+
+# Sorter tiers 1, 2 and 4 as 2-tile machines with the game's fallback proportions (Machines.sorter):
+# side walls 7 above the belt (top 10.5), tin roof to 11.5, hopper on the upstream (-x) roof half,
+# the tier's silhouette on the downstream (+x) half, a painted tier band 0.9 tall near the top of both
+# long walls (Machines.TierLooks), a flat Sign board on the front wall and a needle chute to a bin.
+SH_X = 5.6        # wall ends / corner posts
+SH_Y = 3.0        # wall center line
+SH_TOP = BELT_Z + 7.0
+SH_RIDGE = SH_TOP + 1.0
+SH_DOWN = 3.0     # center x of the downstream roof half (where the silhouette sits)
+
+
+def sorter_shed(f, band, sign="paint_cream"):
+    """The shared tier shell. band: paint kind of the tier band (None = bare wood boards)."""
+    parts = belt_run(f, -TILE, TILE)
+    # Plank walls, corner and middle posts, the tier band.
+    for side in (-1, 1):
+        y = side * SH_Y
+        z = 2.7
+        while z < SH_TOP - 0.1:
+            h = min(1.1, SH_TOP - z)
+            parts.append(bx(f, (2 * SH_X, 0.4, h - 0.07), (0, y, z + h / 2), "handle", along="x", rnd=False))
+            z += h
+        for x in (-SH_X, 0.0, SH_X):
+            parts.append(bx(f, (0.6, 0.6, SH_TOP + 0.1), (x, y + side * 0.15, (SH_TOP + 0.1) / 2), "handle",
+                            along="z"))
+        parts.append(bx(f, (2 * SH_X - 0.6, 0.2, 0.9), (0, y + side * 0.3, SH_TOP - 1.0), band or "handle",
+                        along="x", rnd=False))
+        parts.append(bx(f, (2 * SH_X - 0.6, 0.12, 0.2), (0, y + side * 0.24, 3.4), "metal", along="x", rnd=False))
+    # Ends: header boards over the bale opening.
+    open_top = BELT_Z + 3.5
+    for x in (-SH_X, SH_X):
+        parts.append(bx(f, (0.4, 2 * SH_Y, SH_TOP - open_top), (x, 0, (open_top + SH_TOP) / 2), "handle", along="y",
+                        rnd=False))
+        parts.append(bx(f, (0.5, 2 * SH_Y + 0.2, 0.3), (x, 0, open_top + 0.15), "metal", along="y", rnd=False))
+        parts.append(extrude(f, [(-SH_Y - 0.2, SH_TOP), (SH_Y + 0.2, SH_TOP), (0, SH_RIDGE - 0.1)], "yz", x - 0.2,
+                             x + 0.2, "handle", along="y", rnd=False))
+    # Low gable tin roof with ribs, eaves overhanging the walls.
+    ey = SH_Y + 0.6
+    slope, ang = math.hypot(ey, SH_RIDGE - SH_TOP), math.atan2(SH_RIDGE - SH_TOP, ey)
+    for side in (-1, 1):
+        yc, zc = side * ey / 2, (SH_RIDGE + SH_TOP) / 2 + 0.05
+        parts.append(bx(f, (2 * SH_X + 1.0, slope, 0.16), (0, yc, zc), "metal", along="x", rot=(-side * ang, 0, 0),
+                        rnd=False))
+        for k in range(7):
+            x = -SH_X - 0.3 + k * (2 * SH_X + 0.6) / 6
+            parts.append(bx(f, (0.14, slope, 0.1), (x, yc, zc + 0.11), "metal", along="y", rot=(-side * ang, 0, 0),
+                            rnd=False))
+    # Hopper on the upstream half with hay heaped in it.
+    hx, hz0, hz1 = -SH_DOWN, SH_RIDGE - 0.6, SH_RIDGE + 1.6
+    parts.append(frustum(f, (hx, 0), hz0, (1.6, 1.6), hz1, (3.4, 3.4), "handle", wall=0.2))
+    for y in (-1.75, 1.75):
+        parts.append(bx(f, (3.7, 0.2, 0.3), (hx, y, hz1 - 0.12), "metal", along="x", rnd=False))
+    parts.append(frustum(f, (hx, 0), hz1 - 0.6, (3.1, 3.1), hz1 + 0.5, (1.6, 1.8), "hay"))
+    # Needle chute out the front wall into a small wooden bin.
+    cx = SH_DOWN
+    parts += trough(f, (cx, -SH_Y - 0.2, 5.8), (cx, -4.2, 2.6), 1.1, 0.4, "metal")
+    parts.append(bx(f, (1.5, 0.4, 1.2), (cx, -SH_Y - 0.3, 6.0), "metal", along="x", rnd=False))
+    parts.append(frustum(f, (cx, -4.4), 0.0, (1.5, 1.3), 1.4, (1.8, 1.6), "handle", wall=0.15, closed=False))
+    parts.append(bx(f, (1.5, 1.3, 0.15), (cx, -4.4, 0.1), "handle", along="x", rnd=False))
+    parts += needles(f, (cx, -4.4), 4, 1.1, spread=0.35, length=0.8, seed=7)
+    # Flat sign board on the front wall: the game draws the stars and rate on it.
+    parts += tag([bx(f, (4.4, 0.2, 2.4), (-2.6, -SH_Y - 0.4, 6.9), sign, along="x", rnd=False)], "Sign")
+    for x in (-4.6, -0.6):
+        parts.append(bx(f, (0.25, 0.25, 2.8), (x, -SH_Y - 0.33, 6.9), "metal", along="z", rnd=False))
+    # Two skids across the downstream roof half: a level seat for the tier's silhouette.
+    for x in (SH_DOWN - 1.7, SH_DOWN + 1.7):
+        parts.append(bx(f, (0.5, 2 * SH_Y + 0.4, 0.9), (x, 0, SH_RIDGE - 0.15), "handle", along="y", rnd=False))
+    return parts
+
+
+SKID_TOP = SH_RIDGE + 0.3
+
+
+def hand_sieve(f):
+    """Tier 1 sorter (1 star): a bare-wood plank shed over two belt tiles (12 x 9.4, walls 7 above the
+    belt, tin roof to 11.5) with a round riddle sieve resting on the downstream roof half (Screen,
+    shakes) worked by a hand crank on the back wall. No paint: the tier band is a plain board."""
+    parts = sorter_shed(f, None, sign="greywood")
+    c, r, z = (SH_DOWN, 0.0), 2.4, SKID_TOP + 0.5
+    screen = []
+    n = 12
+    for i in range(n):
+        a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+        p0 = (c[0] + r * math.cos(a0 - 0.04), c[1] + r * math.sin(a0 - 0.04), z)
+        p1 = (c[0] + r * math.cos(a1 + 0.04), c[1] + r * math.sin(a1 + 0.04), z)
+        screen.append(obox(f, p0, p1, 0.3, 0.9, "handle", rnd=False))
+    for k in range(-3, 4):
+        d = k * 0.6
+        half = math.sqrt(max(0.0, r * r - d * d)) - 0.1
+        screen.append(bx(f, (2 * half, 0.08, 0.08), (c[0], c[1] + d, z - 0.3), "handle", along="x", rnd=False))
+        screen.append(bx(f, (0.08, 2 * half, 0.08), (c[0] + d, c[1], z - 0.25), "handle", along="y", rnd=False))
+    screen.append(bx(f, (0.3, 0.3, 0.9), (c[0] - r - 0.3, 0, z + 0.1), "handle", along="z", rnd=False))
+    parts += tag(screen, "Screen")
+    # Cradle blocks under the hoop.
+    for x in (SH_DOWN - 1.7, SH_DOWN + 1.7):
+        for y in (-1.6, 1.6):
+            parts.append(bx(f, (0.5, 0.5, 0.35), (x, y, SKID_TOP - 0.05 + 0.15), "metal", along="x", rnd=False))
+    # Hand crank on the back wall with a push rod up to the sieve.
+    hc = (SH_DOWN, SH_Y + 0.55, 8.0)
+    parts.append(bx(f, (1.0, 0.5, 1.0), (hc[0], SH_Y + 0.45, hc[2]), "metal", along="x", rnd=False))
+    parts.append(cy(f, 0.1, 0.7, (hc[0], hc[1], hc[2]), "metal", axis="y", verts=6))
+    parts.append(obox(f, (hc[0], hc[1] + 0.3, hc[2]), (hc[0] + 1.2, hc[1] + 0.3, hc[2] + 0.5), 0.2, 0.2, "metal",
+                      rnd=False))
+    parts.append(obox(f, (hc[0] + 1.2, hc[1] + 0.3, hc[2] + 0.4), (hc[0] + 1.2, hc[1] + 0.6, hc[2] + 0.4), 0.22,
+                      0.22, "handle", rnd=False))
+    parts.append(obox(f, (hc[0] - 0.4, hc[1] - 0.1, hc[2] + 0.3), (c[0] - r - 0.3, 0.6, z), 0.18, 0.18, "handle",
+                      rnd=False))
+    return parts
+
+
+def coil_spring(f, c, z0, h, r=0.38):
+    out = [cy(f, r * 0.45, h, (c[0], c[1], z0 + h / 2), "metal", verts=6, rnd=False)]
+    for k in range(4):
+        out.append(cy(f, r, 0.1, (c[0], c[1], z0 + 0.1 + k * (h - 0.2) / 3), "metal", verts=8, rnd=False))
+    return out
+
+
+def shaker_table(f):
+    """Tier 2 sorter (2 stars): the plank shed with a sage-painted tier band; on the downstream roof half a
+    slatted deck tipped 8 degrees toward the chute rides on four coil springs (Shaker), driven by a
+    crank wheel on the back wall (Crank) through a pitman arm."""
+    parts = sorter_shed(f, "paint_green")
+    sz = SKID_TOP
+    for x in (SH_DOWN - 1.7, SH_DOWN + 1.7):
+        for y in (-1.8, 1.8):
+            parts += coil_spring(f, (x, y), sz, 0.9)
+    # The deck: two side rails, end boards and slats, built level then tipped 8 degrees toward -y.
+    dz = sz + 1.05
+    deck = []
+    w, d = 5.0, 5.0
+    for x in (-w / 2, w / 2):
+        deck.append(bx(f, (0.3, d, 0.5), (SH_DOWN + x, 0, dz + 0.1), "handle", along="y", rnd=False))
+    deck.append(bx(f, (w, 0.3, 0.6), (SH_DOWN, d / 2, dz + 0.15), "handle", along="x", rnd=False))
+    for i in range(7):
+        y = -d / 2 + 0.35 + i * (d - 0.7) / 6
+        deck.append(bx(f, (w - 0.3, 0.42, 0.15), (SH_DOWN, y, dz), "handle", along="x", rnd=False))
+    for y in (-1.8, 1.8):
+        deck.append(bx(f, (w + 0.2, 0.4, 0.3), (SH_DOWN, y, dz - 0.2), "handle", along="x", rnd=False))
+    m = (Matrix.Translation(Vector((SH_DOWN, 0, dz)) * S) @ Matrix.Rotation(math.radians(-8), 4, "X")
+         @ Matrix.Translation(-Vector((SH_DOWN, 0, dz)) * S))
+    parts += tag(xform(deck, m), "Shaker")
+    # Crank wheel on the back wall, pitman arm up to the deck.
+    wc = (SH_DOWN + 1.5, SH_Y + 0.7, 8.4)
+    parts.append(bx(f, (0.4, 0.6, 2.2), (wc[0], SH_Y + 0.5, wc[2] - 0.6), "handle", along="z", rnd=False))
+    parts.append(cy(f, 0.12, 0.8, (wc[0], SH_Y + 0.6, wc[2]), "metal", axis="y", verts=6))
+    crank = handwheel(f, wc, 1.0, "y", spokes=2)
+    crank.append(obox(f, (wc[0] + 0.7, wc[1] + 0.1, wc[2]), (wc[0] + 0.7, wc[1] + 0.4, wc[2]), 0.18, 0.18, "metal",
+                      rnd=False))
+    parts += tag(crank, "Crank")
+    parts.append(obox(f, (wc[0] - 0.2, wc[1] - 0.25, wc[2] + 0.6), (SH_DOWN + 2.0, 2.6, dz - 0.3), 0.22, 0.22,
+                      "metal", rnd=False))
+    return parts
+
+
+def magnet_drum(f):
+    """Tier 4 sorter (4 stars): the plank shed with a barn-red tier band; a big red magnet drum
+    (Drum, spins about y) crosses the downstream roof half between two iron bearing blocks, driven by a
+    small motor and chain on the back."""
+    parts = sorter_shed(f, "paint_red")
+    r, L = 1.9, 4.6
+    dc = (SH_DOWN, 0.0, SKID_TOP + r + 0.35)
+    drum = [cy(f, r, L, dc, "paint_red", axis="y", verts=16, exact=True)]
+    for y in (-L / 2 + 0.2, L / 2 - 0.2):
+        drum.append(cy(f, r + 0.12, 0.35, (dc[0], y, dc[2]), "paint_red", axis="y", verts=16, rnd=False, exact=True))
+    for k in range(8):
+        a = 2 * math.pi * k / 8
+        drum.append(bx(f, (0.3, L - 0.8, 0.14), (dc[0] + (r + 0.02) * math.cos(a), 0, dc[2] + (r + 0.02) * math.sin(a)),
+                       "paint_red", along="y", rot=(0, -a + math.pi / 2, 0), rnd=False))
+    drum.append(cy(f, 0.35, L + 1.6, dc, "paint_red", axis="y", verts=8, rnd=False))
+    parts += tag(drum, "Drum")
+    # Bearing blocks on the skids.
+    for side in (-1, 1):
+        y = side * (L / 2 + 0.55)
+        parts.append(bx(f, (1.6, 0.8, dc[2] - SKID_TOP + 0.4), (dc[0], y, (SKID_TOP + dc[2] + 0.4) / 2), "metal",
+                        along="z"))
+        parts.append(bx(f, (3.8, 0.9, 0.3), (dc[0], y, SKID_TOP + 0.15), "metal", along="x", rnd=False))
+        parts.append(cy(f, 0.55, 0.9, (dc[0], y, dc[2]), "metal", axis="y", verts=10, exact=True))
+    # Motor on the back skid end with a drive chain to the drum axle.
+    parts.append(bx(f, (1.4, 1.2, 1.2), (dc[0] + 1.6, SH_Y + 0.2, SKID_TOP + 0.6), "metal", along="x"))
+    parts.append(obox(f, (dc[0] + 1.6, SH_Y + 0.9, SKID_TOP + 0.6), (dc[0], L / 2 + 1.1, dc[2]), 0.25, 0.12, "metal",
+                      rnd=False))
     return parts
 
 
@@ -1096,45 +1280,57 @@ def starbeam_collector(f):
 # the belt so a bale rides through.
 
 def thawing_shed(f):
-    """Thawing shed (Frozen hay): a plank shed over two belt tiles with a tin gable roof, a glowing
-    stove firebox in the side wall, a stovepipe and a spinning roof ventilator (Vent)."""
+    """Thawing shed (Frozen hay, Snow Peak): a plank shed over two belt tiles (12 x 7.4, 14 tall with the
+    vent) with a tin gable roof, ice-blue icicles hanging all along both eaves, one ice-blue painted trim
+    band on the stove side, a cast-iron stove with a big glowing window against that wall, a stovepipe
+    and a spinning roof ventilator (Vent)."""
     parts = belt_run(f, -TILE, TILE)
     top = 10.0
     for y in (-2.75, 2.75):
         parts.append(bx(f, (12.0, 0.4, top), (0, y, top / 2), "handle", along="x"))
         for x in (-5.75, 0, 5.75):
             parts.append(bx(f, (0.5, 0.5, top), (x, y, top / 2), "handle", along="z", rnd=False))
-    # Gable ends above the bale door (clear to 9.0), then the roof.
+    # The region accent: one ice-blue painted trim band high on the stove (-y) side.
+    parts.append(bx(f, (11.0, 0.15, 0.8), (0, -3.02, top - 1.0), "paint_blue", along="x", rnd=False))
+    # Gable ends above the bale door (clear to 9.0), then the roof, overhanging the walls.
     for x in (-5.9, 5.9):
         parts.append(bx(f, (0.3, 5.6, 1.0), (x, 0, top - 0.5), "handle", along="y", rnd=False))
         parts.append(extrude(f, [(-2.8, top), (2.8, top), (0, top + 2.4)], "yz", x - 0.15, x + 0.15, "handle",
                              rnd=False))
+    a = math.atan2(2.4, 2.8)
+    ls = 4.6
     for side in (-1, 1):
-        a = math.atan2(2.4, 2.8)
-        parts.append(bx(f, (12.4, 3.6, 0.2), (0, side * 1.45, top + 1.25), "metal", rot=(-side * a, 0, 0),
-                        rnd=False))
-    # Stove firebox glowing through the -y wall, with a little iron door frame.
-    parts.append(bx(f, (2.0, 0.08, 1.2), (-2.5, -2.97, 2.0), "lava", rnd=False))
-    for z in (1.3, 2.7):
-        parts.append(bx(f, (2.4, 0.08, 0.2), (-2.5, -2.98, z), "metal", rnd=False))
-    for x in (-3.6, -1.4):
-        parts.append(bx(f, (0.2, 0.08, 1.6), (x, -2.98, 2.0), "metal", rnd=False))
-    # Stovepipe out through the roof above the stove.
-    parts.append(cy(f, 0.35, 2.6, (-2.5, -1.4, top + 2.0), "metal", verts=8))
-    parts.append(cone(f, 0.55, 0.2, 0.5, (-2.5, -1.4, top + 3.5), "metal", verts=8))
+        parts.append(bx(f, (12.4, ls, 0.2), (0, side * ls / 2 * math.cos(a), top + 2.5 - ls / 2 * math.sin(a)), "metal",
+                        rot=(-side * a, 0, 0), rnd=False))
+    # Icicles along both eaves: long and short, ice blue.
+    ey, ez = ls * math.cos(a) - 0.15, top + 2.4 - ls * math.sin(a) + 0.05
+    for side in (-1, 1):
+        for i in range(11):
+            x = -5.6 + i * 1.12 + (0.25 if side > 0 else 0.0)
+            ln = (1.5, 0.8, 1.15, 0.6, 1.3)[(i + (2 if side > 0 else 0)) % 5]
+            parts.append(cone(f, 0.0, 0.2, ln, (x, side * ey, ez - ln / 2), "paint_blue", verts=5, rnd=False))
+    # Cast-iron stove against the -y wall with a big glowing window and an ash slot.
+    parts.append(bx(f, (3.0, 0.9, 2.6), (-2.5, -3.4, 1.5), "metal", along="x", rnd=False))
+    parts.append(bx(f, (3.3, 1.1, 0.25), (-2.5, -3.4, 2.9), "metal", along="x", rnd=False))
+    parts.append(bx(f, (2.2, 0.08, 1.3), (-2.5, -3.88, 1.9), "lava", rnd=False))
+    parts.append(bx(f, (2.2, 0.08, 0.25), (-2.5, -3.88, 0.75), "lava", rnd=False))
+    for z in (1.15, 2.6):
+        parts.append(bx(f, (2.6, 0.12, 0.22), (-2.5, -3.92, z), "metal", rnd=False))
+    for x in (-3.7, -2.5, -1.3):
+        parts.append(bx(f, (0.18, 0.12, 1.6), (x, -3.92, 1.9), "metal", rnd=False))
+    # Stovepipe from the stove up the wall and out through the eave.
+    parts.append(cy(f, 0.35, top + 1.0, (-2.5, -3.5, (3.0 + top + 4.0) / 2), "metal", verts=8))
+    parts.append(cone(f, 0.55, 0.2, 0.5, (-2.5, -3.5, top + 4.3), "metal", verts=8))
+    parts.append(bx(f, (0.3, 0.7, 0.3), (-2.5, -3.2, 7.0), "metal", rnd=False))
     # Ridge ventilator: a drum of vanes that spins in the steam.
     vent = [cy(f, 0.9, 1.2, (2.5, 0, top + 3.0), "metal", verts=10)]
     for k in range(6):
-        a = k * math.pi / 3
-        vent.append(bx(f, (0.6, 0.12, 1.2), (2.5 + 0.95 * math.cos(a), 0.95 * math.sin(a), top + 3.0), "metal",
-                       rot=(0, 0, a + 0.6), rnd=False))
+        a2 = k * math.pi / 3
+        vent.append(bx(f, (0.6, 0.12, 1.2), (2.5 + 0.95 * math.cos(a2), 0.95 * math.sin(a2), top + 3.0), "metal",
+                       rot=(0, 0, a2 + 0.6), rnd=False))
     vent.append(cone(f, 1.0, 0.2, 0.5, (2.5, 0, top + 3.85), "metal", verts=10))
     parts += tag(vent, "Vent")
     parts.append(cy(f, 0.5, 1.0, (2.5, 0, top + 2.0), "metal", verts=8))
-    # A few icicles melting off the eaves.
-    for x in (-4.5, -1.0, 3.5):
-        for y in (-2.95, 2.95):
-            parts.append(cone(f, 0.12, 0.0, 0.6, (x, y, top - 0.6), "metal", verts=4))
     return parts
 
 
@@ -1170,19 +1366,28 @@ def drying_rack(f):
 
 
 def ash_sifter(f):
-    """Ash sifter (Ashen hay): an iron hood over two belt tiles with a shaking sieve screen (Shaker),
-    a rotary brush across the belt (Drum) knocking the ash out, and an ash tray of glowing embers
-    under the belt."""
+    """Ash sifter (Ashen hay, Volcano): a charcoal-black iron hood over two belt tiles with a shaking sieve
+    screen (Shaker), a rotary brush across the belt (Drum) knocking the ash out, an open hopper on the
+    roof full of glowing embers and an ash tray of embers and grey ash under the belt."""
     parts = belt_run(f, -TILE, TILE)
     top = 9.5
-    # Iron hood: side plates and a flat top with a hopper-style stack.
+    # Charcoal hood: side plates on iron posts, a flat top, an open ember hopper and a short flue.
     for y in (-2.75, 2.75):
-        parts.append(bx(f, (11.0, 0.25, top - BELT_Z), (0, y, (top + BELT_Z) / 2), "metal", rnd=False))
+        parts.append(bx(f, (11.0, 0.25, top - BELT_Z), (0, y, (top + BELT_Z) / 2), "tire", rnd=False))
         for x in (-5.4, -1.8, 1.8, 5.4):
-            parts.append(bx(f, (0.4, 0.4, top), (x, y * 1.01, top / 2), "metal", along="z", rnd=False))
-    parts.append(bx(f, (11.6, 6.0, 0.3), (0, 0, top + 0.15), "metal", rnd=False))
-    parts.append(frustum(f, (0, 0), top + 0.3, (5.0, 4.0), top + 2.0, (2.0, 1.6), "metal"))
-    parts.append(cy(f, 0.6, 1.6, (0, 0, top + 2.8), "metal", verts=8))
+            parts.append(bx(f, (0.4, 0.4, top), (x, y * 1.03, top / 2), "metal", along="z", rnd=False))
+        for z in (BELT_Z + 0.3, top - 0.3):
+            parts.append(bx(f, (11.0, 0.12, 0.25), (0, y * 1.06, z), "metal", along="x", rnd=False))
+    parts.append(bx(f, (11.6, 6.0, 0.3), (0, 0, top + 0.15), "tire", rnd=False))
+    hc = (-1.5, 0.0)
+    parts.append(frustum(f, hc, top + 0.3, (2.4, 2.0), top + 2.4, (4.6, 4.0), "tire", wall=0.25))
+    parts.append(frustum(f, hc, top + 0.3, (2.3, 1.9), top + 2.1, (4.3, 3.7), "lava"))
+    for y in (-2.05, 2.05):
+        parts.append(bx(f, (4.9, 0.2, 0.3), (hc[0], y, top + 2.3), "metal", along="x", rnd=False))
+    for x, y in ((-2.4, 0.6), (-0.6, -0.8), (-1.3, 0.9)):
+        parts.append(frustum(f, (x, y), top + 2.0, (1.3, 1.0), top + 2.4, (0.6, 0.5), "metal"))
+    parts.append(cy(f, 0.5, 2.4, (3.4, 1.2, top + 1.5), "tire", verts=8))
+    parts.append(cy(f, 0.6, 0.25, (3.4, 1.2, top + 2.75), "metal", verts=8, rnd=False))
     # Sieve screen above the lane: a frame with slats, hung on four rods so it can shake.
     sieve = []
     for y in (-2.4, 2.4):
@@ -1200,11 +1405,12 @@ def ash_sifter(f):
                        rot=(0, -a, 0), rnd=False))
     parts += tag(drum, "Drum")
     for y in (-2.75, 2.75):
-        parts.append(cy(f, 0.3, 0.3, (3.8, y, BELT_Z + 1.9), "metal", axis="y", verts=8))
-    # Ash tray under the belt with embers.
-    parts.append(frustum(f, (0, 0), 0.3, (9.0, 4.2), 1.5, (10.0, 4.6), "metal", wall=0.15, closed=True))
-    for x, y in ((-3.0, 0.8), (-1.2, -1.0), (0.6, 0.4), (2.4, -0.6), (3.6, 1.1)):
-        parts.append(bx(f, (0.6, 0.5, 0.25), (x, y, 1.2), "lava", rot=(0, 0, x), rnd=False))
+        parts.append(cy(f, 0.3, 0.3, (3.8, y * 1.05, BELT_Z + 1.9), "metal", axis="y", verts=8))
+    # Ash tray under the belt, wider than the lane so its glowing embers and grey ash show at the sides.
+    parts.append(frustum(f, (0, 0), 0.0, (10.0, 6.6), 1.3, (10.8, 7.4), "tire", wall=0.2, closed=True))
+    parts.append(bx(f, (10.4, 7.0, 0.1), (0, 0, 0.95), "lava", rnd=False))
+    for x, y in ((-4.2, 2.9), (-2.0, -3.0), (0.6, 3.0), (2.8, -2.9), (4.3, 2.8), (-4.4, -2.8)):
+        parts.append(frustum(f, (x, y), 0.95, (1.5, 0.9), 1.45, (0.7, 0.4), "metal"))
     return parts
 
 
@@ -1215,10 +1421,13 @@ PROPS = {
     "splitter": low_poly(splitter),
     "merger": low_poly(merger),
     "hopper_feeder": hopper_feeder,
-    "hand_sieve": hand_sieve,
-    "shaker_table": shaker_table,
+    "hand_sieve": low_poly(hand_sieve),
+    "shaker_table": low_poly(shaker_table),
     "conveyor_sorter": conveyor_sorter,
-    "magnet_drum": magnet_drum,
+    "magnet_drum": low_poly(magnet_drum),
+    "hand_sieve_table": hand_sieve_table,
+    "shaker_table_small": shaker_table_small,
+    "magnet_drum_small": magnet_drum_small,
     "optical_sorter": optical_sorter,
     "needle_type_splitter": needle_type_splitter,
     "needle_bundler": needle_bundler,

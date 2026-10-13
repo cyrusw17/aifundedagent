@@ -907,6 +907,7 @@ local function refreshPresets()
 		del.AnchorPoint = Vector2.new(1, 0.5)
 		del.Position = UDim2.new(1, -6, 0.5, 0)
 		del.Size = UDim2.fromOffset(44, 28)
+		del.Visible = not preset.builtin -- the starter templates stay
 		del.Activated:Connect(function()
 			local done, _, message = pcall(function()
 				return blueprintRemotes.Delete:InvokeServer(preset.name)

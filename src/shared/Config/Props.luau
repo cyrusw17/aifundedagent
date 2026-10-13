@@ -129,11 +129,11 @@ return {
 		spindle_landmark = 120,
 		region_sign = 6,
 		road_sign = 6,
-		field_bale_chute = 14.0,
+		field_bale_chute = 15.95,
 		-- Items and collectibles
 		wheelbarrow_loaded = 8.14,
 		needle_bundle = 1.29, -- the NeedleBundle part in Needle.luau is 1.3 x 0.55 x 0.55
-		needle_display_wall = 12,
+		needle_display_wall = 7.83,
 		old_boot = 1.51,
 		horseshoe = 0.88,
 		lost_ring = 0.6,
