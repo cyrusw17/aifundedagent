@@ -18,6 +18,9 @@ local Factory = require(Shared.Config.Factory)
 local LandConfig = require(Shared.Config.Land)
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
+local GameConfig = require(Shared.Config.Game)
+local Sorters = require(Shared.Config.Sorters)
+local Economy = require(Shared.Economy)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -579,6 +582,7 @@ local function saveItems(player, plot)
 	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
 	s.land.binSorted = plot.binSorted or nil
 	s.land.theme = plot.theme
+	s.land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
 	s.land.needles = plot.bin.contents(player.UserId)
 	local crew = {}
 	for userId in plot.crew do
@@ -712,6 +716,7 @@ local function release(plot)
 	plot.locked = 0
 	dress(plot, nil)
 	drawLocks(plot)
+	plot.mailLabel.Text = "MAILBOX\nNo mail."
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -1256,6 +1261,14 @@ local function buildPlot(parent, index, def)
 	local board = part(model, "SignBoard", Vector3.new(8, 2.4, 0.4), CFrame.new((x0 + x1) / 2, 5.4, stripZ), Rustic.Wood, Enum.Material.WoodPlanks)
 	board.CanCollide = false
 	local label = sign(post, "", Vector3.new(0, 6, 0))
+	-- The mailbox beside the sign: what the farm earned while its owner was away.
+	local mailAt = Vector3.new((x0 + x1) / 2 + 6, 0, stripZ)
+	local mailPost = part(model, "MailPost", Vector3.new(0.4, 3.6, 0.4), CFrame.new(mailAt + Vector3.new(0, 1.8, 0)), Rustic.WoodDark, Enum.Material.Wood)
+	local mailBox = part(model, "Mailbox", Vector3.new(1.4, 1.2, 2.2), CFrame.new(mailAt + Vector3.new(0, 4.1, 0)), Rustic.Metal, Enum.Material.Metal)
+	part(model, "MailFlag", Vector3.new(0.1, 0.8, 0.4), CFrame.new(mailAt + Vector3.new(0.75, 4.5, 0.5)), Rustic.PaintRed, Enum.Material.SmoothPlastic)
+	mailPost.CanCollide = false
+	local mailLabel = sign(mailBox, "MAILBOX\nNo mail.", Vector3.new(0, 2.6, 0))
+	mailLabel.Parent.MaxDistance = 30
 	-- Visitors like the farm here, once a week.
 	local likePrompt = Instance.new("ProximityPrompt")
 	likePrompt.Name = "LikePrompt"
@@ -1307,6 +1320,7 @@ local function buildPlot(parent, index, def)
 		fenceLines = fenceLines,
 		lampAt = lampAt,
 		signPost = post,
+		mailLabel = mailLabel,
 		signBoard = board,
 		theme = DEFAULT_THEME.id,
 		list = {},
@@ -1463,6 +1477,76 @@ local function restoreNeedles(player, plot, land)
 	land.needles = inBin
 end
 
+-- The mailbox: while the owner was away, the silo kept feeding the line, but only from bales already in it (no
+-- income out of nothing). Works on the save before the plot is built, so the silos come back emptier and the found
+-- needles land in the bin. Needs a hay buyer on the plot; the best sorter there sets speed and needles found.
+local MAIL_MAX_AWAY = 8 * 3600
+local function mailbox(player, land)
+	local away = math.min(os.time() - (land.savedAt or os.time()), MAIL_MAX_AWAY)
+	if away < 60 or typeof(land.items) ~= "table" then
+		return nil
+	end
+	local silos, stored, hasBuyer, best = {}, 0, false, nil
+	for _, s in land.items do
+		local def = typeof(s) == "table" and pieces[s.id]
+		if def and def.kind == "silo" and typeof(s.stored) == "number" and s.stored > 0 then
+			table.insert(silos, s)
+			stored += s.stored
+		elseif def and def.kind == "buyer" then
+			hasBuyer = true
+		elseif def and def.kind == "separator" then
+			for _, tier in Sorters do
+				if tier.id == def.id and (not best or tier.recovery > best.recovery) then
+					best = tier
+				end
+			end
+		end
+	end
+	if stored == 0 then
+		return nil
+	end
+	if not hasBuyer then
+		return ("Your silo holds %d bales, but there is no hay buyer on your line, so nothing sold while you were away."):format(stored)
+	end
+	local hayPerBale = GameConfig.PiecesPerBale * GameConfig.HayPerPiece
+	local perBale = LandConfig.SiloFeedSeconds
+	if best then
+		perBale = math.max(perBale, Machines.sortSeconds(best.id, hayPerBale))
+	end
+	local bales = math.min(stored, math.floor(away / perBale))
+	if bales <= 0 then
+		return nil
+	end
+	-- Take the bales out of the silos, first silo first.
+	local left = bales
+	for _, s in silos do
+		local take = math.min(s.stored, left)
+		s.stored -= take
+		left -= take
+	end
+	local hay = bales * hayPerBale
+	local hidden = math.floor(hay * GameConfig.NeedleChancePerHay + 0.5)
+	local cash, found = 0, 0
+	if best then
+		found = math.floor(hidden * best.recovery + 0.5)
+		cash = math.floor(hay * Economy.HAY_PRICE)
+		local needles = land.needles or {}
+		local id = Needle.default.id
+		needles[id] = (needles[id] or 0) + found
+		land.needles = needles
+	else
+		cash = Economy.rawLoadValue(hay, hidden)
+	end
+	Bank.earn(player, cash, "While you were away")
+	local hours = away / 3600
+	local when = hours >= 1 and ("%.1f hours"):format(hours) or ("%d minutes"):format(math.floor(away / 60))
+	local letter = ("While you were away (%s) your silo fed %d bales: +$%d"):format(when, bales, cash)
+	if found > 0 then
+		letter ..= (", and %d needles are waiting in your bin"):format(found)
+	end
+	return letter .. "."
+end
+
 local function onLoaded(player)
 	local s = Data.get(player)
 	if not s then
@@ -1486,8 +1570,10 @@ local function onLoaded(player)
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
+	local letter = mailbox(player, s.land)
 	claim(plot, player, s.land)
 	restoreNeedles(player, plot, s.land)
+	plot.mailLabel.Text = letter and ("MAILBOX\n" .. letter) or "MAILBOX\nNo mail."
 	parkVehicles(player, plot)
 	task.spawn(sendHome, player, plot)
 	local message = ("Your farm is on %s."):format(plot.def.name)
@@ -1495,6 +1581,13 @@ local function onLoaded(player)
 		message ..= (" %d saved pieces don't fit here; they're still kept in your save."):format(#plot.leftOut)
 	end
 	Data.toast(player, message)
+	if letter then
+		task.delay(4, function()
+			if player.Parent then
+				Data.toast(player, letter)
+			end
+		end)
+	end
 end
 
 function Land.build(worldFolder)
