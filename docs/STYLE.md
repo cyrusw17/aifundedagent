@@ -1,7 +1,7 @@
 # Lumber / Needlewood art style
 
 > **DRAFT, not chosen yet.** This is one candidate style ("stylized low-poly farm", from the hay barrel).
-> Cyrus is picking the final style from mockups; this file gets rewritten for whichever he picks.
+> Cyrus is picking the final style from mockups; this file gets rewritten for whichever style is picked.
 
 One style for everything in the game: props, tools, hay, world parts, UI and mockups.
 The reference model is the hay barrel in `blender/props/hay_barrel.py`
