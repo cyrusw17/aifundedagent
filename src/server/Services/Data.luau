@@ -190,6 +190,8 @@ local function stateFrom(saved)
 		land = nil,
 		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
+		-- settings: { effects, uiSize, shadows, labels } (Settings.luau checks each value)
+		settings = typeof(saved.settings) == "table" and saved.settings or {},
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -359,6 +361,7 @@ function Data.save(player)
 		land = state.land,
 		bank = state.bank,
 		tutorial = state.tutorial,
+		settings = state.settings,
 	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
