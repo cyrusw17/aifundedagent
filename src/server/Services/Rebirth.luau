@@ -98,7 +98,7 @@ end
 function Rebirth.go(player)
 	local state = Data.get(player)
 	local ok, why = Rebirth.check(state)
-	if not ok then
+	if not state or not ok then
 		return false, why
 	end
 	local count = Rebirth.reset(state)
