@@ -388,4 +388,42 @@ return function(SelfTest)
 		t.check(("pickup holds on a %d degree side slope for 5 s"):format(angle), drift.Magnitude < 1, ("drifted %.2f studs"):format(drift.Magnitude))
 		t.check("pickup stays on its wheels on the side slope", chassis.CFrame.UpVector.Y > 0.9, ("up.Y %.2f"):format(chassis.CFrame.UpVector.Y))
 	end)
+
+	-- Every buyable truck tier: spawns as a saved rig would, flips back onto its wheels from its side, and tows to
+	-- the dealer lot; a second tow inside the cooldown is refused.
+	SelfTest.register("Biome recovery", function(t)
+		local Meadow = require(ReplicatedStorage.Shared.Config.Meadow)
+		local lane = 0
+		for _, def in require(ReplicatedStorage.Shared.Config.Trucks) do
+			if not def.available then
+				continue
+			end
+			lane += 1
+			-- A stand-in owner per truck, so each has its own cooldowns and its own slot in Vehicles.
+			local owner = { Name = "SelfTest" .. lane, UserId = -100 - lane }
+			local stand = t.center * CFrame.new(-80 + (lane - 1) * 35, 0, -40)
+			local ok, truck = pcall(Vehicles.spawnOwned, owner, def.id, stand)
+			if not t.check(def.id .. " spawns as an owned rig", ok and truck ~= nil, not ok and truck or nil) then
+				continue
+			end
+			t.cleanup(truck)
+			local chassis = truck.PrimaryPart
+			t.wait(1)
+			truck:PivotTo(chassis.CFrame * CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.rad(95)))
+			t.wait(2)
+			t.check(def.id .. " lies on its side for the flip test", chassis.CFrame.UpVector.Y < 0.5, ("up.Y %.2f"):format(chassis.CFrame.UpVector.Y))
+			local flipped, why = Vehicles.recover(owner, "flip")
+			t.check(def.id .. " flip is accepted", flipped, why)
+			t.wait(1.5)
+			t.check(def.id .. " is upright after the flip", chassis.CFrame.UpVector.Y > 0.95, ("up.Y %.2f"):format(chassis.CFrame.UpVector.Y))
+			local towed, msg = Vehicles.recover(owner, "tow")
+			t.check(def.id .. " tow is accepted", towed, msg)
+			t.wait(1)
+			local off = (chassis.Position - Meadow.TowSpot) * Vector3.new(1, 0, 1)
+			t.check(def.id .. " lands on the dealer lot", off.Magnitude < 4, ("%.1f studs from the tow spot"):format(off.Magnitude))
+			t.check(def.id .. " a second tow waits for the cooldown", not (Vehicles.recover(owner, "tow")))
+			truck:Destroy()
+			t.wait(0.5)
+		end
+	end)
 end

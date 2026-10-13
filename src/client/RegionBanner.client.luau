@@ -7,18 +7,15 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local WorldRegions = require(Shared.WorldRegions)
+local Hud = require(Shared:WaitForChild("UI"):WaitForChild("Hud"))
 
 local player = Players.LocalPlayer
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "RegionBanner"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
 local label = Instance.new("TextLabel")
 label.AnchorPoint = Vector2.new(0.5, 0)
-label.Position = UDim2.new(0.5, 0, 0, 70)
+label.LayoutOrder = Hud.TopOrder.RegionBanner -- in the top-center stack (UI/Hud.luau)
 label.Size = UDim2.fromOffset(520, 46)
+label.Visible = false
 label.BackgroundTransparency = 1
 label.Font = Enum.Font.GothamBlack
 label.TextSize = 38
@@ -26,7 +23,7 @@ label.TextColor3 = Color3.fromRGB(240, 228, 196)
 label.TextStrokeColor3 = Color3.fromRGB(40, 34, 28)
 label.TextTransparency = 1
 label.TextStrokeTransparency = 1
-label.Parent = gui
+label.Parent = Hud.top()
 
 local function regionAt(position)
 	local region = WorldRegions.at(position)
@@ -39,10 +36,18 @@ local fadeOut = TweenInfo.new(1.2)
 
 local function show(name)
 	label.Text = string.upper(name)
+	label.Visible = true
 	TweenService:Create(label, fadeIn, { TextTransparency = 0, TextStrokeTransparency = 0.2 }):Play()
 	task.delay(3.5, function()
 		if label.Text == string.upper(name) then
-			TweenService:Create(label, fadeOut, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+			local out = TweenService:Create(label, fadeOut, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			out:Play()
+			out.Completed:Once(function()
+				-- Hidden, it gives its room in the top stack back.
+				if label.TextTransparency >= 1 then
+					label.Visible = false
+				end
+			end)
 		end
 	end)
 end

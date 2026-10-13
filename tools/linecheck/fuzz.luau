@@ -142,6 +142,83 @@ end
 check("other pieces keep their blurb", PieceGuide.line({ id = "belt", kind = "belt", blurb = "One tile." }) == "One tile.")
 print("guide:", PieceGuide.line({ id = "magnet_drum", kind = "separator" }), "|", PieceGuide.line({ id = "ash_sifter", kind = "treat" }))
 
+-- Bottleneck lamps: the rules hold for every random line state.
+local LineMathLamp = require({ __path = "Shared.LineMath" })
+local lampRng = Random.new(29)
+local seen = { green = 0, amber = 0, red = 0 }
+for _ = 1, 20000 do
+	local s = {
+		sorting = lampRng:NextNumber() < 0.5,
+		idleSeconds = lampRng:NextNumber(0, 30),
+		queued = lampRng:NextInteger(0, 6),
+		queuedSeconds = lampRng:NextNumber(0, 40),
+		jammed = lampRng:NextNumber() < 0.1,
+		refusedSeconds = lampRng:NextNumber() < 0.3 and lampRng:NextNumber(0, 30) or nil,
+		need = "thawing_shed",
+		beamDown = lampRng:NextNumber() < 0.1,
+	}
+	local color, why = LineMathLamp.lamp(s)
+	seen[color] = (seen[color] or 0) + 1
+	check("lamp is green, amber or red", color == "green" or color == "amber" or color == "red", tostring(color))
+	check("a lamp that isn't green says why", color == "green" or (typeof(why) == "string" and #why > 0))
+	if s.jammed then
+		check("a jam is red", color == "red")
+	end
+	local backedUp = s.queued >= 2 and s.queuedSeconds >= LineMathLamp.BACKUP_SECONDS
+	local refused = s.refusedSeconds and s.refusedSeconds < LineMathLamp.REFUSED_SECONDS
+	if not s.jammed and not backedUp and not refused then
+		check("only jams, refusals and backups are red", color ~= "red")
+		if s.sorting then
+			check("a sorting sorter is green", color == "green")
+		elseif s.queued == 0 and s.idleSeconds >= LineMathLamp.STARVED_SECONDS then
+			check("an idle sorter with no bales is amber", color == "amber")
+		end
+	end
+	if s.queued > 0 and not s.beamDown then
+		check("bales waiting never read as starved", why ~= "waiting for bales")
+	end
+end
+check("the lamp fuzz saw every color", seen.green > 0 and seen.amber > 0 and seen.red > 0)
+print(("lamps: green %d, amber %d, red %d"):format(seen.green, seen.amber, seen.red))
+
+-- A million found needles (CEO #32): the mutation rate, the multiplier spread and the payout match Needle.MUTATION.
+do
+	local NeedleM = require({ __path = "Services.Needle" })
+	local MarketM = require({ __path = "Services.Market" })
+	local LineMathM = require({ __path = "Shared.LineMath" })
+	local PricesM = require({ __path = "Shared.Config.Prices" })
+	local m = NeedleM.MUTATION
+	local N = 1000000
+	local mutated, multSum, lo, hi, whole = 0, 0, math.huge, 0, true
+	for _ = 1, N do
+		local mult = NeedleM.rollMutation()
+		if mult > 1 then
+			mutated += 1
+			multSum += mult
+			lo, hi = math.min(lo, mult), math.max(hi, mult)
+			whole = whole and mult == math.floor(mult)
+		end
+	end
+	local want = N * m.chance
+	local sd = math.sqrt(N * m.chance * (1 - m.chance))
+	check("mutation rate is Needle.MUTATION.chance (5 sd)", math.abs(mutated - want) <= 5 * sd, ("%d mutated, want %.0f +- %.0f"):format(mutated, want, 5 * sd))
+	local mean = multSum / math.max(mutated, 1)
+	local spread = math.sqrt(((m.max - m.min + 1) ^ 2 - 1) / 12) / math.sqrt(math.max(mutated, 1))
+	check("mutation multipliers average the middle of min..max", math.abs(mean - (m.min + m.max) / 2) <= 5 * spread, ("mean x%.2f"):format(mean))
+	check("multipliers reach both ends and are whole", lo == m.min and hi == m.max and whole, ("x%d..x%d"):format(lo, hi))
+	-- Payouts: a mutated needle sells for exactly mult times a plain one, at every market price.
+	for _, def in require({ __path = "Shared.Config.Needles" }) do
+		for _, mult in { m.min, 12, m.max } do
+			local got = NeedleM.priceOf(def.id, mult)
+			local wantPrice = LineMathM.price(def.sortedValue, mult, false, PricesM.PolishBonus, MarketM.multiplier(def.id), 0)
+			check("x" .. mult .. " " .. def.id .. " pays mult times list at today's market", got == wantPrice, ("%d vs %d"):format(got, wantPrice))
+		end
+	end
+	-- What mutation adds to a needle on average: 1 - chance + chance * mean multiplier.
+	print(("mutations: %d of %d needles (1 in %.0f), x%d..x%d, mean x%.2f; a needle is worth %.3fx list on average"):format(
+		mutated, N, N / math.max(mutated, 1), lo, hi, mean, 1 - mutated / N + multSum / N))
+end
+
 print(("linecheck: %d random keys, %d pocket operations over 300 players (%d sales paying $%d, %d needles out); %d failures"):format(5000, ops, allSales, allPaid, allTaken, failures))
 check("the fuzz really sold and took needles", allSales > 100 and allPaid > 0 and allTaken > 1000)
 if failures > 0 then

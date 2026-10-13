@@ -107,6 +107,35 @@ function LineMath.grade(tierId: string, sorterGrade: { [string]: string }, grade
 	return g, grades[g] or 0
 end
 
+-- Bottleneck lamp on a sorter (CEO #29): "green", "amber" or "red", and the reason the sign shows (nil when green).
+-- s: { sorting, idleSeconds (since it last sorted, or since it was built), queued (bales waiting upstream),
+-- queuedSeconds (how long a queue of 2+ has stood), jammed (a jammed bale at it), refusedSeconds (since it last
+-- refused untreated hay), need (that hay's machine name), beamDown (Alien collector waiting for its beam) }.
+LineMath.STARVED_SECONDS = 6
+LineMath.BACKUP_SECONDS = 20
+LineMath.REFUSED_SECONDS = 10
+function LineMath.lamp(s: { [string]: any }): (string, string?)
+	if s.jammed then
+		return "red", "belt jammed: press J at the bale"
+	end
+	if s.refusedSeconds and s.refusedSeconds < LineMath.REFUSED_SECONDS then
+		return "red", ("needs a %s first"):format(s.need or "region machine")
+	end
+	if (s.queued or 0) >= 2 and (s.queuedSeconds or 0) >= LineMath.BACKUP_SECONDS then
+		return "red", "backed up: this sorter is the slow one"
+	end
+	if s.sorting then
+		return "green", nil
+	end
+	if s.beamDown then
+		return "amber", "waiting for its beam"
+	end
+	if (s.queued or 0) == 0 and (s.idleSeconds or 0) >= LineMath.STARVED_SECONDS then
+		return "amber", "waiting for bales"
+	end
+	return "green", nil
+end
+
 -- How a pile of plain needles packs: whole bundles of `size` and the loose rest.
 function LineMath.bundles(count: number, size: number): (number, number)
 	return count // size, count % size

@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local UI = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI")
 local Kit = require(UI:WaitForChild("Kit"))
+local Hud = require(UI:WaitForChild("Hud"))
 local Menus = require(UI:WaitForChild("Menus"))
 local Waypoint = require(UI:WaitForChild("Waypoint"))
 local Places = require(UI:WaitForChild("Places"))
@@ -140,7 +141,7 @@ card.Visible = false
 card.Parent = gui
 Kit.corner(card, 10)
 Kit.stroke(card, C.Ink, 2)
-Kit.fit(card, 440, 112)
+local fitScale = Kit.fit(card, 440, 112)
 
 local stepLabel = Kit.label(card, "", { size = T.Small, font = F.Bold, color = C.InkSoft, wrap = false })
 stepLabel.Position = UDim2.fromOffset(14, 8)
@@ -226,16 +227,21 @@ local function showCard()
 end
 Menus.changed.Event:Connect(showCard)
 
--- On short (phone) screens the card sits at the bottom, clear of the HUD column and the top of the menus.
+-- On a big screen the card is last in the top-center stack (UI/Hud.luau), under the compass, banners and toasts,
+-- so none of them cover it; the stack scales it. On short (phone) screens it sits on its own at the bottom, clear
+-- of the HUD column and the top of the menus, sized by its own fit scale.
+card.LayoutOrder = Hud.TopOrder.Guide
 local function placeCard()
 	local camera = Workspace.CurrentCamera
 	local view = camera and camera.ViewportSize or Vector2.new(1024, 768)
 	if view.Y < 520 or view.X < 900 then
 		card.AnchorPoint = Vector2.new(0.5, 1)
 		card.Position = UDim2.new(0.5, 0, 1, -12)
+		fitScale.Parent = card
+		card.Parent = gui
 	else
-		card.AnchorPoint = Vector2.new(0.5, 0)
-		card.Position = UDim2.new(0.5, 0, 0, 100)
+		fitScale.Parent = nil
+		card.Parent = Hud.top()
 	end
 end
 placeCard()
