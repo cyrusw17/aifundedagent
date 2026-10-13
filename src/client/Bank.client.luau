@@ -1,6 +1,7 @@
 --!nonstrict
 -- The bank: a small wallet / bank line under the HUD, and the teller panel (Account, Loans, History) that opens at the
 -- Meadow Savings & Loan window. The server (Bank.luau) decides everything; this only shows it and sends requests.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -419,9 +420,13 @@ task.spawn(function()
 		if panel.Visible then
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local bank = workspace:FindFirstChild("Bank", true)
-			local window = bank and bank:FindFirstChild("TellerWindow")
-			if root and window and (root.Position - window.Position).Magnitude > 22 then
+			local near = false
+			for _, window in CollectionService:GetTagged("BankTeller") do
+				if root and (root.Position - window.Position).Magnitude <= 22 then
+					near = true
+				end
+			end
+			if root and not near then
 				panel.Visible = false
 			end
 		end
