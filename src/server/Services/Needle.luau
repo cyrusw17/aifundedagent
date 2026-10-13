@@ -19,6 +19,7 @@ local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Needles = require(ReplicatedStorage.Shared.Config.Needles)
 local HayTypes = require(ReplicatedStorage.Shared.Config.Gloves).HayTypes
 local Data = require(script.Parent.Data)
+local Announce = require(script.Parent.Announce)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
 local Market = require(script.Parent.Market)
@@ -334,9 +335,7 @@ local function announce(ownerId, needleId, mult)
 		Needle.info(needleId).name:lower(),
 		Needle.priceOf(needleId, mult)
 	)
-	for _, player in Players:GetPlayers() do
-		Data.toast(player, text)
-	end
+	Announce.say(text, "gold")
 end
 
 -- The reveal: a freshly found needle pops up at `from` with a flash and hangs there for a moment, spinning, then

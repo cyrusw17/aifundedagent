@@ -3,12 +3,11 @@
 -- background, and builds everything on them (Regions), the Longstitch Highway, the ferries and the zeppelin. Also
 -- runs the rich field: every few minutes one hay field somewhere on the map gets a gold beam and 2x needles.
 -- Config: src/shared/Config/WorldMap.luau.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
-local Data = require(script.Parent.Data)
+local Announce = require(script.Parent.Announce)
 local WorldTerrain = require(script.Parent.WorldTerrain)
 local Regions = require(script.Parent.Regions)
 local Highway = require(script.Parent.Highway)
@@ -138,11 +137,7 @@ local function pickRich(parent)
 	-- For map screens: where the rich field is now (a UI can mark it).
 	ReplicatedStorage:SetAttribute("RichField", rich.center)
 	ReplicatedStorage:SetAttribute("RichFieldRegion", rich.region)
-	for _, player in Players:GetPlayers() do
-		if Data.get(player) then
-			Data.toast(player, ("Rich field in %s: 2x needles for %d minutes. Follow the gold beam!"):format(rich.region, Map.RichMinutes))
-		end
-	end
+	Announce.say(("Rich field in %s: 2x needles for %d minutes. Follow the gold beam!"):format(rich.region, Map.RichMinutes), "event")
 end
 
 function WorldMap.build(worldFolder)

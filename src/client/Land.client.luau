@@ -752,6 +752,8 @@ end
 
 local function setBuilding(on)
 	building = on
+	-- Local-only flag so other menus leave the build keys alone (M is "move" here, the map elsewhere).
+	player:SetAttribute("Building", on)
 	bar.Visible = on
 	if not on then
 		crewPanel.Visible = false
