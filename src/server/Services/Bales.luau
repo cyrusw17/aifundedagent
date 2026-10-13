@@ -23,6 +23,7 @@ local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
 local Announce = require(script.Parent.Announce)
 local Weather = require(script.Parent.Weather)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
@@ -316,6 +317,7 @@ function Bales.breakOpen(player, b)
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)
 		Feedback.play("BaleBurst", center)
+		Feedback.juice(player, "burst")
 		Events.fire(player, "bale_broken", 1, { position = center, hayType = hayType })
 		-- The first bale a player ever breaks always shows them a glinting needle: that is the hook.
 		-- A sorted bale has had its needles taken out, so it spills none.
@@ -477,9 +479,8 @@ local function toss(b, root, power, lift)
 	local look = root.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
-	local range = Config.TossMinRange + (Config.TossRange - Config.TossMinRange) * power
-	-- A 45 degree lob: speed for that range under this place's gravity, split evenly up and forward.
-	local speed = math.sqrt(range * workspace.Gravity) / math.sqrt(2)
+	-- A 45 degree lob: speed for the range under this place's gravity, the same up and forward.
+	local speed = HayMath.tossSpeed(power, Config, workspace.Gravity)
 	b.body.Massless = false
 	b.body.CanCollide = true
 	b.body.Anchored = false
@@ -541,6 +542,57 @@ function Bales.drop(player)
 	end
 end
 
+-- Crew hand-offs. Set by whoever knows the farm crews (Land.luau, or Tools.luau's fallback):
+-- function(thrower, catcher) -> true when catcher may catch thrower's bales.
+Bales.isTeammate = nil
+
+-- While a thrown bale is in the air, a bare-handed teammate it flies close to catches it (Config.CatchRadius), so a
+-- crew can pass bales down a line into a truck bed.
+function Bales.watchForCatch(b, thrower)
+	if not Bales.isTeammate then
+		return
+	end
+	local token = b.dropToken
+	local started = os.clock()
+	task.spawn(function()
+		while os.clock() - started < Config.CatchWindowSeconds do
+			task.wait()
+			if b.gone or b.carriedBy or b.dropToken ~= token then
+				return
+			end
+			-- Not in the thrower's own crew's hands at the very start: someone standing beside the thrower lets it fly.
+			if os.clock() - started < 0.2 then
+				continue
+			end
+			-- Landed and settled: too late to catch.
+			if os.clock() - started > 0.3 and b.body.AssemblyLinearVelocity.Magnitude < 2 then
+				return
+			end
+			for _, player in Players:GetPlayers() do
+				if player ~= thrower then
+					local root = Avatar.getRoot(player)
+					if
+						root
+						and (root.Position - b.body.Position).Magnitude <= Config.CatchRadius
+						and Bales.isTeammate(thrower, player)
+					then
+						local state = Data.get(player)
+						local free = state and (not state.carryBale or (not state.carryExtra and Bales.canDoubleCarry(player)))
+						if free and Avatar.equippedKind(player) == nil then
+							Bales.pickup(player, b)
+							if b.carriedBy == player then
+								Feedback.play("BaleLift", b.body, 1.2)
+								Events.fire(player, "bale_caught", 1, { from = thrower.UserId })
+								return
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
 -- Throw the carried bale(s) forward. power is 0..1 from how long the throw was charged. A tiny power (a plain click)
 -- just sets the bale down instead.
 function Bales.toss(player, power)
@@ -558,6 +610,7 @@ function Bales.toss(player, power)
 		toss(b, root, power, (i - 1) * 0.2)
 		Feedback.play("BaleLift", b.body, 0.8)
 		startDespawnTimer(b)
+		Bales.watchForCatch(b, player)
 	end
 end
 

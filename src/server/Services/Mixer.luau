@@ -16,6 +16,7 @@ local CollectionService = game:GetService("CollectionService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
 local Alloys = require(Shared.Config.Alloys)
+local LineMath = require(Shared.LineMath)
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
@@ -24,6 +25,24 @@ local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
 
 local Mixer = {}
+
+-- Unexpired trade locks on the plain keys of a needle type (state.tradeLocks, kept by Trade.luau).
+local function lockedPlain(player, id)
+	local state = Data.get(player)
+	local locks = state and state.tradeLocks
+	if typeof(locks) ~= "table" then
+		return 0
+	end
+	local now, total = os.time(), 0
+	for _, key in LineMath.plainKeys(id) do
+		for _, lock in locks[key] or {} do
+			if lock.untilTime > now then
+				total += lock.count
+			end
+		end
+	end
+	return total
+end
 
 local T = Factory.TileSize
 local C = Machines.Colors
@@ -157,6 +176,11 @@ function Mixer.build(parent, frame)
 			))
 			return
 		end
+		-- Needles received in a trade stay locked for a day (Trade.luau), and an alloy trades freely, so mix only free ones.
+		if Needle.plainCount(player, r.a) - lockedPlain(player, r.a) < r.each or Needle.plainCount(player, r.b) - lockedPlain(player, r.b) < r.each then
+			Data.toast(player, "Needles you got in a trade can't go in the mixer until their trade lock runs out.")
+			return
+		end
 		if not (Needle.takeFromPocket(player, r.a, r.each) and Needle.takeFromPocket(player, r.b, r.each)) then
 			return
 		end
@@ -169,6 +193,10 @@ function Mixer.build(parent, frame)
 			if model.Parent then
 				spawnBlock(frame * CFrame.new(0, 2.9, -T / 2 - 0.4), r, player.UserId)
 				Feedback.play("BaleSetDown", base)
+			elseif player.Parent and Data.get(player) then
+				-- The mixer was taken away mid-mix: the needles go back in the pocket.
+				Needle.giveKey(player, r.a, r.each)
+				Needle.giveKey(player, r.b, r.each)
 			end
 		end)
 	end)

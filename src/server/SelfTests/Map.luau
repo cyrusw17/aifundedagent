@@ -45,6 +45,17 @@ return function(SelfTest)
 		t.check(("all %d regions have their trees and landmarks"):format(#Map.Regions), #missing == 0, #missing > 0 and table.concat(missing, ", ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
+		local fieldless = {}
+		for _, def in Map.Regions do
+			local has = def.id == "spindle" -- the Spindle's hay is the Crystal Cave's
+			for _, entry in Regions.fields do
+				has = has or entry.region == def.name
+			end
+			if not has then
+				table.insert(fieldless, def.name)
+			end
+		end
+		t.check("every region has a hay field a truck can reach", #fieldless == 0, #fieldless > 0 and table.concat(fieldless, ", ") or nil)
 		local meadow = root:FindFirstChild("Meadow")
 		t.check("Meadow's gates are open", not (meadow and (meadow:FindFirstChild("ClosedGate") or meadow:FindFirstChild("EdgeWall"))))
 
@@ -146,6 +157,15 @@ return function(SelfTest)
 			truck.Parent = workspace
 			t.cleanup(truck)
 			t.check(name .. ": a truck on the deck counts as on board", Ferry.onDeck(shuttle, truck))
+			if not shuttle.def.zeppelin then
+				local model = shuttle.root.Parent
+				local life = 0
+				for _, spotName in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+					local spotPart = model:FindFirstChild(spotName)
+					life += (spotPart and spotPart:FindFirstChildOfClass("ProximityPrompt")) and 1 or 0
+				end
+				t.equal(name .. ": snack stand, bounty board and fishing spot on the promenade", life, 3)
+			end
 			local stop = shuttle.stops[1]
 			for _, s in shuttle.stops do
 				if (s.cframe.Position - shuttle.root.Position).Magnitude < (stop.cframe.Position - shuttle.root.Position).Magnitude then
@@ -214,6 +234,14 @@ return function(SelfTest)
 			local found = Wilds.Secrets[id]
 			t.check(("secret %s is hidden on the map, with a reward in Prices"):format(id), found ~= nil and found.part.Parent ~= nil and Prices.Secrets[id] ~= nil)
 		end
+		local noHidden = {}
+		for _, def in Map.Regions do
+			local h = Wilds.Hidden[def.id]
+			if not (h and h.part.Parent and Wilds.Secrets[h.id]) then
+				table.insert(noHidden, def.id)
+			end
+		end
+		t.check("every region hides one spot with an Old Sign clue", #noHidden == 0, #noHidden > 0 and table.concat(noHidden, ", ") or nil)
 		local ember = Wilds.Secrets.ember_cache
 		t.check("the Ember Cache lies in the crater's heat", ember ~= nil and Wilds.inHeat(ember.part.Position))
 		local clockWas = Lighting.ClockTime
@@ -239,6 +267,44 @@ return function(SelfTest)
 		end
 		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
 		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
+
+		-- Bridges -------------------------------------------------------------------------------------------------
+		-- The rails stand outside the lane (the lane check above covers parts in it); here: each bridge's causeway
+		-- rises no steeper than a loaded truck and trailer can take.
+		local RoadPolish = require(Services.RoadPolish)
+		t.check("the water crossings have bridges", #RoadPolish.bridges > 0, ("%d bridge sides"):format(#RoadPolish.bridges))
+		local steep = {}
+		for _, bridge in RoadPolish.bridges do
+			local rise = math.abs(bridge.to.Y - bridge.from.Y)
+			local run = (Vector2.new(bridge.to.X, bridge.to.Z) - Vector2.new(bridge.from.X, bridge.from.Z)).Magnitude
+			if run > 0 and rise / run > 0.15 then
+				table.insert(steep, ("%s %.2f"):format(bridge.road, rise / run))
+			end
+		end
+		t.check("bridges are gentle enough for a trailer", #steep == 0, #steep > 0 and table.concat(steep, ", ") or nil)
+
+		-- The hay wagon --------------------------------------------------------------------------------------------
+		local HayWagon = require(Services.HayWagon)
+		t.check("the free hay wagon runs with six seats", HayWagon.model ~= nil and HayWagon.model.Parent ~= nil and #HayWagon.seats == 6)
+		if HayWagon.model then
+			local before = HayWagon.model:GetPivot().Position
+			local wagonWait = HayWagon.state.wait
+			HayWagon.state.wait = 0
+			HayWagon.step(1)
+			t.check("...and moves along its road", (HayWagon.model:GetPivot().Position - before).Magnitude > 1)
+			HayWagon.state.wait = wagonWait
+		end
+
+		-- The Spindle door ---------------------------------------------------------------------------------------
+		local SpindleDoor = require(Services.SpindleDoor)
+		local CollectionService = game:GetService("CollectionService")
+		t.equal("the Spindle door has twelve shard sockets", #CollectionService:GetTagged("ShardSocket"), 12)
+		t.check("the shard order comes from the quest collection", #SpindleDoor.shards >= 6, ("%d shards"):format(#SpindleDoor.shards))
+		SpindleDoor.refresh()
+		local who = t.player and t.player()
+		if who then
+			t.equal("a player with no shards counts none", who:GetAttribute("SpindleShards") or 0, SpindleDoor.count(who))
+		end
 
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then

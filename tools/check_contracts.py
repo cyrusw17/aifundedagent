@@ -198,6 +198,80 @@ for path, text in files.items():
                 continue
             warnings.append(f"{path}:{n + 1}: workspace.{sm.group(1)} read directly (use WaitForChild for streaming)")
 
+# 6. One-time rewards are tagged for Bank's sold-total gate ------------------------------------------------------------
+# Bank counts every Bank.earn toward "sold" (the trade gate) unless its note starts with a ONE_TIME prefix. So every earn
+# note must be either a ONE_TIME prefix (one-time reward) or a known repeatable sale below; anything else must be classified.
+SALE_NOTES = ("Hay shop", "Farm sale", "Sorted needles", "Hay buyer", "Order: ", "Bounty: ", "While you were away", "SelfTest")
+bank_src = next((t for p, t in files.items() if p.replace(os.sep, "/").endswith("server/Services/Bank.luau")), "")
+om = re.search(r"local ONE_TIME = \{(.*?)\}", bank_src)
+ONE_TIME = tuple(re.findall(r'"((?:[^"\\]|\\.)*)"', om.group(1))) if om else ()
+if bank_src and not ONE_TIME:
+    errors.append("Bank.luau: local ONE_TIME = { ... } prefix list not found (check_contracts rule 6 reads it)")
+
+
+def call_args(text, start):
+    """Top-level comma-separated arguments of the call whose '(' is at text[start]."""
+    depth, args, cur, i, quote = 0, [], "", start, None
+    while i < len(text):
+        c = text[i]
+        if quote:
+            cur += c
+            if c == "\\":
+                cur += text[i + 1]
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+            cur += c
+        elif c in "([{":
+            depth += 1
+            if depth > 1:
+                cur += c
+        elif c in ")]}":
+            depth -= 1
+            if depth == 0:
+                args.append(cur.strip())
+                return args
+            cur += c
+        elif c == "," and depth == 1:
+            args.append(cur.strip())
+            cur = ""
+        else:
+            cur += c
+        i += 1
+    return args
+
+
+for path, text in files.items():
+    norm = path.replace(os.sep, "/")
+    if norm.endswith("server/Services/Bank.luau"):
+        continue
+    for m in re.finditer(r"\b(Bank\.earn|Machines\.pay)\(", text):
+        n = text.count("\n", 0, m.start()) + 1
+        code = strip_comments(text.split("\n")[n - 1])
+        if code.find(m.group(1)) < 0 or re.search(r"\bfunction\s+" + re.escape(m.group(1)) + r"\(", code):
+            continue
+        args = call_args(text, m.end() - 1)
+        idx = 2 if m.group(1) == "Bank.earn" else 3
+        if len(args) <= idx:
+            if m.group(1) == "Machines.pay":
+                continue  # defaults to "Farm sale"
+            errors.append(f"{path}:{n}: Bank.earn without a note (the sold-total gate can't classify it)")
+            continue
+        note = args[idx]
+        if norm.endswith("server/Services/Machines.luau") and note == 'note or "Farm sale"':
+            continue  # Machines.pay's own pass-through; its callers are checked
+        lm = re.match(r'\(?\s*"((?:[^"\\]|\\.)*)"', note)
+        if not lm:
+            errors.append(f"{path}:{n}: {m.group(1)} note is not a string literal ({note}); start it with a literal so the gate can classify it")
+            continue
+        lit = lm.group(1)
+        if any(lit.startswith(p) for p in ONE_TIME) or any(lit.startswith(p) for p in SALE_NOTES):
+            continue
+        errors.append(f'{path}:{n}: {m.group(1)} note "{lit}" is neither a Bank ONE_TIME prefix (one-time reward) nor a known sale; '
+                      "add the prefix to Bank.luau ONE_TIME or to SALE_NOTES in tools/check_contracts.py")
+
 for e in errors:
     print("ERROR  " + e)
 for w in warnings:

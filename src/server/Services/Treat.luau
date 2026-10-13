@@ -15,6 +15,7 @@ local HayTypes = require(Shared.Config.Gloves).HayTypes
 local Bales = require(script.Parent.Bales)
 local Machines = require(script.Parent.Machines)
 local Feedback = require(script.Parent.Feedback)
+local Skins = require(script.Parent.Skins)
 
 local Treat = {}
 
@@ -23,7 +24,7 @@ local TOP = Factory.BeltTop
 local C = Machines.Colors
 local part = Machines.part
 
--- How each machine looks (part-built until Blender models them) and what it does to the bale.
+-- How each machine looks (the part build, under the Blender mesh once it is imported) and what it does to the bale.
 local LOOKS = {
 	thawing_shed = {
 		title = "THAWING SHED",
@@ -94,6 +95,9 @@ function Treat.build(parent, frame, machineId)
 	puff.Transparency = NumberSequence.new(0.3, 1)
 	puff.Parent = roof
 	local label = Machines.sign(roof, look.title, Vector3.new(0, 3, 0))
+	-- The Blender machine (belt along the flow, belt top at 3.5) takes over the look once imported; its Roller, Vent,
+	-- Fan, Drum and Shaker pieces move while the machine is Running (Skins.luau, Conveyors.client.luau).
+	Skins.dress(machineId, roof, model, center)
 
 	local zone = center * CFrame.new(0, TOP + 2, 0)
 	local zoneSize = Vector3.new(T - 0.8, 4, T * 2 - 0.5)

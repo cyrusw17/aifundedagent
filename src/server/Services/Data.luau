@@ -189,10 +189,11 @@ local function bankFrom(saved)
 		return typeof(v) == "number" and v == v and v or 0
 	end
 	local bank = { balance = num(saved.balance), earned = num(saved.earned), loans = {}, history = {} }
+	bank.sold = typeof(saved.sold) == "number" and saved.sold == saved.sold and saved.sold or bank.earned
 	if typeof(saved.loans) == "table" then
 		for kind, loan in saved.loans do
 			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then
-				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
+				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), held = math.max(0, num(loan.held)), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
 			end
 		end
 	end
@@ -276,7 +277,20 @@ local function stateFrom(saved)
 		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
+		-- price hold for needle bins: an index into Machines' HOLD_STEPS, nil when off (Machines.needleBin)
+		needleHold = typeof(saved.needleHold) == "number" and math.clamp(math.floor(saved.needleHold), 1, 4) or nil,
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		-- finder's rewards already paid in this slot, { [findId] = 1 }: paid once per kind, ever, even if the find is
+		-- later traded away (Finds.luau)
+		findsPaid = countMap(saved.findsPaid),
+		-- earned tool skins (ToolSkins.luau): { owned = { id, ... }, worn = { Shovel = id?, Rake = id? } }
+		skins = {
+			owned = stringList(typeof(saved.skins) == "table" and saved.skins.owned or nil),
+			worn = typeof(saved.skins) == "table" and typeof(saved.skins.worn) == "table" and {
+				Shovel = typeof(saved.skins.worn.Shovel) == "string" and saved.skins.worn.Shovel or nil,
+				Rake = typeof(saved.skins.worn.Rake) == "string" and saved.skins.worn.Rake or nil,
+			} or {},
+		},
 		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		discovered = countMap(saved.discovered), -- regions and landmarks visited, { [id] = 1 } (Discoveries.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
@@ -319,7 +333,10 @@ local function toSave(state)
 		thatch = state.thatch,
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
+		needleHold = state.needleHold,
 		finds = state.finds,
+		findsPaid = state.findsPaid,
+		skins = state.skins,
 		secrets = state.secrets,
 		discovered = state.discovered,
 		gloves = state.gloves,
@@ -337,6 +354,12 @@ end
 -- For SelfTests: the save shape without a DataStore.
 Data.test = { stateFrom = stateFrom, toSave = toSave }
 
+-- True when this player's slot is being written: loaded, the store reachable, and the save not set aside (read
+-- failed on join, or another server took the slot's lock). Trades need it, so nothing traded can be lost.
+function Data.isSaving(player)
+	return states[player] ~= nil and store ~= nil and not offline[player]
+end
+
 function Data.get(player)
 	return states[player]
 end
@@ -353,11 +376,13 @@ function Data.sync(player)
 	-- Wallet, BankBalance and LoanOwed are the real figures for the bank HUD (they stay real with InfiniteMoney on).
 	local bank = state.bank
 	local balance = bank and bank.balance or 0
-	local owed = 0
+	local owed, held = 0, 0
 	for _, loan in (bank and bank.loans or {}) do
 		owed += loan.owed
+		held += loan.held or 0
 	end
-	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance)
+	-- Cash also counts loan money the bank holds for purchases (Bank.held), since shops can spend it.
+	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance + held)
 	player:SetAttribute("Wallet", if Config.InfiniteMoney then state.savedCash or 0 else state.cash)
 	player:SetAttribute("BankBalance", balance)
 	player:SetAttribute("LoanOwed", owed)
@@ -367,11 +392,11 @@ function Data.sync(player)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
-	local held = 0
+	local inPocket = 0
 	for _, count in state.pocket do
-		held += count
+		inPocket += count
 	end
-	player:SetAttribute("NeedlesHeld", held)
+	player:SetAttribute("NeedlesHeld", inPocket)
 	player:SetAttribute("Thatch", state.thatch or 0)
 	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
 	for _, alloy in Alloys do
@@ -501,6 +526,10 @@ function Data.choose(player, slot, plot)
 	if fresh then
 		local preset = presetFor(player)
 		saved = preset and copy({ cash = preset.cash, trucks = preset.trucks, trailers = preset.trailers, land = preset.land })
+		-- A preset farm's pieces were free, so removing them refunds nothing.
+		for _, item in (saved and saved.land and saved.land.items or {}) do
+			item.paid = 0
+		end
 	end
 	if not player.Parent then
 		choosing[player] = nil

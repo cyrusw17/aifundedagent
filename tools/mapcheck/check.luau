@@ -104,6 +104,13 @@ for _, r in Map.Regions do
 end
 Weather.force("desert", "dust", 60)
 if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+local SoundsConfig = require({ __path = "Shared.Config.Sounds" })
+for _, id in { "meadow", "sky", "cave" } do
+	if not SoundsConfig.RegionAmbience[id] then weatherOk = false print("WARN no ambience for", id) end
+end
+for _, r in Map.Regions do
+	if not SoundsConfig.RegionAmbience[r.id] then weatherOk = false print("WARN no ambience for", r.id) end
+end
 print("weather", weatherOk and "ok" or "WRONG")
 
 -- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
@@ -149,6 +156,16 @@ if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry
 Lighting.ClockTime = 0
 Wilds.refreshGhost()
 if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+local hiddenCount = 0
+for rid, h in Wilds.Hidden do
+	hiddenCount += 1
+	local d = (Vector2.new(h.spot.X, h.spot.Z) - h.sign).Magnitude
+	if d < 40 or d > 220 then wildsOk = false print("WARN hidden spot too near or far from its sign", rid, d) end
+end
+for _, r in Map.Regions do
+	if not Wilds.Hidden[r.id] then wildsOk = false print("WARN no hidden spot in", r.id) end
+end
+print("hidden spots", hiddenCount)
 print("wilds", wildsOk and "ok" or "WRONG")
 
 -- Discoveries: every landmark is found standing on it, every region standing in its middle, and nothing in Meadow.
@@ -176,6 +193,83 @@ for _, entry in Discoveries.all() do
 end
 if #Discoveries.at(Vector3.new(0, 5, 0)) > 0 then discOk = false print("WARN Meadow counts as a discovery") end
 print("discoveries", #Discoveries.all(), discOk and "ok" or "WRONG")
+
+-- The Spindle door: twelve numbered sockets, one door, and the shard order from the quest collection.
+local SpindleDoor = require({ __path = "Services.SpindleDoor" })
+local CS = game:GetService("CollectionService")
+local slots = {}
+for _, socket in CS:GetTagged("ShardSocket") do
+	slots[socket:GetAttribute("Slot") or 0] = true
+end
+local spindleOk = #CS:GetTagged("SpindleDoor") == 1 and #SpindleDoor.shards >= 6
+for i = 1, 12 do
+	if not slots[i] then spindleOk = false print("WARN Spindle socket missing", i) end
+end
+print("spindle door", #SpindleDoor.shards, "shards known", spindleOk and "ok" or "WRONG")
+if not spindleOk then print("WARN spindle door") end
+
+-- Road polish: bridges found, and no rail, trestle or board stands inside a 16-stud lane (a truck and trailer fit).
+local RoadPolish = require({ __path = "Services.RoadPolish" })
+local polishOk = #RoadPolish.bridges > 0
+local inLane = 0
+local function walk(o)
+	for _, c in o:GetChildren() do
+		if c.ClassName == "Part" then
+			local d = WorldShapeE.nearestRoad(c.Position.X, c.Position.Z)
+			local reach = math.max(c.Size.X, c.Size.Z) / 2
+			if c.Name ~= "Rail" and d and d - math.min(reach, 0.5) < Map.RoadWidth / 2 then
+				inLane += 1
+				if inLane <= 5 then print("WARN road polish part in a lane", c.Name, c.Position, d) end
+			end
+		end
+		walk(c)
+	end
+end
+for _, d in workspace:GetDescendants() do
+	if d.Name == "RoadPolish" then walk(d) end
+end
+print("road polish", #RoadPolish.bridges, "bridge sides", inLane == 0 and polishOk and "ok" or "WRONG")
+
+-- Ferry deck life: each ferry (not the zeppelin) has its snack stand, bounty board and fishing spot.
+local deckLifeOk, decks = true, 0
+for _, d in workspace:GetDescendants() do
+	if d.Name == "Promenade" then
+		decks += 1
+		local m = d.Parent
+		for _, need in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+			local p = m:FindFirstChild(need)
+			if not p or not p:FindFirstChildOfClass("ProximityPrompt") then
+				deckLifeOk = false
+				print("WARN ferry deck missing", need, m.Name)
+			end
+		end
+	end
+end
+if decks ~= #Map.Ferry.Routes then deckLifeOk = false print("WARN ferry decks with a promenade", decks) end
+print("ferry deck life", decks, deckLifeOk and "ok" or "WRONG")
+
+-- The hay wagon: a dry route at road height, no hops, and the loop comes round in a sensible time.
+local HayWagon = require({ __path = "Services.HayWagon" })
+local wagonOk = #HayWagon.legs == 4 and HayWagon.model ~= nil and #HayWagon.seats == 6
+local wet, hop = 0, 0
+for _, leg in HayWagon.legs do
+	for i, p in leg.samples do
+		local h, water = WorldShapeE.column(p.X, p.Z)
+		if water and water > p.Y + 0.5 and not WorldShapeE.inMeadow(p.X, p.Z) then wet += 1 end
+		local nextP = leg.samples[i + 1]
+		if nextP and math.abs(nextP.Y - p.Y) > 1.5 then hop += 1 end
+	end
+end
+if wet > 0 or hop > 0 then wagonOk = false print("WARN hay wagon route: wet samples", wet, "hops", hop) end
+local seconds, startLeg = 0, HayWagon.state.leg
+local lapped = false
+for _ = 1, 20000 do
+	HayWagon.step(0.25)
+	seconds += 0.25
+	if HayWagon.state.leg == startLeg and seconds > 60 and HayWagon.state.wait > 0 then lapped = true break end
+end
+if not lapped then wagonOk = false print("WARN hay wagon never finished its loop") end
+print(("hay wagon loop %.1f min, %s"):format(seconds / 60, wagonOk and "ok" or "WRONG"))
 
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0

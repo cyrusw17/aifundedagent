@@ -88,9 +88,10 @@ local function openOrder(userId, kind)
 	return nil
 end
 
-local function credit(player, i, offer, count)
+-- fill (0..1) scales the pay for a part-full sorted bale; it still counts as one bale toward the order.
+local function credit(player, i, offer, count, fill)
 	delivered[i][player.UserId] = (delivered[i][player.UserId] or 0) + count
-	local pay = offer.rate * count
+	local pay = math.floor(offer.rate * count * math.clamp(fill or 1, 0, 1) + 0.5)
 	Bank.earn(player, pay, ("Order: %s"):format(offer.buyer))
 	local done = delivered[i][player.UserId]
 	if done >= offer.amount then
@@ -119,8 +120,10 @@ local function deliverBale(b)
 		end
 		return
 	end
+	-- A sorted bale pays for the hay it holds: a sorter can wrap a few loose strands into a full-size sorted bale.
+	local fill = b.sorted and math.min(1, (b.sortedHay or Prices.HayPerBale) / Prices.HayPerBale) or 1
 	Bales.consume(b)
-	credit(player, i, offer, 1)
+	credit(player, i, offer, 1, fill)
 end
 
 -- Standing on the pad hands over matching needles from your pocket. Mutated needles stay in your pocket.
@@ -143,8 +146,8 @@ local function deliverNeedles(player)
 end
 
 -- Credits up to count units of a kind ("bales", "sorted" or "needles") to a player's open order, as the pad does once
--- it has taken the goods. Returns how many the order took. The pad uses the same rules; SelfTests/Economy calls this.
-function Orders.fill(player, kind, count)
+-- it has taken the goods. fill (0..1, default 1) is how full a sorted bale is; the pay scales with it. Returns how many the order took. The pad uses the same rules; SelfTests/Economy calls this.
+function Orders.fill(player, kind, count, fill)
 	local i, offer, want = openOrder(player.UserId, kind)
 	if not i or not Data.get(player) then
 		return 0
@@ -153,7 +156,7 @@ function Orders.fill(player, kind, count)
 	if take <= 0 then
 		return 0
 	end
-	credit(player, i, offer, take)
+	credit(player, i, offer, take, fill)
 	return take
 end
 

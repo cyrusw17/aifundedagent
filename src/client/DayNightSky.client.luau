@@ -41,6 +41,7 @@ end
 
 local regionFog = WorldRegions.Meadow.style.fog
 local targetFog = regionFog
+local regionDensity, targetDensity = 0, 0 -- a region's own thicker (Swamp, Haunted Grove) or clearer (Sky) air
 local lastRegionCheck = 0
 
 RunService.RenderStepped:Connect(function(dt)
@@ -57,6 +58,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	-- Crossing into a region, its haze drifts in over a few seconds rather than snapping.
 	regionFog = regionFog:Lerp(targetFog, math.min(1, dt * 0.4))
+	regionDensity += (targetDensity - regionDensity) * math.min(1, dt * 0.4)
 
 	local a, b, t = between(Lighting.ClockTime)
 	Lighting.Brightness = a.brightness + (b.brightness - a.brightness) * t
@@ -65,7 +67,7 @@ RunService.RenderStepped:Connect(function(dt)
 	Lighting.ColorShift_Top = a.shift:Lerp(b.shift, t)
 	if atmosphere then
 		local haze = (a.haze or regionFog):Lerp(b.haze or regionFog, t)
-		local density = a.density + (b.density - a.density) * t
+		local density = a.density + (b.density - a.density) * t + regionDensity
 		local weatherTint = Lighting:GetAttribute("WeatherTint")
 		local weatherDensity = Lighting:GetAttribute("WeatherDensity") or 0
 		if typeof(weatherTint) == "Color3" and weatherDensity > 0 then

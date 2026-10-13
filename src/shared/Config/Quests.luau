@@ -8,13 +8,16 @@
 --   event   count game events (Events.luau kinds, plus bale_lifted). filter matches the event's info.
 --   own     something the save owns right now: truck, plot, gloves_tier (value), piece_kind (value)
 --   visit   walk up to a spot, or to every spot in `spots` (any order)
---   talk    press the prompt on a spot. distinct = counts once each time the spot has moved (the wandering scarecrow)
+--   talk    press the prompt on a spot. distinct = counts once each time the spot has moved (the wandering scarecrow).
+--           say = what you read or hear there (a toast)
 --   collect press the prompt on an item spot, or on every spot in `spots`
 --   offer   press the prompt on a spot and pay: needles = { [needleId] = count } from your pocket, needlesEach = that
 --           many of every needle type you can reach, cash = dollars
 --   pattern hay bales standing on the spot's pads: "stones" (four stones) or "daily" (tonight's 3 x 3 sign).
 --           The bales are taken when it completes.
 --   find    a rare item that can drop when you break a bale: chance per bale, pity = guaranteed by this many bales
+--   run     run a timed maze spot (Quests.Runs): cross its start line, reach its heart. seconds = only a run at least
+--           that fast counts
 -- when = "day", "dusk", "night" or "midnight" limits a step to that part of the day (see Time below).
 -- hint = one line shown under the current step in the quest log; place = a UI Places id (dealer, landoffice, plot...)
 -- for steps that send you to a building rather than a quest spot, so GO and "Show the way" work there too.
@@ -24,6 +27,7 @@
 -- (and Region = the region name) moves that spot onto the part, for hand-placed spots in Studio.
 -- showWhen = a time window: the spot is only visible then (its prompt still answers, with "come back at ...").
 -- inMaze = placed by the corn maze it stands in, not by a position here.
+-- sea = (X, Z) out on the water: the spot floats at sea level there once the world map (and its sea) is built.
 local Quests = {}
 
 -- The day and night cycle (src/server/Services/DayNight.luau). Hours are game hours, 0-24.
@@ -115,6 +119,38 @@ Quests.Spots = {
 		inMaze = true,
 		item = true,
 		showWhen = "night",
+	},
+	-- The Straw Labyrinth, in the far south-west of Meadow: a new maze every UTC day, run against the clock.
+	straw_labyrinth = {
+		region = "Meadow",
+		name = "Straw Labyrinth bell",
+		look = "labyrinth",
+		pos = Vector3.new(-280, 0, -330),
+		radius = 4,
+	},
+	-- The Drowned Rows: old pilings standing out of the sea south of the Meadow beach. Swim in from the beach side.
+	drowned_rows = {
+		region = "Meadow",
+		name = "Drowned Rows chest",
+		look = "rows",
+		sea = Vector2.new(300, 1085),
+		radius = 5,
+	},
+	-- The Weaver, chapter 1: words cut in the rock beside the Spindle door, and a spool that rises from Mirror Lake.
+	weaver_words = {
+		region = "The Spindle",
+		name = "Words beside the door",
+		look = "plaque",
+		world = Vector2.new(163, -979),
+		radius = 8,
+	},
+	weaver_spool = {
+		region = "The Spindle",
+		name = "Weaver's spool",
+		look = "spool",
+		world = Vector2.new(262, -880), -- the west shore of Mirror Lake
+		showWhen = "midnight",
+		item = true,
 	},
 	golden_bale = {
 		region = "Meadow",
@@ -403,30 +439,59 @@ Quests.Rewards = {
 		name = "Corn Moon Charm",
 		blurb = "Three corn keys tied with twine. The crop circle answers to it.",
 	},
+	straw_crown = {
+		kind = "relic",
+		name = "Straw Crown",
+		blurb = "Woven from the walls of a maze that is gone by morning.",
+	},
+	drowned_compass = {
+		kind = "relic",
+		name = "Drowned Compass",
+		blurb = "Its needle points at the shore, whichever way you hold it.",
+	},
 	shard_meadow = {
 		kind = "relic",
 		name = "Master Needle shard: Meadow",
 		blurb = "One of twelve. The Spindle has a slot that fits it.",
+	},
+	shard_spindle = {
+		kind = "relic",
+		name = "Master Needle shard: Spindle",
+		blurb = "Wound back into the door on a thread from still water. It hums when you face the lake.",
 	},
 	shard_snow = { kind = "relic", name = "Master Needle shard: Snow", blurb = "One of twelve." },
 	shard_volcano = { kind = "relic", name = "Master Needle shard: Volcano", blurb = "One of twelve." },
 	shard_desert = { kind = "relic", name = "Master Needle shard: Desert", blurb = "One of twelve." },
 	shard_haunted = { kind = "relic", name = "Master Needle shard: Haunted", blurb = "One of twelve." },
 	shard_bobbin = { kind = "relic", name = "Master Needle shard: Bobbin Rock", blurb = "One of twelve." },
+	-- Shards for later chapters of the Weaver mystery: in the collection (and the Spindle door) as ??? until then.
+	shard_pine = { kind = "relic", name = "Master Needle shard: Pine Forest", blurb = "One of twelve." },
+	shard_homestead = { kind = "relic", name = "Master Needle shard: Homestead", blurb = "One of twelve." },
+	shard_swamp = { kind = "relic", name = "Master Needle shard: Swamp", blurb = "One of twelve." },
+	shard_keys = { kind = "relic", name = "Master Needle shard: Thimble Keys", blurb = "One of twelve." },
+	shard_shore = { kind = "relic", name = "Master Needle shard: Shore", blurb = "One of twelve." },
 }
 
 -- The order mystery items appear in the collection. Unfound ones show as ??? with a hint.
 Quests.Collection = {
 	{ id = "lucky_thimble", hint = "Something drops to the bottom of the old well at midnight." },
 	{ id = "shard_meadow", hint = "The Old Scarecrow keeps what he is given." },
+	{ id = "shard_spindle", hint = "Read the words beside the Spindle door." },
 	{ id = "golden_hay_bale", hint = "Follow the signal." },
 	{ id = "star_beacon", hint = "Deep in a bale, something hums." },
 	{ id = "corn_moon_charm", hint = "The corn has paths only the night can show." },
+	{ id = "straw_crown", hint = "A maze that changes every day. Be quick." },
+	{ id = "drowned_compass", hint = "Rows of old posts stand in the sea past the beach." },
 	{ id = "shard_snow", hint = "Behind a door in the snow." },
 	{ id = "shard_volcano", hint = "Where the mountain breathes." },
 	{ id = "shard_desert", hint = "Under the dunes." },
 	{ id = "shard_haunted", hint = "Where the lanterns burn." },
 	{ id = "shard_bobbin", hint = "With the ships that never came home." },
+	{ id = "shard_pine", hint = "Where the pines grow thickest, one tree is stitched shut." },
+	{ id = "shard_homestead", hint = "The oldest townsfolk remember who wove the first bale." },
+	{ id = "shard_swamp", hint = "Below the fog, the reeds hold their breath." },
+	{ id = "shard_keys", hint = "Out where the islands are strung like beads." },
+	{ id = "shard_shore", hint = "The lighthouse looks at it every night." },
 }
 
 -- Rare finds for "find" steps: a glowing part that pops out of a broken bale. Only the finder can pick it up.
@@ -779,6 +844,80 @@ Quests.List = {
 		reward = { relic = "corn_moon_charm" },
 	},
 	{
+		id = "weaver_1",
+		name = "The Weaver, Chapter 1: Still Water",
+		giver = "The Spindle door",
+		region = "The Spindle",
+		requires = { "first_haul" },
+		blurb = "The Weaver who stitched these islands vanished, and the Master Needle broke into twelve shards. "
+			.. "The sealed door on the Spindle has a socket for each.",
+		steps = {
+			{
+				kind = "talk",
+				spot = "weaver_words",
+				say = '"Still water keeps the sky. When the sky is darkest, the dropped thread rises. Wind it home."',
+				hint = "The Spindle is the tall peak north of Meadow. Take the North Road; the door is on its east face.",
+				text = "Read the words cut beside the Spindle door",
+			},
+			{
+				kind = "collect",
+				spot = "weaver_spool",
+				when = "midnight",
+				hint = "Which water is still enough to hold the sky? Go when the sky is darkest.",
+				text = "Find the dropped thread",
+			},
+			{
+				kind = "talk",
+				spot = "weaver_words",
+				say = "The thread pulls tight into the rock. In the door, a socket starts to glow.",
+				hint = "Bring the spool back to the words beside the Spindle door.",
+				text = "Wind the thread home",
+			},
+		},
+		reward = { relic = "shard_spindle" },
+	},
+	{
+		id = "straw_labyrinth",
+		name = "The Straw Labyrinth",
+		giver = "The labyrinth sign",
+		region = "Meadow",
+		requires = { "first_haul" },
+		blurb = "Far south-west of camp, a maze of straw walls is rebuilt every night. A bell waits at its heart.",
+		steps = {
+			{
+				kind = "run",
+				spot = "straw_labyrinth",
+				hint = "Cross the start line at the entrance, then find the bell. The walls change every day.",
+				text = "Run the Straw Labyrinth and ring the bell",
+			},
+			{
+				kind = "run",
+				spot = "straw_labyrinth",
+				seconds = 45,
+				hint = "Leave your hay behind: a heavy load slows you down.",
+				text = "Ring the bell within 45 seconds of the start line",
+			},
+		},
+		reward = { relic = "straw_crown", cash = 500 },
+	},
+	{
+		id = "drowned_rows",
+		name = "The Drowned Rows",
+		giver = "The beach",
+		region = "Meadow",
+		requires = { "first_haul" },
+		blurb = "Past the south beach, rows of old pilings stand in the sea. Something was left on a raft in the middle.",
+		steps = {
+			{
+				kind = "run",
+				spot = "drowned_rows",
+				hint = "Swim in between the two red buoys and find a way through the pilings to the raft.",
+				text = "Swim the Drowned Rows to the raft",
+			},
+		},
+		reward = { relic = "drowned_compass", cash = 750 },
+	},
+	{
 		id = "alien_offering",
 		name = "The Offering",
 		giver = "The crop circle",
@@ -918,6 +1057,14 @@ Quests.List = {
 -- never resets. Rosettes are cosmetic. From LuckyField.fromDays on, each day you also get a personal lucky field (one
 -- of the hay fields out on the isles, shown in the Bounties tab): bales you break there sometimes spill an extra
 -- needle, a few times a day.
+-- Timed maze runs (step kind "run"): the first finish each UTC day pays `cash` (once per maze per save). About six
+-- Meadow bales for a minute or two of running: a daily treat, never a living (hauling earns about $6,500 an hour).
+-- abandon = a run that has gone on this long (seconds), or wandered this far from the maze (studs), is called off.
+Quests.Runs = {
+	straw_labyrinth = { name = "Straw Labyrinth", cash = 300, abandon = 600, range = 120 },
+	drowned_rows = { name = "Drowned Rows", cash = 400, abandon = 600, range = 140 },
+}
+
 Quests.Streak = {
 	Milestones = {
 		{ days = 3, reward = "streak_rosette_bronze" },

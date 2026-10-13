@@ -25,13 +25,18 @@ local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
 local Tools = require(Services.Tools)
 local Weather = require(Services.Weather)
+local Feedback = require(Services.Feedback)
+local ToolSkins = require(Services.ToolSkins)
+local SkinConfig = require(Shared.Config.ToolSkins)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
 local BALE = Vector3.new(4.6, 2.6, 3.2)
+local KEEP_TEAMMATE = Bales.isTeammate -- the hand-off checks swap it; it is always put back
 local DOUBLE_CARRY_TIER = Config.DoubleCarryTier -- the double-carry checks change it; it is always put back
 
 -- Bales made by a test, consumed at the end so Bales' own tables forget them too.
@@ -205,6 +210,106 @@ local function noPlayerChecks(t)
 		if p.Parent then
 			Hay.remove(p)
 		end
+	end
+
+	-- Raking onto a belt: the strands go up onto the belt (it stands well off the ground), ride it, and no pile forms.
+	local beltAt = t.place()
+	local belt = Instance.new("Part")
+	belt.Name = "Belt"
+	belt.Anchored = true
+	belt.Size = Vector3.new(30, 1, 3)
+	belt.CFrame = beltAt * CFrame.new(8, 3, 0)
+	belt.AssemblyLinearVelocity = Vector3.new(6, 0, 0)
+	CollectionService:AddTag(belt, "ConveyorBelt")
+	belt.Parent = workspace
+	t.cleanup(belt)
+	local loose = {}
+	for i = 1, 16 do
+		local angle = i / 16 * math.pi * 2
+		table.insert(loose, Hay.spawnPiece(beltAt.Position + Vector3.new(math.cos(angle) * 2.5, 0.5, 6 + math.sin(angle) * 2.5), Vector3.zero, 0))
+	end
+	t.wait(0.6)
+	local found, beltSpot = Hay.beltNear(beltAt.Position + Vector3.new(0, 1, 1.5), Config.RakeBeltReach)
+	t.check("a belt in reach is found", found == belt)
+	local sent = found and Hay.rakeOntoBelt(beltAt.Position + Vector3.new(0, 0, 6), belt, beltSpot, Config.RakeRadius, 0) or 0
+	t.equal("the rake flicks every strand toward the belt", sent, #loose)
+	t.wait(0.9)
+	local onBelt, startX = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			onBelt += 1
+			startX += p.Position.X
+		end
+	end
+	t.check("raked strands land on the belt", onBelt >= #loose * 0.75, ("%d of %d"):format(onBelt, #loose))
+	t.wait(1)
+	local endX, still = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			still += 1
+			endX += p.Position.X
+		end
+	end
+	t.check("...and ride it along", still > 0 and onBelt > 0 and endX / still - startX / onBelt > 2, ("%.1f studs"):format(still > 0 and onBelt > 0 and endX / still - startX / onBelt or 0))
+	local pileMade = false
+	for _, p in Hay.near(belt.Position, 20, nil) do
+		if Hay.isPile(p) then
+			pileMade = true
+		end
+	end
+	t.check("raking onto a belt makes no pile", not pileMade)
+	for _, p in loose do
+		if p.Parent then
+			Hay.remove(p)
+		end
+	end
+
+	-- Tool juice: the Juice remote exists for the client's hit-stop and shake, and the rake's dust puff appears.
+	local juice = ReplicatedStorage:FindFirstChild("Juice")
+	t.check("the Juice event is there for hit-stop and shake", juice ~= nil and juice:IsA("RemoteEvent"))
+	local dustAt = t.place().Position + Vector3.new(0, 0.5, 0)
+	local terrainBefore = #workspace.Terrain:GetChildren()
+	Feedback.dust(dustAt)
+	local puffed = false
+	for _, a in workspace.Terrain:GetChildren() do
+		if a:IsA("Attachment") and (a.WorldPosition - dustAt).Magnitude < 0.01 and a:FindFirstChildOfClass("ParticleEmitter") then
+			puffed = true
+		end
+	end
+	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
+
+	-- Earned tool skins: a page unlocks only when complete, and a skin recolors the tool and comes off cleanly.
+	local commonFinds = {}
+	for _, id in SkinConfig.CommonFinds do
+		commonFinds[id] = 1
+	end
+	t.check("no skin for an empty book", not ToolSkins.pageDone({ finds = {}, codex = {} }, "finds_common"))
+	t.check("the common finds page completes the Driftwood Rake", ToolSkins.pageDone({ finds = commonFinds }, "finds_common"))
+	t.check("...but not the whole finds page", not ToolSkins.pageDone({ finds = commonFinds }, "finds"))
+	local allHay = {}
+	for id in GloveConfig.HayTypes do
+		allHay[id] = true
+	end
+	t.check("every hay type broken completes the hay page", ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	allHay.meadow = nil
+	t.check("one missing hay type leaves it open", not ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	local tool = Instance.new("Tool")
+	tool.Name = "Shovel"
+	local blade = Instance.new("Part")
+	blade.Name = "Blade"
+	blade.Color = Color3.fromRGB(100, 100, 100)
+	blade.Material = Enum.Material.Metal
+	blade.Parent = tool
+	t.cleanup(tool)
+	ToolSkins.dress(tool, "golden_shovel")
+	t.check("a skin recolors the tool", blade.Color ~= Color3.fromRGB(100, 100, 100) and tool:GetAttribute("Skin") == "golden_shovel")
+	t.check("...and the golden one glints", tool:FindFirstChild("SkinGlint", true) ~= nil)
+	ToolSkins.dress(tool, nil)
+	t.check("taking it off puts the tool's own look back", blade.Color == Color3.fromRGB(100, 100, 100) and blade.Material == Enum.Material.Metal and tool:FindFirstChild("SkinGlint", true) == nil)
+	for _, def in SkinConfig.Skins do
+		t.check(("%s is cosmetic only (no stats)"):format(def.name), def.speed == nil and def.scoopBonus == nil and def.reach == nil)
 	end
 
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
@@ -388,8 +493,20 @@ local function edgeCases(t, player, state, root, stand)
 	-- for it come back out of your load with it. The ground is never a pour target.
 	local pourBed = truckBed(t, t.place())
 	stand(pourBed.model.PrimaryPart.CFrame * CFrame.new(0, -3, 9))
-	t.check("a truck bed is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }) ~= nil)
-	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }) == nil)
+	t.check("a truck bed in reach is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }, root) ~= nil)
+	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }, root) == nil)
+	-- A bed across the map is never a target, even if the click claims a spot right beside you.
+	local farBed = truckBed(t, t.place())
+	farBed.model:PivotTo(farBed.model:GetPivot() + Vector3.new(0, 0, 150))
+	t.check("a truck bed out of reach is not a pour target", Tools.pourTarget({ part = farBed.floor, position = root.Position }, root) == nil)
+	local farBelt = Instance.new("Part")
+	farBelt.Anchored = true
+	farBelt.Size = Vector3.new(6, 1, 3)
+	farBelt.CFrame = root.CFrame + Vector3.new(0, 0, 150)
+	CollectionService:AddTag(farBelt, "ConveyorBelt")
+	farBelt.Parent = workspace
+	t.cleanup(farBelt)
+	t.check("a far belt named with a spot beside you is refused", Tools.pourTarget({ part = farBelt, position = root.Position + Vector3.new(0, 0, -3) }, root) == nil)
 	local before = #Hay.near(pourBed.floor.Position, 12, nil)
 	state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadType = 30, 10, 4, "meadow"
 	state.loadWeight, state.loadTier = 30, 0
@@ -458,6 +575,64 @@ local function edgeCases(t, player, state, root, stand)
 	t.wait(0.8)
 	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
+
+	-- A finder's reward pays once per kind for good: trading the find away and finding another pays nothing more.
+	local keepFinds, keepPaid = table.clone(state.finds or {}), table.clone(state.findsPaid or {})
+	state.finds = state.finds or {}
+	state.findsPaid = state.findsPaid or {}
+	state.finds.boot, state.findsPaid.boot = nil, nil
+	local reward = Finds.info("boot").reward
+	local cash0 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	local paidFirst = Bank.wallet(state) - cash0
+	t.equal("the first boot marks its reward paid", state.findsPaid.boot, 1)
+	-- A bank loan can take its share of any earning, so the wallet rises by the reward or a little less.
+	t.check("the first boot pays its finder's reward", paidFirst > 0 and paidFirst <= reward, ("+$%d of $%d"):format(paidFirst, reward))
+	state.finds.boot = nil -- traded away (Trade.luau takes it off the shelf)
+	local cash1 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	t.equal("finding another after trading it away pays nothing", Bank.wallet(state) - cash1, 0)
+	t.equal("...and the reward stays marked paid", state.findsPaid.boot, 1)
+	t.equal("...though it is kept", state.finds.boot, 1)
+	-- The test's reward is not real money: put the wallet back where it was.
+	if Config.InfiniteMoney then
+		state.savedCash = cash0
+	else
+		state.cash = cash0
+	end
+	Data.sync(player)
+	state.finds, state.findsPaid = keepFinds, keepPaid
+
+	-- Crew hand-off: a bale thrown by a teammate that flies close to bare hands is caught; a stranger's is not.
+	local catchSpot = t.place()
+	stand(catchSpot)
+	local keepTeammate = Bales.isTeammate
+	local thrower = { Name = "SelfTestThrower", UserId = -2 }
+	local function lob(b)
+		-- From 8 studs off, arcing in to land at the player's feet.
+		Bales.releaseAt(b, CFrame.new(root.Position + Vector3.new(0, 2, 8)))
+		local flight = 0.6
+		local target = root.Position
+		b.body.AssemblyLinearVelocity = (target - b.body.Position - 0.5 * Vector3.new(0, -workspace.Gravity, 0) * flight * flight) / flight
+		Bales.watchForCatch(b, thrower)
+	end
+	Bales.isTeammate = function(fromPlayer, toPlayer)
+		return fromPlayer == thrower and toPlayer == player
+	end
+	local passed = bale(catchSpot * CFrame.new(0, 0, 20))
+	lob(passed)
+	t.wait(1)
+	t.check("a teammate's thrown bale is caught", state.carryBale == passed and passed.carriedBy == player)
+	Bales.drop(player)
+	Bales.isTeammate = function()
+		return false
+	end
+	stand(catchSpot * CFrame.new(10, 0, 0))
+	local stranger = bale(catchSpot * CFrame.new(10, 0, 20))
+	lob(stranger)
+	t.wait(1)
+	t.check("a stranger's thrown bale is not caught", state.carryBale == nil and stranger.carriedBy == nil)
+	Bales.isTeammate = keepTeammate
 
 	-- Double carry: two bales with good enough gloves, one without; both go down as a stack of two.
 	local carrySpot = t.place()
@@ -657,6 +832,7 @@ local function withPlayer(t, player)
 	if state.carryBale then
 		Bales.drop(player)
 	end
+	Bales.isTeammate = KEEP_TEAMMATE
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier

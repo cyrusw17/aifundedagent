@@ -10,8 +10,6 @@ local Kit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):
 local Theme = Kit.Theme
 local C, F = Theme.Colors, Theme.Fonts
 
-local gui = Kit.screen("NeedlewoodHud", 4)
-
 -- The HUD card: cash, what you carry, a load bar and a one-line hint. The goal bar and the MAP / SHOP / HELP
 -- buttons sit right under it (Menus.client.luau).
 local Hud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Hud"))
@@ -66,8 +64,7 @@ hintLabel.TextTransparency = 0.15
 
 -- Short messages from the server (sales, purchases) at the top of the screen.
 local toast = Instance.new("TextLabel")
-toast.AnchorPoint = Vector2.new(0.5, 0)
-toast.Position = UDim2.new(0.5, 0, 0, 16)
+toast.LayoutOrder = Hud.TopOrder.Toast -- in the top-center stack under the compass (UI/Hud.luau)
 toast.Size = UDim2.fromOffset(440, 0)
 toast.AutomaticSize = Enum.AutomaticSize.Y
 toast.BackgroundColor3 = C.Wood
@@ -77,7 +74,7 @@ toast.TextSize = 16
 toast.TextWrapped = true
 toast.TextColor3 = C.Cream
 toast.Visible = false
-toast.Parent = gui
+toast.Parent = Hud.top()
 Kit.corner(toast, 10)
 Kit.stroke(toast, C.Ink, 1.5)
 Kit.pad(toast, 10)
@@ -128,7 +125,7 @@ end
 
 local HINTS = {
 	Shovel = "Shovel: %s hay or a bale; a truck bed or belt pours",
-	Rake = "Rake: %s loose hay",
+	Rake = "Rake: %s loose hay; toward a belt feeds it",
 	Wheelbarrow = "Barrow: %s a bale, a truck bed, or the ground",
 }
 
@@ -146,9 +143,12 @@ local function refresh()
 	cashLabel.Text = Kit.money(cash)
 	if carrying then
 		loadLabel.Text = "Carrying a bale"
-		hintLabel.Text = if verb() == "tap" then "Tap: set it down. Hold THROW: throw" else "Click: set down. Hold: throw"
+		hintLabel.Text = if verb() == "tap"
+			then "Tap: set it down. Hold THROW: throw"
+			else "Click: set down. Hold: throw"
 	else
-		hintLabel.Text = tool and HINTS[tool.Name] and HINTS[tool.Name]:format(verb()) or "Hands: press Pick up on a bale"
+		hintLabel.Text = tool and HINTS[tool.Name] and HINTS[tool.Name]:format(verb())
+			or "Hands: press Pick up on a bale"
 		loadLabel.Text = ("Hay %d / %d · %s"):format(hay, cap, player:GetAttribute("GloveName") or "Bare hands")
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
