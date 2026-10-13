@@ -4,7 +4,7 @@ Simple shells in the house style (LT2 shapes, Rustic finish), no interiors. Walk
 least 4 x 7 studs, vehicle doors at least 12 x 11. Moving parts are tagged for the rig:
   snow_cabin             Door (hidden side door, Frostbite Mitts quest)
   buried_pyramid_garage  Door (roll-up garage door, 12 x 11 opening)
-  the_spindle            Door (sealed slab), Socket..Socket12 (shard sockets)
+  the_spindle            Door (14 x 20 sealed slab), Socket1..Socket12 (shard sockets on the door)
   zeppelin_dock          Gangway
   bobbin_captain_shack   ShipWheel
   meadow_windmill        Blades
@@ -480,9 +480,9 @@ def swamp_stilt_house(f):
 
 def the_spindle(f):
     """The Spindle, the giant tower at the center of the map, about 40 x 40 x 120 studs: a stone plinth
-    with 12 shard sockets in a ring (tagged Socket..Socket12), a huge bobbin with flanges top and bottom
-    wound with red thread, and a steel spindle shaft rising to a needle eye. A sealed stone slab door
-    (tagged Door, 6 x 9) opens when all 12 shards are placed."""
+    with a huge bobbin with flanges top and bottom
+    wound with red thread, and a steel spindle shaft rising to a needle eye. A sealed 14 x 20 stone door
+    (tagged Door) in a 20 x 26 x 4 frame carries 12 shard sockets (Socket1..Socket12) on a 5-stud ring."""
     p = [C(f, "stone", 19.0, 1.2, (0, 0, 0.6), verts=24)]
     p.append(C(f, "stone", 14.0, 2.0, (0, 0, 2.2), verts=24))
     # Bobbin: bottom flange, wound core, top flange.
@@ -507,22 +507,37 @@ def the_spindle(f):
         p.append(B(f, "steel", (0.9, 1.0, 7.0), (s * 1.4, 0, 115.5), along="z"))
     p.append(B(f, "steel", (3.7, 1.0, 0.8), (0, 0, 119.4)))
     p.append(B(f, "steel", (3.7, 1.0, 0.8), (0, 0, 112.0)))
-    # Sealed door in the plinth front.
-    p.append(B(f, "stone", (8.4, 1.0, 10.4), (0, -13.4, 5.2)))
-    p += tag([B(f, "stone", (6.0, 0.8, 9.0), (0, -14.0, 1.2 + 4.5)),
-              B(f, "metal", (5.0, 0.3, 0.5), (0, -14.5, 7.5), rnd=False),
-              B(f, "metal", (0.5, 0.3, 5.0), (0, -14.5, 5.0), rnd=False)], "Door")
+    # Sealed door on the front, matching Regions.luau LANDMARKS.spindle: a 20 x 26 x 4 stone frame with
+    # a 14 x 20 x 1 slab door standing proud of it, and 12 shard sockets on a 5-stud ring on the door
+    # face, 2 above the door's center. Socket1 sits at the game's local +X, which is the viewer's left
+    # (builder -x); the slots run counter-clockwise from there as the viewer sees them (Slot = i + 1).
+    fy, fz = -19.5, 0.0                      # game local z = 0 plane, frame bottom
+    p.append(B(f, "stone", (20.0, 4.0, 26.0), (0, fy + 2.5, fz + 13.0)))
+    for x in (-1, 1):                                                           # pilasters and caps
+        p.append(B(f, "stone", (2.4, 0.8, 26.0), (x * 8.8, fy + 0.2, fz + 13.0), along="z"))
+        p.append(B(f, "stone", (3.2, 1.4, 1.2), (x * 8.8, fy + 0.2, fz + 26.4), rnd=False))
+    p.append(B(f, "stone", (21.0, 1.4, 1.6), (0, fy + 0.4, fz + 25.6), rnd=False))      # lintel
+    p.append(B(f, "stone", (8.0, 1.2, 2.4), (0, fy + 0.4, fz + 27.6), rnd=False))       # keystone
+    dz = fz + 11.0                                                              # door center
+    door = [B(f, "stone", (14.0, 1.0, 20.0), (0, fy + 0.2, dz))]
+    for x in (-1, 1):                                                           # raised border
+        door.append(B(f, "stone", (0.8, 0.3, 19.0), (x * 6.4, fy - 0.4, dz), along="z", rnd=False))
+    for z in (-1, 1):
+        door.append(B(f, "stone", (12.0, 0.3, 0.8), (0, fy - 0.4, dz + z * 9.1), rnd=False))
+    door.append(B(f, "stone", (0.6, 0.3, 7.0), (0, fy - 0.4, dz + 2.0), along="z", rnd=False))  # needle relief
+    door.append(C(f, "stone", 1.0, 0.3, (0, fy - 0.4, dz + 6.4), verts=10, rot=(math.pi / 2, 0, 0), rnd=False))
+    door.append(B(f, "stone", (6.0, 0.3, 0.5), (0, fy - 0.4, dz - 5.0), rnd=False))     # seam
+    p += tag(door, "Door")
+    for i in range(12):
+        a = i / 12 * 2 * math.pi
+        x, z = -5.0 * math.cos(a), dz + 2.0 + 5.0 * math.sin(a)
+        p += tag([C(f, "metal", 0.5, 0.6, (x, fy - 0.4, z), verts=10, rot=(math.pi / 2, 0, 0), rnd=False)],
+                 f"Socket{i + 1}")
     # Steps up to the door.
     for k in range(2):
-        p.append(B(f, "stone", (8, 2.0, 0.6 * (k + 1)), (0, -19.0 + k * 1.8, 0.3 * (k + 1))))
-    # 12 shard sockets on short pillars around the plinth ring.
-    for i in range(12):
-        a = -math.pi / 2 + 2 * math.pi * (i + 0.5) / 12
-        x, y = 17.0 * math.cos(a), 17.0 * math.sin(a)
-        p.append(C(f, "stone", 0.9, 2.4, (x, y, 2.4), verts=8))
-        p += tag([C(f, "metal", 0.75, 0.6, (x, y, 3.9), verts=8, rnd=False),
-                  C(f, "tire", 0.45, 0.1, (x, y, 4.21), verts=8, rnd=False)], "Socket", str(i))
-    return palette(f, p, {"twine": "handle", "wood": "handle", "metal": "steel", "tire": "steel"}, {"Door": "stone", "Socket": "steel"})
+        p.append(B(f, "stone", (14.0, 2.0, 0.6 * (2 - k)), (0, fy - 2.0 - k * 1.8, 0.3 * (2 - k))))
+    return palette(f, p, {"twine": "handle", "wood": "handle", "metal": "steel", "tire": "steel"},
+                   dict({"Door": "stone"}, **{f"Socket{i}": "steel" for i in range(1, 13)}))
 
 
 # ---------------------------------------------------------------- Cave
@@ -998,6 +1013,81 @@ def spindle_landmark(f):
     return palette(f, p, {})
 
 
+# ---------------------------------------------------------------- quest set pieces (MODEL_SPECS "Quest set pieces")
+
+def loom_pedestal(f):
+    """Master Needle pedestal in the Loom Room, 4 x 4 x 4: a stepped dressed-stone plinth with brass
+    bands and a thin gold ring on top, carrying an empty two-fork iron cradle (tagged Cradle) where the
+    game sets the relic."""
+    p = [B(f, "stone", (4.0, 4.0, 0.7), (0, 0, 0.35)),
+         B(f, "stone", (3.0, 3.0, 1.8), (0, 0, 1.6)),
+         B(f, "stone", (3.6, 3.6, 0.5), (0, 0, 2.75), rnd=False)]
+    for z in (1.0, 2.2):                                                   # brass bands
+        p.append(B(f, "brass", (3.1, 3.1, 0.2), (0, 0, z), rnd=False))
+    for x in (-1, 1):                                                      # brass corner studs
+        for y in (-1, 1):
+            p.append(C(f, "brass", 0.18, 0.2, (x * 1.4, y * 1.4, 0.8), verts=8, rnd=False))
+    for i in range(12):                                                    # thin gold ring on the top
+        a = 2 * math.pi * (i + 0.5) / 12
+        p.append(B(f, "gold", (0.14, 0.62, 0.08), (1.2 * math.cos(a), 1.2 * math.sin(a), 3.04),
+                   rot=(0, 0, a), rnd=False))
+    cradle = [B(f, "metal", (1.6, 0.3, 0.2), (0, 0, 3.1), rnd=False)]
+    for x in (-0.65, 0.65):                                                # two forks
+        cradle.append(B(f, "metal", (0.16, 0.16, 0.45), (x, 0, 3.38), along="z", rnd=False))
+        for d in (-1, 1):
+            cradle.append(B(f, "metal", (0.12, 0.12, 0.45), (x, d * 0.18, 3.7), rot=(d * 0.35, 0, 0),
+                            along="z", rnd=False))
+    p += tag(cradle, "Cradle")
+    return p
+
+
+def labyrinth_arch(f):
+    """Straw Labyrinth entrance arch, 11 wide x 13 tall: two bark log posts on the lantern spots, a
+    straw lintel bound with twine, a red STRAW LABYRINTH board and a lantern hanging inside each post
+    (tagged Lantern_L / Lantern_R; the game lights them at night)."""
+    from hub import text
+    p = []
+    for x in (-1, 1):
+        p.append(C(f, "bark", 0.55, 12.4, (x * 5.0, 0, 6.2), verts=10))
+        p.append(C(f, "bark", 0.75, 0.6, (x * 5.0, 0, 0.3), verts=10, rnd=False))           # foot
+        p.append(brace(f, "bark", (x * 5.0, 0, 10.0), (x * 3.6, 0, 11.8), 0.4))              # knee brace
+    p.append(C(f, "hay", 0.8, 11.0, (0, 0, 12.2), verts=10, rot=(0, math.pi / 2, 0), along="x"))
+    for u in (-4.9, -2.6, 0.0, 2.6, 4.9):                                                  # twine bindings
+        p.append(C(f, "twine", 0.86, 0.3, (u, 0, 12.2), verts=10, rot=(0, math.pi / 2, 0), rnd=False))
+    # Name board on two twine hangers.
+    p.append(B(f, "paint_red", (6.2, 0.3, 1.4), (0, -0.2, 10.4)))
+    for x in (-2.6, 2.6):
+        p.append(B(f, "twine", (0.12, 0.12, 1.2), (x, -0.2, 11.4), along="z", rnd=False))
+    p += text(f, "hay", "STRAW LABYRINTH", 0, -0.4, 10.4, 0.7, depth=0.15)
+    # Lanterns on iron hooks inside each post.
+    for x, name in ((1, "Lantern_L"), (-1, "Lantern_R")):     # builder +x ends up on the glTF -X (left)
+        p.append(B(f, "twine", (0.8, 0.12, 0.12), (x * 4.2, 0, 9.0), rnd=False))
+        p.append(B(f, "twine", (0.1, 0.1, 0.5), (x * 3.85, 0, 8.7), along="z", rnd=False))
+        lamp = [B(f, "paint_yellow", (0.8, 0.8, 1.1), (x * 3.85, 0, 7.85)),
+                B(f, "paint_yellow", (1.0, 1.0, 0.15), (x * 3.85, 0, 8.45), rnd=False),
+                B(f, "paint_yellow", (1.0, 1.0, 0.15), (x * 3.85, 0, 7.25), rnd=False)]
+        p += tag(lamp, name)
+    return p
+
+
+def labyrinth_bell(f):
+    """Finish bell for the Straw Labyrinth: a 7-stud log post with an iron bracket and a 1.4-stud brass
+    bell (tagged Bell, pivot at its top, swings on X) with a pull rope."""
+    p = [C(f, "bark", 0.3, 7.0, (0, 0, 3.5), verts=10),
+         C(f, "bark", 0.5, 0.4, (0, 0, 0.2), verts=10, rnd=False)]
+    p.append(B(f, "metal", (0.16, 1.5, 0.16), (0, -0.7, 6.6), along="y", rnd=False))       # bracket arm
+    p.append(brace(f, "metal", (0, 0, 5.6), (0, -0.9, 6.55), 0.14))
+    p.append(B(f, "metal", (0.4, 0.4, 0.12), (0, 0, 6.6), rnd=False))
+    bell = [T(f, "brass", 0.42, 0.28, 5.15, 6.25, y=-1.2, verts=14, rnd=False),
+            C(f, "brass", 0.62, 0.22, (0, -1.2, 5.12), verts=14, rnd=False),                # flared lip
+            C(f, "brass", 0.3, 0.12, (0, -1.2, 6.3), verts=10, rnd=False),                  # crown
+            B(f, "brass", (0.12, 0.12, 0.2), (0, -1.2, 6.45), rnd=False)]
+    p += tag(bell, "Bell")
+    p.append(C(f, "twine", 0.05, 2.6, (0, -1.2, 3.75), verts=6, rnd=False))                  # pull rope
+    p.append(C(f, "twine", 0.12, 0.3, (0, -1.2, 2.4), verts=8, rnd=False))
+    return p
+
+
 RIG_FLIP = True  # builders face -y; turn to +y so the glTF faces -Z (MODEL_SPECS rules)
 
 PROPS = {
@@ -1018,4 +1108,7 @@ PROPS = {
     "straw_labyrinth_gate": straw_labyrinth_gate,
     "windmill": windmill,
     "spindle_landmark": spindle_landmark,
+    "loom_pedestal": loom_pedestal,
+    "labyrinth_arch": labyrinth_arch,
+    "labyrinth_bell": labyrinth_bell,
 }

@@ -28,7 +28,7 @@ STUD = 0.28
 # before the flip. bottom = bottom center; top = top center; door = vertical hinge on the builder-left
 # edge; shoulder = the inner end (nearest the body's center line).
 PIVOTS = {"Tailgate": "bottom", "Ramp": "bottom", "Lever": "bottom", "Head": "bottom",
-          "Gate": "top", "Door": "door", "ArmL": "shoulder", "ArmR": "shoulder",
+          "Gate": "top", "Bell": "top", "Door": "door", "ArmL": "shoulder", "ArmR": "shoulder",
           "Door_L": "front", "Door_R": "front", "Glass_L": "front", "Glass_R": "front"}  # truck doors hinge on their front vertical edge
 
 

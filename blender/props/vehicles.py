@@ -95,15 +95,15 @@ def place(objs, loc, rz=0.0):
     return objs
 
 
-def tire(f, x, y, r, w, hub="metal", verts=20):
+def tire(f, x, y, r, w, hub="metal", verts=20, treads=16):
     """Rubber tire with a stepped sidewall, a dished rim, a hub cap and five lug nuts; axle along x,
     sitting on the ground. Mid detail (2026-10-13): 16 sides instead of 12."""
     side = 1 if x >= 0 else -1
     parts = [C(f, "tire", r - 0.06, w, (x, y, r), axis="x", verts=verts)]
     parts.append(C(f, "tire", r * 0.84, w + 0.08, (x, y, r), axis="x", verts=verts, rounded=False))  # sidewall step
-    for i in range(16):                                                                        # tread blocks
-        a = 2 * PI * i / 16
-        parts.append(B(f, "tire", (w * 0.8, 2 * PI * r / 16 * 0.55, 0.12), (x, y + (r - 0.04) * math.cos(a),
+    for i in range(treads):                                                                    # tread blocks
+        a = 2 * PI * i / treads
+        parts.append(B(f, "tire", (w * 0.8, 2 * PI * r / treads * 0.55, 0.12), (x, y + (r - 0.04) * math.cos(a),
                        r + (r - 0.04) * math.sin(a)), along="x", rot=(a - PI / 2, 0, 0), rounded=False))
     parts.append(C(f, hub, r * 0.6, w + 0.14, (x + side * 0.02, y, r), axis="x", verts=verts, rounded=False))
     parts.append(C(f, hub, r * 0.46, w + 0.2, (x + side * 0.03, y, r), axis="x", verts=verts, rounded=False))
@@ -173,8 +173,8 @@ def ring(r_out, r_in, width, n=14):
 
 def spoked_wheel(f, x, y, r, w, spokes=6):
     """Wooden wagon wheel: iron tyre, wooden felloe, spokes and a hub. Axle along x."""
-    tyre = ring(r * STUD, r * 0.88 * STUD, w * STUD)
-    felloe = ring(r * 0.9 * STUD, r * 0.74 * STUD, w * 0.9 * STUD)
+    tyre = ring(r * STUD, r * 0.88 * STUD, w * STUD, n=18)
+    felloe = ring(r * 0.9 * STUD, r * 0.74 * STUD, w * 0.9 * STUD, n=18)
     parts = [f.apply(f.shape(tyre, round_edges=False), "metal"),
              f.apply(f.shape(felloe, round_edges=False), "handle", along="y")]
     for i in range(spokes):
@@ -829,19 +829,41 @@ def trailer(f, key, nl, nw, wall_h, wheel_r, axles, tongue=4.5, hitch_z=2.2, wal
             if spoked:
                 parts += spoked_wheel(f, x * wx, y, wheel_r, 0.45)
             else:
-                parts += tire(f, x * wx, y, wheel_r, tw)
+                parts += tire(f, x * wx, y, wheel_r, tw, verts=16, treads=10)
+    # Rail caps along the wall tops, tie-down rings under the side rails, corner reflectors.
+    if posts:
+        for x in (-1, 1):
+            parts.append(flat(f, "metal", (WALL_T + 0.16, L, 0.14), (x * (W / 2 - WALL_T / 2), y0, FLOOR + wall_h + 0.07),
+                              along="y"))
+    for x in (-1, 1):
+        for n in range(max(2, int(L // 5))):
+            y = yf + 1.0 + n * (L - 2.0) / max(1, int(L // 5) - 1)
+            parts.append(B(f, "metal", (0.12, 0.45, 0.3), (x * (W / 2 + 0.06), y, FLOOR - WALL_T - 0.05), rounded=False))
+        parts.append(B(f, "paint_yellow", (0.06, 0.35, 0.25), (x * (W / 2 + 0.03), yf + 0.4, FLOOR + 0.4), rounded=False))
     # Tongue: A-frame to a coupler, a jack stand to the ground.
     tip = (0, yf - tongue, hitch_z)
     for x in (-1, 1):
         parts.append(beam(f, "metal", (x * rx, yf + 0.6, rz), tip, 0.4))
     parts += tag([B(f, "metal", (0.7, 1.0, 0.5), (0, tip[1] - 0.3, hitch_z)),
                   C(f, "metal", 0.35, 0.3, (0, tip[1] - 0.7, hitch_z - 0.2), verts=8)], "Coupler", y0)
+    for x in (-1, 1):                                                       # safety chains, sagging in two links
+        a, b = (x * 0.3, tip[1] - 0.1, hitch_z - 0.25), (x * 0.45, tip[1] + 0.9, hitch_z - 0.75)
+        parts.append(beam(f, "metal", a, b, 0.1))
+        parts.append(beam(f, "metal", b, (x * 0.6, tip[1] + 1.8, hitch_z - 0.15), 0.1))
     if jack:
         jy = tip[1] + tongue * 0.35
         jz = hitch_z + (rz - hitch_z) * 0.35
         parts.append(C(f, "metal", 0.18, jz, (0.0, jy, jz / 2), verts=8, rounded=False))
         parts.append(B(f, "metal", (0.9, 0.9, 0.15), (0.0, jy, 0.08)))
         parts.append(C(f, "metal", 0.28, 1.0, (0.0, jy, jz - 0.5), verts=8))
+        parts.append(beam(f, "metal", (0.0, jy, jz + 0.05), (0.5, jy, jz + 0.05), 0.08))         # crank
+        parts.append(C(f, "tire", 0.08, 0.3, (0.5, jy, jz + 0.2), verts=6, rounded=False))
+    if tongue >= 4.0:                                                       # tongue box with a lid seam and hasp
+        by = yf - tongue * 0.45
+        bz = hitch_z + (rz - hitch_z) * 0.55 + 0.55
+        parts.append(B(f, "metal", (2.0, 1.1, 0.9), (0, by, bz)))
+        parts.append(B(f, "metal", (2.1, 1.2, 0.08), (0, by, bz + 0.3), rounded=False))
+        parts.append(B(f, "metal", (0.2, 0.08, 0.3), (0, by - 0.58, bz + 0.15), rounded=False))
     for x in (-1, 1):
         parts.append(B(f, "paint_red", (0.5, 0.15, 0.3), (x * (W / 2 - 0.5), yb + 0.08, FLOOR - 0.5)))
     return parts
@@ -862,6 +884,12 @@ def wagon_trailer(f):
         for x in (-1, 1):
             parts.append(B(f, "handle", (0.3, 0.3, 0.8), (x * 1.6, y, 1.85), along="z"))
             parts += spoked_wheel(f, x * (W / 2 + 0.45), y, 1.5, 0.4, spokes=6)
+    # Iron corner straps and bolt heads on the green sides.
+    for x in (-1, 1):
+        for y in (-L / 2 + 0.6, L / 2 - 0.6):
+            parts.append(flat(f, "metal", (0.08, 0.35, 2.4), (x * (W / 2 + 0.04), y, FLOOR + 1.3), along="z"))
+            for z in (0.5, 1.3, 2.1):
+                parts.append(B(f, "metal", (0.12, 0.14, 0.14), (x * (W / 2 + 0.09), y, FLOOR + z), rounded=False))
     # Wooden tongue with a ring hitch, resting on the ground.
     parts.append(beam(f, "handle", (0, -1.6, 2.0), (0, -L / 2 - 4.5, 0.35), 0.4))
     parts += tag([C(f, "metal", 0.45, 0.15, (0, -L / 2 - 4.9, 0.3), verts=10)], "Coupler")
