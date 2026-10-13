@@ -18,7 +18,7 @@ TEXT = {
     "hero_smash": ("hero_4_smash", "SMASH THE BALES", "EVERY BALE COULD HIDE A NEEDLE", 0.66, 0.87),
     "hero_factory": ("hero_5_factory", "BUILD YOUR HAY EMPIRE", "CONVEYORS, SORTERS AND SILOS", 0.64, 0.87),
     "hero_spindle": ("hero_6_spindle", "OPEN THE SPINDLE", "TWELVE SHARDS OF THE MASTER NEEDLE", 0.5, 0.88),
-    "hero_wagon": ("hero_7_haywagon", "RIDE THE HAY WAGON", "A FREE TOUR OF 14 REGIONS", 0.5, 0.12),
+    "hero_wagon": ("hero_7_haywagon", "RIDE THE HAY WAGON", "A FREE TOUR OF 14 REGIONS", 0.5, 0.88),
 }
 
 
