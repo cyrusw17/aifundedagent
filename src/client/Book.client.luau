@@ -1,9 +1,10 @@
 --!nonstrict
--- The collection book (BOOK under the HUD, or K). Four pages:
+-- The collection book (BOOK under the HUD, or K). Five pages:
 --   FINDS   every foreign object from a burst bale (Config/Finds), kept ones from the "Finds" attribute (Finds.luau)
 --   NEEDLES every needle type (Config/Needles), found ones from "CodexNeedles" (Codex.luau)
 --   HAY     every hay type (Config/Gloves HayTypes), broken-open ones from "CodexHay" (Codex.luau)
 --   PLACES  every region and landmark (UI/DiscoveryList), found ones from "Discovered" (Discoveries.luau)
+--   SKINS   tool skins a finished page unlocks (Config/ToolSkins), owned from "ToolSkins", worn "ToolSkin<Tool>"
 -- Found things show in full; the rest are dark shapes with a hint. A finished page shows its title.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,6 +19,7 @@ local NeedleTypes = require(Config:WaitForChild("Needles"))
 local Gloves = require(Config:WaitForChild("Gloves"))
 local HayLooks = require(Config:WaitForChild("HayLooks"))
 local DiscoveryList = require(UI:WaitForChild("DiscoveryList"))
+local ToolSkins = require(Config:WaitForChild("ToolSkins"))
 
 local C, F, T = Kit.Theme.Colors, Kit.Theme.Fonts, Kit.Theme.Text
 local player = Players.LocalPlayer
@@ -198,6 +200,46 @@ do
 	})
 end
 
+-- Tool skins (ToolSkins.luau): finishing a page unlocks one. This page lists them with a WEAR button.
+local PAGE_NAMES = {
+	hay = "HAY page",
+	needles = "NEEDLES page",
+	finds = "FINDS page",
+	finds_common = "boot, horseshoe and key",
+}
+do
+	local entries = {}
+	for _, def in ToolSkins.Skins do
+		local shovel = def.tool == "Shovel"
+		table.insert(entries, {
+			id = def.id,
+			name = def.name,
+			skin = def,
+			size = shovel and Vector3.new(0.4, 3.2, 0.9) or Vector3.new(1.6, 3.2, 0.3),
+			color = Color3.fromRGB(table.unpack(def.color)),
+			material = Enum.Material[def.material] or Enum.Material.SmoothPlastic,
+			lines = function(found)
+				if found then
+					return ("For your %s"):format(def.tool:lower()), "Looks only, same tool"
+				end
+				return ("Finish the %s"):format(PAGE_NAMES[def.page] or def.page),
+					("Unlocks a %s skin"):format(def.tool:lower())
+			end,
+		})
+	end
+	table.insert(PAGES, {
+		tab = "SKINS",
+		intro = "Finishing a page of this book unlocks a tool skin. Looks only: your shovel and rake work the same.",
+		entries = entries,
+		attribute = "ToolSkins",
+		watch = { "ToolSkinShovel", "ToolSkinRake" },
+		read = function()
+			return set("ToolSkins")
+		end,
+		skins = true,
+	})
+end
+
 -- The panel ---------------------------------------------------------------------------------------------------------
 
 local gui = Kit.screen("NeedlewoodBook", 6)
@@ -290,7 +332,24 @@ local function build()
 		end
 		local name = text(104, C.Ink, F.Bold)
 		name.TextSize = T.Body
+		local wear = nil
+		if entry.skin then
+			-- WEAR / TAKE OFF over the preview's corner.
+			wear = Kit.button(frame, "WEAR", "go", UDim2.fromOffset(84, 24))
+			wear.AnchorPoint = Vector2.new(1, 0)
+			wear.Position = UDim2.new(1, -12, 0, 12)
+			wear.TextSize = T.Small
+			wear.ZIndex = 3
+			wear.Activated:Connect(function()
+				local worn = player:GetAttribute("ToolSkin" .. entry.skin.tool) == entry.id
+				local remote = ReplicatedStorage:FindFirstChild("WearToolSkin")
+				if remote then
+					remote:FireServer(entry.skin.tool, if worn then "" else entry.id)
+				end
+			end)
+		end
 		table.insert(cards, {
+			wear = wear,
 			entry = entry,
 			frame = frame,
 			view = view,
@@ -312,6 +371,12 @@ local function render()
 		local line1, line2 = card.entry.lines(isFound, value)
 		card.line1.Text = line1
 		card.line2.Text = line2
+		if card.wear then
+			local worn = player:GetAttribute("ToolSkin" .. card.entry.skin.tool) == card.entry.id
+			card.wear.Visible = isFound
+			card.wear.Text = worn and "TAKE OFF" or "WEAR"
+			Kit.setStyle(card.wear, worn and "wood" or "go")
+		end
 		if isFound then
 			found += 1
 			card.name.Text = card.entry.name
@@ -325,8 +390,12 @@ local function render()
 	end
 	intro.Text = page.intro
 	local total = #page.entries
-	banner.Text = found >= total and ("PAGE COMPLETE: %s"):format(page.title)
-		or ("%d of %d found. Finish the page for the title %s."):format(found, total, page.title)
+	if page.skins then
+		banner.Text = ("%d of %d skins unlocked."):format(found, total)
+	else
+		banner.Text = found >= total and ("PAGE COMPLETE: %s"):format(page.title)
+			or ("%d of %d found. Finish the page for the title %s."):format(found, total, page.title)
+	end
 	banner.TextColor3 = found >= total and C.Green or C.InkSoft
 	title.Text = ("COLLECTION BOOK  ·  %s %d / %d"):format(page.tab, found, total)
 end
@@ -342,11 +411,13 @@ local _, selectTab = Kit.tabs(body, tabNames, function(index)
 end)
 
 for _, page in PAGES do
-	player:GetAttributeChangedSignal(page.attribute):Connect(function()
-		if panel.Visible and PAGES[pageIndex] == page then
-			render()
-		end
-	end)
+	for _, attribute in { page.attribute, table.unpack(page.watch or {}) } do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if panel.Visible and PAGES[pageIndex] == page then
+				render()
+			end
+		end)
+	end
 end
 
 -- Spin the previews while the book is open.
