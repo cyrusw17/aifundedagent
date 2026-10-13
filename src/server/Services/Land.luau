@@ -20,6 +20,7 @@ local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
@@ -68,6 +69,17 @@ local function cellsFor(def, gx, gz, dir)
 		end
 	end
 	return cells
+end
+
+-- Saves keep pieces in plot tiles as seen with the lane to the south, so a farm rebuilds the same on any plot. Plots
+-- that open to the north are that same plot turned half a turn; this maps a piece between the two (both ways). The
+-- back-left anchor turns with the piece, so it lands on the turned piece's back-left cell.
+local OPPOSITE = { N = "S", S = "N", E = "W", W = "E" }
+local function turnFor(plot, gx, gz, dir)
+	if plot.def.open == "S" then
+		return gx, gz, dir
+	end
+	return plot.tiles.X - 1 - gx, plot.tiles.Z - 1 - gz, OPPOSITE[dir] or dir
 end
 
 local function isCell(n)
@@ -285,10 +297,16 @@ local function saveItems(player, plot)
 	end
 	local items = {}
 	for _, item in plot.list do
-		table.insert(items, { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored })
+		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored })
+	end
+	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
+	for _, saved in plot.leftOut or {} do
+		table.insert(items, saved)
 	end
 	s.land.items = items
 	s.land.plot = plot.index
+	s.land.needles = plot.bin.contents(player.UserId)
 	plot.dirty = false
 end
 
@@ -339,19 +357,27 @@ local function release(plot)
 		plot.owner:SetAttribute("LandPlot", 0)
 	end
 	clearPlot(plot)
+	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
+	plot.leftOut = nil
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
 
--- Gives a plot to a player and rebuilds what they saved on it. Pieces that don't fit (a smaller plot) are skipped.
+-- Gives a plot to a player and rebuilds what they saved on it. Pieces that don't fit (an older save) are skipped but kept.
 local function claim(plot, player, saved)
 	plot.owner, plot.ownerId, plot.ownerName = player, player.UserId, player.DisplayName
 	plotOf[player] = plot
 	player:SetAttribute("LandPlot", plot.index)
+	plot.leftOut = {}
 	for _, s in saved.items or {} do
 		local def = typeof(s) == "table" and pieces[s.id]
-		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] and fits(plot, def, s.gx, s.gz, s.dir) then
-			spawnItem(plot, def, s.gx, s.gz, s.dir, typeof(s.stored) == "number" and s.stored or nil)
+		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
+			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
+			if fits(plot, def, gx, gz, dir) then
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil)
+			else
+				table.insert(plot.leftOut, s)
+			end
 		end
 	end
 	refreshRails(plot)
@@ -397,10 +423,10 @@ local function onBuy(player, index)
 	if plot.ownerId then
 		return false, ("%s already belongs to %s."):format(plot.def.name, plot.ownerName)
 	end
-	if s.cash < plot.def.price then
-		return false, ("You need $%d more."):format(plot.def.price - s.cash)
+	local paid, why = Bank.charge(player, plot.def.price, "Land: " .. plot.def.name)
+	if not paid then
+		return false, why
 	end
-	s.cash -= plot.def.price
 	s.land = { owned = true, plot = index, items = {} }
 	claim(plot, player, s.land)
 	Data.sync(player)
@@ -435,11 +461,10 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
-	local s = Data.get(player)
-	if not s or s.cash < def.price then
-		return false, ("You need $%d more."):format(def.price - (s and s.cash or 0))
+	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
+	if not paid then
+		return false, short
 	end
-	s.cash -= def.price
 	spawnItem(plot, def, gx, gz, dir)
 	refreshRails(plot)
 	publish(plot)
@@ -467,11 +492,7 @@ local function onRemove(player, gx, gz)
 	publish(plot)
 	saveItems(player, plot)
 	local refund = math.floor(def.price * LandConfig.RefundShare)
-	local s = Data.get(player)
-	if s then
-		s.cash += refund
-		Data.sync(player)
-	end
+	Bank.give(player, refund, "Removed a " .. def.name:lower())
 	return true, ("Removed the %s. Got $%d back."):format(def.name:lower(), refund)
 end
 
@@ -533,9 +554,11 @@ local function buildPlot(parent, index, def)
 	local farZ = def.open == "S" and z0 or z1
 	fence(fences, Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ))
 
-	-- The needle bin sits at the west end of the strip, with its SELL NEEDLES pad toward the middle.
-	local binX = x0 + T * 0.5 + 0.5
-	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX - 1, 0, stripZ))
+	-- The needle bin sits at the left end of the strip (seen from the lane), with its SELL NEEDLES pad toward the middle:
+	-- the west end on plots south of the lane, the east end on the turned-around plots north of it.
+	local binX = if def.open == "S" then x0 + T * 0.5 + 0.5 else x1 - T * 0.5 - 0.5
+	local away = if def.open == "S" then -1 else 1
+	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX + away, 0, stripZ))
 
 	-- Sign post in the middle of the strip.
 	local post = part(model, "SignPost", Vector3.new(0.8, 6, 0.8), CFrame.new((x0 + x1) / 2, 3, stripZ), Rustic.WoodDark, Enum.Material.Wood)
@@ -564,6 +587,7 @@ local function buildPlot(parent, index, def)
 		corner = corner,
 		size = size,
 		laneZ = def.open == "S" and z1 + 8 or z0 - 8,
+		stripZ = stripZ,
 		tiles = { X = def.tiles.X, Z = def.tiles.Y },
 		model = model,
 		items = items,
@@ -614,19 +638,79 @@ local function buildOffice(parent)
 end
 
 -- A save was picked: give back its farm, if it owns land.
-local function onLoaded(player)
-	local s = Data.get(player)
-	if not s or not (s.land and s.land.owned) then
+-- Puts the player at the front of their plot, on the strip, facing into the farm.
+local function sendHome(player, plot)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character and character:WaitForChild("HumanoidRootPart", 10)
+	if not root or not player.Parent then
 		return
 	end
-	local plot = pickPlot(s.land.plot)
+	local inward = plot.def.open == "S" and -1 or 1
+	local at = Vector3.new(plot.corner.X + plot.size.X / 2 + 8, 4, plot.stripZ)
+	character:PivotTo(CFrame.lookAt(at, at + Vector3.new(0, 0, inward)))
+end
+
+-- A save was picked (with the plot the player chose in the picker, if any): set up its farm, or buy the chosen plot
+-- for a save with no land yet.
+-- Puts the needles saved in the bin back in this plot's bin. Past BinRestoreCap physical needles the rest go in the
+-- pocket, so a big hoard doesn't bury the bin.
+local BinRestoreCap = 300
+local function restoreNeedles(player, plot, land)
+	local saved = Data.countMap(land.needles)
+	local inBin, toPocket, room = {}, {}, BinRestoreCap
+	for id, count in saved do
+		local here = math.min(count, room)
+		room -= here
+		if here > 0 then
+			inBin[id] = here
+		end
+		if count > here then
+			toPocket[id] = count - here
+		end
+	end
+	plot.bin.fill(player.UserId, inBin)
+	local s = Data.get(player)
+	if s and next(toPocket) then
+		for id, count in toPocket do
+			s.pocket[id] = (s.pocket[id] or 0) + count
+		end
+		Data.sync(player)
+	end
+	land.needles = inBin
+end
+
+local function onLoaded(player)
+	local s = Data.get(player)
+	if not s then
+		return
+	end
+	local picked = s.pickedPlot and plots[s.pickedPlot]
+	s.pickedPlot = nil
+	if not (s.land and s.land.owned) then
+		if picked then
+			local ok, message = onBuy(player, picked.index)
+			if ok then
+				task.spawn(sendHome, player, picked)
+			else
+				Data.toast(player, message)
+			end
+		end
+		return
+	end
+	local plot = (picked and not picked.ownerId) and picked or pickPlot(s.land.plot)
 	if not plot then
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
 	claim(plot, player, s.land)
+	restoreNeedles(player, plot, s.land)
 	parkVehicles(player, plot)
-	Data.toast(player, ("Your farm is on %s, down the plot road south of the main road."):format(plot.def.name))
+	task.spawn(sendHome, player, plot)
+	local message = ("Your farm is on %s."):format(plot.def.name)
+	if #plot.leftOut > 0 then
+		message ..= (" %d saved pieces don't fit here; they're still kept in your save."):format(#plot.leftOut)
+	end
+	Data.toast(player, message)
 end
 
 function Land.build(worldFolder)

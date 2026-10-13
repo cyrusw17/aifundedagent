@@ -1,7 +1,8 @@
 --!nonstrict
 -- Gloves: which pair each player owns and wears, what carried hay weighs, and how much it slows them down.
--- Numbers live in Config/Gloves. A glove stand by the sell pad sells and swaps them. Owned gloves save in their
--- own DataStore so this never has to touch the main save.
+-- Numbers live in Config/Gloves. A glove stand by the sell pad sells and swaps them. Owned and worn gloves save with
+-- the save slot (Data state.gloves). Gloves bought before that were kept in their own DataStore, NeedlewoodGlovesV1;
+-- a used slot with no gloves saved yet picks those up once.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config.Game)
 local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local GloveLooks = require(script.Parent.GloveLooks)
 
 local Gloves = {}
@@ -101,37 +103,62 @@ end
 -- Set by Avatar so walk speed updates the moment gloves change.
 Gloves.changed = function(_player) end
 
+-- Copies owned and worn gloves into the save slot; Data.luau writes them with the rest of the slot.
 local function save(player)
-	if not store or not owned[player] then
+	local state = Data.get(player)
+	if not state or not owned[player] then
 		return
 	end
 	local list = {}
 	for id in owned[player] do
 		table.insert(list, id)
 	end
-	pcall(function()
-		store:SetAsync(keyFor(player), { owned = list, worn = worn[player] })
-	end)
+	state.gloves = { owned = list, worn = worn[player] }
 end
 
+local function legacyGloves(player)
+	if not store then
+		return nil
+	end
+	local ok, saved = pcall(function()
+		return store:GetAsync(keyFor(player))
+	end)
+	return ok and typeof(saved) == "table" and saved or nil
+end
+
+-- Bare hands until a save slot is picked.
+local function reset(player)
+	owned[player] = nil
+	worn[player] = "bare"
+	publish(player)
+end
+
+-- Runs when a save slot loads (Data.loaded).
 local function load(player)
+	local state = Data.get(player)
+	if not state then
+		return
+	end
+	local saved = state.gloves
+	if saved == nil and not state.fresh then
+		saved = legacyGloves(player)
+	end
 	owned[player] = { bare = true }
 	worn[player] = "bare"
-	if store then
-		local ok, saved = pcall(function()
-			return store:GetAsync(keyFor(player))
-		end)
-		if ok and typeof(saved) == "table" then
-			for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
-				if byId[id] then
-					owned[player][id] = true
-				end
-			end
-			if byId[saved.worn] and owned[player][saved.worn] then
-				worn[player] = saved.worn
+	if typeof(saved) == "table" then
+		for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
+			if byId[id] then
+				owned[player][id] = true
 			end
 		end
+		if byId[saved.worn] and owned[player][saved.worn] then
+			worn[player] = saved.worn
+		end
 	end
+	if not player.Parent then
+		return
+	end
+	save(player)
 	publish(player)
 end
 
@@ -143,13 +170,12 @@ function Gloves.buyOrWear(player, id)
 		return
 	end
 	if not owned[player][id] then
-		if state.cash < def.price then
-			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, state.cash))
+		local paid = Bank.charge(player, def.price, def.name)
+		if not paid then
+			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, Bank.spendable(state)))
 			return
 		end
-		state.cash -= def.price
 		owned[player][id] = true
-		Data.sync(player)
 		Data.toast(player, ("Bought %s. Heavier hay slows you less and you scoop more."):format(def.name))
 	elseif worn[player] == id then
 		return
@@ -247,19 +273,18 @@ function Gloves.buildStand(parent, cframe)
 end
 
 function Gloves.init()
-	Players.PlayerAdded:Connect(load)
+	Players.PlayerAdded:Connect(reset)
+	Data.loaded.Event:Connect(load)
 	for _, player in Players:GetPlayers() do
-		task.spawn(load, player)
+		if Data.get(player) then
+			task.spawn(load, player)
+		else
+			task.spawn(reset, player)
+		end
 	end
 	Players.PlayerRemoving:Connect(function(player)
-		save(player)
 		owned[player] = nil
 		worn[player] = nil
-	end)
-	game:BindToClose(function()
-		for player in owned do
-			save(player)
-		end
 	end)
 end
 

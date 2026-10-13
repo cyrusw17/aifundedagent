@@ -22,6 +22,7 @@ local Economy = require(Shared.Economy)
 local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Tutorial = require(script.Parent.Tutorial)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
@@ -81,14 +82,14 @@ function Machines.sign(parent, text, offset, kind)
 end
 local sign = Machines.sign
 
-function Machines.pay(ownerId, amount, text)
+-- note is the short line for the bank history (Bank.luau); text is the toast.
+function Machines.pay(ownerId, amount, text, note)
 	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 	local state = owner and Data.get(owner)
 	if not state then
 		return
 	end
-	state.cash += amount
-	Data.sync(owner)
+	Bank.earn(owner, amount, note or "Farm sale")
 	Tutorial.mark(owner, "sold")
 	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
@@ -200,7 +201,46 @@ function Machines.needleBin(parent, frame)
 			Data.toast(player, "You have no needles in this bin or your pocket. Run some hay through a sorter.")
 			return
 		end
-		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
+		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
+	end
+
+	-- Needles in the bin, as { [needleId] = count }: everyone's, or only ownerId's.
+	function bin.contents(ownerId)
+		local byType = {}
+		for _, n in Needle.inBox(inside, insideSize) do
+			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
+				local id = n:GetAttribute("NeedleId") or Needle.default.id
+				byType[id] = (byType[id] or 0) + 1
+			end
+		end
+		return byType
+	end
+
+	-- Puts saved needles straight back in the bin, laid in rows on the floor (anchored, so a big pile can't spill).
+	function bin.fill(ownerId, byType)
+		local perRow, rows = 4, 24
+		local placed = 0
+		for id, count in byType do
+			for _ = 1, count do
+				local col = placed % perRow
+				local row = math.floor(placed / perRow) % rows
+				local layer = math.floor(placed / (perRow * rows))
+				local at = floor * CFrame.new(-1.95 + col * 1.3, 0.1 + layer * 0.16, -2.3 + row * 0.2)
+				local n = Needle.spawn(at.Position, ownerId, id)
+				n.CFrame = at
+				n.Anchored = true
+				placed += 1
+			end
+		end
+		refresh()
+	end
+
+	-- Removes every needle in the bin (the plot was given up).
+	function bin.clear()
+		for _, n in Needle.inBox(inside, insideSize) do
+			n:Destroy()
+		end
+		refresh()
 	end
 
 	bin.model = model
@@ -214,7 +254,7 @@ function Machines.sortSeconds(tierId, hay)
 	if not tier or tier.hayPerMin == math.huge then
 		return 0.4
 	end
-	return math.clamp(hay / tier.hayPerMin * 60, 0.5, 20)
+	return math.max(hay / tier.hayPerMin * 60, 0.5) -- no upper clamp, so every tier's speed is felt
 end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
@@ -336,7 +376,7 @@ function Machines.hayBuyer(parent, frame, title)
 					local value = math.floor(hay * Economy.HAY_PRICE)
 					local ownerId = sortedBale.ownerId
 					Bales.consume(sortedBale)
-					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay))
+					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId = 0, nil

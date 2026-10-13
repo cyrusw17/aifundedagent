@@ -16,6 +16,7 @@ local Rustic = require(Shared.Config.Rustic)
 local Trucks = require(Shared.Config.Trucks)
 local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
 local Vehicles = require(script.Parent.Vehicles)
 
@@ -332,10 +333,13 @@ local function onBuy(player, id)
 
 	local owns = table.find(state.trucks, def.id) ~= nil
 	if not owns then
-		if state.cash < def.price then
-			return false, ("You need $%d more for the %s."):format(def.price - state.cash, def.name)
+		if not Bank.canAfford(player, def.price) then
+			return false, ("You need $%d more for the %s. The bank on the main road can finance it."):format(def.price - Bank.spendable(state), def.name)
 		end
-		state.cash -= def.price
+		local paid, why = Bank.charge(player, def.price, def.name)
+		if not paid then
+			return false, why
+		end
 		table.insert(state.trucks, def.id)
 		Data.sync(player)
 		task.spawn(Data.save, player)
@@ -384,8 +388,7 @@ function Dealer.build(worldFolder)
 		end
 		local state = Data.get(player)
 		if state then
-			state.cash += STUDIO_CASH
-			Data.sync(player)
+			Bank.give(player, STUDIO_CASH, "Studio test cash")
 			Data.toast(player, ("Studio test cash: +$%d"):format(STUDIO_CASH))
 		end
 	end)

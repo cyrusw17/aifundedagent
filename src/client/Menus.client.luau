@@ -28,11 +28,11 @@ local player = Players.LocalPlayer
 local gui = Kit.screen("NeedlewoodMenus", 5)
 
 -- Goal bar ---------------------------------------------------------------------------------------------------------
--- Sits under the HUD card (Main.client.luau, 14,14 230x112).
+-- Sits under the HUD card (Main.client.luau, 14,14 230x112) and the bank line (Bank.client.luau, y 132..180).
 
 local goal = Instance.new("Frame")
 goal.Name = "GoalBar"
-goal.Position = UDim2.fromOffset(14, 134)
+goal.Position = UDim2.fromOffset(14, 184)
 goal.Size = UDim2.fromOffset(230, 54)
 goal.BackgroundColor3 = C.Wood
 goal.BackgroundTransparency = 0.1
@@ -99,7 +99,7 @@ refreshGoal()
 -- Menu buttons -----------------------------------------------------------------------------------------------------
 
 local rail = Instance.new("Frame")
-rail.Position = UDim2.fromOffset(14, 196)
+rail.Position = UDim2.fromOffset(14, 246)
 rail.Size = UDim2.fromOffset(230, 36)
 rail.BackgroundTransparency = 1
 rail.Parent = gui
@@ -279,6 +279,11 @@ rect(canvas, Vector2.new(DEALER.X - 30, DEALER.Z - 26), Vector2.new(DEALER.X + 3
 rect(canvas, Meadow.LandOffice.min, Meadow.LandOffice.max, Rustic.WoodDark, 3)
 rect(canvas, Vector2.new(14, -24), Vector2.new(30, -12), Rustic.WoodDark, 3) -- hay shop
 rect(canvas, Vector2.new(48, -40), Vector2.new(96, -10), Rustic.Stone, 3) -- HAY SELL SHOP slab and belts
+for _, zone in Meadow.Flat do
+	if zone.name == "Bank" then
+		rect(canvas, zone.min, zone.max, Rustic.StoneDark, 3) -- Meadow Savings & Loan
+	end
+end
 
 -- Plots, colored by owner.
 local plotFrames = {}

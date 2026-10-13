@@ -4,7 +4,9 @@
 --
 -- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
 -- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
--- once it is ready. A slot keeps cash, owned trucks and trailers, and the land plot with everything built on it.
+-- once it is ready. A slot keeps cash, owned trucks and trailers, gloves, the needles in your pocket, the land plot
+-- with everything built on it (and the needles in its bin), and the bank account (balance, loans and history, see
+-- Bank.luau).
 -- Players listed in Config/Land.luau Presets start an empty slot as their preset farm instead of from nothing.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -97,6 +99,20 @@ local function stringList(list)
 	return out
 end
 
+-- { [needleId] = count } with only sane entries.
+local function countMap(map)
+	local out = {}
+	if typeof(map) == "table" then
+		for id, count in map do
+			if typeof(id) == "string" and typeof(count) == "number" and count >= 1 then
+				out[id] = math.floor(count)
+			end
+		end
+	end
+	return out
+end
+Data.countMap = countMap
+
 local function presetFor(player)
 	for _, preset in LandConfig.Presets do
 		if table.find(preset.userIds, player.UserId) then
@@ -106,9 +122,36 @@ local function presetFor(player)
 	return nil
 end
 
+-- The bank account part of a save (Bank.luau), checked field by field.
+local function bankFrom(saved)
+	if typeof(saved) ~= "table" then
+		return nil
+	end
+	local function num(v)
+		return typeof(v) == "number" and v == v and v or 0
+	end
+	local bank = { balance = num(saved.balance), earned = num(saved.earned), loans = {}, history = {} }
+	if typeof(saved.loans) == "table" then
+		for kind, loan in saved.loans do
+			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then
+				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
+			end
+		end
+	end
+	if typeof(saved.history) == "table" then
+		for _, h in saved.history do
+			if typeof(h) == "table" and typeof(h.kind) == "string" then
+				table.insert(bank.history, { t = num(h.t), kind = h.kind, amount = num(h.amount), note = typeof(h.note) == "string" and h.note or "" })
+			end
+		end
+	end
+	return bank
+end
+
 local function summarize(saved)
+	local bank = bankFrom(saved.bank)
 	return {
-		cash = typeof(saved.cash) == "number" and saved.cash or 0,
+		cash = (typeof(saved.cash) == "number" and saved.cash or 0) + (bank and bank.balance or 0),
 		plot = typeof(saved.land) == "table" and saved.land.owned and saved.land.plot or nil,
 		trucks = #stringList(saved.trucks),
 		savedAt = os.time(),
@@ -125,7 +168,14 @@ local function stateFrom(saved)
 		carryBale = nil,
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
-		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... } } once a plot is bought.
+		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
+		-- gloves: { owned = { id, ... }, worn = id }, kept by Gloves.luau. nil in saves from before gloves were saved.
+		gloves = typeof(saved.gloves) == "table" and { owned = stringList(saved.gloves.owned), worn = saved.gloves.worn }
+			or nil,
+		-- bank: { balance, earned, loans = { truck|land = { owed, principal, item, takenAt } }, history } (Bank.luau)
+		bank = bankFrom(saved.bank),
+		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... }, needles = { [id] = count } }
+		-- once a plot is bought. needles are the ones in the plot's bin.
 		land = nil,
 		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
@@ -136,6 +186,7 @@ local function stateFrom(saved)
 			owned = saved.land.owned == true,
 			plot = typeof(saved.land.plot) == "number" and saved.land.plot or nil,
 			items = saved.land.items,
+			needles = countMap(saved.land.needles),
 		}
 	end
 	return state
@@ -153,11 +204,28 @@ function Data.sync(player)
 	if Config.InfiniteMoney then
 		state.cash = INFINITE_CASH -- topped back up after every purchase
 	end
-	player:SetAttribute("Cash", state.cash)
+	-- Cash is what you can spend: wallet plus bank balance, since shops take from the bank once the wallet is empty.
+	-- Wallet, BankBalance and LoanOwed are the real figures for the bank HUD (they stay real with InfiniteMoney on).
+	local bank = state.bank
+	local balance = bank and bank.balance or 0
+	local owed = 0
+	for _, loan in (bank and bank.loans or {}) do
+		owed += loan.owed
+	end
+	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance)
+	player:SetAttribute("Wallet", if Config.InfiniteMoney then state.savedCash or 0 else state.cash)
+	player:SetAttribute("BankBalance", balance)
+	player:SetAttribute("LoanOwed", owed)
 	player:SetAttribute("LoadHay", state.loadHay)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
+	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
+	local held = 0
+	for _, count in state.pocket do
+		held += count
+	end
+	player:SetAttribute("NeedlesHeld", held)
 end
 
 function Data.toast(player, text)
@@ -194,18 +262,19 @@ function Data.listSlots(player)
 		task.wait(0.1)
 	end
 	local list = summaries[player] or {}
-	local preset = presetFor(player) ~= nil
+	local preset = presetFor(player)
 	local out = {}
 	for slot = 1, Data.SLOTS do
 		local s = list[slot]
 		out[slot] = s and { used = true, cash = s.cash, plot = s.plot, trucks = s.trucks, savedAt = s.savedAt }
-			or { used = false, preset = preset }
+			or { used = false, preset = preset ~= nil, plot = preset and preset.land and preset.land.plot or nil }
 	end
 	return out, store ~= nil and player:GetAttribute("SavesOnline") == true
 end
 
--- Loads a slot and starts the game for this player. Returns ok and a message.
-function Data.choose(player, slot)
+-- Loads a slot and starts the game for this player. plot is the plot they picked in the picker (or nil): Land.luau
+-- puts the save's farm there, or buys it for a save with no land yet. Returns ok and a message.
+function Data.choose(player, slot, plot)
 	if states[player] or choosing[player] then
 		return false, "Already playing."
 	end
@@ -234,6 +303,8 @@ function Data.choose(player, slot)
 	end
 	local state = stateFrom(saved)
 	state.slot = slot
+	state.fresh = fresh
+	state.pickedPlot = typeof(plot) == "number" and plot or nil
 	states[player] = state
 	choosing[player] = nil
 	player:SetAttribute("SaveSlot", slot)
@@ -255,7 +326,16 @@ function Data.save(player)
 	end
 	-- With infinite money on, the save keeps the balance the player had before, not the test cash.
 	local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land, tutorial = state.tutorial }
+	local saved = {
+		cash = cash,
+		trucks = state.trucks,
+		trailers = state.trailers,
+		pocket = state.pocket,
+		gloves = state.gloves,
+		land = state.land,
+		bank = state.bank,
+		tutorial = state.tutorial,
+	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
 		list[state.slot] = summarize(saved)
@@ -299,8 +379,8 @@ function Data.start()
 		end
 		return slots, online
 	end
-	choose.OnServerInvoke = function(player, slot)
-		local ok, result, message = pcall(Data.choose, player, slot)
+	choose.OnServerInvoke = function(player, slot, plot)
+		local ok, result, message = pcall(Data.choose, player, slot, plot)
 		if not ok then
 			choosing[player] = nil
 			warn("[Needlewood] slot load failed: " .. tostring(result))

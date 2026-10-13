@@ -1,6 +1,6 @@
 --!nonstrict
--- Everything the shop page lists and the goal bar counts toward, read from the price configs. When the central
--- price config lands ("Economy and banking"), point the reads below at it; the shop and goal bar follow.
+-- Everything the shop page lists and the goal bar counts toward. Prices come from Config/Prices (the one price
+-- config, "Economy and banking"); the item configs give names and blurbs.
 -- Client only: ownership comes from this player's attributes.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -10,6 +10,7 @@ local Trucks = require(Config:WaitForChild("Trucks"))
 local Trailers = require(Config:WaitForChild("Trailers"))
 local Gloves = require(Config:WaitForChild("Gloves"))
 local LandConfig = require(Config:WaitForChild("Land"))
+local Prices = require(Config:WaitForChild("Prices"))
 
 local Catalog = {}
 
@@ -53,7 +54,7 @@ function Catalog.items(tab)
 				id = def.id,
 				name = def.name,
 				blurb = def.blurb,
-				price = def.price,
+				price = Prices.Trucks[def.id] or def.price,
 				state = owned[def.id] and "owned" or def.available and "buy" or "soon",
 				place = "dealer",
 			})
@@ -72,7 +73,7 @@ function Catalog.items(tab)
 						def.scoopBonus,
 						math.round(def.relief * 100)
 					),
-					price = def.price,
+					price = Prices.Gloves[def.id] or def.price,
 					state = def.id == wearing and "wearing" or owned[def.id] and "owned" or "buy",
 					place = "gloves",
 				})
@@ -99,7 +100,7 @@ function Catalog.items(tab)
 						info:GetAttribute("OwnerName") or "someone"
 					) or "")
 					.. (mine > 0 and index ~= mine and " One plot per save." or ""),
-				price = def.price,
+				price = Prices.Plot or def.price,
 				state = rowState,
 				place = "landoffice",
 			})
@@ -111,7 +112,7 @@ function Catalog.items(tab)
 				id = def.id,
 				name = def.name,
 				blurb = def.blurb,
-				price = def.price,
+				price = Prices.Pieces[def.id] or def.price,
 				state = hasLand and "buy" or "needland",
 				place = hasLand and "plot" or "landoffice",
 			})
@@ -122,7 +123,7 @@ function Catalog.items(tab)
 				id = def.id,
 				name = def.name,
 				blurb = ("Holds %d bales a layer."):format(def.along * def.across),
-				price = def.price,
+				price = Prices.Trailers[def.id] or def.price,
 				state = "soon",
 				place = nil,
 			})
@@ -203,29 +204,20 @@ local LADDER = {
 	},
 }
 
--- Prices in the ladder follow the configs where they exist.
-for _, def in Gloves.Tiers do
+-- Ladder prices from the one price config.
+local function ladderPrice(name, price)
 	for _, step in LADDER do
-		if step.name == def.name then
-			step.price = def.price
+		if step.name == name then
+			step.price = price
 		end
 	end
 end
-for _, def in Trucks do
-	if def.id == "rusty_pickup" then
-		LADDER[5].price = def.price
-	end
+for _, def in Gloves.Tiers do
+	ladderPrice(def.name, Prices.Gloves[def.id] or def.price)
 end
-for _, def in LandConfig.Pieces do
-	if def.id == "hand_sieve" then
-		LADDER[3].price = def.price
-	end
-end
-local cheapest = math.huge
-for _, def in LandConfig.Plots do
-	cheapest = math.min(cheapest, def.price)
-end
-LADDER[2].price = cheapest
+ladderPrice("the Rusty Pickup", Prices.Trucks.rusty_pickup)
+ladderPrice("a Hand Sieve", Prices.Pieces.hand_sieve)
+ladderPrice("your first plot", Prices.Plot)
 
 -- { name, price, place } for the next thing to save for, or nil when the ladder is done.
 function Catalog.nextGoal()
