@@ -479,4 +479,38 @@ return function(SelfTest)
 			t.wait(0.5)
 		end
 	end)
+
+	-- A new player's first cash (CEO goal: under 90 s): walk from the spawn to the nearest field pile, scoop once,
+	-- carry it to the SELL HERE pad. Timed on the straight-line distances, with the walk doubled for paths and the
+	-- loaded leg at the slowest carry speed (Gloves MinWalkSpeed), plus a few seconds of scooping and the pad's tick.
+	SelfTest.register("Biome first cash", function(t)
+		local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
+		local world = workspace:FindFirstChild("Needlewood")
+		local spawn = world and world:FindFirstChild("BaseCampSpawn")
+		local pad = world and world:FindFirstChild("SellPad")
+		if not (spawn and pad and Hay.folder) then
+			t.skip("first cash within 90 s", "no Needlewood spawn, sell pad or hay folder")
+			return
+		end
+		local function flat(a, b)
+			return ((a - b) * Vector3.new(1, 0, 1)).Magnitude
+		end
+		local nearest, toPile
+		for _, p in Hay.folder:GetChildren() do
+			if p:IsA("BasePart") and Hay.isFieldPile(p) then
+				local d = flat(spawn.Position, p.Position)
+				if not toPile or d < toPile then
+					nearest, toPile = p, d
+				end
+			end
+		end
+		if not t.check("a field pile grows near the spawn", nearest ~= nil and toPile < 150, toPile and ("%.0f studs away"):format(toPile) or "no field pile at all") then
+			return
+		end
+		local toPad = flat(nearest.Position, pad.Position)
+		t.check("the sell pad is a short carry from that pile", toPad < 150, ("%.0f studs"):format(toPad))
+		local PATH = 2 -- detours round fences, hills and buildings
+		local seconds = toPile * PATH / 16 + GameConfig.ScoopCooldownSeconds * 3 + toPad * PATH / GloveConfig.MinWalkSpeed + 1
+		t.check("first cash within 90 s", seconds < 90, ("about %.0f s (%.0f studs to the pile, %.0f to the pad)"):format(seconds, toPile, toPad))
+	end)
 end
