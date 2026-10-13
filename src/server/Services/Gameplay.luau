@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 
@@ -29,10 +30,9 @@ local function sellHay(player)
 
 	local hay, needles = state.loadHay, state.loadNeedles
 	local value = Economy.rawLoadValue(hay, needles)
-	state.cash += value
 	state.loadHay = 0
 	state.loadNeedles = 0
-	Data.sync(player)
+	Bank.earn(player, value, "Hay shop")
 	Data.toast(
 		player,
 		("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
@@ -51,8 +51,7 @@ local function sellBale(b)
 
 	local state = owner and Data.get(owner)
 	if state then
-		state.cash += value
-		Data.sync(owner)
+		Bank.earn(owner, value, "Hay shop")
 		Data.toast(
 			owner,
 			("Sold a bale: %d hay for $%d. The shop found %d needles and paid $1 each."):format(hay, value, needles)
@@ -81,8 +80,7 @@ local function sellPieces(pieces)
 			-- Hidden needles in loose hay pay the raw price; needles lying in plain sight pay their full value.
 			local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 			local value = Economy.rawLoadValue(hay, needles) + (needlesByOwner[ownerId] or 0)
-			state.cash += value
-			Data.sync(owner)
+			Bank.earn(owner, value, "Hay shop")
 			Data.toast(owner, ("Sold %d loose hay for $%d. The shop found %d needles."):format(hay, value, needles))
 		end
 	end

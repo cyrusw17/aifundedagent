@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local GloveLooks = require(script.Parent.GloveLooks)
 
 local Gloves = {}
@@ -142,13 +143,12 @@ function Gloves.buyOrWear(player, id)
 		return
 	end
 	if not owned[player][id] then
-		if state.cash < def.price then
-			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, state.cash))
+		local paid = Bank.charge(player, def.price, def.name)
+		if not paid then
+			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, Bank.spendable(state)))
 			return
 		end
-		state.cash -= def.price
 		owned[player][id] = true
-		Data.sync(player)
 		Data.toast(player, ("Bought %s. Heavier hay slows you less and you scoop more."):format(def.name))
 	elseif worn[player] == id then
 		return

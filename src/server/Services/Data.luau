@@ -4,7 +4,8 @@
 --
 -- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
 -- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
--- once it is ready. A slot keeps cash, owned trucks and trailers, and the land plot with everything built on it.
+-- once it is ready. A slot keeps cash, owned trucks and trailers, the land plot with everything built on it, and the
+-- bank account (balance, loans and history, see Bank.luau).
 -- Players listed in Config/Land.luau Presets start an empty slot as their preset farm instead of from nothing.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -106,9 +107,36 @@ local function presetFor(player)
 	return nil
 end
 
+-- The bank account part of a save (Bank.luau), checked field by field.
+local function bankFrom(saved)
+	if typeof(saved) ~= "table" then
+		return nil
+	end
+	local function num(v)
+		return typeof(v) == "number" and v == v and v or 0
+	end
+	local bank = { balance = num(saved.balance), earned = num(saved.earned), loans = {}, history = {} }
+	if typeof(saved.loans) == "table" then
+		for kind, loan in saved.loans do
+			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then
+				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
+			end
+		end
+	end
+	if typeof(saved.history) == "table" then
+		for _, h in saved.history do
+			if typeof(h) == "table" and typeof(h.kind) == "string" then
+				table.insert(bank.history, { t = num(h.t), kind = h.kind, amount = num(h.amount), note = typeof(h.note) == "string" and h.note or "" })
+			end
+		end
+	end
+	return bank
+end
+
 local function summarize(saved)
+	local bank = bankFrom(saved.bank)
 	return {
-		cash = typeof(saved.cash) == "number" and saved.cash or 0,
+		cash = (typeof(saved.cash) == "number" and saved.cash or 0) + (bank and bank.balance or 0),
 		plot = typeof(saved.land) == "table" and saved.land.owned and saved.land.plot or nil,
 		trucks = #stringList(saved.trucks),
 		savedAt = os.time(),
@@ -125,6 +153,8 @@ local function stateFrom(saved)
 		carryBale = nil,
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
+		-- bank: { balance, earned, loans = { truck|land = { owed, principal, item, takenAt } }, history } (Bank.luau)
+		bank = bankFrom(saved.bank),
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... } } once a plot is bought.
 		land = nil,
 	}
@@ -151,7 +181,18 @@ function Data.sync(player)
 	if Config.InfiniteMoney then
 		state.cash = INFINITE_CASH -- topped back up after every purchase
 	end
-	player:SetAttribute("Cash", state.cash)
+	-- Cash is what you can spend: wallet plus bank balance, since shops take from the bank once the wallet is empty.
+	-- Wallet, BankBalance and LoanOwed are the real figures for the bank HUD (they stay real with InfiniteMoney on).
+	local bank = state.bank
+	local balance = bank and bank.balance or 0
+	local owed = 0
+	for _, loan in (bank and bank.loans or {}) do
+		owed += loan.owed
+	end
+	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance)
+	player:SetAttribute("Wallet", if Config.InfiniteMoney then state.savedCash or 0 else state.cash)
+	player:SetAttribute("BankBalance", balance)
+	player:SetAttribute("LoanOwed", owed)
 	player:SetAttribute("LoadHay", state.loadHay)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
@@ -253,7 +294,7 @@ function Data.save(player)
 	end
 	-- With infinite money on, the save keeps the balance the player had before, not the test cash.
 	local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land }
+	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land, bank = state.bank }
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
 		list[state.slot] = summarize(saved)

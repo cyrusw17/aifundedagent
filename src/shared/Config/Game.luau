@@ -1,8 +1,9 @@
 --!strict
 -- Tunable numbers for the first slice. All placeholders to adjust from playtests.
+local Prices = require(script.Parent.Prices)
 return {
 	CarryCapacity = 60, -- hay a player can hold in their arms and pockets at once
-	NeedleChancePerHay = 0.2, -- meadow bales hide about 20 needles per 100 hay
+	NeedleChancePerHay = Prices.needleChance("meadow"), -- Meadow bales hide 2 needles on average (Config/Prices)
 	AutosaveSeconds = 60,
 
 	-- TESTING: every player has endless cash, so shops can be tried without grinding. Real balances are kept and
@@ -11,7 +12,8 @@ return {
 
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,
-	VisibleNeedleChance = 0.2, -- per spill wave (3 per bale): a needle you can see and scoop
+	-- Per spill wave (3 per bale): a needle you can see and pick up. A quarter of a bale's hidden needles on average.
+	VisibleNeedleChance = Prices.NeedlesPerBale.meadow * Prices.VisibleNeedleShare / 3,
 	PiecesPerBale = 90, -- small straw strands spilled by one bale
 	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away
