@@ -1,4 +1,7 @@
 --!nonstrict
+-- STAND-IN delivery trailer, to be replaced by the shared driveable truck (Starting biome thread). It is moved by
+-- script, so its bales are welded down only while it drives; at the dock they are let go and unloaded by Dock.luau,
+-- which works for any truck. Delete this file once the real truck can back up to the dock.
 -- The hay trailer. A truck pulls a long trailer stacked with bales up the road, then backs it up to the loading
 -- dock at the start of the conveyor line. On unload, the trailer's walking floor slides the whole load out the back
 -- onto the belt. Then the truck drives off. One trailer at a time.
@@ -8,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Bales = require(script.Parent.Bales)
+local Dock = require(script.Parent.Dock)
 
 local Trailer = {}
 
@@ -218,9 +222,9 @@ local function despawnLater(b)
 	end)
 end
 
--- Starts the walking floor: the bed slides everything out the open back onto the belt.
+-- Lets the bales go loose and has the dock slide them out the open back onto the belt.
 function Trailer.unload()
-	if not current or Trailer.state ~= "parked" then
+	if not current or Trailer.state ~= "parked" or Dock.isBusy() then
 		return false
 	end
 	local rig = current
@@ -238,30 +242,9 @@ function Trailer.unload()
 			despawnLater(b)
 		end
 	end
-	rig.bed.AssemblyLinearVelocity = -rig.model.PrimaryPart.CFrame.LookVector * Factory.WalkingFloorSpeed
-
-	task.spawn(function()
-		-- Wait until the bed is empty (or give up after a while so a stuck bale cannot hold the dock forever).
-		local started = os.clock()
-		while os.clock() - started < 30 do
-			task.wait(0.5)
-			local onBed = false
-			local bedCenter = rig.bed.Position
-			for _, b in rig.bales do
-				if not b.gone and not b.carriedBy then
-					local flat = b.body.Position - bedCenter
-					if math.abs(rig.bed.CFrame:VectorToObjectSpace(flat).Z) < BED_LENGTH / 2 and math.abs(flat.Y) < 8 then
-						onBed = true
-					end
-				end
-			end
-			if not onBed then
-				break
-			end
-		end
-		rig.bed.AssemblyLinearVelocity = Vector3.zero
+	-- The dock pushes the now-loose bales off the back onto the belt, then the truck leaves.
+	Dock.unload(function()
 		task.wait(1)
-
 		setState("leaving")
 		local from = rig.model:GetPivot()
 		drive(rig, 1.5, function(alpha)
