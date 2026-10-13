@@ -5,7 +5,7 @@
 return {
 	-- Change Version whenever the layout or noise changes. A place that was baked in Studio with an older version
 	-- gets regenerated when you press Play.
-	Version = 4,
+	Version = 5,
 	Seed = 7, -- shifts the noise; same seed always gives the same hills
 
 	HalfSize = 512, -- the biome is 1024 x 1024 studs, centered on base camp
@@ -37,6 +37,7 @@ return {
 		{ name = "StoneRing", min = Vector2.new(-222, -167), max = Vector2.new(-188, -133), blend = 25 },
 		{ name = "OldWell", min = Vector2.new(197, -183), max = Vector2.new(213, -167), blend = 20 },
 		{ name = "CropCircle", min = Vector2.new(228, -322), max = Vector2.new(272, -278), blend = 30 },
+		{ name = "CornMaze", min = Vector2.new(220, 104), max = Vector2.new(304, 196), blend = 30 },
 	},
 
 	-- Dirt roads, painted into the terrain and leveled. Each is a list of points.
@@ -71,6 +72,7 @@ return {
 		{ min = Vector2.new(-220, -165), max = Vector2.new(-190, -135) },
 		{ min = Vector2.new(197, -183), max = Vector2.new(213, -167) },
 		{ min = Vector2.new(230, -320), max = Vector2.new(270, -280) },
+		{ min = Vector2.new(222, 106), max = Vector2.new(302, 194) }, -- the corn maze
 	},
 	BuildingMargin = 22, -- "not super close to things like the shop"
 	RoadMargin = 10, -- from the road's center line

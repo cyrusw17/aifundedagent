@@ -776,11 +776,11 @@ local function setTool(name)
 	describeSelection()
 end
 
--- PRESETS: save the clipboard as a named line blueprint (kept in the save slot), or load one back into the clipboard
+-- LAYOUTS: save the clipboard as a named layout (kept in the save slot), or load one back into the clipboard
 -- to PASTE on any plot (Services/Blueprints.luau).
 local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
-local presetButton = button(actions, "PRESETS", PICKED)
-presetButton.Size = UDim2.fromOffset(100, 34)
+local presetButton = button(actions, "LAYOUTS", PICKED)
+presetButton.Size = UDim2.fromOffset(100, 34) -- "layouts", not "blueprints": those are the fill-in templates
 presetButton.Visible = blueprintRemotes ~= nil
 local presetPanel = Instance.new("Frame")
 presetPanel.AnchorPoint = Vector2.new(0.5, 1)
@@ -793,12 +793,12 @@ corner(presetPanel, 12)
 local presetStroke = Instance.new("UIStroke", presetPanel)
 presetStroke.Color = INK
 presetStroke.Thickness = 2
-text(presetPanel, "LINE PRESETS", 16, 8, 20)
-local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a preset on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
+text(presetPanel, "SAVED LAYOUTS", 16, 8, 20)
+local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a layout on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
 local nameBox = Instance.new("TextBox")
 nameBox.Position = UDim2.fromOffset(14, 62)
 nameBox.Size = UDim2.new(1, -118, 0, 30)
-nameBox.PlaceholderText = "Preset name"
+nameBox.PlaceholderText = "Layout name"
 nameBox.Text = ""
 nameBox.ClearTextOnFocus = false
 nameBox.Font = F.Bold
@@ -867,7 +867,7 @@ local function refreshPresets()
 		end)
 	end
 	if #saved == 0 then
-		presetMessage.Text = "No presets yet. COPY an area of your line, name it, and SAVE."
+		presetMessage.Text = "No saved layouts yet. COPY an area of your line, name it, and SAVE."
 	end
 end
 
@@ -1027,18 +1027,18 @@ local nameStroke = Instance.new("UIStroke", namePanel)
 nameStroke.Color = INK
 nameStroke.Thickness = 2
 text(namePanel, "NAME YOUR FARM", 16, 8, 20)
-local nameBox = Instance.new("TextBox")
-nameBox.Position = UDim2.fromOffset(14, 36)
-nameBox.Size = UDim2.new(1, -28, 0, 30)
-nameBox.Font = F.Bold
-nameBox.TextSize = 15
-nameBox.TextColor3 = INK
-nameBox.BackgroundColor3 = CARD
-nameBox.PlaceholderText = "Up to 24 letters"
-nameBox.ClearTextOnFocus = false
-nameBox.Text = ""
-nameBox.Parent = namePanel
-corner(nameBox, 6)
+local farmNameBox = Instance.new("TextBox")
+farmNameBox.Position = UDim2.fromOffset(14, 36)
+farmNameBox.Size = UDim2.new(1, -28, 0, 30)
+farmNameBox.Font = F.Bold
+farmNameBox.TextSize = 15
+farmNameBox.TextColor3 = INK
+farmNameBox.BackgroundColor3 = CARD
+farmNameBox.PlaceholderText = "Up to 24 letters"
+farmNameBox.ClearTextOnFocus = false
+farmNameBox.Text = ""
+farmNameBox.Parent = namePanel
+corner(farmNameBox, 6)
 local nameSave = button(namePanel, "SAVE NAME", GREEN)
 nameSave.Position = UDim2.fromOffset(14, 72)
 nameSave.Size = UDim2.fromOffset(140, 30)
@@ -1050,7 +1050,7 @@ local function submitName()
 	if busy then
 		return
 	end
-	local value = string.sub(nameBox.Text, 1, 60)
+	local value = string.sub(farmNameBox.Text, 1, 60)
 	busy = true
 	local ok, done, message = pcall(function()
 		return nameRemote:InvokeServer(value)
@@ -1071,15 +1071,15 @@ nameButton.Activated:Connect(function()
 	namePanel.Visible = not namePanel.Visible
 	if namePanel.Visible then
 		local info = myPlot()
-		nameBox.Text = info and info:GetAttribute("FarmName") or ""
-		nameBox:CaptureFocus()
+		farmNameBox.Text = info and info:GetAttribute("FarmName") or ""
+		farmNameBox:CaptureFocus()
 	end
 end)
 nameSave.Activated:Connect(submitName)
 nameCancel.Activated:Connect(function()
 	namePanel.Visible = false
 end)
-nameBox.FocusLost:Connect(function(enter)
+farmNameBox.FocusLost:Connect(function(enter)
 	if enter then
 		submitName()
 	end

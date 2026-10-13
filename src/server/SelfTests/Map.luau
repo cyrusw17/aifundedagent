@@ -186,6 +186,28 @@ return function(SelfTest)
 		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")
 		Weather.set("desert", desertWas)
 
+		-- Region events ----------------------------------------------------------------------------------------
+		local RegionEvents = require(Services.RegionEvents)
+		local dropped = RegionEvents.run("sandstorm", 1)
+		local count, strong = 0, 0
+		for b in dropped do
+			count += 1
+			if b.body:GetAttribute("NeedleBoost") == Prices.RegionEvents.sandstorm.boost then
+				strong += 1
+			end
+		end
+		t.check("a Sandstorm drops boosted bales on the Dunes", count > 0 and strong == count, ("%d bales, %d boosted"):format(count, strong))
+		t.equal("...and blows dust there", Weather.get("desert"), "dust")
+		RegionEvents.finish()
+		local left = 0
+		for b in dropped do
+			if not b.gone then
+				left += 1
+			end
+		end
+		t.equal("untouched event bales are taken away when it ends", left, 0)
+		Weather.set("desert", desertWas)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")
