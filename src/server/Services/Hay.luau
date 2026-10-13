@@ -16,10 +16,10 @@ local count = 0
 local overlap = OverlapParams.new()
 
 local COLORS = {
-	Color3.fromRGB(232, 201, 90),
-	Color3.fromRGB(220, 184, 70),
-	Color3.fromRGB(244, 218, 120),
-	Color3.fromRGB(205, 170, 60),
+	Color3.fromRGB(219, 204, 153),
+	Color3.fromRGB(189, 168, 112),
+	Color3.fromRGB(168, 149, 95),
+	Color3.fromRGB(133, 115, 71),
 }
 
 Hay.folder = nil

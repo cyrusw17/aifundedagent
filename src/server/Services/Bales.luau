@@ -23,8 +23,8 @@ local byBody = {} -- bale body part -> bale record
 
 local SIZE = Vector3.new(4.6, 2.6, 3.2) -- length, height, depth of one bale
 local CARRY_OFFSET = CFrame.new(0, 0.4, -2.8)
-local HAY = Color3.fromRGB(226, 190, 92)
-local TWINE = Color3.fromRGB(120, 86, 48)
+local HAY = Color3.fromRGB(189, 168, 112) -- rustic palette: muted, weathered
+local TWINE = Color3.fromRGB(97, 84, 66)
 local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
 
 local function buildBale(position)
@@ -196,7 +196,7 @@ local function burstEffects(position)
 	dust.Lifetime = NumberRange.new(0.8, 1.4)
 	dust.Speed = NumberRange.new(3, 8)
 	dust.SpreadAngle = Vector2.new(180, 180)
-	dust.Color = ColorSequence.new(Color3.fromRGB(200, 180, 140))
+	dust.Color = ColorSequence.new(Color3.fromRGB(175, 160, 125))
 	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
 	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
 	dust.Parent = anchor
