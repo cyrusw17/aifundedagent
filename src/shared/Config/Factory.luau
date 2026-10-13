@@ -11,5 +11,12 @@ return {
 
 	NeedleId = "steel", -- Meadow hay holds steel needles (Needles.luau)
 
-	LooseBaleSeconds = 180, -- a sorted bale that falls off the line disappears after this long
+	LooseBaleSeconds = 180,
+
+	-- Sorter oil: click the oil can on a sorter to buy a can. It sorts faster for the next OilBales bales.
+	-- (Price to move into the central price config once Economy has one.)
+	OilPrice = 250,
+	OilBales = 25,
+	OilSpeedup = 0.1, -- 10% faster
+	OilMaxBales = 75, -- at most three cans' worth stacked -- a sorted bale that falls off the line disappears after this long
 }

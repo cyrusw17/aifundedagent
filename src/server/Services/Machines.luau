@@ -257,6 +257,21 @@ function Machines.sorter(parent, frame, tierId, bin)
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
 	local label = sign(roof, tier.name:upper(), Vector3.new(0, 4, 0))
+
+	-- The oil can on the right side: click it to buy a can of oil, and the sorter works faster for a while.
+	local canModel = Instance.new("Model")
+	canModel.Name = "OilCan"
+	canModel.Parent = model
+	local canBase = center * CFrame.new(T / 2 + 0.6, TOP - 0.6, 1)
+	part(canModel, "Shelf", Vector3.new(1.4, 0.2, 1.6), canBase * CFrame.new(0, -0.1, 0), C.wood, Enum.Material.WoodPlanks)
+	local can = part(canModel, "Can", Vector3.new(1.3, 0.9, 0.9), canBase * CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.pi / 2), C.darkMetal, Enum.Material.Metal)
+	can.Shape = Enum.PartType.Cylinder
+	part(canModel, "Spout", Vector3.new(0.15, 0.15, 0.9), canBase * CFrame.new(0, 1.4, -0.35) * CFrame.Angles(math.rad(-35), 0, 0), C.metal, Enum.Material.Metal)
+	local oilClick = Instance.new("ClickDetector")
+	oilClick.MaxActivationDistance = 14
+	oilClick.Parent = can
+	Skins.dress("sorter_boost_oil", can, canModel, canBase)
+	local oiled = 0 -- bales left that sort faster
 	-- The tier's Blender machine, when it was imported (the hand sieve is a hand tool, not a machine).
 	if tier.id ~= "hand_sieve" then
 		Skins.dress(tier.id, roof, model, center)
@@ -276,12 +291,48 @@ function Machines.sorter(parent, frame, tierId, bin)
 	local out = center * CFrame.new(0, TOP + 1.45, -T + 2) * CFrame.Angles(0, math.pi / 2, 0)
 	local sorted = 0
 
+	local function refreshLabel()
+		label.Text = ("%s\n%d bales sorted, finds %d%%%s"):format(
+			tier.name:upper(),
+			sorted,
+			math.round(tier.recovery * 100),
+			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or ""
+		)
+		can.Color = oiled > 0 and C.go or C.darkMetal
+	end
+
+	oilClick.MouseClick:Connect(function(player)
+		local state = Data.get(player)
+		if not state then
+			return
+		end
+		if oiled + Factory.OilBales > Factory.OilMaxBales then
+			Data.toast(player, ("This sorter is already well oiled (%d bales)."):format(oiled))
+			return
+		end
+		if state.cash < Factory.OilPrice then
+			Data.toast(player, ("Sorter oil costs $%d. You have $%d."):format(Factory.OilPrice, state.cash))
+			return
+		end
+		state.cash -= Factory.OilPrice
+		Data.sync(player)
+		oiled += Factory.OilBales
+		refreshLabel()
+		Feedback.play("Scoop", can)
+		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Factory.OilSpeedup * 100), Factory.OilBales))
+	end)
+
 	local function sort(hay, ownerId)
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
 		local started = os.clock()
-		while os.clock() - started < Machines.sortSeconds(tier.id, hay) do
+		local seconds = Machines.sortSeconds(tier.id, hay)
+		if oiled > 0 then
+			seconds /= 1 + Factory.OilSpeedup
+			oiled -= 1
+		end
+		while os.clock() - started < seconds do
 			roof.CFrame = rest * CFrame.new(rng:NextNumber(-0.08, 0.08), rng:NextNumber(-0.05, 0.05), 0)
 			task.wait(0.05)
 		end
@@ -302,7 +353,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 		end
 		spawnSortedBale(out, ownerId, hay)
 		sorted += 1
-		label.Text = ("%s\n%d bales sorted, finds %d%%"):format(tier.name:upper(), sorted, math.round(tier.recovery * 100))
+		refreshLabel()
 	end
 
 	task.spawn(function()
