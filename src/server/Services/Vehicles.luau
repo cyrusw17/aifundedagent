@@ -51,6 +51,10 @@ local SHAPES = {
 		bedGap = 0.4, -- between the cab and the bed
 		meshSize = Vector3.new(10.9, 9.2, 27.5), -- the box the Blender mesh is stretched over
 	},
+	-- The other trucks keep the default body; these widths match their re-exported Blender meshes.
+	farm_flatbed = { bedW = 11.4, meshW = 11.4 },
+	box_truck = { bedW = 11.1, meshW = 11.1 },
+	heavy_hauler = { meshW = 12.2 }, -- bed stays 10.2 inside; the mesh's extra width is fenders and racks
 }
 
 local function shapeOf(def)
@@ -257,7 +261,13 @@ function Vehicles.build(def, pivot, parent)
 	end
 
 	-- The Blender mesh, when imported, takes over the look. The parts stay for collisions.
-	local meshSize = S.meshSize or Vector3.new(6, cabTop, L + 0.6)
+	local top = cabTop
+	if def.style == "box" then
+		top = DECK + 8.8 -- the cargo box stands above the cab
+	elseif def.style == "semi" then
+		top = DECK + 9.5 -- exhaust stacks
+	end
+	local meshSize = S.meshSize or Vector3.new(S.meshW or math.max(BED_W, CAB_W), top, L + 0.6)
 	local mesh = Props.make(def.id, pivot * CFrame.new(0, meshSize.Y / 2, 0), meshSize, def.meshTurn and CFrame.Angles(0, math.rad(def.meshTurn), 0))
 	if mesh then
 		-- The parts stay visible until this client has loaded the mesh (PropMeshes.client.luau), then hide.
