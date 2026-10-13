@@ -163,7 +163,9 @@ return {
 		needle_lite = 1.2, -- low-poly ground needle (46 tris), one shared mesh tinted per needle
 		needle_tiny = 1.2, -- the 26-tri one, no eye
 		rarity_needle = 1.2, -- the one needle mesh every rarity tier shares (same length as the game's needle)
-		-- Robux truck skins: same size as the cash truck each one repaints
+		-- Robux truck skins, measured from each .glb. Prices.Robux sells each as a skin of one cash truck tier; two were
+		-- modelled on another truck (timber_wolf_4x4 at the pickup's 27.6 for the Flatbed tier, prairie_schooner at the
+		-- flatbed's 24.5 for the Heavy Hauler tier), so Blender re-cuts them before the store goes live.
 		homestead_classic = 27.57,
 		timber_wolf_4x4 = 27.57,
 		midnight_express = 29.49,
