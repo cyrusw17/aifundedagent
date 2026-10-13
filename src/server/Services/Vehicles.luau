@@ -438,7 +438,8 @@ local function updateCargo()
 	for player, model in owned do
 		local chassis = model.PrimaryPart
 		local offset, size = model:GetAttribute("CargoOffset"), model:GetAttribute("CargoSize")
-		if not chassis or not offset or chassis.Anchored then
+		-- While the dock unloads (tailgate open), the dock owns the cargo's physics; leave it alone.
+		if not chassis or not offset or chassis.Anchored or model:GetAttribute("TailgateIsOpen") then
 			continue
 		end
 		for _, p in workspace:GetPartBoundsInBox(chassis.CFrame * offset, size) do
