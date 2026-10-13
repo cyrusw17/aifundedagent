@@ -148,13 +148,21 @@ def stage_rate(i, mult=None):
     return mult(i, rate) if mult else rate
 
 
-def timeline(mult=None):
-    """The first playthrough: [(name, price, stage, hours to afford, total hours, gross earned so far, note)]."""
+def paced(name, price, scale=None):
+    """Prices.PacingScale applied to a PLAN price (line_sim.pace; the Rusty Pickup is PacingKeep)."""
+    import line_sim  # noqa: E402  (reads Prices.luau; only the pacing dial comes from there)
+    return line_sim.pace("rusty_pickup" if name == "Rusty Pickup" else name, price, scale)
+
+
+def timeline(mult=None, scale=None):
+    """The first playthrough: [(name, price, stage, hours to afford, total hours, gross earned so far, note)].
+    Prices go through Prices.PacingScale (or scale, to try a value)."""
     rates = {i: stage_rate(i, mult) for i in range(1, len(STAGES) + 1)}
     clock, gross = 0.0, 0.0
     owed = {}  # loan kind -> amount still owed; one loan of each kind at a time, like the bank
     out = []
     for name, price, stage, loan in PLAN:
+        price = paced(name, price, scale)
         rate = rates[stage]
         need = price
         if loan:
@@ -182,6 +190,9 @@ def timeline(mult=None):
 
 
 if __name__ == "__main__":
+    import os
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     rows = []
     prev = SORTERS["none (public shop)"]
     for name, (rec, speed) in list(SORTERS.items())[1:]:
