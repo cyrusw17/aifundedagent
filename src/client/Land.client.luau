@@ -27,6 +27,7 @@ local moveRemote = state:WaitForChild("Move")
 local copyRemote = state:WaitForChild("Copy")
 local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
+local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -287,6 +288,8 @@ pasteButton.Size = UDim2.fromOffset(98, 34)
 local expandButton = button(actions, "EXPAND", GREEN)
 expandButton.Size = UDim2.fromOffset(130, 34)
 expandButton.Visible = false
+local themeButton = button(actions, "THEME", PICKED)
+themeButton.Size = UDim2.fromOffset(150, 34)
 local crewButton = button(actions, "CREW", PICKED)
 crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
@@ -837,6 +840,41 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		setTool("paste")
 	end
 end)
+
+-- THEME cycles the free plot themes (fence, sign and lamps).
+local function currentTheme()
+	local info = myPlot()
+	local id = info and info:GetAttribute("Theme") or ""
+	for i, theme in LandConfig.Themes do
+		if theme.id == id then
+			return i
+		end
+	end
+	return 1
+end
+local function refreshThemeButton()
+	themeButton.Text = "THEME: " .. LandConfig.Themes[currentTheme()].name:upper()
+end
+themeButton.Activated:Connect(function()
+	if busy then
+		return
+	end
+	local nextTheme = LandConfig.Themes[currentTheme() % #LandConfig.Themes + 1]
+	busy = true
+	local ok, done, message = pcall(function()
+		return themeRemote:InvokeServer(nextTheme.id)
+	end)
+	busy = false
+	if ok and message then
+		setInfo(message, done and GREEN or RED)
+	end
+	task.delay(0.2, refreshThemeButton)
+end)
+
+player:GetAttributeChangedSignal("LandPlot"):Connect(function()
+	task.delay(0.2, refreshThemeButton)
+end)
+refreshThemeButton()
 
 RunService.RenderStepped:Connect(updateGhost)
 

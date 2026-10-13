@@ -43,6 +43,12 @@ for _, def in LandConfig.Pieces do
 	pieces[def.id] = def
 end
 
+local themes = {}
+for _, theme in LandConfig.Themes do
+	themes[theme.id] = theme
+end
+local DEFAULT_THEME = LandConfig.Themes[1]
+
 local plots = {} -- index -> plot record
 local plotOf = {} -- player -> plot record
 local lastAction = {} -- player -> os.clock() of their last place or remove
@@ -54,6 +60,7 @@ local sign = Machines.sign
 
 -- A tile's key, as Conveyors.luau keys its grid: "gx,gz" on the ground, "gx,gz,1" on the raised belt level.
 local addBinPrompt -- defined with the plot setup below
+local dress -- plot themes, defined with the plot setup below
 
 local function key(gx, gz, level)
 	if level and level > 0 then
@@ -158,6 +165,7 @@ local function publish(plot)
 	info:SetAttribute("Crew", table.concat(crew, ","))
 	info:SetAttribute("Likes", plot.likes or 0)
 	info:SetAttribute("LockedRows", plot.locked or 0)
+	info:SetAttribute("Theme", plot.theme or "")
 	plot.likePrompt.Enabled = plot.ownerId ~= nil
 	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
@@ -570,6 +578,7 @@ local function saveItems(player, plot)
 	s.land.plot = plot.index
 	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
 	s.land.binSorted = plot.binSorted or nil
+	s.land.theme = plot.theme
 	s.land.needles = plot.bin.contents(player.UserId)
 	local crew = {}
 	for userId in plot.crew do
@@ -698,6 +707,7 @@ local function release(plot)
 	plot.leftOut = nil
 	plot.crew = {}
 	plot.locked = 0
+	dress(plot, nil)
 	drawLocks(plot)
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
@@ -722,6 +732,7 @@ local function claim(plot, player, saved)
 	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
+	dress(plot, saved.theme)
 	if saved.binSorted then
 		plot.binSorted = true
 		plot.bin.splitByType()
@@ -1081,6 +1092,25 @@ local function onExpand(player)
 	return true, ("Your plot grew by a row of %d tiles."):format(plot.tiles.X)
 end
 
+-- Puts the owner's plot in another theme (free).
+local function onTheme(player, id)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(id) ~= "string" or not themes[id] then
+		return false, nil
+	end
+	if os.clock() - (lastAction[player] or 0) < 0.5 then
+		return false, nil
+	end
+	lastAction[player] = os.clock()
+	dress(plot, id)
+	saveItems(player, plot)
+	publish(plot)
+	return true, ("Your farm is now %s."):format(themes[id].name:lower())
+end
+
 -- Adds (on = true) or removes a player from the owner's farm crew.
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
@@ -1112,16 +1142,49 @@ local function onCrew(player, userId, on)
 	return true, on and "Added to your crew." or "Removed from your crew."
 end
 
-local function fence(parent, a, b)
+local function fence(parent, a, b, theme)
+	theme = theme or DEFAULT_THEME
 	local length = (b - a).Magnitude
 	local along = CFrame.lookAt((a + b) / 2, b)
+	if theme.style == "wall" then
+		part(parent, "Wall", Vector3.new(1.2, 2.2, length + 1.2), along + Vector3.new(0, 1.1, 0), theme.rail.color, theme.rail.material)
+		part(parent, "Cap", Vector3.new(1.5, 0.35, length + 1.4), along + Vector3.new(0, 2.35, 0), theme.post.color, theme.post.material)
+		return
+	end
 	for i = 0, math.ceil(length / 6) do
 		local p = a + (b - a).Unit * math.min(i * 6, length)
-		part(parent, "Post", Vector3.new(0.6, FENCE_HEIGHT, 0.6), CFrame.new(p + Vector3.new(0, FENCE_HEIGHT / 2, 0)), Rustic.WoodDark, Enum.Material.Wood)
+		part(parent, "Post", Vector3.new(0.6, FENCE_HEIGHT, 0.6), CFrame.new(p + Vector3.new(0, FENCE_HEIGHT / 2, 0)), theme.post.color, theme.post.material)
 	end
 	for _, y in { 1.1, 2.4 } do
-		part(parent, "Rail", Vector3.new(0.25, 0.4, length), along + Vector3.new(0, y, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+		part(parent, "Rail", Vector3.new(0.25, 0.4, length), along + Vector3.new(0, y, 0), theme.rail.color, theme.rail.material)
 	end
+end
+
+-- A lamp post with a warm lantern, for the lane corners of a plot.
+local function lamp(parent, at, theme)
+	part(parent, "LampPost", Vector3.new(0.5, 7, 0.5), CFrame.new(at + Vector3.new(0, 3.5, 0)), theme.lamp.color, theme.lamp.material)
+	local lantern = part(parent, "Lantern", Vector3.new(0.9, 1.1, 0.9), CFrame.new(at + Vector3.new(0, 7.4, 0)), Color3.fromRGB(235, 200, 140), Enum.Material.Neon)
+	lantern.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 205, 150)
+	light.Range = 18
+	light.Brightness = 1.2
+	light.Parent = lantern
+end
+
+-- Builds the plot's fence, sign and lamps in a theme (an id from LandConfig.Themes; unknown ids get the default).
+dress = function(plot, themeId)
+	local theme = themes[themeId] or DEFAULT_THEME
+	plot.theme = theme.id
+	plot.fences:ClearAllChildren()
+	for _, line in plot.fenceLines do
+		fence(plot.fences, line[1], line[2], theme)
+	end
+	for _, corner in plot.lampAt do
+		lamp(plot.fences, corner, theme)
+	end
+	plot.signPost.Color, plot.signPost.Material = theme.post.color, theme.post.material
+	plot.signBoard.Color, plot.signBoard.Material = theme.board.color, theme.board.material
 end
 
 local function zoneOf(def)
@@ -1162,10 +1225,14 @@ local function buildPlot(parent, index, def)
 	local fences = Instance.new("Model")
 	fences.Name = "Fence"
 	fences.Parent = model
-	fence(fences, Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1))
-	fence(fences, Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1))
 	local farZ = def.open == "S" and z0 or z1
-	fence(fences, Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ))
+	local laneEdge = def.open == "S" and z1 or z0
+	local fenceLines = {
+		{ Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1) },
+		{ Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1) },
+		{ Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ) },
+	}
+	local lampAt = { Vector3.new(x0, 0, laneEdge), Vector3.new(x1, 0, laneEdge) }
 
 	-- The needle bin sits at the left end of the strip (seen from the lane), with its SELL NEEDLES pad toward the middle:
 	-- the west end on plots south of the lane, the east end on the turned-around plots north of it.
@@ -1225,12 +1292,19 @@ local function buildPlot(parent, index, def)
 		grid = Conveyors.newGrid(model, corner),
 		bin = Machines.needleBin(model, binFrame),
 		binFrame = binFrame,
+		fences = fences,
+		fenceLines = fenceLines,
+		lampAt = lampAt,
+		signPost = post,
+		signBoard = board,
+		theme = DEFAULT_THEME.id,
 		list = {},
 		taken = {},
 		crew = {},
 	}
 	plots[index] = plot
 	addBinPrompt(plot)
+	dress(plot, DEFAULT_THEME.id)
 	likePrompt.Triggered:Connect(function(player)
 		local ownerId = plot.ownerId
 		if not ownerId then
@@ -1423,7 +1497,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1457,6 +1531,7 @@ function Land.build(worldFolder)
 	remotes.Copy.OnServerInvoke = guard(onCopy)
 	remotes.Paste.OnServerInvoke = guard(onPaste)
 	remotes.Undo.OnServerInvoke = guard(onUndo)
+	remotes.Theme.OnServerInvoke = guard(onTheme)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
 		local plot = plotOf[owner]

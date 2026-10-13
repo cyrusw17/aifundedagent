@@ -3,6 +3,7 @@
 -- Positions are world studs on Meadow Farm's flat ground (Y = 0). The flat zone, keep-clear rect and plot road that
 -- make room for all this are in Meadow.luau ("Plots").
 local Prices = require(script.Parent.Prices)
+local Rustic = require(script.Parent.Rustic)
 local PRICE = Prices.Plot -- every plot costs the same (Config/Prices explains why)
 local TILES = Vector2.new(12, 10) -- and has the same grid
 
@@ -57,6 +58,36 @@ return {
 		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, thatch = 4, blurb = "A wall along the back of the tile. Fill with 3 bales, 4 thatch or 12 needles." },
 		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, thatch = 2, blurb = "Fill with 2 bales, 2 thatch or 8 needles." },
 	},
+
+	-- Plot themes: free looks for the fence, the sign and two lamps at the lane corners. The first is the default.
+	-- style "rails" is a post-and-rail fence, "wall" a low dry-stone wall. Every color is from the Rustic palette.
+	Themes = ({
+		{
+			id = "rustic", name = "Rustic",
+			style = "rails", post = { color = Rustic.WoodDark, material = Enum.Material.Wood }, rail = { color = Rustic.Wood, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.Wood, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.WoodDark, material = Enum.Material.Wood },
+		},
+		{
+			id = "whitewash", name = "Whitewashed",
+			style = "rails", post = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks }, rail = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.PaintGreen, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.PaintGreen, material = Enum.Material.Metal },
+		},
+		{
+			id = "fieldstone", name = "Fieldstone",
+			style = "wall", post = { color = Rustic.StoneDark, material = Enum.Material.Slate }, rail = { color = Rustic.Stone, material = Enum.Material.Cobblestone },
+			board = { color = Rustic.WoodDark, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.Metal, material = Enum.Material.Metal },
+		},
+		{
+			id = "ironworks", name = "Ironworks",
+			style = "rails", post = { color = Rustic.Metal, material = Enum.Material.Metal }, rail = { color = Rustic.Metal, material = Enum.Material.Metal },
+			board = { color = Rustic.PaintBlue, material = Enum.Material.Metal }, lamp = { color = Rustic.Metal, material = Enum.Material.Metal },
+		},
+		{
+			id = "barnyard", name = "Barn red",
+			style = "rails", post = { color = Rustic.PaintRedDark, material = Enum.Material.WoodPlanks }, rail = { color = Rustic.PaintRed, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.PaintRedDark, material = Enum.Material.Wood },
+		},
+	} :: { any }),
 
 	SiloCapacity = 60, -- bales
 	SiloFeedSeconds = 3, -- one bale out every this many seconds while the belt in front is clear
