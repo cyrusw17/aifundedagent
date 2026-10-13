@@ -5,7 +5,6 @@
 -- yours to drive. Owners can come back to the counter any time to have their truck brought round again.
 --
 -- The building is part-built for now, laid out around Meadow.DealerCenter with its front facing east (+X).
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -20,6 +19,7 @@ local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
 local Vehicles = require(script.Parent.Vehicles)
+local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
 
 local Dealer = {}
 
@@ -318,16 +318,15 @@ end
 local TRAILER_SPOT = Vector3.new(50, 0.06, 36)
 
 -- Trailers: paid for like trucks, then parked on the lot unhitched. Back your truck up to it and press H.
-local TRAILER_COOLDOWN = 10 -- seconds between trailer deliveries per player, so the button cannot spam parts
-local lastTrailer = {} -- player -> os.clock() of their last trailer delivery
+-- One trailer delivery per 10 seconds per player, so the button cannot spam parts (shared RateLimit, #25 audit).
+local trailerLimit = RateLimit.new("Dealer.Trailer", 0.1, 1)
 
 local function onBuyTrailer(player, def)
 	if not nearCounter(player) then
 		return false, "Step up to the counter first."
 	end
-	local since = os.clock() - (lastTrailer[player] or -math.huge)
-	if since < TRAILER_COOLDOWN then
-		return false, ("Hank is still hitching the last one up. Try again in %d s."):format(math.ceil(TRAILER_COOLDOWN - since))
+	if trailerLimit:left(player) < 1 then
+		return false, "Hank is still bringing the last one round. Try again in a few seconds."
 	end
 	local state = Data.get(player)
 	if not state then
@@ -348,7 +347,7 @@ local function onBuyTrailer(player, def)
 		task.spawn(Data.save, player)
 	end
 	-- Only one trailer is ever out per player (setOwnedTrailer replaces the old one), and each kind is owned once.
-	lastTrailer[player] = os.clock()
+	trailerLimit:allow(player)
 	local trailer = Vehicles.buildTrailer(def, origin * CFrame.lookAt(TRAILER_SPOT, TRAILER_SPOT + Vector3.xAxis), trucksFolder)
 	trailer.Name = player.Name .. "'s " .. def.name
 	Vehicles.makeTrailerLive(trailer, player)
@@ -437,12 +436,11 @@ function Dealer.build(worldFolder)
 	studioCash.Parent = remotes
 	remotes.Parent = ReplicatedStorage
 
-	local lastBuy = {}
+	local buyLimit = RateLimit.new("Dealer.Buy", 0.5, 2)
 	buy.OnServerInvoke = function(player, id)
-		if os.clock() - (lastBuy[player] or -math.huge) < 0.5 then
-			return false, "One moment..."
+		if not buyLimit:allow(player) then
+			return false, RateLimit.BUSY
 		end
-		lastBuy[player] = os.clock()
 		local ok, result, message = pcall(onBuy, player, id)
 		if not ok then
 			warn("[Needlewood] dealer error: " .. tostring(result))
@@ -452,23 +450,16 @@ function Dealer.build(worldFolder)
 	end
 
 	-- Testing only: in Studio the panel has a button that adds cash so the purchase can be tried right away.
-	local lastCash = {}
+	local cashLimit = RateLimit.new("Dealer.StudioCash", 1, 1)
 	studioCash.OnServerEvent:Connect(function(player)
-		if not RunService:IsStudio() or os.clock() - (lastCash[player] or -math.huge) < 1 then
+		if not RunService:IsStudio() or not cashLimit:allow(player) then
 			return
 		end
-		lastCash[player] = os.clock()
 		local state = Data.get(player)
 		if state then
 			Bank.give(player, STUDIO_CASH, "Studio test cash")
 			Data.toast(player, ("Studio test cash: +$%d"):format(STUDIO_CASH))
 		end
-	end)
-
-	Players.PlayerRemoving:Connect(function(player)
-		lastTrailer[player] = nil
-		lastCash[player] = nil
-		lastBuy[player] = nil
 	end)
 
 	Vehicles.init(trucksFolder)
