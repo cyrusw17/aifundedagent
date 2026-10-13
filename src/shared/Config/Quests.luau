@@ -8,7 +8,8 @@
 --   event   count game events (Events.luau kinds, plus bale_lifted). filter matches the event's info.
 --   own     something the save owns right now: truck, plot, gloves_tier (value), piece_kind (value)
 --   visit   walk up to a spot, or to every spot in `spots` (any order)
---   talk    press the prompt on a spot. distinct = counts once each time the spot has moved (the wandering scarecrow)
+--   talk    press the prompt on a spot. distinct = counts once each time the spot has moved (the wandering scarecrow).
+--           say = what you read or hear there (a toast)
 --   collect press the prompt on an item spot, or on every spot in `spots`
 --   offer   press the prompt on a spot and pay: needles = { [needleId] = count } from your pocket, needlesEach = that
 --           many of every needle type you can reach, cash = dollars
@@ -134,6 +135,22 @@ Quests.Spots = {
 		look = "rows",
 		sea = Vector2.new(300, 1085),
 		radius = 5,
+	},
+	-- The Weaver, chapter 1: words cut in the rock beside the Spindle door, and a spool that rises from Mirror Lake.
+	weaver_words = {
+		region = "The Spindle",
+		name = "Words beside the door",
+		look = "plaque",
+		world = Vector2.new(163, -979),
+		radius = 8,
+	},
+	weaver_spool = {
+		region = "The Spindle",
+		name = "Weaver's spool",
+		look = "spool",
+		world = Vector2.new(262, -880), -- the west shore of Mirror Lake
+		showWhen = "midnight",
+		item = true,
 	},
 	golden_bale = {
 		region = "Meadow",
@@ -437,17 +454,29 @@ Quests.Rewards = {
 		name = "Master Needle shard: Meadow",
 		blurb = "One of twelve. The Spindle has a slot that fits it.",
 	},
+	shard_spindle = {
+		kind = "relic",
+		name = "Master Needle shard: Spindle",
+		blurb = "Wound back into the door on a thread from still water. It hums when you face the lake.",
+	},
 	shard_snow = { kind = "relic", name = "Master Needle shard: Snow", blurb = "One of twelve." },
 	shard_volcano = { kind = "relic", name = "Master Needle shard: Volcano", blurb = "One of twelve." },
 	shard_desert = { kind = "relic", name = "Master Needle shard: Desert", blurb = "One of twelve." },
 	shard_haunted = { kind = "relic", name = "Master Needle shard: Haunted", blurb = "One of twelve." },
 	shard_bobbin = { kind = "relic", name = "Master Needle shard: Bobbin Rock", blurb = "One of twelve." },
+	-- Shards for later chapters of the Weaver mystery: in the collection (and the Spindle door) as ??? until then.
+	shard_pine = { kind = "relic", name = "Master Needle shard: Pine Forest", blurb = "One of twelve." },
+	shard_homestead = { kind = "relic", name = "Master Needle shard: Homestead", blurb = "One of twelve." },
+	shard_swamp = { kind = "relic", name = "Master Needle shard: Swamp", blurb = "One of twelve." },
+	shard_keys = { kind = "relic", name = "Master Needle shard: Thimble Keys", blurb = "One of twelve." },
+	shard_shore = { kind = "relic", name = "Master Needle shard: Shore", blurb = "One of twelve." },
 }
 
 -- The order mystery items appear in the collection. Unfound ones show as ??? with a hint.
 Quests.Collection = {
 	{ id = "lucky_thimble", hint = "Something drops to the bottom of the old well at midnight." },
 	{ id = "shard_meadow", hint = "The Old Scarecrow keeps what he is given." },
+	{ id = "shard_spindle", hint = "Read the words beside the Spindle door." },
 	{ id = "golden_hay_bale", hint = "Follow the signal." },
 	{ id = "star_beacon", hint = "Deep in a bale, something hums." },
 	{ id = "corn_moon_charm", hint = "The corn has paths only the night can show." },
@@ -458,6 +487,11 @@ Quests.Collection = {
 	{ id = "shard_desert", hint = "Under the dunes." },
 	{ id = "shard_haunted", hint = "Where the lanterns burn." },
 	{ id = "shard_bobbin", hint = "With the ships that never came home." },
+	{ id = "shard_pine", hint = "Where the pines grow thickest, one tree is stitched shut." },
+	{ id = "shard_homestead", hint = "The oldest townsfolk remember who wove the first bale." },
+	{ id = "shard_swamp", hint = "Below the fog, the reeds hold their breath." },
+	{ id = "shard_keys", hint = "Out where the islands are strung like beads." },
+	{ id = "shard_shore", hint = "The lighthouse looks at it every night." },
 }
 
 -- Rare finds for "find" steps: a glowing part that pops out of a broken bale. Only the finder can pick it up.
@@ -808,6 +842,39 @@ Quests.List = {
 			{ kind = "talk", spot = "corn_maze", when = "night", text = "Bring them to the heart of the maze" },
 		},
 		reward = { relic = "corn_moon_charm" },
+	},
+	{
+		id = "weaver_1",
+		name = "The Weaver, Chapter 1: Still Water",
+		giver = "The Spindle door",
+		region = "The Spindle",
+		requires = { "first_haul" },
+		blurb = "The Weaver who stitched these islands vanished, and the Master Needle broke into twelve shards. "
+			.. "The sealed door on the Spindle has a socket for each.",
+		steps = {
+			{
+				kind = "talk",
+				spot = "weaver_words",
+				say = '"Still water keeps the sky. When the sky is darkest, the dropped thread rises. Wind it home."',
+				hint = "The Spindle is the tall peak north of Meadow. Take the North Road; the door is on its east face.",
+				text = "Read the words cut beside the Spindle door",
+			},
+			{
+				kind = "collect",
+				spot = "weaver_spool",
+				when = "midnight",
+				hint = "Which water is still enough to hold the sky? Go when the sky is darkest.",
+				text = "Find the dropped thread",
+			},
+			{
+				kind = "talk",
+				spot = "weaver_words",
+				say = "The thread pulls tight into the rock. In the door, a socket starts to glow.",
+				hint = "Bring the spool back to the words beside the Spindle door.",
+				text = "Wind the thread home",
+			},
+		},
+		reward = { relic = "shard_spindle" },
 	},
 	{
 		id = "straw_labyrinth",
