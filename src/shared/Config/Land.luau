@@ -42,6 +42,7 @@ return {
 		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = Prices.Pieces.hay_buyer, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
 		{ id = "silo", kind = "silo", name = "Hay silo", price = Prices.Pieces.silo, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
 		{ id = "hay_barn", kind = "silo", look = "barn", capacity = 150, name = "Hay barn", price = Prices.Pieces.hay_barn, size = { 3, 3 }, blurb = "A red barn that holds 150 bales and feeds them out the front onto a belt, one at a time." },
+		{ id = "garage", kind = "garage", name = "Garage", price = Prices.Pieces.garage, size = { 2, 2 }, blurb = "Swap which of your trucks is out. It parks on your parking pad, or by the lane." },
 		{ id = "parking", kind = "parking", name = "Parking pad", price = Prices.Pieces.parking, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
 		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = Prices.Pieces.hand_sieve, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
 		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = Prices.Pieces.shaker_table, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
