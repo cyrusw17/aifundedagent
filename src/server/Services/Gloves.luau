@@ -54,13 +54,15 @@ end
 -- Weight and tier of one loose piece, from its HayType attribute.
 function Gloves.pieceWeight(piece)
 	local hay = Gloves.hayType(piece:GetAttribute("HayType"))
-	return hay.weight * Config.HayPerPiece, hay.tier
+	local wet = piece:GetAttribute("Wet") and Config.WetWeightFactor or 1
+	return hay.weight * Config.HayPerPiece * wet, hay.tier
 end
 
 -- Weight and tier of a whole bale.
 function Gloves.baleWeight(body)
 	local hay = Gloves.hayType(body:GetAttribute("HayType"))
-	return Config.PiecesPerBale * Config.HayPerPiece * hay.weight * GloveConfig.BaleWeightFactor, hay.tier
+	local wet = body:GetAttribute("Wet") and Config.WetWeightFactor or 1 -- a rain-soaked bale is heavier
+	return Config.PiecesPerBale * Config.HayPerPiece * hay.weight * GloveConfig.BaleWeightFactor * wet, hay.tier
 end
 
 -- How many tiers the player's gloves fall short of hay of the given tier.

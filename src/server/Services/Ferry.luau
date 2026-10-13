@@ -9,6 +9,7 @@
 -- their physics to the server while a vehicle has the OnFerry attribute).
 --
 -- The zeppelin to Sky Island is the same machine with a gondola for a deck.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -106,6 +107,75 @@ end
 
 -- The deck -----------------------------------------------------------------------------------------------------
 
+-- Deck life (cosmetic, nothing here touches hay or needles) ----------------------------------------------------------
+
+local SNACKS = { "a hay-dusted pretzel", "a cup of chowder", "a toffee apple", "a mug of cocoa", "a fish sandwich" }
+local CATCHES = {
+	{ "an old boot", 30 },
+	{ "a herring", 25 },
+	{ "a mackerel", 20 },
+	{ "a tangle of twine", 15 },
+	{ "a crab, who lets go and leaves", 8 },
+	{ "a message in a bottle (it just says HELLO)", 2 },
+}
+local fishing = {} -- player -> true while a line is out
+
+local function prompt(parent, action, object, hold)
+	local p = Instance.new("ProximityPrompt")
+	p.ActionText = action
+	p.ObjectText = object
+	p.HoldDuration = hold or 0
+	p.MaxActivationDistance = 8
+	p.RequiresLineOfSight = false
+	p.Parent = parent
+	return p
+end
+
+local function catch()
+	local total = 0
+	for _, c in CATCHES do
+		total += c[2]
+	end
+	local pick = math.random() * total
+	for _, c in CATCHES do
+		pick -= c[2]
+		if pick <= 0 then
+			return c[1]
+		end
+	end
+	return CATCHES[1][1]
+end
+
+local function deckLife(spots)
+	if spots.counter then
+		prompt(spots.counter, ("Buy a snack ($%d)"):format(Prices.Travel.snack or 15), "Galley").Triggered:Connect(function(player)
+			local ok, why = Bank.charge(player, Prices.Travel.snack or 15, "Ferry snack")
+			Data.toast(player, ok and ("You enjoy %s and watch the sea."):format(SNACKS[math.random(#SNACKS)]) or (why or "Not enough cash for a snack."))
+		end)
+	end
+	if spots.board then
+		CollectionService:AddTag(spots.board, "BountyBoard")
+		prompt(spots.board, "Read", "Bounty board").Triggered:Connect(function(player)
+			Data.toast(player, "Today's bounties are pinned here. Open your quest log, Bounties tab, to track them.")
+		end)
+	end
+	if spots.fishing then
+		prompt(spots.fishing, "Cast a line", "Fishing spot", 2).Triggered:Connect(function(player)
+			if fishing[player] then
+				return
+			end
+			fishing[player] = true
+			task.delay(math.random(3, 7), function()
+				fishing[player] = nil
+				if player.Parent then
+					player:SetAttribute("FishCaught", (player:GetAttribute("FishCaught") or 0) + 1)
+					Data.toast(player, ("You reel in %s!"):format(catch()))
+				end
+			end)
+		end)
+	end
+end
+
 -- Builds a shuttle's deck (ferry hull or zeppelin gondola) centered on cframe, deck top at cframe's height.
 -- Returns the model, its root deck part and the gate parts at each end.
 local function buildDeck(def, cframe, parent)
@@ -117,6 +187,7 @@ local function buildDeck(def, cframe, parent)
 	model.PrimaryPart = root
 
 	local visuals = {}
+	local snacks = {}
 	local function look(name, size, offset, color, material, collide, shape)
 		local p = part(model, name, size, cframe * offset, color, material, collide)
 		if shape then
@@ -169,6 +240,26 @@ local function buildDeck(def, cframe, parent)
 		look("Windows", Vector3.new(7.1, 2.2, 22), house * CFrame.new(0, 7, 0), Rustic.Glass, Enum.Material.Glass, false)
 		look("Funnel", Vector3.new(4, 9, 4), house * CFrame.new(0, 15, 6), IRON_DARK, Enum.Material.Metal)
 		look("FunnelBand", Vector3.new(4.2, 1.4, 4.2), house * CFrame.new(0, 18, 6), Rustic.PaintRed, Enum.Material.Metal, false)
+
+		-- The promenade along the north rail, for drivers stretching their legs on the crossing: a snack stand, a
+		-- bounty board and a fishing spot at the stern. Up a step and outside the bulwark, so it never takes a lane.
+		local walk = CFrame.new(-(W / 2 + 4), 0, 0)
+		look("PromenadeBase", Vector3.new(7, 4, 70), walk * CFrame.new(0, -2, 0), IRON_DARK, Enum.Material.Metal)
+		look("Promenade", Vector3.new(7, 0.4, 70), walk * CFrame.new(0, 0.2, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+		look("PromenadeRail", Vector3.new(0.4, 3, 70), walk * CFrame.new(-3.3, 1.9, 0), Rustic.WoodDark, Enum.Material.Wood)
+		-- Snack stand.
+		local stand = walk * CFrame.new(0.5, 0, -22)
+		look("SnackCounter", Vector3.new(3, 3.2, 8), stand * CFrame.new(-1.5, 2, 0), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		look("SnackAwning", Vector3.new(5, 0.3, 9), stand * CFrame.new(-1, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-12)), Rustic.PaintRed, Enum.Material.Fabric, false)
+		for _, z in { -4, 4 } do
+			look("SnackPole", Vector3.new(0.3, 4.4, 0.3), stand * CFrame.new(1.2, 4, z), Rustic.WoodDark, Enum.Material.Wood, false)
+		end
+		snacks.counter = look("SnackSign", Vector3.new(0.2, 1.2, 5), stand * CFrame.new(0, 3.9, 0), Rustic.PaintYellow, Enum.Material.WoodPlanks, false)
+		-- Bounty board.
+		local board = look("FerryBountyBoard", Vector3.new(0.4, 4, 6), walk * CFrame.new(-2.8, 3.6, 4), Rustic.Wood, Enum.Material.WoodPlanks)
+		snacks.board = board
+		-- Fishing spot at the stern rail.
+		snacks.fishing = look("FishingSpot", Vector3.new(2, 0.3, 2), walk * CFrame.new(-1.5, 0.45, 30), Rustic.WoodDark, Enum.Material.Wood, false)
 	end
 
 	-- Everything rides on the deck.
@@ -181,6 +272,7 @@ local function buildDeck(def, cframe, parent)
 		p.Massless = true
 	end
 	model.Parent = parent
+	deckLife(snacks)
 	return model, root, gates
 end
 

@@ -368,14 +368,15 @@ local Replicated = setmetatable({ _real = replicated }, { __index = function(t, 
 	return pathObj(k)
 end })
 TAGS = {}
+TAGGED = {}
 local services = {
 	ReplicatedStorage = Replicated,
 	Workspace = newInstance("Workspace"),
 	CollectionService = {
-		AddTag = function(_, o, tag) TAGS[tag] = (TAGS[tag] or 0) + 1 end,
+		AddTag = function(_, o, tag) TAGS[tag] = (TAGS[tag] or 0) + 1; TAGGED[tag] = TAGGED[tag] or {}; table.insert(TAGGED[tag], o) end,
 		HasTag = function() return false end,
 		RemoveTag = function() end,
-		GetTagged = function() return {} end,
+		GetTagged = function(_, tag) return table.clone(TAGGED[tag] or {}) end,
 		GetInstanceAddedSignal = function() return signal() end,
 	},
 	Players = { GetPlayers = function() return {} end, GetPlayerByUserId = function() return nil end, PlayerAdded = signal(), PlayerRemoving = signal() },

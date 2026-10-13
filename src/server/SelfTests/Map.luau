@@ -146,6 +146,15 @@ return function(SelfTest)
 			truck.Parent = workspace
 			t.cleanup(truck)
 			t.check(name .. ": a truck on the deck counts as on board", Ferry.onDeck(shuttle, truck))
+			if not shuttle.def.zeppelin then
+				local model = shuttle.root.Parent
+				local life = 0
+				for _, spotName in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+					local spotPart = model:FindFirstChild(spotName)
+					life += (spotPart and spotPart:FindFirstChildOfClass("ProximityPrompt")) and 1 or 0
+				end
+				t.equal(name .. ": snack stand, bounty board and fishing spot on the promenade", life, 3)
+			end
 			local stop = shuttle.stops[1]
 			for _, s in shuttle.stops do
 				if (s.cframe.Position - shuttle.root.Position).Magnitude < (stop.cframe.Position - shuttle.root.Position).Magnitude then
@@ -222,6 +231,49 @@ return function(SelfTest)
 		t.check("the Ghost Road holds at midnight", Wilds.ghostSolid())
 		Lighting.ClockTime = clockWas
 		Wilds.refreshGhost()
+
+		-- Discoveries -------------------------------------------------------------------------------------------
+		local Discoveries = require(Services.Discoveries)
+		local unfound = {}
+		for _, entry in Discoveries.all() do
+			if entry.kind == "landmark" then
+				local hit = false
+				for _, id in Discoveries.at(Vector3.new(entry.at.X, 20, entry.at.Y)) do
+					hit = hit or id == entry.id
+				end
+				if not hit then
+					table.insert(unfound, entry.id)
+				end
+			end
+		end
+		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
+		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
+
+		-- Bridges -------------------------------------------------------------------------------------------------
+		-- The rails stand outside the lane (the lane check above covers parts in it); here: each bridge's causeway
+		-- rises no steeper than a loaded truck and trailer can take.
+		local RoadPolish = require(Services.RoadPolish)
+		t.check("the water crossings have bridges", #RoadPolish.bridges > 0, ("%d bridge sides"):format(#RoadPolish.bridges))
+		local steep = {}
+		for _, bridge in RoadPolish.bridges do
+			local rise = math.abs(bridge.to.Y - bridge.from.Y)
+			local run = (Vector2.new(bridge.to.X, bridge.to.Z) - Vector2.new(bridge.from.X, bridge.from.Z)).Magnitude
+			if run > 0 and rise / run > 0.15 then
+				table.insert(steep, ("%s %.2f"):format(bridge.road, rise / run))
+			end
+		end
+		t.check("bridges are gentle enough for a trailer", #steep == 0, #steep > 0 and table.concat(steep, ", ") or nil)
+
+		-- The Spindle door ---------------------------------------------------------------------------------------
+		local SpindleDoor = require(Services.SpindleDoor)
+		local CollectionService = game:GetService("CollectionService")
+		t.equal("the Spindle door has twelve shard sockets", #CollectionService:GetTagged("ShardSocket"), 12)
+		t.check("the shard order comes from the quest collection", #SpindleDoor.shards >= 6, ("%d shards"):format(#SpindleDoor.shards))
+		SpindleDoor.refresh()
+		local who = t.player and t.player()
+		if who then
+			t.equal("a player with no shards counts none", who:GetAttribute("SpindleShards") or 0, SpindleDoor.count(who))
+		end
 
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then

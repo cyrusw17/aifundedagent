@@ -138,12 +138,20 @@ return function(SelfTest)
 			t.skip("rigged vehicles", "no imported prop has Wheel_, Coupler or Tailgate child meshes (import with the hierarchy kept)")
 		end
 
-		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover.
+		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover, and
+		-- the treat machines' belts and moving parts.
 		for _, want in {
 			{ "wheelbarrow_loaded", "Wheel_L1" },
 			{ "wheelbarrow_loaded", "HayFill" },
 			{ "needle_bin", "NeedleFill" },
 			{ "prairie_schooner", "Cover" },
+			{ "thawing_shed", "Belt" },
+			{ "thawing_shed", "Vent" },
+			{ "drying_rack", "Belt" },
+			{ "drying_rack", "Fan" },
+			{ "ash_sifter", "Belt" },
+			{ "ash_sifter", "Drum" },
+			{ "ash_sifter", "Shaker" },
 		} do
 			if Props.has(want[1]) then
 				local model = Props.make(want[1], t.place())
@@ -169,13 +177,13 @@ return function(SelfTest)
 		if imported == 0 then
 			t.skip("numbered props resolve to themselves", "none imported")
 		else
-			local wrong = {}
+			local misnamed = {}
 			for name, length in sizes do
 				if math.abs(length - Config.Sizes[name]) > Config.Sizes[name] * 0.03 + 0.02 then
-					table.insert(wrong, ("%s %.2f (want %.2f)"):format(name, length, Config.Sizes[name]))
+					table.insert(misnamed, ("%s %.2f (want %.2f)"):format(name, length, Config.Sizes[name]))
 				end
 			end
-			t.check("numbered props resolve to themselves", #wrong == 0, #wrong > 0 and table.concat(wrong, ", ") or ("%d props"):format(imported))
+			t.check("numbered props resolve to themselves", #misnamed == 0, #misnamed > 0 and table.concat(misnamed, ", ") or ("%d props"):format(imported))
 		end
 
 		-- 2d. Every region bale fits the canonical 4.6 x 2.6 x 3.2 bale box, long side along X.

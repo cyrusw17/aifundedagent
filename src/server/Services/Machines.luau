@@ -533,7 +533,8 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end
 
 	oilClick.MouseClick:Connect(function(player)
-		if oiled + Oil.bales > Oil.maxBales then
+		local more = LineMath.oilAdd(oiled, Oil.bales, Oil.maxBales)
+		if not more then
 			Data.toast(player, ("This sorter is already well oiled (%d bales)."):format(oiled))
 			return
 		end
@@ -542,7 +543,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			Data.toast(player, ("Sorter oil costs $%d. %s"):format(Oil.price, why or ""))
 			return
 		end
-		oiled += Oil.bales
+		oiled = more
 		refreshLabel()
 		Feedback.play("Scoop", can)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
@@ -553,11 +554,8 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		dust.Rate = 30
 		local rest = roof.CFrame
 		local started = os.clock()
-		local seconds = Machines.sortSeconds(tier.id, hay)
-		if oiled > 0 then
-			seconds /= 1 + Oil.speedup
-			oiled -= 1
-		end
+		local seconds
+		seconds, oiled = LineMath.oiledSeconds(Machines.sortSeconds(tier.id, hay), oiled, Oil.speedup)
 		while os.clock() - started < seconds do
 			roof.CFrame = rest * CFrame.new(rng:NextNumber(-0.08, 0.08), rng:NextNumber(-0.05, 0.05), 0)
 			task.wait(0.05)
@@ -568,12 +566,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
-		local found = 0
-		for _ = 1, hidden do
-			if rng:NextNumber() < tier.recovery * (recoveryMult or 1) then
-				found += 1
-			end
-		end
+		local found = LineMath.found(rng, hidden, tier.recovery, recoveryMult)
 		if bin then
 			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
 		end

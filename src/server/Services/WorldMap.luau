@@ -18,6 +18,9 @@ local WorldClock = require(script.Parent.WorldClock)
 local Weather = require(script.Parent.Weather)
 local RegionEvents = require(script.Parent.RegionEvents)
 local Wilds = require(script.Parent.Wilds)
+local RoadPolish = require(script.Parent.RoadPolish)
+local Discoveries = require(script.Parent.Discoveries)
+local SpindleDoor = require(script.Parent.SpindleDoor)
 
 local WorldMap = {}
 
@@ -198,6 +201,7 @@ function WorldMap.build(worldFolder)
 		{ "highway", Highway.build },
 		{ "ferries", Ferry.build },
 		{ "wilds", Wilds.build },
+		{ "road polish", RoadPolish.build },
 	} do
 		local ok, err = pcall(step[2], folder)
 		if not ok then
@@ -224,6 +228,8 @@ function WorldMap.build(worldFolder)
 		end
 	end)
 	RegionEvents.start()
+	Discoveries.start()
+	SpindleDoor.start()
 end
 
 return WorldMap

@@ -278,6 +278,7 @@ local function stateFrom(saved)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
+		discovered = countMap(saved.discovered), -- regions and landmarks visited, { [id] = 1 } (Discoveries.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -320,6 +321,7 @@ local function toSave(state)
 		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
 		secrets = state.secrets,
+		discovered = state.discovered,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,

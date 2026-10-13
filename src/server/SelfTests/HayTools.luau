@@ -23,7 +23,11 @@ local Gloves = require(Services.Gloves)
 local GloveLooks = require(Services.GloveLooks)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
+local Tools = require(Services.Tools)
+local Weather = require(Services.Weather)
 local Bank = require(Services.Bank)
+local Vehicles = require(Services.Vehicles)
+local RunService = game:GetService("RunService")
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
@@ -90,6 +94,35 @@ local function noPlayerChecks(t)
 	t.check("...glints", gold.body:FindFirstChildOfClass("Sparkles") ~= nil)
 	t.check("...and says so in its button", gold.prompt.ObjectText:sub(1, 6) == "Golden", gold.prompt.ObjectText)
 	t.check("golden bales are rare and hold more needles", Config.GoldenBaleOneIn >= 50 and Config.GoldenBaleNeedles > 1)
+
+	-- Wet hay: a soaked bale is heavier and darker, spills wet strands, and dries back to exactly how it was.
+	local soaked = bale(t.place())
+	local dryWeight = Gloves.baleWeight(soaked.body)
+	local dryColor = soaked.body.Color
+	t.check("a bale soaks", Bales.wet(soaked) and soaked.body:GetAttribute("Wet") == true)
+	t.near("a wet bale weighs WetWeightFactor more", Gloves.baleWeight(soaked.body) / dryWeight, Config.WetWeightFactor, 0.01)
+	t.check("...and looks darker", soaked.body.Color.R < dryColor.R)
+	t.check("...and drips", soaked.body:FindFirstChild("WetDrips") ~= nil)
+	t.check("drying it clears the wet", Bales.dry(soaked) and soaked.body:GetAttribute("Wet") == nil)
+	t.check("...restores its color", (Vector3.new(soaked.body.Color.R, soaked.body.Color.G, soaked.body.Color.B) - Vector3.new(dryColor.R, dryColor.G, dryColor.B)).Magnitude < 0.01)
+	t.check("...and its weight", math.abs(Gloves.baleWeight(soaked.body) - dryWeight) < 0.01)
+	t.check("drying a dry bale does nothing", not Bales.dry(soaked))
+	-- Rain falls on open sky in a rainy region, never under a roof, and never in clear weather.
+	local sky = Vector3.new(0, 150, 0) -- over Meadow Farm, above everything built there
+	local keepWeather = Weather.get("meadow")
+	Weather.set("meadow", "rain")
+	t.check("rain falls on the open meadow", Bales.rainingOn(sky, {}))
+	local roof = Instance.new("Part")
+	roof.Anchored = true
+	roof.Size = Vector3.new(20, 1, 20)
+	roof.Position = sky + Vector3.new(0, 10, 0)
+	roof.Parent = workspace
+	t.cleanup(roof)
+	t.check("a roof keeps the rain off", not Bales.rainingOn(sky, {}))
+	roof:Destroy()
+	Weather.set("meadow", "clear")
+	t.check("no rain in clear weather", not Bales.rainingOn(sky, {}))
+	Weather.set("meadow", keepWeather)
 
 	-- The glove ladder: every tier up carries faster, takes more of the hay-weight slowdown away, and looks different
 	-- on the hands (its own cuff color and material, with or without the Blender mesh).
@@ -249,6 +282,65 @@ local function isLoose(b)
 	return true
 end
 
+-- Two bales stacked in a real pickup's bed ride a drive and a hard stop: they stay in the bed, the top one stays on
+-- the bottom one, and neither jitters or flies off (no speed spike against the truck, no fast spin).
+local function stackedRide(t)
+	local truck = Vehicles.build(Vehicles.get("rusty_pickup"), t.place(), workspace)
+	t.cleanup(truck)
+	Vehicles.makeDrivable(truck, { Name = "SelfTest", UserId = -1 })
+	Vehicles.release(truck, nil)
+	t.wait(1.5)
+	local chassis = truck.PrimaryPart
+	local box, size = Wheelbarrow.cargoOf(chassis)
+	if not box then
+		t.skip("stacked bales in a moving pickup", "the pickup has no cargo box")
+		return
+	end
+	local bottom = bale(box)
+	local top = bale(box)
+	local floor = box * CFrame.new(0, -size.Y / 2 + BALE.Y / 2 + 0.05, 0)
+	Bales.releaseAt(bottom, floor)
+	Bales.releaseAt(top, floor * CFrame.new(0, BALE.Y + 0.05, 0))
+	t.wait(1)
+
+	local drive, steer = chassis:FindFirstChild("Drive"), chassis:FindFirstChild("Steer")
+	if not drive or not steer then
+		t.skip("stacked bales in a moving pickup", "no Drive / Steer on the pickup")
+		return
+	end
+	local heading = (chassis.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+	local worstSlip, worstSpin = 0, 0
+	local function watch()
+		for _, b in { bottom, top } do
+			local slip = (b.body.AssemblyLinearVelocity - chassis:GetVelocityAtPosition(b.body.Position)).Magnitude
+			worstSlip = math.max(worstSlip, slip)
+			worstSpin = math.max(worstSpin, (b.body.AssemblyAngularVelocity - chassis.AssemblyAngularVelocity).Magnitude)
+		end
+	end
+	local speed = 30
+	local connection = RunService.Heartbeat:Connect(function()
+		steer.CFrame = CFrame.fromMatrix(Vector3.zero, heading:Cross(Vector3.yAxis), Vector3.yAxis, -heading)
+		drive.PlaneVelocity = Vector2.new(0, -speed)
+		watch()
+	end)
+	t.wait(3)
+	speed = 0 -- a hard stop
+	t.wait(1.5)
+	connection:Disconnect()
+	drive.PlaneVelocity = Vector2.zero
+
+	local function inBox(b)
+		local p = (chassis.CFrame * chassis.Parent:GetAttribute("CargoOffset")):PointToObjectSpace(b.body.Position)
+		return math.abs(p.X) <= size.X / 2 + 0.5 and math.abs(p.Z) <= size.Z / 2 + 0.5 and p.Y > -size.Y / 2 - 0.5
+	end
+	t.check("stacked bales stay in the bed through a drive and a hard stop", inBox(bottom) and inBox(top))
+	t.near("the top bale stays on the bottom one", top.body.Position.Y - bottom.body.Position.Y, BALE.Y, 0.7)
+	-- A hard stop can slide a bale forward at up to the truck's speed; an explosion or jitter flings it far faster.
+	t.check("neither bale jitters or flies off (slip vs the bed)", worstSlip < 30 + 15, ("worst %.1f studs/s"):format(worstSlip))
+	t.check("neither bale spins out", worstSpin < 8, ("worst %.1f rad/s"):format(worstSpin))
+	t.check("both bales are still loose (never welded)", isLoose(bottom) and isLoose(top))
+end
+
 local function edgeCases(t, player, state, root, stand)
 	local spot = t.place()
 
@@ -291,6 +383,60 @@ local function edgeCases(t, player, state, root, stand)
 	t.near("a bale set down into a truck bed rests on the bed floor", cargo.body.Position.Y - bed.top, BALE.Y / 2, 0.6)
 	t.check("...inside the bed", inBed(bed, cargo))
 	t.check("...loose, never welded", isLoose(cargo))
+
+	-- Pour: hay in your arms goes into a truck bed as loose strands; sorted hay stays sorted, and the needles rolled
+	-- for it come back out of your load with it. The ground is never a pour target.
+	local pourBed = truckBed(t, t.place())
+	stand(pourBed.model.PrimaryPart.CFrame * CFrame.new(0, -3, 9))
+	t.check("a truck bed is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }) ~= nil)
+	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }) == nil)
+	local before = #Hay.near(pourBed.floor.Position, 12, nil)
+	state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadType = 30, 10, 4, "meadow"
+	state.loadWeight, state.loadTier = 30, 0
+	local box, size = Wheelbarrow.cargoOf(pourBed.floor)
+	local poured = Tools.pour(player, root, { box = box, size = size })
+	t.equal("a pour takes up to PourStrands from your arms", poured, math.min(30, Config.PourStrands))
+	t.equal("...and empties them", state.loadHay, 30 - poured * Config.HayPerPiece)
+	t.equal("...with the needles rolled for it", state.loadNeedles, 0)
+	t.wait(Config.PourFlightSeconds + poured * Config.PourStagger + 1)
+	local landed, sorted = 0, 0
+	for _, p in Hay.near(pourBed.floor.Position, 12, nil) do
+		local localPos = pourBed.floor.CFrame:PointToObjectSpace(p.Position)
+		if math.abs(localPos.X) <= 5 and math.abs(localPos.Z) <= 7 and p.Position.Y > pourBed.top - 0.2 then
+			landed += 1
+			if p:GetAttribute("Sorted") then
+				sorted += 1
+			end
+		end
+	end
+	t.check("the poured strands land in the bed", landed - before >= poured * 0.85, ("%d of %d"):format(landed - before, poured))
+	t.equal("hay scooped from sorted bales pours out sorted", sorted, 10)
+
+	-- Wet strands from a wet bale.
+	local soaked = bale(spot * CFrame.new(-12, 0, 6))
+	Bales.wet(soaked)
+	local wetSpill = soaked.body.Position
+	Bales.breakOpen(player, soaked)
+	t.wait(1.2)
+	local wetStrands, allStrands = 0, 0
+	for _, p in strandsNear(wetSpill, 12) do
+		if not Hay.isNeedle(p) then
+			allStrands += 1
+			if p:GetAttribute("Wet") then
+				wetStrands += 1
+			end
+		end
+	end
+	t.check("a wet bale spills wet strands", allStrands > 0 and wetStrands == allStrands, ("%d of %d"):format(wetStrands, allStrands))
+	local wetPiece = strandsNear(wetSpill, 12)[1]
+	if wetPiece then
+		local wetW = Gloves.pieceWeight(wetPiece)
+		wetPiece:SetAttribute("Wet", nil)
+		t.near("a wet strand weighs WetWeightFactor more", wetW / Gloves.pieceWeight(wetPiece), Config.WetWeightFactor, 0.01)
+	end
+	for _, p in strandsNear(wetSpill, 12) do
+		Hay.remove(p)
+	end
 
 	-- Throw: a full-charge toss lobs the bale about TossRange studs, loose; a tiny charge just sets it down.
 	local throwSpot = t.place()
@@ -349,6 +495,7 @@ local function withPlayer(t, player)
 	end
 	local home = root.CFrame
 	local keepHay, keepNeedles, keepWeight, keepTier = state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier
+	local keepSorted, keepType = state.loadSortedHay, state.loadType
 	local keepFirst = Gloves.firstBaleBroken(player)
 	local ok, err = pcall(function()
 		humanoid:UnequipTools()
@@ -513,6 +660,7 @@ local function withPlayer(t, player)
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier
+	state.loadSortedHay, state.loadType = keepSorted, keepType
 	Data.sync(player)
 	Avatar.refreshSpeed(player)
 	root.CFrame = home
@@ -522,6 +670,11 @@ end
 return function(SelfTest)
 	SelfTest.register("Hay", function(t)
 		noPlayerChecks(t)
+		local ok, err = pcall(stackedRide, t)
+		if not ok then
+			t.check("stacked bales in a moving pickup ran without an error", false, err)
+		end
+		clearBales()
 		local player = t.player(10)
 		if player then
 			withPlayer(t, player)

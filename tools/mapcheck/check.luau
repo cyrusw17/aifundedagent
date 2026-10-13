@@ -151,6 +151,86 @@ Wilds.refreshGhost()
 if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
 print("wilds", wildsOk and "ok" or "WRONG")
 
+-- Discoveries: every landmark is found standing on it, every region standing in its middle, and nothing in Meadow.
+local Discoveries = require({ __path = "Services.Discoveries" })
+local discOk = true
+local function finds(position, id)
+	for _, got in Discoveries.at(position) do
+		if got == id then return true end
+	end
+	return false
+end
+for _, entry in Discoveries.all() do
+	local p
+	if entry.kind == "landmark" then
+		p = Vector3.new(entry.at.X, 20, entry.at.Y)
+	else
+		for _, r in Map.Regions do
+			if r.id == entry.id then p = Vector3.new(r.center.X, WorldShapeE.heightAt(r.center.X, r.center.Y) + 3, r.center.Y) end
+		end
+	end
+	if p and not finds(p, entry.id) then
+		discOk = false
+		print("WARN discovery not found where it stands", entry.id)
+	end
+end
+if #Discoveries.at(Vector3.new(0, 5, 0)) > 0 then discOk = false print("WARN Meadow counts as a discovery") end
+print("discoveries", #Discoveries.all(), discOk and "ok" or "WRONG")
+
+-- The Spindle door: twelve numbered sockets, one door, and the shard order from the quest collection.
+local SpindleDoor = require({ __path = "Services.SpindleDoor" })
+local CS = game:GetService("CollectionService")
+local slots = {}
+for _, socket in CS:GetTagged("ShardSocket") do
+	slots[socket:GetAttribute("Slot") or 0] = true
+end
+local spindleOk = #CS:GetTagged("SpindleDoor") == 1 and #SpindleDoor.shards >= 6
+for i = 1, 12 do
+	if not slots[i] then spindleOk = false print("WARN Spindle socket missing", i) end
+end
+print("spindle door", #SpindleDoor.shards, "shards known", spindleOk and "ok" or "WRONG")
+if not spindleOk then print("WARN spindle door") end
+
+-- Road polish: bridges found, and no rail, trestle or board stands inside a 16-stud lane (a truck and trailer fit).
+local RoadPolish = require({ __path = "Services.RoadPolish" })
+local polishOk = #RoadPolish.bridges > 0
+local inLane = 0
+local function walk(o)
+	for _, c in o:GetChildren() do
+		if c.ClassName == "Part" then
+			local d = WorldShapeE.nearestRoad(c.Position.X, c.Position.Z)
+			local reach = math.max(c.Size.X, c.Size.Z) / 2
+			if c.Name ~= "Rail" and d and d - math.min(reach, 0.5) < Map.RoadWidth / 2 then
+				inLane += 1
+				if inLane <= 5 then print("WARN road polish part in a lane", c.Name, c.Position, d) end
+			end
+		end
+		walk(c)
+	end
+end
+for _, d in workspace:GetDescendants() do
+	if d.Name == "RoadPolish" then walk(d) end
+end
+print("road polish", #RoadPolish.bridges, "bridge sides", inLane == 0 and polishOk and "ok" or "WRONG")
+
+-- Ferry deck life: each ferry (not the zeppelin) has its snack stand, bounty board and fishing spot.
+local deckLifeOk, decks = true, 0
+for _, d in workspace:GetDescendants() do
+	if d.Name == "Promenade" then
+		decks += 1
+		local m = d.Parent
+		for _, need in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+			local p = m:FindFirstChild(need)
+			if not p or not p:FindFirstChildOfClass("ProximityPrompt") then
+				deckLifeOk = false
+				print("WARN ferry deck missing", need, m.Name)
+			end
+		end
+	end
+end
+if decks ~= #Map.Ferry.Routes then deckLifeOk = false print("WARN ferry decks with a promenade", decks) end
+print("ferry deck life", decks, deckLifeOk and "ok" or "WRONG")
+
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0
 for _, d in workspace:GetDescendants() do

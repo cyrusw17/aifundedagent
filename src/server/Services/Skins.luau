@@ -3,7 +3,7 @@
 -- The part-built pieces keep doing all the work (collisions, belts, intake zones); the mesh only rides on top, and
 -- each client swaps it in once it has loaded. Without Props or an import, nothing changes.
 --
--- Rigged meshes carry moving pieces (Roller, Drum, Reel, Flywheel, Crank, Shaker). Those stay anchored where they were
+-- Rigged meshes carry moving pieces (Roller, Drum, Reel, Flywheel, Crank, Vent, Fan, Shaker). Those stay anchored where they were
 -- placed and are tagged "PropMotion", and Conveyors.client.luau spins or shakes them. A piece inside a model with a
 -- "Running" attribute only moves while that is true (a sorter while it sorts); other pieces always move.
 local CollectionService = game:GetService("CollectionService")
@@ -12,7 +12,7 @@ local Props = script.Parent:FindFirstChild("Props") and require(script.Parent.Pr
 
 local Skins = {}
 
-local SPIN = { "Roller", "Drum", "Reel", "Flywheel", "Crank" }
+local SPIN = { "Roller", "Drum", "Reel", "Flywheel", "Crank", "Vent", "Fan" } -- Vent and Fan are flat, so they spin about the vertical
 local SHAKE = { "Shaker" }
 
 -- Half the size of a part as seen along axis (world space).
