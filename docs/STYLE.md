@@ -58,11 +58,11 @@ the root is 78% of the first mid and the tip is the last mid blended 45% toward 
 | Desert | #ECD6A0 #DEC488 #F6E6BA | none |
 | Snow Peak | #E2D6A8 #D2C8A0 #F5F8FC | snow cap |
 | Swamp | #808040 #686C38 #5C5030 | moss clumps |
-| Volcano | #483830 #342C28 #60402C | glowing embers |
+| Volcano | #463830 #342C28 #60402C | glowing embers |
 | Cave | #96928C #7C7A78 #AAA092 | purple crystals |
 | Sky Island | #ECF0FA #D6E0F4 #F6ECD2 | cloud puffs |
 | Haunted Grove | #78688C #605474 #8C8096 | green wisps |
-| Star Hay | #30286E #46328C #1C1C50 | star sparkles |
+| Star Hay | #30286E #46328C #1E1C50 | star sparkles |
 
 ## Materials
 
