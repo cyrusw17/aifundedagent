@@ -347,8 +347,11 @@ function Bales.drop(player)
 	b.body.AssemblyLinearVelocity = Vector3.zero
 	b.body.AssemblyAngularVelocity = Vector3.zero
 	b.prompt.ActionText = "Pick up"
+	-- A set-down bale is a loose physical block: never welded or anchored, so it can ride in a truck bed and slide
+	-- or tip like real cargo. Roblox picks its network owner automatically, so a bale in a moving truck follows the
+	-- driver's physics instead of lagging behind.
 	pcall(function()
-		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same bale
+		b.body:SetNetworkOwnershipAuto()
 	end)
 
 	Avatar.clearCarry(player)
