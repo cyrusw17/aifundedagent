@@ -1,7 +1,8 @@
 --!nonstrict
 -- Gloves: which pair each player owns and wears, what carried hay weighs, and how much it slows them down.
--- Numbers live in Config/Gloves. A glove stand by the sell pad sells and swaps them. Owned gloves save in their
--- own DataStore so this never has to touch the main save.
+-- Numbers live in Config/Gloves. A glove stand by the sell pad sells and swaps them. Owned and worn gloves save with
+-- the save slot (Data state.gloves). Gloves bought before that were kept in their own DataStore, NeedlewoodGlovesV1;
+-- a used slot with no gloves saved yet picks those up once.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +21,7 @@ end
 
 local owned = {} -- player -> { [gloveId] = true }
 local worn = {} -- player -> gloveId
+local brokeFirstBale = {} -- player -> true once their first bale has been broken (it always spills a needle)
 local store = nil
 do
 	local ok, result = pcall(function()
@@ -98,39 +100,65 @@ local function publish(player)
 end
 
 -- Set by Avatar so walk speed updates the moment gloves change.
-Gloves.changed = function() end
+Gloves.changed = function(_player) end
 
+-- Copies owned and worn gloves into the save slot; Data.luau writes them with the rest of the slot.
 local function save(player)
-	if not store or not owned[player] then
+	local state = Data.get(player)
+	if not state or not owned[player] then
 		return
 	end
 	local list = {}
 	for id in owned[player] do
 		table.insert(list, id)
 	end
-	pcall(function()
-		store:SetAsync(keyFor(player), { owned = list, worn = worn[player] })
-	end)
+	state.gloves = { owned = list, worn = worn[player], brokeFirstBale = brokeFirstBale[player] }
 end
 
+local function legacyGloves(player)
+	if not store then
+		return nil
+	end
+	local ok, saved = pcall(function()
+		return store:GetAsync(keyFor(player))
+	end)
+	return ok and typeof(saved) == "table" and saved or nil
+end
+
+-- Bare hands until a save slot is picked.
+local function reset(player)
+	owned[player] = nil
+	worn[player] = "bare"
+	publish(player)
+end
+
+-- Runs when a save slot loads (Data.loaded).
 local function load(player)
+	local state = Data.get(player)
+	if not state then
+		return
+	end
+	local saved = state.gloves
+	if saved == nil and not state.fresh then
+		saved = legacyGloves(player)
+	end
 	owned[player] = { bare = true }
 	worn[player] = "bare"
-	if store then
-		local ok, saved = pcall(function()
-			return store:GetAsync(keyFor(player))
-		end)
-		if ok and typeof(saved) == "table" then
-			for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
-				if byId[id] then
-					owned[player][id] = true
-				end
-			end
-			if byId[saved.worn] and owned[player][saved.worn] then
-				worn[player] = saved.worn
+	if typeof(saved) == "table" then
+		brokeFirstBale[player] = saved.brokeFirstBale == true or nil
+		for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
+			if byId[id] then
+				owned[player][id] = true
 			end
 		end
+		if byId[saved.worn] and owned[player][saved.worn] then
+			worn[player] = saved.worn
+		end
 	end
+	if not player.Parent then
+		return
+	end
+	save(player)
 	publish(player)
 end
 
@@ -158,6 +186,17 @@ function Gloves.buyOrWear(player, id)
 	worn[player] = id
 	publish(player)
 	save(player)
+end
+
+-- True the first time a player ever breaks a bale, so that bale can promise them a needle. Kept with the gloves
+-- record so it survives leaving.
+function Gloves.firstBaleBreak(player)
+	if brokeFirstBale[player] or not owned[player] then
+		return false
+	end
+	brokeFirstBale[player] = true
+	task.spawn(save, player)
+	return true
 end
 
 function Gloves.owns(player, id)
@@ -259,19 +298,19 @@ function Gloves.buildStand(parent, cframe)
 end
 
 function Gloves.init()
-	Players.PlayerAdded:Connect(load)
+	Players.PlayerAdded:Connect(reset)
+	Data.loaded.Event:Connect(load)
 	for _, player in Players:GetPlayers() do
-		task.spawn(load, player)
+		if Data.get(player) then
+			task.spawn(load, player)
+		else
+			task.spawn(reset, player)
+		end
 	end
 	Players.PlayerRemoving:Connect(function(player)
-		save(player)
 		owned[player] = nil
 		worn[player] = nil
-	end)
-	game:BindToClose(function()
-		for player in owned do
-			save(player)
-		end
+		brokeFirstBale[player] = nil
 	end)
 end
 

@@ -94,11 +94,14 @@ local function scan()
 		end
 		return folder
 	end
+	-- A prop found in the Workspace is the newest import (a re-export), so it replaces an older copy in storage.
 	for name, root in inWorld do
-		if not templates[name] then
-			root.Parent = storage()
-			templates[name] = root
+		local old = templates[name]
+		if old and old ~= root then
+			old:Destroy()
 		end
+		root.Parent = storage()
+		templates[name] = root
 	end
 
 	-- Everything else Import 3D left in the world goes too, even models no prop name matches yet. Left in the
