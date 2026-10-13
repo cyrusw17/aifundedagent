@@ -32,6 +32,12 @@ return {
 		log = 5.1,
 		fence_post_set = 12.6,
 		road_tile = 6.0,
+		-- Gloves: one right glove each, fingers +Y, back of hand -Z (GloveLooks.luau fits them to the hand)
+		work_gloves = 1.9,
+		leather_gloves = 1.9,
+		reinforced_gloves = 1.9,
+		iron_gauntlets = 1.9, -- not exported yet; falls back to the placeholder on the stand
+		starlight_gloves = 1.9,
 		-- Vehicles and trailers
 		rusty_pickup = 27.5, -- the first truck (Vehicles.luau stretches it over the part-built truck)
 		farm_flatbed = 24.4,

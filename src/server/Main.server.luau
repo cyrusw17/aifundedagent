@@ -5,9 +5,11 @@ local Services = script.Parent.Services
 local Data = require(Services.Data)
 local World = require(Services.World)
 local Avatar = require(Services.Avatar)
+local GloveLooks = require(Services.GloveLooks)
 
 Data.start()
 Avatar.start()
+GloveLooks.start()
 World.build()
 
 print("[Needlewood] server started. Base camp is ready.")
