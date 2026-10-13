@@ -45,7 +45,8 @@ function Hay.init(parent)
 			task.wait(3)
 			local now = os.clock()
 			for piece, born in pieces do
-				if now - born > Config.LooseHayLifetime then
+				-- Needles never fade: they stay physical until someone picks them up.
+				if now - born > Config.LooseHayLifetime and not Hay.isNeedle(piece) then
 					Hay.fadeOut(piece)
 				end
 			end
@@ -83,7 +84,7 @@ local function trim()
 	while count > Config.MaxLoosePieces do
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
-			if born < oldestTime then
+			if born < oldestTime and not Hay.isNeedle(piece) then
 				oldest, oldestTime = piece, born
 			end
 		end
