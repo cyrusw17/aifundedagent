@@ -186,6 +186,28 @@ def semi_at(who, scale=None):
     return em.timeline(lambda i, rate: rate * mults[i], scale)[-1][4]
 
 
+REBIRTH = block(PRICES, "Prices.Rebirth =")
+REBIRTH_BONUS, REBIRTH_MAX = num(REBIRTH, "Bonus"), int(num(REBIRTH, "Max"))
+# What a rebirth keeps from the first playthrough's purchases (Prices.Rebirth): the shovels, the wheelbarrow, the plot.
+REBIRTH_KEPT = {"Work Gloves": 1e12, "Leather Gloves": 1e12, "Reinforced Gloves": 1e12, "Iron Gauntlets": 1e12,
+                "Starlight Gloves": 1e12, "Wheelbarrow": 1e12, "Plot + Hand sieve + first line": num(PRICES, "Plot")}
+
+
+def climbs(who=None):
+    """Hours of each climb to the Semi: the first, then one per rebirth (earnings 1 + Bonus x rebirths, kept items)."""
+    out = []
+    for n in range(REBIRTH_MAX + 1):
+        kept = REBIRTH_KEPT if n else None
+        bonus = 1 + REBIRTH_BONUS * n
+        if who is None:
+            out.append(em.timeline(lambda i, rate: rate * bonus, None, kept)[-1][4])
+        else:
+            plain = em.timeline(None, None, kept)
+            mults = week_mults(who, plain)
+            out.append(em.timeline(lambda i, rate: rate * mults[i] * bonus, None, kept)[-1][4])
+    return out
+
+
 def main():
     plain = em.timeline(scale=1)  # the targets: the prices as written
     rows, failures = [], []
@@ -224,6 +246,20 @@ def main():
           f" (target {TARGET_SEMI} h; {best[0]:.2f} would land it at {best[1]:.1f} h)\n")
     if abs(now - TARGET_SEMI) > 1.5:
         failures.append(f"PacingScale {line_sim.PACING_SCALE:g} lands a typical Semi at {now:.1f} h, not about {TARGET_SEMI} h (try {best[0]:.2f})")
+    # Rebirths (Prices.Rebirth): each climb and when each rebirth lands, plain and typical.
+    plain_c, typical_c = climbs(), climbs(TYPICAL)
+    rows, total_p, total_t = [], 0.0, 0.0
+    for n, (cp, ct) in enumerate(zip(plain_c, typical_c)):
+        total_p += cp
+        total_t += ct
+        rows.append(["First climb" if n == 0 else f"After rebirth {n}", f"{cp:.1f} h ({cp / plain_c[0]:.0%})",
+                     f"{ct:.1f} h ({ct / typical_c[0]:.0%})", f"{total_p:.1f} h", f"{total_t:.1f} h"])
+    em.table("Rebirth climbs (to the Semi)", ["Climb", "Plain", "Typical player", "Total, plain", "Total, typical"], rows)
+    ratio = plain_c[1] / plain_c[0]
+    if not 0.6 <= ratio <= 0.85:
+        failures.append(f"the first rebirth climb is {ratio:.0%} of the first climb (want about 70%)")
+    if any(b >= a for a, b in zip(plain_c[1:], plain_c[2:])):
+        failures.append("a later rebirth climb is not shorter than the one before")
     if failures:
         print("FAILED:\n  " + "\n  ".join(failures))
         return 1

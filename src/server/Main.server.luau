@@ -29,6 +29,7 @@ TruckSpots.start()
 Avatar.start()
 GloveLooks.start()
 require(Services.GildedSorters).start()
+require(Services.Rebirth).start()
 World.build()
 
 print("[Needlewood] server started. Base camp is ready.")

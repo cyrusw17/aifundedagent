@@ -128,6 +128,7 @@ return function(SelfTest)
 			interestAt = state.interestAt,
 			trucks = deepCopy(state.trucks),
 			trailers = deepCopy(state.trailers),
+			rebirth = deepCopy(state.rebirth),
 		}
 		local infinite = Config.InfiniteMoney
 		local function reset(cash, earned)
@@ -139,6 +140,7 @@ return function(SelfTest)
 		local ok, err = xpcall(function()
 			Config.InfiniteMoney = false
 			state.interestAt = os.clock() -- keep the interest loop from paying out mid-test
+			state.rebirth = nil -- a reborn slot's sale bonus would change every sale below
 			reset(0)
 
 			-- Earn, charge, give.
@@ -277,6 +279,35 @@ return function(SelfTest)
 				Orders.setProgress(player, progress)
 			end
 
+			-- Rebirth: sales pay Bonus more per rebirth, one-time rewards don't; a reset keeps the right things.
+			local Rebirth = require(Services.Rebirth)
+			state.rebirth = { count = 2 }
+			reset(0)
+			Bank.earn(player, 1000, "Hay shop")
+			t.equal("two rebirths: a $1,000 sale pays $1,200", Bank.wallet(state), math.floor(1000 * (1 + 2 * Prices.Rebirth.Bonus) + 0.5))
+			Bank.earn(player, 1000, "Secret: SelfTest")
+			t.equal("a one-time reward gets no rebirth bonus", Bank.wallet(state), math.floor(1000 * (1 + 2 * Prices.Rebirth.Bonus) + 0.5) + 1000)
+			state.rebirth = nil
+			local copy = Data.test.stateFrom({
+				cash = 5000,
+				trucks = { Prices.Rebirth.Unlock, "rusty_pickup" },
+				trailers = { "wagon_trailer" },
+				pocket = { steel = 40, ["steel*12"] = 1 },
+				land = { owned = true, plot = 3, items = { { id = "belt" } }, needles = { steel = 9 }, expansions = 2 },
+				gloves = { owned = { "work", "leather" }, worn = "leather" },
+				bank = { balance = 9000, earned = 50000, sold = 40000 },
+			})
+			copy.land.needles["steel*12"] = 1
+			t.check("a slot with the Semi and no loan can rebirth", (Rebirth.check(copy)))
+			Rebirth.reset(copy)
+			t.equal("rebirth counts", copy.rebirth.count, 1)
+			t.check("cash, bank, trucks and trailers reset", copy.cash == 0 and copy.bank.balance == 0 and #copy.trucks == 0 and #copy.trailers == 0)
+			t.check("the farm's pieces and upgrades reset, the plot stays", copy.land.owned and copy.land.plot == 3 and #copy.land.items == 0 and copy.land.expansions == nil)
+			t.check("plain needles go, mutated ones stay", copy.pocket.steel == nil and copy.pocket["steel*12"] == 1 and copy.land.needles.steel == nil)
+			t.check("shovels stay", copy.gloves and table.find(copy.gloves.owned, "leather") ~= nil)
+			t.equal("contracts restart from sales since the rebirth", copy.rebirth.soldAt, 40000)
+			t.check("no Semi, no rebirth", not Rebirth.check(copy))
+
 			-- Daily contracts: deliveries pay their normal price, a finished contract pays the tier's reward once. The
 			-- all-three bonus is marked paid first so the test doesn't count a real streak day; the player's own contracts
 			-- are put back afterwards.
@@ -349,6 +380,7 @@ return function(SelfTest)
 		state.interestAt = saved.interestAt
 		state.trucks = saved.trucks
 		state.trailers = saved.trailers
+		state.rebirth = saved.rebirth
 		Data.sync(player)
 	end)
 end

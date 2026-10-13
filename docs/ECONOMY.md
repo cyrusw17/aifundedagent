@@ -676,6 +676,45 @@ the target, and then this value. For 40 hours the table above would need a scale
 pricing alone should do (V8's 40 hours assumed slower hauling). The playtest stopwatch retune (the shaker and the
 rest about 1.6x) is now just a different value here.
 
+## Rebirth (CEO H5)
+
+`Prices.Rebirth = { Unlock = "semi_rig", Bonus = 0.1, Max = 5 }`, run by `Services/Rebirth.luau`. Once a slot owns
+the Semi and owes no loans, it can rebirth: cash, the bank balance, trucks, trailers, everything built on the farm,
+plot upgrades, the second farm, daily contract progress and plain needles reset. Kept: the plot itself, shovels and
+the wheelbarrow, the needle index, cosmetics, BestNeedle, finds, mutated needles (trade trophies), quests and
+settings. Every sale afterwards pays +10% per rebirth (max 5, so 1.5x) in `Bank.earn`; one-time rewards (secrets,
+quests, finds) get no bonus. This multiplier sits outside the 2x Boosts cap. Lifetime `sold` stays (trade gate);
+daily contract tiers count sales since the rebirth (`rebirth.soldAt`). The reset slot is saved, then the player
+rejoins through TeleportService (a kick with a message if that fails). Save version 2.
+
+Why plain needles reset: they are money in another form, so keeping them would carry cash through. Why loans must be
+paid first: the reset would otherwise wipe a debt.
+
+Time to the Semi per climb (`tools/boost_sim.py`, PacingScale 1.2):
+
+| Climb | Plain | Typical | Cumulative plain / typical |
+|---|---|---|---|
+| First | 17.4 h | 14.6 h | 17.4 / 14.6 h |
+| Rebirth 1 | 13.3 h (77%) | 11.4 h | 30.7 / 26.0 h |
+| Rebirth 2 | 12.2 h (70%) | 10.4 h | 42.9 / 36.4 h |
+| Rebirth 3 | 11.3 h (65%) | 9.6 h | 54.2 / 46.0 h |
+| Rebirth 4 | 10.5 h (60%) | 8.9 h | 64.7 / 55.0 h |
+| Rebirth 5 | 9.8 h (56%) | 8.4 h | 74.5 / 63.4 h |
+
+The 70% target is met against the first climb by the second rebirth; a flat +10% can't make each climb 70% of the one
+before (that would need a compounding bonus, which breaks the 1.5x cap). Each climb is still shorter than the last, and
+kept shovels plus the wheelbarrow make the first rebirth feel fast at once: early purchases in minutes
+(`tools/pacing_sim.py --rebirths`):
+
+| Buy | First climb | R1 | R2 | R3 | R4 | R5 |
+|---|---|---|---|---|---|---|
+| Rusty Pickup | 15 | 4 | 4 | 4 | 4 | 3 |
+| Plot + sieve + first line | 50 | 20 | 18 | 15 | 17 | 14 |
+| Shaker table | 74 | 43 | 40 | 36 | 33 | 30 |
+| Farm Flatbed | 114 | 60 | 55 | 52 | 48 | 43 |
+| Small Trailer | 140 | 86 | 78 | 71 | 67 | 62 |
+| Conveyor sorter | over 180 | 163 | 150 | 137 | 128 | 119 |
+
 ## The Hay Market
 
 A stall at base camp (`Services/HayMarket.luau`, CEO backlog H6) restocks every 5 minutes with three rare bales, three

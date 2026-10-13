@@ -128,6 +128,7 @@ local function money(n)
 	return (n < 0 and "-$" or "$") .. out
 end
 Bank.money = money
+Bank.record = record -- (state, kind, amount, note): a line in the account history (Rebirth uses it)
 
 -- Earning and spending -----------------------------------------------------------------------------------------------
 
@@ -152,6 +153,12 @@ function Bank.earn(player, amount, note)
 		return 0, 0
 	end
 	local a = account(state)
+	-- Rebirth (Prices.Rebirth): every sale pays Bonus more per rebirth. One-time rewards and test money don't.
+	local reborn = typeof(state.rebirth) == "table" and tonumber(state.rebirth.count) or 0
+	if reborn > 0 and not oneTime(note) and note ~= "SelfTest" then
+		local Rebirth = Prices.Rebirth
+		amount = math.floor(amount * (1 + Rebirth.Bonus * math.clamp(math.floor(reborn), 0, Rebirth.Max)) + 0.5)
+	end
 	a.earned += amount
 	if not oneTime(note) then
 		a.sold += amount

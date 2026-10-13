@@ -166,7 +166,9 @@ local function contractState(player)
 	end
 	local c = state.contracts
 	if typeof(c) ~= "table" or c.day ~= today() or not Contract.Tiers[c.tier] then
-		c = { day = today(), tier = tierFor(Bank.account(state).sold), n = {}, paid = {} }
+		-- Sales since the last rebirth, so a reborn slot starts again at the first tier (Rebirth.luau).
+		local since = typeof(state.rebirth) == "table" and tonumber(state.rebirth.soldAt) or 0
+		c = { day = today(), tier = tierFor(Bank.account(state).sold - since), n = {}, paid = {} }
 		state.contracts = c
 	end
 	c.n = typeof(c.n) == "table" and c.n or {}

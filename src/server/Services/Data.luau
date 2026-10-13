@@ -124,10 +124,13 @@ local function heldElsewhere(saved)
 end
 
 -- Save versions. MIGRATIONS[v] turns a version v save into version v + 1. Saves from before versions are version 0.
-local SAVE_VERSION = 1
+local SAVE_VERSION = 2
 local MIGRATIONS = {
 	[0] = function(saved)
 		return saved -- version 1 is the shape version 0 already had; stateFrom fills anything missing
+	end,
+	[1] = function(saved)
+		return saved -- version 2 adds rebirth (Rebirth.luau); a save without it has never been reborn
 	end,
 }
 -- The save brought up to SAVE_VERSION, or nil when it is from a newer version of the game than this server runs.
@@ -331,6 +334,8 @@ local function stateFrom(saved)
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 		-- contracts: today's daily contracts, { day, tier, n = { [i] = count }, paid = { [i] = true }, bonus } (Orders.luau)
 		contracts = typeof(saved.contracts) == "table" and saved.contracts or nil,
+		-- rebirth: { count, at, soldAt = Bank sold at the last rebirth } (Rebirth.luau), nil before the first
+		rebirth = typeof(saved.rebirth) == "table" and typeof(saved.rebirth.count) == "number" and saved.rebirth or nil,
 		tradeLocks = tradeLocksFrom(saved.tradeLocks), -- mythic needles received in a trade can't be traded on for a day
 	}
 	state.savedCash = state.cash
@@ -368,6 +373,7 @@ local function toSave(state)
 		codex = state.codex,
 		quests = state.quests,
 		contracts = state.contracts,
+		rebirth = state.rebirth,
 		tradeLocks = state.tradeLocks,
 	}
 end
@@ -615,7 +621,8 @@ saveOnce = function(player, final)
 	if not state or not store or not state.slot or offline[player] then
 		return
 	end
-	if Data.beforeSave then
+	-- state.skipBeforeSave: a rebirth (Rebirth.luau) saves a reset slot, and Land must not copy the old farm back in.
+	if Data.beforeSave and not state.skipBeforeSave then
 		pcall(Data.beforeSave, player)
 	end
 	local saved = toSave(state)

@@ -483,6 +483,18 @@ function Prices.needleChance(hayType: string?): number
 	return perBale / Prices.HayPerBale
 end
 
+-- Rebirth (CEO H5, Services/Rebirth.luau). Once you own the Semi you can start the climb again: cash, the bank, loans
+-- (pay them off first), trucks, trailers, the machines and belts on your farm, plot upgrades and the second farm all
+-- reset, and plain needles go with the cash. You keep the plot itself, your shovels, the needle index, cosmetics,
+-- finds, mutated needles, quests and your best needle. Each rebirth adds Bonus to every sale for good (Bank.earn), up
+-- to Max rebirths (1.5x). It is its own multiplier, outside the 2x Boosts cap. With the shovels kept, the next climb
+-- takes about 77%, 70%, 65%, 60% and 56% of the first (tools/boost_sim.py --rebirths).
+Prices.Rebirth = {
+	Unlock = "semi_rig",
+	Bonus = 0.1,
+	Max = 5,
+}
+
 -- Pacing scale (CEO H18) --------------------------------------------------------------------------------------------
 
 -- One dial for how long the climb takes after the first hour. Every truck, trailer, glove and build piece priced at

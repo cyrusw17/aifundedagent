@@ -154,15 +154,16 @@ def paced(name, price, scale=None):
     return line_sim.pace("rusty_pickup" if name == "Rusty Pickup" else name, price, scale)
 
 
-def timeline(mult=None, scale=None):
+def timeline(mult=None, scale=None, kept=None):
     """The first playthrough: [(name, price, stage, hours to afford, total hours, gross earned so far, note)].
-    Prices go through Prices.PacingScale (or scale, to try a value)."""
+    Prices go through Prices.PacingScale (or scale, to try a value). kept: {name: dollars already owned} for a climb
+    after a rebirth (tools/boost_sim.py), taken off that purchase's price."""
     rates = {i: stage_rate(i, mult) for i in range(1, len(STAGES) + 1)}
     clock, gross = 0.0, 0.0
     owed = {}  # loan kind -> amount still owed; one loan of each kind at a time, like the bank
     out = []
     for name, price, stage, loan in PLAN:
-        price = paced(name, price, scale)
+        price = max(0, paced(name, price, scale) - (kept or {}).get(name, 0))
         rate = rates[stage]
         need = price
         if loan:
@@ -170,7 +171,7 @@ def timeline(mult=None, scale=None):
             need = price * down + owed.get(loan, 0)  # pay off the last loan of this kind first
             owed[loan] = 0
         hours = 0.0
-        while need > 0:
+        while need > 0 and price > 0:
             step = 1 / 60
             earned = rate * step
             for kind in owed:

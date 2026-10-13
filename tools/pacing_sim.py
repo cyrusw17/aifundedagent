@@ -158,7 +158,12 @@ class Market:
         return m
 
 
-def play(seed, hours, toss=False, land_loan=False, players=1, market=False, verbose=False):
+REBIRTH = line_sim.block(PRICES, "Rebirth")
+REBIRTH_BONUS = num(REBIRTH, "Bonus")
+REBIRTH_KEPT = ("Work Gloves", "Leather Gloves", "Wheelbarrow")  # shovels and gear survive a rebirth (Prices.Rebirth)
+
+
+def play(seed, hours, toss=False, land_loan=False, players=1, market=False, verbose=False, rebirths=0):
     rng = random.Random(seed)
     bales = scatter(rng)
     raw = line_sim.raw_bale("meadow")
@@ -166,6 +171,12 @@ def play(seed, hours, toss=False, land_loan=False, players=1, market=False, verb
     landed = {}
     plan = list(PLAN)
     stage = "hands"
+    if rebirths:
+        # A rebirth keeps the plot, the shovels and the wheelbarrow, and every sale pays Bonus more per rebirth.
+        owned.update(REBIRTH_KEPT)
+        landed.update({name: 0.0 for name in REBIRTH_KEPT})
+        plan = [(n, p - PLOT if n.startswith("Plot") else p, lo, tg) for n, p, lo, tg in plan if n not in REBIRTH_KEPT]
+        stage = "barrow"
     sorter = None
     steel = Market(P["needle_value"][line_sim.NEEDLE_FOR_HAY["meadow"]])
     chute = {"stock": CHUTE_STOCK, "t": 0.0}
@@ -175,6 +186,7 @@ def play(seed, hours, toss=False, land_loan=False, players=1, market=False, verb
 
     def earn(amount):
         nonlocal cash
+        amount *= 1 + REBIRTH_BONUS * rebirths
         for kind in list(owed):
             pay = min(owed[kind], amount * LOAN[kind][1])
             owed[kind] -= pay
@@ -284,6 +296,7 @@ def main():
     ap.add_argument("--hours", type=float, default=3)
     ap.add_argument("--runs", type=int, default=20)
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--rebirths", action="store_true", help="also print the first hours of each rebirth climb")
     a = ap.parse_args()
 
     results = [play(seed, a.hours, verbose=a.verbose) for seed in range(1, a.runs + 1)]
@@ -319,6 +332,15 @@ def main():
     print(f"Carrying a bale: {carry_speed('bare'):.1f} studs/s bare, {carry_speed('work'):.1f} with Work Gloves;"
           f" pushing a full barrow {carry_speed('work', BARROW_FEEL):.1f}. A raw Meadow bale sells for {line_sim.money(line_sim.raw_bale('meadow'))}."
           f" A crew's second player hauls by barrow while the first drives; the pickup carries {TRUCK_BALES} bales.")
+    if a.rebirths:
+        print(f"\n### After a rebirth (minutes to each buy, median of {a.runs} maps; shovels, wheelbarrow and plot kept)\n")
+        cols = [medians([play(seed, a.hours, rebirths=n) for seed in range(1, a.runs + 1)]) for n in range(0, 6)]
+        print("| Buy | First climb | " + " | ".join(f"Rebirth {n}" for n in range(1, 6)) + " |")
+        print("|---|---|" + "---|" * 5)
+        for name, _, _, _ in PLAN:
+            cells = [("kept" if n and name in REBIRTH_KEPT else (f"{c[name] * 60:.0f}" if c[name] is not None else f"over {a.hours * 60:.0f}"))
+                     for n, c in enumerate(cols)]
+            print(f"| {name} | " + " | ".join(cells) + " |")
     if gaps:
         print("\nOff target by more than half (send to Economy):")
         for g in gaps:
