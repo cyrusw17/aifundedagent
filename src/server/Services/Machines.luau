@@ -26,6 +26,7 @@ local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Tutorial = require(script.Parent.Tutorial)
 local Bank = require(script.Parent.Bank)
+local Oil = require(Shared.Config.Prices).SorterOil
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
@@ -336,24 +337,19 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end
 
 	oilClick.MouseClick:Connect(function(player)
-		local state = Data.get(player)
-		if not state then
-			return
-		end
-		if oiled + Factory.OilBales > Factory.OilMaxBales then
+		if oiled + Oil.bales > Oil.maxBales then
 			Data.toast(player, ("This sorter is already well oiled (%d bales)."):format(oiled))
 			return
 		end
-		if state.cash < Factory.OilPrice then
-			Data.toast(player, ("Sorter oil costs $%d. You have $%d."):format(Factory.OilPrice, state.cash))
+		local ok, why = Bank.charge(player, Oil.price, "Sorter oil")
+		if not ok then
+			Data.toast(player, ("Sorter oil costs $%d. %s"):format(Oil.price, why or ""))
 			return
 		end
-		state.cash -= Factory.OilPrice
-		Data.sync(player)
-		oiled += Factory.OilBales
+		oiled += Oil.bales
 		refreshLabel()
 		Feedback.play("Scoop", can)
-		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Factory.OilSpeedup * 100), Factory.OilBales))
+		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
 	local function sort(hay, ownerId)
@@ -363,7 +359,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		local started = os.clock()
 		local seconds = Machines.sortSeconds(tier.id, hay)
 		if oiled > 0 then
-			seconds /= 1 + Factory.OilSpeedup
+			seconds /= 1 + Oil.speedup
 			oiled -= 1
 		end
 		while os.clock() - started < seconds do

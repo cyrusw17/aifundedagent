@@ -104,8 +104,23 @@ Prices.Pieces = {
 	blueprint_post = 10,
 	blueprint_wall = 10,
 	blueprint_floor = 10,
+	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
+	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	splitter = 300,
+	sort_splitter = 600,
+	display_wall = 1000,
+	hay_press = 8000,
 }
 Prices.RefundShare = 0.5
+
+-- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
+-- change on a big one; it only pays when the sorter is what holds the line back.
+Prices.SorterOil = {
+	price = 250,
+	bales = 25, -- the next this many bales sort faster
+	speedup = 0.1, -- 10% faster
+	maxBales = 75, -- at most three cans stacked
+}
 
 -- Sorter speeds, in bales a minute (Config/Sorters turns them into hay per minute). Each tier doubles the last.
 Prices.SorterBalesPerMinute = {
