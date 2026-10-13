@@ -1042,6 +1042,52 @@ function LANDMARKS.shore(folder)
 	signpost(folder, -244, 850, Vector2.new(0, 1), "THE TAILOR'S SHACK", 10)
 end
 
+function LANDMARKS.ridge(folder)
+	-- The Ridge Tunnel: a stone portal at each end of the bore and lamps along its walls (lit day and night).
+	local road
+	for _, r in Map.Roads do
+		if r.tunnel then
+			road = r
+		end
+	end
+	if not road then
+		return
+	end
+	local stone = Color3.fromRGB(120, 114, 108)
+	local inside, lamps = false, 0
+	for i = 1, #road.points - 1 do
+		local a, b = road.points[i], road.points[i + 1]
+		local dir = (b - a).Unit
+		local n = math.max(1, math.floor((b - a).Magnitude / 6))
+		for k = 0, n - 1 do
+			local p = a:Lerp(b, k / n)
+			local _, _, _, _, tube = WorldShape.column(p.X, p.Y)
+			local now = tube ~= nil and tube.land == true
+			if now ~= inside then
+				-- A portal where the road goes in or comes out: pillars and a lintel outside the lane.
+				local _, h = WorldShape.nearestRoad(p.X, p.Y)
+				local base = CFrame.lookAt(Vector3.new(p.X, h, p.Y), Vector3.new(p.X + dir.X, h, p.Y + dir.Y))
+				for _, side in { -1, 1 } do
+					part(folder, "PortalPillar", Vector3.new(4, 24, 5), base * CFrame.new(side * 12.5, 12, 0), stone, Enum.Material.Cobblestone)
+				end
+				local lintel = part(folder, "PortalLintel", Vector3.new(29, 5, 5), base * CFrame.new(0, 24.5, 0), stone, Enum.Material.Cobblestone)
+				boardText(lintel, "RIDGE TUNNEL")
+				inside = now
+			end
+			if now and k % 10 == 0 then
+				-- A wall lamp every 60 studs, on alternate walls, well off the lane.
+				local _, h = WorldShape.nearestRoad(p.X, p.Y)
+				local side = lamps % 2 == 0 and 1 or -1
+				local off = Vector2.new(-dir.Y, dir.X) * side * 9.5
+				local lamp = part(folder, "TunnelLamp", Vector3.new(0.8, 0.8, 0.8), CFrame.new(p.X + off.X, h + 14, p.Y + off.Y), Color3.fromRGB(255, 214, 150), Enum.Material.Neon, nil, false)
+				light(lamp, Color3.fromRGB(255, 200, 140), 28, 1.2)
+				CollectionService:AddTag(lamp, "AlwaysLit") -- it's always dark in the tunnel
+				lamps += 1
+			end
+		end
+	end
+end
+
 function LANDMARKS.pine(folder)
 	-- The old mill by the end of the Shore Road, with log piles.
 	building(folder, "PineMill", spot(-2010, -780, Vector2.new(1, 0), 18), 30, 22, 14, { sign = "PINE MILL", prop = "mill", roof = Rustic.PaintGreen })

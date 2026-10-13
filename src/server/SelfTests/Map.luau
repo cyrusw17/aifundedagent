@@ -122,7 +122,7 @@ return function(SelfTest)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}
 		for _, def in Map.Regions do
-			local has = def.id == "spindle" -- the Spindle's hay is the Crystal Cave's
+			local has = def.id == "spindle" or def.noFields == true -- the Spindle's hay is the Crystal Cave's; Stitch Ridge is bare rock
 			for _, entry in Regions.fields do
 				has = has or entry.region == def.name
 			end
@@ -172,8 +172,11 @@ return function(SelfTest)
 							table.insert(holes, ("%s at (%d, %d): ground %s, road %.1f"):format(road.name, p.X, p.Y, hit and ("%.1f"):format(hit.Position.Y) or "none", h))
 						end
 					end
-					-- Anything solid and anchored in a 10-stud box above the lane would stop a truck.
-					for _, part in workspace:GetPartBoundsInBox(CFrame.new(p.X, h + 4, p.Y), Vector3.new(10, 6, 10), overlap) do
+					-- Anything solid and anchored in a 10-stud box above the lane would stop a truck. The box turns with
+					-- the road, so a rail along a diagonal stretch (its bounding box is a square) isn't counted in the lane.
+					local dir = (b - a).Unit
+					local laneBox = CFrame.lookAt(Vector3.new(p.X, h + 4, p.Y), Vector3.new(p.X + dir.X, h + 4, p.Y + dir.Y))
+					for _, part in workspace:GetPartBoundsInBox(laneBox, Vector3.new(10, 6, 10), overlap) do
 						if part.Anchored and part.CanCollide and part.Transparency < 1 and not (ferries and part:IsDescendantOf(ferries)) then
 							table.insert(blocked, ("%s on the %s at (%d, %d)"):format(part:GetFullName(), road.name, p.X, p.Y))
 							break
