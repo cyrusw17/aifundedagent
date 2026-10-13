@@ -8,7 +8,7 @@ blender/
   lib/common.py            shared helpers: scene reset, materials, join, export
   props/hay_barrel.py      hay barrel (stylized low-poly; separate barrel and hay meshes)
   styles/mockups.py        the same props in three candidate art styles (A/B/C)
-  styles/lt2_mockups.py    Lumber Tycoon 2 style options (plain / textured)
+  styles/lt2_mockups.py    Lumber Tycoon 2 style options (plain, textured, painted, rustic, faceted, soft)
   props/hay_bale.py        stackable square hay bale (4x2x2 studs)
   tools/render_preview.py  renders a PNG preview of an exported .glb
   exports/                 generated .glb / .obj / .png (committed for easy import)

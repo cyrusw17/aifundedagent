@@ -18,7 +18,7 @@ def parse_args(default_name):
                         help="Folder to write exports into")
     parser.add_argument("--name", default=default_name, help="Base file name for exports")
     parser.add_argument("--formats", default="glb,obj", help="Comma list of: glb, obj, fbx, blend")
-    return parser.parse_args(argv)
+    return parser.parse_known_args(argv)[0]
 
 
 def reset_scene():
