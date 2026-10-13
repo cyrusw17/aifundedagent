@@ -71,7 +71,8 @@ for _, r in Map.Regions do
 		id = "hidden_" .. r.id,
 		name = "Secret of " .. r.name,
 		kind = "hidden",
-		reward = typeof(secrets) == "table" and secrets.hidden or 0,
+		-- What Wilds pays for it: the region's own Prices.Secrets entry, else the `hidden` fallback.
+		reward = typeof(secrets) == "table" and (secrets["hidden_" .. r.id] or secrets.hidden) or 0,
 		near = r.name,
 	})
 end

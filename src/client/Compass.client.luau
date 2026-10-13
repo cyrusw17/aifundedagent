@@ -2,7 +2,7 @@
 -- The compass strip at the top of the screen: which way the camera faces (N, NE, E...), the region you're in, and
 -- pins for your truck, your plot, the quest you're tracking, the rich field and any region event. A pin past the
 -- strip's edge sits at that edge, faded, so it still says which way to turn. North is -Z.
--- Reads only what is already published: OwnerId on trucks, ReplicatedStorage.Land Plot* OwnerId/Corner/Tiles,
+-- Reads only what is already published: the player's TruckSpots, ReplicatedStorage.Land Plot* OwnerId/Corner/Tiles,
 -- the player's QuestTrackTarget, ReplicatedStorage RichField and RegionEventAt.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -109,22 +109,14 @@ end
 
 local targets = {} -- pin id -> Vector3 or nil
 
--- Your truck, remembered once found; the whole Workspace is only searched again (at most every 10 s) when it's gone.
-local truck, lastSearch = nil, -math.huge
+-- Your truck, from the server's "TruckSpots" player attribute ("x,z;x,z", TruckSpots.luau), so the pin stays even
+-- when the truck is streamed out and no Workspace scan is needed. The first truck listed is the one pinned.
 local function findTruck()
-	if not (truck and truck.Parent and truck:GetAttribute("OwnerId") == player.UserId) then
-		truck = nil
-		if os.clock() - lastSearch > 10 then
-			lastSearch = os.clock()
-			for _, d in workspace:GetDescendants() do
-				if d:IsA("Model") and d:GetAttribute("TruckId") and d:GetAttribute("OwnerId") == player.UserId then
-					truck = d
-					break
-				end
-			end
-		end
+	local x, z = string.match(player:GetAttribute("TruckSpots") or "", "^(%-?[%d%.]+),(%-?[%d%.]+)")
+	if not x then
+		return nil
 	end
-	return truck and truck:GetPivot().Position or nil
+	return Vector3.new(tonumber(x), 0, tonumber(z))
 end
 
 local function findPlot()
