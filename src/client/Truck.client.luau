@@ -59,8 +59,8 @@ local function groundUp(model, chassis, params)
 	local length = model:GetAttribute("Length") or 14
 	local corners = {}
 	for _, z in { -length / 2 + 2.5, length / 2 - 2.5 } do
-		for _, x in { -2.6, 2.6 } do
-			local origin = chassis.CFrame * Vector3.new(x, 2, z)
+		for _, x in { -2.8, 2.8 } do
+			local origin = chassis.CFrame * Vector3.new(x, 3, z)
 			local hit = workspace:Raycast(origin, Vector3.new(0, -9, 0), params)
 			if not hit then
 				return nil

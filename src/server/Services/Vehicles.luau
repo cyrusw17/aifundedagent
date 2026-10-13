@@ -17,12 +17,47 @@ local Bales = require(script.Parent.Bales)
 
 local Vehicles = {}
 
-local WHEEL_RADIUS = 1.75
-local TRACK = 2.6 -- wheel center distance from the middle, sideways
-local DECK = 3.1 -- chassis top; the bed floor lands at 3.5, level with the conveyor dock belt
-local CAB_W, CAB_H, CAB_D = 5.6, 5.4, 4.8
-local HOOD = 3.6
-local BED_W = 6.2 -- outside width of a truck bed
+-- Body sizes in studs. Trucks with a bale bed override them (see SHAPES) so the bed matches the canonical spec in
+-- BUILD_REGISTRY.md and the Blender mesh drops straight over the parts.
+local DEFAULT_SHAPE = {
+	wheel = 1.75, -- wheel radius
+	track = 2.6, -- wheel center distance from the middle, sideways
+	deck = 3.1, -- chassis top
+	cabW = 5.6,
+	cabH = 5.4,
+	cabD = 4.8,
+	hood = 3.6,
+	bedW = 6.2, -- outside width of a truck bed
+	bedFloor = 3.5, -- top of the bed floor, level with the conveyor dock belt
+	bedWall = 1.6,
+}
+local SHAPES = {
+	-- Rusty Pickup, matching blender/props/vehicles.py rusty_pickup: bed 10 long x 7 wide inside, 2.6 walls, floor
+	-- top 3.5. Bales lie lengthwise, two along and two across (2 x 4.6 = 9.2 long, 2 x 3.2 = 6.4 wide).
+	rusty_pickup = {
+		wheel = 1.3,
+		track = 3.0,
+		deck = 2.0,
+		cabW = 6.4,
+		cabH = 4.5,
+		cabD = 4.4,
+		hood = 3.4,
+		bedW = 7.7,
+		bedFloor = 3.5,
+		bedWall = 2.6,
+		bedLen = 10.7, -- outside length: 10 inside plus the front wall and tailgate
+		bedGap = 0.4, -- between the cab and the bed
+		meshSize = Vector3.new(7.72, 6.5, 19.7), -- the .glb's box in studs
+	},
+}
+
+local function shapeOf(def)
+	local shape = table.clone(DEFAULT_SHAPE)
+	for k, v in SHAPES[def.id] or {} do
+		shape[k] = v
+	end
+	return shape
+end
 local ROLLER = PhysicalProperties.new(0.7, 0, 0, 100, 1) -- wheels slide over the ground; the drive force moves them
 local BED_GRIP = PhysicalProperties.new(0.7, 0.9, 0, 1, 1) -- with a bale's 1.2 grip, cargo holds through normal driving
 
@@ -47,6 +82,10 @@ function Vehicles.build(def, pivot, parent)
 	local L = def.length
 	local front = -L / 2
 	local body = {} -- parts whose look the Blender mesh replaces
+	local S = shapeOf(def)
+	local WHEEL_RADIUS, TRACK, DECK, HOOD, BED_W = S.wheel, S.track, S.deck, S.hood, S.bedW
+	local CAB_W, CAB_H, CAB_D = S.cabW, S.cabH, S.cabD
+	model:SetAttribute("Deck", DECK)
 
 	local function add(name, size, offset, color, material, shape, collide)
 		local p = Instance.new("Part")
@@ -130,7 +169,7 @@ function Vehicles.build(def, pivot, parent)
 			box("RustPatch", Vector3.new(0.34, 0.8, 1.3), x, DECK + 0.6, cabZ + side * 0.8, Rustic.Rust, Enum.Material.CorrodedMetal, false)
 		end
 	end
-	box("Bench", Vector3.new(CAB_W - 0.8, 0.6, 1.6), 0, DECK + 0.6, cabFront + CAB_D - 1.1, Rustic.Cloth, Enum.Material.Fabric, false)
+	box("Bench", Vector3.new(CAB_W - 0.8, 0.6, 1.6), 0, DECK + 0.3, cabFront + CAB_D - 1.1, Rustic.Cloth, Enum.Material.Fabric, false)
 	add(
 		"SteeringWheel",
 		Vector3.new(0.2, 1.4, 1.4),
@@ -144,28 +183,48 @@ function Vehicles.build(def, pivot, parent)
 	-- What sits behind the cab.
 	local backStart = cabFront + CAB_D
 	local backLength = L / 2 - backStart
+	if S.bedLen then
+		backStart += S.bedGap or 0
+		backLength = S.bedLen
+	end
 	local backZ = backStart + backLength / 2
 	if def.style == "pickup" or def.style == "hauler" then
-		-- An open bed sized for hay bales: 5.6 studs inside, so a 4.6 stud bale fits crosswise, two to a layer.
-		-- Bales ride loose. The grippy floor is all that holds them, so hard turns and bumps can still spill them.
-		local wall = def.style == "hauler" and 3 or 1.6
-		local floor = box("BedFloor", Vector3.new(BED_W, 0.4, backLength), 0, DECK + 0.2, backZ, Rustic.Wood, Enum.Material.WoodPlanks)
+		-- An open bed for hay bales. Bales ride loose: the grippy floor and the walls are all that hold them, so hard
+		-- turns and bumps can still spill them. The floor top sits at S.bedFloor to meet the conveyor dock belt.
+		local wall = def.style == "hauler" and 3 or S.bedWall
+		local floorTop = math.max(S.bedFloor, DECK + 0.4)
+		local floor = box("BedFloor", Vector3.new(BED_W, 0.4, backLength), 0, floorTop - 0.2, backZ, Rustic.Metal, Enum.Material.Metal)
 		floor.CustomPhysicalProperties = BED_GRIP
+		if floorTop - 0.4 > DECK then
+			for _, side in { -1, 1 } do
+				box("BedRiser", Vector3.new(0.5, floorTop - 0.4 - DECK, backLength - 0.6), side * BED_W * 0.28, (floorTop - 0.4 + DECK) / 2, backZ, Rustic.Rust, Enum.Material.CorrodedMetal)
+			end
+		end
 		for _, side in { -1, 1 } do
 			local bedSide = box(
 				"BedSide",
-				Vector3.new(0.3, wall, backLength),
-				side * (BED_W / 2 - 0.15),
-				DECK + 0.4 + wall / 2,
+				Vector3.new(0.35, wall, backLength),
+				side * (BED_W / 2 - 0.175),
+				floorTop + wall / 2,
 				backZ,
 				def.style == "hauler" and Rustic.Wood or paint,
 				def.style == "hauler" and Enum.Material.WoodPlanks or Enum.Material.Metal
 			)
 			bedSide.CustomPhysicalProperties = BED_GRIP
 		end
-		box("Tailgate", Vector3.new(BED_W, wall, 0.3), 0, DECK + 0.4 + wall / 2, L / 2 - 0.15, paint, Enum.Material.Metal)
-		model:SetAttribute("CargoOffset", CFrame.new(0, 0.4 + 0.4 + 3, backZ - 0.15)) -- from the chassis center
-		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.6, 6, backLength - 0.3))
+		box("BedFront", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, backStart + 0.175, paint, Enum.Material.Metal)
+		local tailZ = backStart + backLength - 0.175
+		local tailgate = box("Tailgate", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, tailZ, paint, Enum.Material.Metal)
+		tailgate.CustomPhysicalProperties = BED_GRIP
+		-- Closed and folded-down spots, from the chassis center. Open, it lies flat behind the bed at floor level.
+		model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + wall / 2 - (DECK - 0.4), tailZ))
+		model:SetAttribute(
+			"TailgateOpen",
+			CFrame.new(0, floorTop - 0.175 - (DECK - 0.4), tailZ + 0.175 + wall / 2) * CFrame.Angles(math.pi / 2, 0, 0)
+		)
+		-- The cargo zone, from the chassis center (which sits DECK - 0.4 above the ground).
+		model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + 3 - (DECK - 0.4), backZ))
+		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.7, 6, backLength - 0.7))
 	elseif def.style == "flatbed" then
 		box("Flatbed", Vector3.new(6, 0.5, backLength), 0, DECK + 0.25, backZ, Rustic.Wood, Enum.Material.WoodPlanks)
 		for _, side in { -1, 1 } do
@@ -188,7 +247,8 @@ function Vehicles.build(def, pivot, parent)
 	end
 
 	-- The Blender mesh, when imported, takes over the look. The parts stay for collisions.
-	local mesh = Props.make(def.id, pivot * CFrame.new(0, cabTop / 2, 0), Vector3.new(6, cabTop, L + 0.6))
+	local meshSize = S.meshSize or Vector3.new(6, cabTop, L + 0.6)
+	local mesh = Props.make(def.id, pivot * CFrame.new(0, meshSize.Y / 2, 0), meshSize, def.meshTurn and CFrame.Angles(0, math.rad(def.meshTurn), 0))
 	if mesh then
 		for _, p in body do
 			if p ~= chassis then
@@ -215,13 +275,15 @@ end
 function Vehicles.makeDrivable(model, owner)
 	local chassis = model.PrimaryPart
 	local def = Vehicles.get(model:GetAttribute("TruckId"))
-	local cabFront = -def.length / 2 + HOOD
+	local S = shapeOf(def)
+	local DECK = S.deck
+	local cabFront = -def.length / 2 + S.hood
 
 	local seat = Instance.new("VehicleSeat")
 	seat.Name = "DriverSeat"
 	seat.Size = Vector3.new(2, 0.5, 1.8)
 	-- On top of the bench, driver's side. The chassis center is DECK - 0.4 above the ground.
-	seat.CFrame = chassis.CFrame * CFrame.new(-1.2, DECK + 0.95 - (DECK - 0.4), cabFront + CAB_D - 1.1)
+	seat.CFrame = chassis.CFrame * CFrame.new(-1.2, DECK + 0.6 - (DECK - 0.4), cabFront + S.cabD - 1.1)
 	seat.Color = Rustic.Cloth
 	seat.Material = Enum.Material.Fabric
 	seat.HeadsUpDisplay = false
@@ -293,14 +355,55 @@ function Vehicles.makeDrivable(model, owner)
 	return seat
 end
 
+-- Folds the tailgate down (open = true) so loose cargo can be pushed out the back, or swings it shut.
+-- Used by the conveyor dock's UNLOAD step. Safe to call on any truck; returns false if it has no tailgate.
+function Vehicles.setTailgate(model, open)
+	local chassis = model and model.PrimaryPart
+	local tailgate = model and model:FindFirstChild("Tailgate")
+	local spot = model and model:GetAttribute(open and "TailgateOpen" or "TailgateClosed")
+	if not chassis or not tailgate or not spot then
+		return false
+	end
+	-- Re-weld at the new spot: moving a welded part directly would drag the whole truck.
+	local weld = tailgate:FindFirstChildOfClass("WeldConstraint")
+	if weld then
+		weld:Destroy()
+	end
+	tailgate.CFrame = chassis.CFrame * spot
+	if weld then
+		local new = Instance.new("WeldConstraint")
+		new.Part0 = chassis
+		new.Part1 = tailgate
+		new.Parent = tailgate
+	end
+	model:SetAttribute("TailgateIsOpen", open)
+	return true
+end
+
+-- The player's truck in the world, or nil.
+function Vehicles.ownedBy(player)
+	return owned[player]
+end
+
+-- Every player truck in the world (truck model -> owner), e.g. for the dock to find the one backed up to it.
+function Vehicles.all()
+	local list = {}
+	for player, model in owned do
+		if model.Parent then
+			list[model] = player
+		end
+	end
+	return list
+end
+
 -- Moves an anchored truck (used by the garage drive-out).
 function Vehicles.place(model, cframe)
 	local chassis = model.PrimaryPart
-	chassis.CFrame = cframe * CFrame.new(0, DECK - 0.4, 0)
+	chassis.CFrame = cframe * CFrame.new(0, model:GetAttribute("Deck") - 0.4, 0)
 end
 
 function Vehicles.groundCFrame(model)
-	return model.PrimaryPart.CFrame * CFrame.new(0, -(DECK - 0.4), 0)
+	return model.PrimaryPart.CFrame * CFrame.new(0, -(model:GetAttribute("Deck") - 0.4), 0)
 end
 
 -- Hands the truck to physics and to its owner's client.

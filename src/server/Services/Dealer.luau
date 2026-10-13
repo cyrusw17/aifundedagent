@@ -215,7 +215,7 @@ local function buildBuilding()
 	-- Garage: a workbench and a stack of tires.
 	block(b, "Workbench", -18, -6, 0, 3, 15, 17, Rustic.WoodDark, planks)
 	for i = 0, 2 do
-		part(b, "Tire", Vector3.new(0.9, 2.8, 2.8), origin * CFrame.new(15, 0.55 + i * 0.95, 15.5) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Tire, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		part(b, "Tire", Vector3.new(0.9, 2.8, 2.8), origin * CFrame.new(-17.4, 0.55 + i * 0.95, 11) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Tire, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 	end
 
 	for _, spot in { Vector3.new(-8, 13.4, -10), Vector3.new(8, 13.4, -10), Vector3.new(-6, 13.4, 11), Vector3.new(8, 13.4, 11) } do
