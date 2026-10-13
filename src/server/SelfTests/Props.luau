@@ -318,6 +318,31 @@ return function(SelfTest)
 			t.near("a needle is 1.2 long", n.Size.X, 1.2, 0.05)
 		end
 
+		-- 3e. The gilded index skin turns an owner's sorter gold and back (a stand-in sorter, so no plot is needed).
+		local owner = t.player(5)
+		if not owner then
+			t.skip("gilded sorter skin", "no player joined")
+		else
+			local GildedSorters = require(script.Parent.Parent.Services.GildedSorters)
+			local sorter = Instance.new("Model")
+			local plank = Instance.new("Part")
+			plank.Anchored = true
+			plank.Color = Color3.fromRGB(120, 90, 60)
+			plank.Material = Enum.Material.WoodPlanks
+			plank.CFrame = t.place()
+			plank.Parent = sorter
+			sorter:SetAttribute("OwnerId", owner.UserId)
+			sorter.Parent = Workspace
+			t.cleanup(sorter)
+			local before = owner:GetAttribute("NeedleIndexSkin")
+			owner:SetAttribute("NeedleIndexSkin", "gilded")
+			GildedSorters.apply(sorter)
+			t.check("gilded index skin turns the sorter gold", plank.Material == Enum.Material.Foil and sorter:GetAttribute("Gilded") == true)
+			owner:SetAttribute("NeedleIndexSkin", before)
+			GildedSorters.apply(sorter)
+			t.check("clearing the skin puts the sorter's own look back", plank.Material == Enum.Material.WoodPlanks and plank.Color == Color3.fromRGB(120, 90, 60))
+		end
+
 		-- 4. Nothing Import 3D made is left lying in the Workspace.
 		local stray = {}
 		if Workspace:FindFirstChild("Scene") then
