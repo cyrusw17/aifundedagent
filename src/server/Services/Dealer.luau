@@ -257,8 +257,8 @@ local function buildBuilding()
 		for _, p in divider do
 			p.CanCollide = false
 		end
-		for _, wall in { { -29.2, -2.5, 0, H }, { 2.5, 29.2, 0, H }, { -2.5, 2.5, 8.3, H } } do
-			block(b, "DividerWall", wall[1], wall[2], wall[3], wall[4], 1.6, 2.4, Rustic.PaintCream).Transparency = 1
+		for _, span in { { -29.2, -2.5, 0, H }, { 2.5, 29.2, 0, H }, { -2.5, 2.5, 8.3, H } } do
+			block(b, "DividerWall", span[1], span[2], span[3], span[4], 1.6, 2.4, Rustic.PaintCream).Transparency = 1
 		end
 	end
 end
