@@ -94,7 +94,7 @@ for k in range(5):
     mock.box("roof_line", (18, 1.05, 0.2), rbx(22, -24.5 + k * 1.5, 10.5), ROOF_DARK)
 plank(mock.box("counter", (10, 4, 2), rbx(22, -14, 3), blank))
 mock.bale(rbx(17, -20.5, 1), 0.0, F)  # stock on the shop floor
-mock.bale(rbx(17, -20.5, 3), 0.15, F)
+mock.bale(rbx(17, -20.5, 3.6), 0.15, F)
 
 # Sell pad (12 x 9 at 22, -6).
 mock.box("sell", (12, 0.4, 9), rbx(22, -6, 0.2), SELL)

@@ -59,8 +59,8 @@ X = xs[0]
 plinth(X)
 mock.bale((X, 0, 1.6), 0.0, F)
 for side in (-1, 1):
-    mock.box("arm", (1, 2, 1), (X + side * 2.6, 0, 3.6), SLEEVE, rot=(0, side * 0.25, 0))
-    mock.box("hand", (1, 0.9, 1), (X + side * 2.45, 0, 2.5), SKIN, rot=(0, side * 0.25, 0))
+    mock.box("arm", (1, 2, 1), (X + side * 2.9, 0, 3.8), SLEEVE, rot=(0, side * 0.25, 0))
+    mock.box("hand", (1, 0.9, 1), (X + side * 2.75, 0, 2.7), SKIN, rot=(0, side * 0.25, 0))
 titles(X, "BARE HANDS", ["Click a bale to lift it", "Carry it, stack it, sell it"])
 
 # Shovel: the small spade (about 2.7 studs), standing in loose hay.

@@ -26,8 +26,8 @@ small bevels, muted straw, bark and plank textures, rusty metal, dull twine, sli
 ## Hay
 
 - Hay comes as **stackable square bales** tied with two twine bands, not barrels.
-- A bale is **4 x 2 x 2 studs** with flat tops and bottoms. Two side by side match one laid across,
-  so bales stack in bonds.
+- A bale is **4.6 long x 2.6 high x 3.2 deep studs** (the game's size in `Bales.luau`), with flat tops
+  and bottoms so bales stack.
 - There is also a round bale (3.6 x 3.4 x 3.6 studs) with rolled ends.
 - Loose hay pieces are 0.9 to 1.5 x 0.3 x 0.3 stud sticks in the hay colors.
 - One hay per map (see `blender/mockups/hay_types.py`), keyed to `src/shared/Config/Needles.luau`.
@@ -77,7 +77,7 @@ New colors should be muted and warm: pull bright colors about 25 to 30% toward w
 
 - Props are modeled in meters, with 1 stud = 0.28 m (scale by about 3.57 on import if needed).
   Mockups work in studs and scale the props up.
-- Reference sizes: player about 5 studs, bale 4 x 2 x 2, small shovel about 2.7, rake and pitchfork about 5,
+- Reference sizes: player about 5 studs, bale 4.6 x 2.6 x 3.2, small shovel about 2.7, rake and pitchfork about 5,
   wheelbarrow about 5 x 2.5 x 2.5, log 5 long.
 - Keep props light: a few thousand triangles at most, much less for anything spawned many times.
 
@@ -94,5 +94,4 @@ New colors should be muted and warm: pull bright colors about 25 to 30% toward w
 
 ## Not matching yet
 
-- The game bale in `Bales.luau` is 4.6 x 2.6 x 3.2 studs; the style bale is 4 x 2 x 2.
-  They should agree before the .glb replaces the part bale.
+- Nothing known.

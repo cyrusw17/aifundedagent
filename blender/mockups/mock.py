@@ -113,7 +113,7 @@ def prop(key, loc, rot_z=0.0, f=None, rot=None):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
     import rustic_props
     f = f or rustic_finish()
-    parts = rustic_props.PROPS[key](f)
+    parts = rustic_props.HAY_AND_TOOLS[key](f)
     root = bpy.data.objects.new(key, None)
     bpy.context.collection.objects.link(root)
     for o in parts:
@@ -134,19 +134,22 @@ def finish_part(obj, kind, f, along="x"):
     return f.apply(f.shape(obj, round_edges=False), kind, along=along)
 
 
+BALE = (4.6, 3.2, 2.6)  # length, depth, height in studs (Bales.luau)
+
+
 def bale(loc, rot_z=0.0, f=None):
-    """One 4 x 2 x 2 stud bale with its bottom at loc."""
+    """One bale with its bottom at loc."""
     return prop("hay_bale", loc, rot_z, f)
 
 
 def bale_stack(x, y, z=0.0, f=None, layers=2):
-    """Bales stacked in a bond: two side by side, then one across on top."""
+    """Two bales side by side, then one laid across on top."""
     for layer in range(layers):
         if layer % 2 == 0:
             for dy in (-1, 1):
-                bale((x, y + dy, z + layer * 2), 0.0, f)
+                bale((x, y + dy * BALE[1] / 2, z + layer * BALE[2]), 0.0, f)
         else:
-            bale((x, y, z + layer * 2), math.pi / 2, f)
+            bale((x, y, z + layer * BALE[2]), math.pi / 2, f)
 
 
 def mix(a, b, t):

@@ -39,7 +39,7 @@ INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
 SUB = mock.mat("sub", rgb(80, 72, 62), 0.9)
 
 mock.box("floor", (140, 1, 90), (0, 0, -0.5), FLOOR)
-SPACING_X, SPACING_Y = 11.0, 12.5
+SPACING_X, SPACING_Y = 11.5, 14.0
 
 
 def needle(x, y, z, color, glow, rng):
@@ -59,18 +59,17 @@ for idx, (name, needle_name, value, hay, twine, ncol, glow, extra) in enumerate(
         tw = mock.rustic_palette(twine, twine, tuple(int(c * 0.7) for c in twine), 0.2) if twine else None
         f = mock.rustic_finish("hay_" + name.lower().replace(" ", "_"), hay=pal, twine=tw)
 
-    mock.box("tile", (9.4, 0.2, 10.6), (cx, cy - 0.8, 0.1), TILE)
+    mock.box("tile", (10.0, 0.2, 12.6), (cx, cy - 1.4, 0.1), TILE)
     mock.bale_stack(cx, cy, 0.2, f, layers=2)
-    top = 4.2
+    top = 0.2 + 2 * mock.BALE[2]
     for k in range(3):
-        needle(cx + rng.uniform(-1.4, 1.4), cy - 2.05, rng.uniform(0.9, 3.2), ncol, glow, rng)
+        needle(cx + rng.uniform(-1.6, 1.6), cy - 3.3, rng.uniform(1.0, 4.2), ncol, glow, rng)
 
     if extra == "snow":
-        mock.box("snow", (2.3, 0.35, 4.2), (cx, cy, top + 0.17), mock.mat("snow", rgb(236, 242, 250), 0.7))
-        mock.box("snow2", (4.1, 0.25, 2.1), (cx, cy - 1, 2.35), mock.mat("snow", rgb(236, 242, 250), 0.7))
+        mock.box("snow", (3.0, 0.35, 4.4), (cx, cy, top + 0.17), mock.mat("snow", rgb(236, 242, 250), 0.7))
     elif extra == "pinecone":
         for k in range(3):
-            mock.box("cone", (0.5, 0.75, 0.5), (cx + rng.uniform(-2.5, 2.5), cy - 2.9, 0.6),
+            mock.box("cone", (0.5, 0.75, 0.5), (cx + rng.uniform(-2.5, 2.5), cy - 4.0, 0.6),
                      mock.mat("pinecone", rgb(110, 70, 40)), rot=(0, 0, rng.uniform(0, 1)))
     elif extra == "moss":
         for k in range(6):
@@ -86,7 +85,7 @@ for idx, (name, needle_name, value, hay, twine, ncol, glow, extra) in enumerate(
         crystal = mock.mat("crystal", rgb(170, 90, 220), 0.2, emit=1.2)
         for k in range(4):
             bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.3, depth=1.2,
-                                            location=(cx + rng.uniform(-2.5, 2.5), cy - 2.8, 0.8))
+                                            location=(cx + rng.uniform(-2.5, 2.5), cy - 3.9, 0.8))
             o = bpy.context.active_object
             o.rotation_euler = (rng.uniform(-0.4, 0.4), rng.uniform(-0.4, 0.4), 0)
             o.data.materials.append(crystal)
@@ -94,23 +93,23 @@ for idx, (name, needle_name, value, hay, twine, ncol, glow, extra) in enumerate(
         puff = mock.mat("puff", rgb(255, 255, 255), 0.9, emit=0.2)
         for k in range(4):
             s = rng.uniform(0.9, 1.4)
-            mock.box("puff", (s, s * 0.7, s), (cx + rng.uniform(-3, 3), cy - 2.6, 0.6), puff, rot=(0, 0, rng.uniform(0, 1)))
+            mock.box("puff", (s, s * 0.7, s), (cx + rng.uniform(-3, 3), cy - 3.8, 0.6), puff, rot=(0, 0, rng.uniform(0, 1)))
     elif extra == "wisps":
         wisp = mock.mat("wisp", rgb(140, 255, 190), 0.5, emit=5.0)
         for k in range(5):
-            mock.sphere("wisp", rng.uniform(0.15, 0.25), (cx + rng.uniform(-2, 2), cy - 1.5, top + rng.uniform(0.4, 1.8)), wisp, subdiv=1)
+            mock.sphere("wisp", rng.uniform(0.15, 0.25), (cx + rng.uniform(-2, 2), cy - 2.0, top + rng.uniform(0.4, 1.8)), wisp, subdiv=1)
     elif extra == "stars":
         star = mock.mat("star", rgb(255, 240, 180), 0.5, emit=10.0)
         for k in range(14):
-            mock.box("star", (0.18, 0.18, 0.18), (cx + rng.uniform(-2.4, 2.4), cy + rng.uniform(-2.4, 2.4), rng.uniform(0.6, top + 1.4)), star,
+            mock.box("star", (0.18, 0.18, 0.18), (cx + rng.uniform(-2.6, 2.6), cy + rng.uniform(-3.4, 3.4), rng.uniform(0.6, top + 1.4)), star,
                      rot=(0.6, 0.6, 0))
 
-    mock.label(name.upper(), (cx, cy - 4.2, 0.25), 0.72, INK)
-    mock.label(f"{needle_name} needles  ·  {value}", (cx, cy - 5.1, 0.25), 0.46, SUB)
+    mock.label(name.upper(), (cx, cy - 5.2, 0.25), 0.72, INK)
+    mock.label(f"{needle_name} needles  ·  {value}", (cx, cy - 6.1, 0.25), 0.46, SUB)
 
 mock.label("HAY TYPES  (one per map)", (0, 2 * SPACING_Y - 3.5, 0.25), 1.1, INK)
 
 mock.scene_setup(world_color=(0.74, 0.76, 0.74), res=(2000, 1300), samples=48)
 mock.sun(rotation=(0.6, 0.15, 0.4), energy=3.0)
-mock.camera((0, -34, 60), look_at=(0, 5.0, 0), lens=40)
+mock.camera((0, -36, 66), look_at=(0, 5.5, 0), lens=40)
 mock.render(mock.out_path("hay_types.png"))
