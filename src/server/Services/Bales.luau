@@ -274,6 +274,11 @@ function Bales.breakOpen(player, b)
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
 				Hay.spawnPiece(center + offset, velocity, baleOwner)
 			end
+			-- Now and then a needle tumbles out with the hay.
+			if rng:NextNumber() < Config.VisibleNeedleChance then
+				local offset = Vector3.new(rng:NextNumber(-1, 1), 2 + wave * 0.5, rng:NextNumber(-1, 1))
+				Hay.spawnPiece(center + offset, Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)), baleOwner, "Needle")
+			end
 			task.wait(0.22)
 		end
 	end)

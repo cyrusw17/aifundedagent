@@ -96,11 +96,22 @@ local function useShovel(player, root, aim)
 		if #list == 0 then
 			return
 		end
-		local hay = #list * Config.HayPerPiece
+		local strands, found = 0, 0
+		for _, piece in list do
+			if Hay.isNeedle(piece) then
+				found += 1
+			else
+				strands += 1
+			end
+		end
+		local hay = strands * Config.HayPerPiece
 		state.loadHay += hay
-		state.loadNeedles += Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+		state.loadNeedles += found + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 		Data.sync(player)
 		Hay.flyToPlayer(root, list)
+		if found > 0 then
+			Data.toast(player, found == 1 and "You found a needle in the hay!" or ("You found %d needles!"):format(found))
+		end
 	end)
 end
 

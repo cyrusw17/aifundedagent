@@ -1,14 +1,15 @@
 --!strict
 -- Tunable numbers for the first slice. All placeholders to adjust from playtests.
 return {
-	CarryCapacity = 30, -- hay a player can hold in their arms and pockets at once
+	CarryCapacity = 60, -- hay a player can hold in their arms and pockets at once
 	NeedleChancePerHay = 0.2, -- meadow bales hide about 20 needles per 100 hay
 	AutosaveSeconds = 60,
 
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,
-	PiecesPerBale = 60,
-	MaxLoosePieces = 400, -- the oldest pieces vanish past this, so the server never fills with hay
+	VisibleNeedleChance = 0.2, -- per spill wave (3 per bale): a needle you can see and scoop
+	PiecesPerBale = 90, -- small straw strands spilled by one bale
+	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away
 	BaleRefillSeconds = 45, -- placeholder until we decide how bales refill
 
@@ -16,7 +17,7 @@ return {
 	ShovelReach = 9, -- with no click aim, a bale this close and in front of you gets smashed
 	ToolReach = 18, -- how far from you a click can be for a tool to act on it
 	PickupReach = 10, -- how close the Pick up button shows
-	ShovelPieces = 6, -- pieces per scoop
+	ShovelPieces = 12, -- strands per scoop
 	ShovelRadius = 3, -- pieces this close to the clicked spot get scooped, nearest first
 	ScoopCooldownSeconds = 0.85,
 	RakeRadius = 7,

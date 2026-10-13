@@ -62,10 +62,15 @@ end
 
 -- Loose hay on the pad is paid to whoever last scooped, raked or smashed it.
 local function sellPieces(pieces)
-	local byOwner = {}
+	local byOwner, needlesByOwner = {}, {}
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
-		byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
+		if Hay.isNeedle(piece) then
+			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0) + 1
+			byOwner[ownerId] = byOwner[ownerId] or 0
+		else
+			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
+		end
 		Hay.remove(piece)
 	end
 	for ownerId, n in byOwner do
@@ -73,7 +78,7 @@ local function sellPieces(pieces)
 		local state = owner and Data.get(owner)
 		if state then
 			local hay = n * Config.HayPerPiece
-			local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+			local needles = (needlesByOwner[ownerId] or 0) + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 			local value = Economy.rawLoadValue(hay, needles)
 			state.cash += value
 			Data.sync(owner)
