@@ -93,22 +93,26 @@ Each cell is light / mid / dark hex; the game-side RGB is the mid shade. A dash 
 
 ## Needle rarity glow
 
-One shared look per rarity tier, so value reads at a glance. Glow is the only place colors get bright.
-Source of truth: `blender/mockups/rarity.py` (sheet: `/mnt/project-files/mockups/needle_rarity.png`).
+**Rule (agreed 2026-10-13 by the art director, matching the game):** each needle keeps **its own type color** from
+`Needle.luau`; rarity shows only through **glow (Neon plus particles), from Epic up**. Common, Uncommon and Rare never glow. They read by
+type color and a slightly glossier metal as the tier rises, so glow stays special. Conveyor's in-game look already
+follows this (type colors, slow sparkle on Epic and Legendary). Mockup sheet: `/mnt/project-files/mockups/needle_rarity.png`
+(it predates this rule; its Uncommon and Rare lights are dropped).
 
-| Tier | Needles | Material | PointLight range / brightness | Pulse | Extras |
+| Tier | Needles | Material | Light | Pulse | Extras |
 |---|---|---|---|---|---|
-| Common | Steel (150, 158, 166), Pine (96, 140, 84), Sand (214, 186, 120) | Metal | none | steady | none |
-| Uncommon | Ice (170, 220, 240), Bog (110, 128, 70) | Metal | 3 / 0.5 | steady | soft light only, no Neon |
-| Rare | Obsidian (96, 64, 112), Geode (170, 110, 220) | Neon | 5 / 1 | steady | steady glow |
-| Epic | Cloud (240, 244, 255), Phantom (120, 230, 210) | Neon | 7 / 1.5 | 2 s | slow pulse (brightness 1.0 to 1.8) |
-| Legendary | Cosmic (80, 70, 220) | Neon | 9 / 2.2 | 1.5 s | pulse + star motes (ParticleEmitter, 4/s) |
-| Mythic (mutated) | any type, gold (255, 210, 60) | Neon | 8 / 2 | 1 s | gold, 1.6x size, Sparkles, server banner |
+| Common | Steel (150, 158, 166), Pine (96, 140, 84), Sand (214, 186, 120) | Metal, matte | none | none | none |
+| Uncommon | Ice (170, 220, 240), Bog (110, 128, 70) | Metal | none | none | none |
+| Rare | Obsidian (96, 64, 112), Geode (170, 110, 220) | Metal, glossier (lower roughness) | none | none | none |
+| Epic | Cloud (240, 244, 255), Phantom (120, 230, 210) | Neon | none (bins can hold hundreds) | none | one slow twinkle emitter in the needle color |
+| Legendary | Cosmic (80, 70, 220) | Neon | none | none | twinkle emitter plus star motes (4/s) |
+| Mythic (mutated) | any type, gold (255, 210, 60) | Neon | PointLight 8 / 2 | 1 s | gold, 1.6x size, Sparkles, server banner |
 
-- Changes from `Needle.luau` LOOKS today: Ice moves from Neon to Metal with a soft light (uncommon), Bog gains a soft light,
-  and Obsidian lifts to (96, 64, 112) so its glow shows. The other colors are unchanged.
-- The light color is the needle color. Pulse tweens PointLight brightness between the value above and about 1.6x it.
-- Bundles, display walls and bins use the same tier look as the needles inside them.
+- Obsidian keeps its lift to (96, 64, 112) so it doesn't read as black. Other colors are as in `Needle.luau`.
+- Only Mythic carries a PointLight; Epic and Legendary use particles alone, so a full bin stays cheap (this matches `Needle.luau`).
+- Coral and Brass follow the same rule for their tier.
+- Bundles, display walls and bins use the same look as the needles inside them.
+- Blender: one needle shape per type, colored by type; no rarity tint in the mesh (the game adds the light).
 
 ## New model designs (backlog Blender item 2 and 4)
 
@@ -128,6 +132,19 @@ the game code, as below.
 | needle_bundle | 1.3 x 0.55 x 0.55 | **Game size** (Needle.luau BUNDLE_SIZE; spec said 3 long): 10 grey needles in rows of 4-3-3, eyes all at one end, two twine bands |
 | old_boot, horseshoe, rusty_key, old_radio, lost_ring, fossil | Config/Finds.luau sizes | Leather boot with a flopped shaft; grey iron shoe with nail holes; dark iron key (no rust colour); plank radio with a cloth grille and cream dial; gold ring with a blue stone (the only shiny find); stone slab with a raised cream spiral. `rusty_key` is not in MODEL_SPECS yet |
 | Robux skins | same as the cash truck | Same mesh, paint and trim only, no glow: Homestead Classic (rusty_pickup, barn red with a cream belt line), Timber Wolf 4x4 (rusty_pickup, forest green, roof light bar), Midnight Express (box_truck, navy, pale-gold stripe), Prairie Schooner (farm_flatbed, weathered wood, canvas `Cover`), Founders' Semi (semi_rig, deep green, gold pinstripes and door crest) |
+
+### Part-built pieces in #16 (`mockups/sorter_roofs.png`, `mockups/part_built_sheet.png`)
+
+Drawn from the game code; budgets and rigs are in MODEL_SPECS "Batch 4".
+
+| Model | Size used (studs) | Design notes |
+|---|---|---|
+| Sorter tiers (6) | 6 x 12 frame, walls 7 on the belt, roof top 11.5 | Whole two-tile sorter: plank sides with iron straps, iron roof, hopper on the upstream half, the tier band (TIER_LOOKS colour) down both sides, and the tier silhouette on the downstream half: riddle sieve (wood hoop, wire mesh), shaker deck on four coil springs, ribbed belt hood and motor, barn-red drum between iron bearings, brass-trimmed camera cabinet, glass dome with a glowing ring (the alien tier is the only one that glows) |
+| hay_wagon | bed 8 x 14, tractor 4 x 6 body | Plank bed and rails, spoked wooden wheels with iron tires, hay heap down the middle with 6 benches facing out (red cushions), cream "HAY RIDES" board at the back; green vintage tractor with cream hubs and a straw-hatted driver |
+| ferry_snack_stand | counter 3 x 3.2 x 8, awning 5 x 9 | Cream plank counter, red and cream striped awning with a valance, yellow "SNACKS" sign (the click target), pretzel jar, chowder pot, toffee apples, cocoa mugs, chalk menu |
+| spindle_door | frame 20 x 26 x 4, door 14 x 20 | Lilac-grey dressed stone frame with a shallow arch, dark slate door with iron straps, a brass needle-eye in the middle, 12 iron socket cups on a 5-stud ring; a held shard stands gold and glowing in its cup. **the_spindle.glb's door (6 x 9, sockets on pillars) does not match Regions.luau** |
+| master_needle_pedestal | 4 x 4 x 4 | Stepped stone plinth with brass bands, an empty two-fork iron cradle and a thin gold ring; gold lamps either side |
+| labyrinth_arch, labyrinth_bell | arch 11 wide x 13 tall; bell post 7 | Log posts on the entrance lantern spots, twine-bound straw lintel, red name board, hanging lanterns; bell is brass on an iron bracket with a rope, on the 6 x 6 hay finish patch |
 
 ## Materials
 
