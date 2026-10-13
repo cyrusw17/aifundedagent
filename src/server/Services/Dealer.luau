@@ -437,7 +437,12 @@ function Dealer.build(worldFolder)
 	studioCash.Parent = remotes
 	remotes.Parent = ReplicatedStorage
 
+	local lastBuy = {}
 	buy.OnServerInvoke = function(player, id)
+		if os.clock() - (lastBuy[player] or -math.huge) < 0.5 then
+			return false, "One moment..."
+		end
+		lastBuy[player] = os.clock()
 		local ok, result, message = pcall(onBuy, player, id)
 		if not ok then
 			warn("[Needlewood] dealer error: " .. tostring(result))
@@ -463,6 +468,7 @@ function Dealer.build(worldFolder)
 	Players.PlayerRemoving:Connect(function(player)
 		lastTrailer[player] = nil
 		lastCash[player] = nil
+		lastBuy[player] = nil
 	end)
 
 	Vehicles.init(trucksFolder)
