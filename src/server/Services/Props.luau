@@ -284,6 +284,29 @@ function Props.find(model, prefix)
 	return found
 end
 
+-- A loose copy of a one-mesh prop's MeshPart (needle_lite, needle_tiny), or nil when it was not imported. Every copy
+-- shares the template's MeshId, so thousands of them draw as one batch; Color does the tinting (the texture is
+-- dropped), and it casts no shadow. The caller sizes, places and parents it.
+function Props.meshPart(name)
+	if not Props.has(name) then
+		return nil
+	end
+	local found = partsOf(templates[name])
+	if #found ~= 1 or not found[1]:IsA("MeshPart") then
+		return nil
+	end
+	local p = found[1]:Clone()
+	for _, child in p:GetChildren() do
+		child:Destroy()
+	end
+	pcall(function()
+		p.TextureID = ""
+	end)
+	p.CastShadow = false
+	p.Anchored = false
+	return p
+end
+
 -- Moves a placed prop up or down so its lowest point rests at height y.
 function Props.restOn(model, y)
 	local parts = partsOf(model)
