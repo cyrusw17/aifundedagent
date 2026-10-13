@@ -176,6 +176,14 @@ buffer, a crew, or richer hay, the payback gets much faster: an optical sorter o
 | Sorted needles (SELL NEEDLES pad) | $100 steel up to $5,000 cosmic | Unchanged from the needle table. |
 | A needle you spot and pick up yourself | Full sorted value | It's rare (about 1 per 2 bales broken) and it is the first hook that shows what sorting is worth. |
 
+### Finder's rewards (foreign objects in hay)
+
+The first boot, horseshoe, key, radio, ring and fossil you find in a broken bale each pay a one-time reward
+(`Prices.FinderRewards`). The rule is about $1 for every bale it takes on average to turn one up, with the two
+rarest doubled because they are the finds players talk about: boot $50 (1 in 50 bales), horseshoe $150, key $300,
+radio $600, ring $1,500 (1 in 1,000) and fossil $4,000 (1 in 2,000). They are a moment, not an income. All six
+together come to $6,600, under an hour of pickup earnings, so they never change what a player can afford.
+
 ### The needle market
 
 Each server keeps its own needle prices (`Services/Market.luau`, numbers in `Prices.Market`). Selling a needle type
@@ -279,5 +287,6 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
+| Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
 | Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |

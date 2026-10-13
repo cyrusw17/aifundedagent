@@ -49,6 +49,18 @@ Prices.Needles = {
 	cosmic = 5000,
 }
 
+-- Finder's rewards for foreign objects in hay (Config/Finds, by id), paid once for the first of each kind. About $1
+-- for every bale it takes on average to turn one up (Finds oneIn), with the two rarest doubled because they are the
+-- finds players talk about. They are a moment, not an income: all six together are under an hour of pickup earnings.
+Prices.FinderRewards = {
+	boot = 50, -- 1 in 50 bales
+	horseshoe = 150, -- 1 in 150
+	key = 300, -- 1 in 300
+	radio = 600, -- 1 in 600
+	ring = 1500, -- 1 in 1,000, doubled
+	fossil = 4000, -- 1 in 2,000, doubled
+}
+
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
 -- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
 -- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
