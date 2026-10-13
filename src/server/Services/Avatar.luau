@@ -10,6 +10,8 @@ local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
 local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
+local Data = require(script.Parent.Data)
+local Gloves = require(script.Parent.Gloves)
 
 local Avatar = {}
 
@@ -165,6 +167,9 @@ local function setup(player, character)
 	}
 	rigs[player] = rig
 
+	-- Hay in your arms or a bale on your shoulder slows you down; see Gloves.walkSpeed.
+	Avatar.refreshSpeed(player)
+
 	-- No shovel while carrying a bale.
 	character.ChildAdded:Connect(function(child)
 		if rig.carrying and child:IsA("Tool") then
@@ -270,7 +275,7 @@ function Avatar.setCarry(player)
 	rig.carrying = true
 	rig.token += 1
 	rig.humanoid:UnequipTools()
-	rig.humanoid.WalkSpeed = Config.CarryWalkSpeed
+	Avatar.refreshSpeed(player)
 	tweenMotor(rig.motor, rig.base, 80, 0.25)
 	tweenMotor(rig.leftMotor, rig.leftBase, 80, 0.25)
 end
@@ -281,13 +286,37 @@ function Avatar.clearCarry(player)
 		return
 	end
 	rig.carrying = false
-	rig.humanoid.WalkSpeed = rig.defaultSpeed
+	Avatar.refreshSpeed(player)
 	tweenMotor(rig.motor, rig.base, 0, 0.25)
 	tweenMotor(rig.leftMotor, rig.leftBase, 0, 0.25)
 	local shovel = player.Backpack:FindFirstChild("Shovel")
 	if shovel then
 		rig.humanoid:EquipTool(shovel)
 	end
+end
+
+-- Walk speed from what the player is carrying: loose hay (state.loadWeight, kept by Tools) plus any bale, eased by
+-- their gloves. Runs whenever the load, the bale or the gloves change.
+function Avatar.refreshSpeed(player)
+	local rig = rigs[player]
+	local state = Data.get(player)
+	if not rig or not rig.humanoid.Parent then
+		return
+	end
+	local weight, tier = 0, 0
+	if state then
+		if state.loadHay <= 0 then
+			state.loadWeight, state.loadTier = 0, 0
+		end
+		weight = state.loadWeight or state.loadHay
+		tier = state.loadTier or 0
+		if state.carryBale and state.carryBale.body then
+			local baleWeight, baleTier = Gloves.baleWeight(state.carryBale.body)
+			weight += baleWeight
+			tier = math.max(tier, baleTier)
+		end
+	end
+	rig.humanoid.WalkSpeed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
 end
 
 function Avatar.getRoot(player)
@@ -311,6 +340,18 @@ function Avatar.start()
 	Players.PlayerRemoving:Connect(function(player)
 		rigs[player] = nil
 	end)
+
+	-- Selling, scooping and gloves all end in an attribute change, so speed follows them.
+	Gloves.changed = Avatar.refreshSpeed
+	local function watchLoad(player)
+		player:GetAttributeChangedSignal("LoadHay"):Connect(function()
+			Avatar.refreshSpeed(player)
+		end)
+	end
+	Players.PlayerAdded:Connect(watchLoad)
+	for _, player in Players:GetPlayers() do
+		watchLoad(player)
+	end
 end
 
 return Avatar
