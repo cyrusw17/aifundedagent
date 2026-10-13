@@ -3,6 +3,7 @@
 -- Positions are world studs on Meadow Farm's flat ground (Y = 0). The flat zone, keep-clear rect and plot road that
 -- make room for all this are in Meadow.luau ("Plots").
 local Prices = require(script.Parent.Prices)
+local Rustic = require(script.Parent.Rustic)
 local PRICE = Prices.Plot -- every plot costs the same (Config/Prices explains why)
 local TILES = Vector2.new(12, 10) -- and has the same grid
 
@@ -26,6 +27,7 @@ return {
 	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
 	ExpansionRows = 2,
 	ExpansionPrice = Prices.PlotExpansion,
+	BinDividersPrice = Prices.BinDividers, -- the needle bin's type dividers (Machines bin.splitByType)
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
 	OfficeCenter = Vector3.new(-20, 0, 49),
@@ -43,6 +45,9 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "raised_belt", kind = "belt", level = 1, name = "Raised belt", price = Prices.Pieces.raised_belt, size = { 1, 1 }, blurb = "A belt on stilts, high enough for a loaded belt to run underneath." },
+		{ id = "ramp_up", kind = "ramp", up = true, name = "Ramp up", price = Prices.Pieces.ramp_up, size = { 1, 2 }, blurb = "Two tiles long. Lifts loads from the ground belts up to raised belts." },
+		{ id = "ramp_down", kind = "ramp", up = false, name = "Ramp down", price = Prices.Pieces.ramp_down, size = { 1, 2 }, blurb = "Two tiles long. Brings loads from raised belts back down to the ground." },
 		{ id = "splitter", kind = "splitter", rule = "alternate", name = "Splitter", price = Prices.Pieces.splitter, size = { 1, 1 }, blurb = "Sends loads out its left and right sides in turn. Put belts on both sides." },
 		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
@@ -53,6 +58,36 @@ return {
 		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, thatch = 4, blurb = "A wall along the back of the tile. Fill with 3 bales, 4 thatch or 12 needles." },
 		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, thatch = 2, blurb = "Fill with 2 bales, 2 thatch or 8 needles." },
 	},
+
+	-- Plot themes: free looks for the fence, the sign and two lamps at the lane corners. The first is the default.
+	-- style "rails" is a post-and-rail fence, "wall" a low dry-stone wall. Every color is from the Rustic palette.
+	Themes = ({
+		{
+			id = "rustic", name = "Rustic",
+			style = "rails", post = { color = Rustic.WoodDark, material = Enum.Material.Wood }, rail = { color = Rustic.Wood, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.Wood, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.WoodDark, material = Enum.Material.Wood },
+		},
+		{
+			id = "whitewash", name = "Whitewashed",
+			style = "rails", post = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks }, rail = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.PaintGreen, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.PaintGreen, material = Enum.Material.Metal },
+		},
+		{
+			id = "fieldstone", name = "Fieldstone",
+			style = "wall", post = { color = Rustic.StoneDark, material = Enum.Material.Slate }, rail = { color = Rustic.Stone, material = Enum.Material.Cobblestone },
+			board = { color = Rustic.WoodDark, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.Metal, material = Enum.Material.Metal },
+		},
+		{
+			id = "ironworks", name = "Ironworks",
+			style = "rails", post = { color = Rustic.Metal, material = Enum.Material.Metal }, rail = { color = Rustic.Metal, material = Enum.Material.Metal },
+			board = { color = Rustic.PaintBlue, material = Enum.Material.Metal }, lamp = { color = Rustic.Metal, material = Enum.Material.Metal },
+		},
+		{
+			id = "barnyard", name = "Barn red",
+			style = "rails", post = { color = Rustic.PaintRedDark, material = Enum.Material.WoodPlanks }, rail = { color = Rustic.PaintRed, material = Enum.Material.WoodPlanks },
+			board = { color = Rustic.PaintCream, material = Enum.Material.WoodPlanks }, lamp = { color = Rustic.PaintRedDark, material = Enum.Material.Wood },
+		},
+	} :: { any }),
 
 	SiloCapacity = 60, -- bales
 	SiloFeedSeconds = 3, -- one bale out every this many seconds while the belt in front is clear
@@ -84,8 +119,9 @@ return {
 					{ id = "shaker_table", gx = 4, gz = 5, dir = "E" },
 					{ id = "belt", gx = 6, gz = 5, dir = "E" },
 					{ id = "hay_buyer", gx = 7, gz = 5, dir = "E" },
-					-- Truck and hitched trailer park along the right side, facing the lane.
-					{ id = "parking", gx = 11, gz = 2, dir = "S" },
+					-- Truck and hitched trailer park near the right fence, facing the lane, with the driver's door on the
+					-- free column 11, so getting out stays inside the fence.
+					{ id = "parking", gx = 10, gz = 2, dir = "S" },
 				} :: { any }),
 			},
 		},

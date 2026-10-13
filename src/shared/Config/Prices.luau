@@ -132,6 +132,7 @@ Prices.Plot = 2500
 -- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
 -- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
 Prices.PlotExpansion = 5000
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -152,6 +153,9 @@ Prices.Pieces = {
 	blueprint_floor = 10,
 	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
 	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	raised_belt = 60, -- a belt on the upper level, so one line can cross another
+	ramp_up = 150,
+	ramp_down = 150,
 	splitter = 300,
 	sort_splitter = 600,
 	display_wall = 1000,
