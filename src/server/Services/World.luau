@@ -11,6 +11,7 @@ local Props = require(script.Parent.Props)
 local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
+local Land = require(script.Parent.Land)
 
 local World = {}
 
@@ -143,6 +144,9 @@ function World.build()
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
 	Dealer.build(folder)
 	MeadowDecor.build(folder)
+
+	-- The land office and the buildable plots south of the main road.
+	Land.build(folder)
 end
 
 return World
