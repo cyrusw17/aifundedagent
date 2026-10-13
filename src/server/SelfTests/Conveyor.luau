@@ -1,6 +1,6 @@
 --!nonstrict
 -- Conveyor thread's suite: builds a throwaway line on the test pad (belt, two sorters in a row, a needle bin and a
--- hay buyer), runs two bales through it and checks that each is sorted once, the second sorter lets sorted hay pass,
+-- hay buyer), runs three bales through it and checks that each is sorted once, the second sorter lets sorted hay pass,
 -- the buyer leaves hay alone when its owner isn't here, and every part the line made is gone afterwards.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -58,21 +58,21 @@ return function(SelfTest)
 		Machines.hayBuyer(folder, Conveyors.frame(grid, 8, 0, "E"), "TEST BUYER", payTo)
 
 		local bales = {}
-		for i = 1, 2 do
+		for i = 1, 3 do
 			local bale = Bales.spawn(Conveyors.cellCenter(grid, 0, 0) + Vector3.new(0, Factory.BeltTop + 2, 0), false, false, "meadow")
 			bale.ownerId = GHOST
 			bale.body.Anchored = false
 			table.insert(bales, bale)
-			t.wait(i == 1 and 3 or 0)
+			t.wait(3)
 		end
 
-		-- Two bales through two optical sorters and on to the buyer.
+		-- Three bales through two optical sorters (optical so the suite fits the 120 s limit; a hand sieve takes 30 s a bale) and on to the buyer.
 		local deadline = os.clock() + 40
-		while os.clock() < deadline and (a:GetAttribute("Sorted") or 0) < 2 do
+		while os.clock() < deadline and (a:GetAttribute("Sorted") or 0) < 3 do
 			t.wait(0.5)
 		end
 		t.wait(12)
-		t.equal("first sorter sorted both bales", a:GetAttribute("Sorted") or 0, 2)
+		t.equal("first sorter sorted all 3 bales", a:GetAttribute("Sorted") or 0, 3)
 		t.equal("second sorter sorted nothing twice", b:GetAttribute("Sorted") or 0, 0)
 
 		-- Both sorted bales should have passed B and be waiting in the buyer, unpaid, because their owner is away.
@@ -84,13 +84,36 @@ return function(SelfTest)
 				atBuyer += 1
 			end
 		end
-		t.equal("sorted bales wait in the buyer while the owner is away", atBuyer, 2)
+		t.equal("sorted bales wait in the buyer while the owner is away", atBuyer, 3)
 
 		local inBin = 0
 		for _, n in bin.contents(GHOST) do
 			inBin += n
 		end
-		t.check("bin counts its needles", inBin >= 0 and inBin <= 2 * 20, ("%d needles"):format(inBin))
+		t.check("bin counts its needles", inBin >= 0 and inBin <= 3 * 20, ("%d needles"):format(inBin))
+
+		-- Needles thrown at the bin land in it and count (mid-throw too), and the SELL NEEDLES pad pays for them.
+		bin.add(Conveyors.cellCenter(grid, 1, 0) + Vector3.new(0, 8, 0), GHOST - 1, 4, "steel")
+		local function total(ownerId)
+			local n = 0
+			for _, c in bin.contents(ownerId) do
+				n += c
+			end
+			return n
+		end
+		t.equal("needles in the air already count for saves", total(GHOST - 1), 4)
+		t.wait(3)
+		t.equal("4 thrown needles landed in the bin", total(GHOST - 1), 4)
+		local player = t.player(2)
+		if player and require(Services.Data).get(player) then
+			bin.add(Conveyors.cellCenter(grid, 1, 0) + Vector3.new(0, 8, 0), player.UserId, 2, "steel")
+			t.wait(3)
+			bin.sell(player)
+			t.equal("SELL NEEDLES takes the seller's needles", total(player.UserId), 0)
+			t.equal("and leaves everyone else's", total(GHOST - 1), 4)
+		else
+			t.skip("SELL NEEDLES pays", "needs a player with a loaded save")
+		end
 
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do
