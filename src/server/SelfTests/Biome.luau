@@ -7,6 +7,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Services = script.Parent.Parent.Services
+
+local function deepCopy(v)
+	if typeof(v) ~= "table" then
+		return v
+	end
+	local out = {}
+	for k, x in v do
+		out[k] = deepCopy(x)
+	end
+	return out
+end
 -- tools/headless sets Workspace.Headless: nothing falls or drives there, so the checks that need bales to settle or
 -- trucks to roll skip with a reason (as Conveyor and Health do).
 local HEADLESS = workspace:GetAttribute("Headless") == true
@@ -180,6 +191,8 @@ return function(SelfTest)
 			t.check("dock sees the cargo", Dock.hasCargo())
 			local state = player and Data.get(player)
 			local earned = state and state.bank and state.bank.earned or 0
+			-- The sale is real (the public dock and HAY SELL SHOP): put the tester's money back afterwards.
+			local saved = state and { cash = state.cash, savedCash = state.savedCash, bank = deepCopy(state.bank), lastEarnAt = state.lastEarnAt }
 			local done = false
 			t.check("dock starts unloading", Dock.unload(function()
 				done = true
@@ -198,6 +211,8 @@ return function(SelfTest)
 				end
 				local got = (state.bank and state.bank.earned or 0) - earned
 				t.check("HAY SELL SHOP pays for the hauled hay", got > 0, ("earned $%d"):format(got))
+				state.cash, state.savedCash, state.bank, state.lastEarnAt = saved.cash, saved.savedCash, saved.bank, saved.lastEarnAt
+				Data.sync(player)
 			else
 				t.skip("haul payout", "no player joined, so nobody to pay")
 			end

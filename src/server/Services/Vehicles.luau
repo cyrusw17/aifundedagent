@@ -153,6 +153,7 @@ function Vehicles.build(def, pivot, parent)
 	local model = Instance.new("Model")
 	model.Name = def.name
 	model:SetAttribute("TruckId", def.id)
+	CollectionService:AddTag(model, "TruckModel") -- TruckFeel.client finds trucks by this tag, never by a Workspace scan
 	local paint = Rustic[def.paint] or Rustic.PaintRed
 	local L = def.length
 	local front = -L / 2
@@ -1170,6 +1171,27 @@ function Vehicles.recover(player, mode, to)
 	return true, "Back on its wheels."
 end
 
+-- Every player's trailer in the world, as player -> model (FallSafety catches an unhitched one that falls).
+function Vehicles.trailers()
+	return ownedTrailers
+end
+
+-- Sets the player's unhitched trailer down still on a ground CFrame (FallSafety's catch). A hitched trailer goes
+-- with its truck's rescue instead. Returns true when it was moved.
+function Vehicles.rescueTrailer(player, ground)
+	local trailer = ownedTrailers[player]
+	if not trailer or not trailer.Parent or not trailer.PrimaryPart or trailer:GetAttribute("HitchedTo") then
+		return false
+	end
+	setDown(trailer, ground, trailer:GetAttribute("ChassisHeight") or 3)
+	task.delay(0.5, function()
+		if trailer.Parent and trailer.PrimaryPart and player.Parent then
+			giveTrailerTo(trailer, player)
+		end
+	end)
+	return true
+end
+
 function Vehicles.init(folder)
 	spawnFolder = folder
 	local recoverRemote = Instance.new("RemoteFunction")
@@ -1182,7 +1204,7 @@ function Vehicles.init(folder)
 		return Vehicles.recover(player, mode)
 	end
 
-	-- The horn: Q while driving (Truck.client.luau). Played on the server so everyone near hears it.
+	-- The horn: X while driving (Truck.client.luau; Q is the quest log). Played on the server so everyone near hears it.
 	local hornRemote = Instance.new("RemoteEvent")
 	hornRemote.Name = "TruckHorn"
 	hornRemote.Parent = game:GetService("ReplicatedStorage")
