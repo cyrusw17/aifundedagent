@@ -24,6 +24,9 @@ local Finds = require(script.Parent.Finds)
 local Announce = require(script.Parent.Announce)
 local Weather = require(script.Parent.Weather)
 local HayMath = require(ReplicatedStorage.Shared.HayMath)
+local Boosts = require(ReplicatedStorage.Shared.Boosts)
+local BOOST_TERMS = Boosts.terms(require(ReplicatedStorage.Shared.Config.Prices))
+local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
 local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
@@ -313,6 +316,11 @@ function Bales.breakOpen(player, b)
 		if golden then
 			boost *= Config.GoldenBaleNeedles
 			Announce.say(("%s broke open a golden bale!"):format(player.DisplayName), "gold")
+		end
+		-- The play-together bonus only stacks up to Prices.Boosts.Cap (Boosts.fit, CEO H13); its strands keep the result.
+		if b.body:GetAttribute("TogetherBoost") == true then
+			local together = LandConfig.TogetherBonus or 1
+			boost = Boosts.fit(BOOST_TERMS, boost / together, 1, together, 1)
 		end
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)

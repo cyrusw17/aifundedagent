@@ -576,20 +576,21 @@ costs you a sale. Each finished contract pays a reward, and all three pay a bonu
 
 The cash is the hard part, because income runs from $6,500 to $1.4 million an hour. A fixed reward is either a
 jackpot early or nothing late, so it scales with your lifetime sales (Bank `sold`), fixed for the day when your
-contracts start. Each tier begins where the model's first playthrough reaches that stage, and a full day (three
+contracts start. Each tier begins just after the purchase that opens that stage in the model's first playthrough
+(the first H9 thresholds were a stage early; H13's sim caught it), and a full day (three
 rewards plus the bonus) is about 20% of one hour's income there:
 
 | Lifetime sales | Stage | Income/h | Reward each | Bonus | Full day | Needle asked for |
 |---|---|---|---|---|---|---|
 | $0 | Hands, wheelbarrow, pickup | $6,500 | $250 | $500 | $1,250 (19%) | Steel |
-| $5,000 | Plot and hand sieve | $13,700 | $550 | $1,100 | $2,750 (20%) | Steel |
-| $15,000 | Shaker, flatbed in Pine | $21,600 | $850 | $1,700 | $4,250 (20%) | Pine |
-| $40,000 | Conveyor sorter, Desert | $40,500 | $1,500 | $3,000 | $7,500 (19%) | Sand |
-| $80,000 | Box truck, Snow | $90,000 | $3,500 | $7,000 | $17,500 (19%) | Ice |
-| $170,000 | Magnet drum, Swamp | $150,000 | $6,000 | $12,000 | $30,000 (20%) | Bog |
-| $530,000 | Hauler, Volcano | $436,000 | $17,000 | $34,000 | $85,000 (19%) | Obsidian |
-| $760,000 | Optical, Cave | $750,000 | $30,000 | $60,000 | $150,000 (20%) | Geode |
-| $5,000,000 | Semi, Sky Island | $1,396,000 | $55,000 | $110,000 | $275,000 (20%) | Cloud |
+| $10,000 | Plot and hand sieve | $13,700 | $550 | $1,100 | $2,750 (20%) | Steel |
+| $16,000 | Shaker, flatbed in Pine | $21,600 | $850 | $1,700 | $4,250 (20%) | Pine |
+| $75,000 | Conveyor sorter, Desert | $40,500 | $1,500 | $3,000 | $7,500 (19%) | Sand |
+| $110,000 | Box truck, Snow | $90,000 | $3,500 | $7,000 | $17,500 (19%) | Ice |
+| $455,000 | Magnet drum, Swamp | $150,000 | $6,000 | $12,000 | $30,000 (20%) | Bog |
+| $605,000 | Hauler, Volcano | $436,000 | $17,000 | $34,000 | $85,000 (19%) | Obsidian |
+| $2,400,000 | Optical, Cave | $750,000 | $30,000 | $60,000 | $150,000 (20%) | Geode |
+| $3,100,000 | Semi, Sky Island | $1,396,000 | $55,000 | $110,000 | $275,000 (20%) | Cloud |
 
 Income/h is the slowest stage before the next tier, so a player who is on track never gets more than about 20%. The
 budget is 25% of a day's line income, counting a day as one hour of play; anyone who plays longer gets a smaller
@@ -615,13 +616,31 @@ quest cash and the big secrets, so they are approved as they are.
 
 ## Regional festival
 
-Map's H11 festival (b5f1453) gives every field bale in one region `NeedleBoost` 2 for a week, moving to a new region of
-the 11 each week. It doesn't stack with a rich field's 2x, and the sorter honours it since Conveyor 814a73f. With a
-conveyor sorter or better, needles are most of a bale's value, so a player whose own region has the festival earns
-about 1.8x for that week. A festival in an easier region than yours doesn't pay: doubled Meadow on a conveyor sorter
-($265 a bale) is still under plain Desert ($353). In practice it lands on your region about one week in 11, and
-shortens the stage you're in by up to about 45%. Spread over the climb that's well under 10%, so it's approved as it
-is. If playtests show players waiting for their region's week before upgrading, drop it to 1.5x.
+Map's H11 festival (b5f1453) gives every field bale in one region more needles for a week, moving to a new region of
+the 11 each week. It doesn't stack with a rich field's 2x, and the sorter honours it since Conveyor 814a73f. It was 2x;
+the stacked-boost week (below) put that over the 2x cap at every stage from the shaker on, because with a sorter
+needles are most of a bale's value, so it is now **1.5x** (`WorldMap.FestivalBoost`), and the signs say +50%. A
+festival in an easier region than yours still doesn't pay, so it only matters about one week in 11.
+
+## Stacked boosts (CEO H13)
+
+Every boost is fine alone; the risk is all of them at once. Two guards:
+
+- **In code, a cap on each bale** (`src/shared/Boosts.luau`, `Prices.Boosts.Cap` = 2, used by the sorter and by hand
+  breaking). A bale has its own boost (rich field, festival, chute, region event, golden field, Hay Market kind) and
+  can pick up extras: a friend on your farm (+10% needles) and a thunderstorm (5x mutation odds). The extras only
+  stack until the bale's needles, mutations included, are worth 2x a plain bale's, or the bale's own boost if that is
+  bigger. So a golden bale keeps its 3x and a Storm Hay bale keeps what it was sold with, but neither gets extras.
+  Storm odds are dropped first, then the friend bonus is trimmed. `tests/boosts.luau` checks it.
+- **A stacked week** (`tools/boost_sim.py`, in prepush). It plays the first playthrough with everything on, all week,
+  at every stage: the festival on your own region, a friend always on your farm, every thunderstorm, rain all week
+  (Wet), pity, every profitable Hay Market bale, all three contracts every day with only one hour of play (so they
+  are as big a share as they get), and the index milestone for that stage. It fails if any stage goes over 2x the
+  plain game, or any purchase lands in under half its target time.
+
+Result: 1.1x to 1.2x before a sorter, 1.4x to 1.96x after (the most is Swamp, where the 50% milestone lands). The
+Semi comes at 8.5 hours instead of 14.7, so 58% of the target. Away earnings aren't in it: they only sort hay you
+already hauled into your silos, and hauling is what limits income.
 
 ## The Hay Market
 
