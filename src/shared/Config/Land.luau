@@ -54,6 +54,7 @@ return {
 		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
 		{ id = "alloy_mixer", kind = "mixer", name = "Alloy mixer", price = Prices.Pieces.alloy_mixer, size = { 1, 1 }, blurb = "Mixes two needle types from your pocket into an alloy block for blueprints. No belt needed." },
+		{ id = "hay_baler", kind = "baler", name = "Hay baler", price = Prices.Pieces.hay_baler, size = { 1, 2 }, blurb = "Packs loose strands on the belt back into bales, so raked and scooped hay can feed your line." },
 		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
 		-- Quest-only: free to build once the alien ritual is done (Config/Quests.luau), never sold.
 		-- quest is the reward id (Quests.has) that unlocks the piece.
