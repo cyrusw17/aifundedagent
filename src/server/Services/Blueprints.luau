@@ -5,13 +5,14 @@
 --
 -- Remotes in ReplicatedStorage.LineBlueprints (RemoteFunctions):
 --   Save(name, list)  -> ok, message      list: { { id, dx, dz, dir } } as Land's Copy returns it
---   List()            -> { { name, list, total } }
+--   List()            -> { { name, list, total, builtin? } }   the starter templates first (builtin), then the player's
 --   Delete(name)      -> ok, message
 -- Data state.lineBlueprints = { { name = string, list = { ... } } }, newest last.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
 local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
+local LineTemplates = require(ReplicatedStorage.Shared.LineTemplates)
 local Data = require(script.Parent.Data)
 
 local Blueprints = {}
@@ -104,6 +105,13 @@ end
 
 local function onList(player)
 	local out = {}
+	-- The starter templates (Shared/LineTemplates) come first, for everyone, and can't be deleted.
+	for _, t in LineTemplates do
+		local good = clean(t.list)
+		if good then
+			table.insert(out, { name = t.name, list = good, total = totalOf(good), builtin = true })
+		end
+	end
 	for _, p in presets(player) or {} do
 		local good = typeof(p) == "table" and typeof(p.name) == "string" and clean(p.list)
 		if good then

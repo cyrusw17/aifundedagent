@@ -766,10 +766,9 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	oilClick.Parent = can
 	Skins.dress("sorter_boost_oil", can, canModel, canBase)
 	local oiled = 0 -- bales left that sort faster
-	-- The tier's Blender machine, when it was imported (the hand sieve is a hand tool, not a machine).
-	if tier.id ~= "hand_sieve" then
-		Skins.dress(tier.id, roof, model, center)
-	end
+	-- The tier's Blender machine, when it was imported. Its Roller*, Drum and Crank parts spin and its Shaker rattles
+	-- while the model's Running attribute is true (Skins, Conveyors.client).
+	Skins.dress(tier.id, roof, model, center)
 
 	local dust = Instance.new("ParticleEmitter")
 	dust.Rate = 0
