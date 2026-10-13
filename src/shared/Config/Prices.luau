@@ -167,6 +167,11 @@ Prices.Pieces = {
 	hay_press = 8000,
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
+	decor_flowers = 200,
+	decor_bench = 350,
+	decor_lantern = 500,
+	decor_scarecrow = 900,
 }
 Prices.RefundShare = 0.5
 

@@ -59,6 +59,11 @@ return {
 		-- quest is the reward id (Quests.has) that unlocks the piece.
 		{ id = "alien_collector", kind = "separator", name = "Alien Collector", price = 0, quest = "alien_collector", size = { 1, 2 }, blurb = "Sorts every needle at once while its beam is up, once a day. Earned from the alien offering." },
 		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = "starbeam_collector", size = { 1, 1 }, blurb = "Pulls a bale of Star hay down onto its belt every few minutes. Earned from the alien offering." },
+		-- Decor: looks only. look picks the model in Land.luau buildDecor.
+		{ id = "decor_flowers", kind = "decor", look = "flowers", name = "Flower box", price = Prices.Pieces.decor_flowers, size = { 1, 1 }, blurb = "A planter of wildflowers. Just for looks." },
+		{ id = "decor_bench", kind = "decor", look = "bench", name = "Hay-bale bench", price = Prices.Pieces.decor_bench, size = { 1, 1 }, blurb = "Two bales and a plank for visitors to sit on." },
+		{ id = "decor_lantern", kind = "decor", look = "lantern", name = "Lantern post", price = Prices.Pieces.decor_lantern, size = { 1, 1 }, blurb = "A warm light for your farm at night." },
+		{ id = "decor_scarecrow", kind = "decor", look = "scarecrow", name = "Scarecrow", price = Prices.Pieces.decor_scarecrow, size = { 1, 1 }, blurb = "Keeps watch over your line. Just for looks." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },

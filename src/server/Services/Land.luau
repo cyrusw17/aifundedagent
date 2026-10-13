@@ -35,6 +35,7 @@ local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Display = require(script.Parent.Display)
+local Skins = require(script.Parent.Skins)
 local Mixer = require(script.Parent.Mixer)
 local LineStats = require(script.Parent.LineStats)
 local Quests = require(script.Parent.Quests)
@@ -483,6 +484,66 @@ local function buildParking(plot, item, def)
 	return model
 end
 
+-- Decor: looks only, built from parts in the Rustic palette (the scarecrow wears its Blender mesh when imported).
+local function buildDecor(plot, item, def)
+	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
+	local model = Instance.new("Model")
+	model.Name = "Decor_" .. def.look
+	model.Parent = plot.items
+	if def.look == "flowers" then
+		part(model, "Box", Vector3.new(4, 1.4, 1.6), frame * CFrame.new(0, 0.7, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+		part(model, "Soil", Vector3.new(3.6, 0.2, 1.2), frame * CFrame.new(0, 1.45, 0), Rustic.Mud, Enum.Material.Ground)
+		local colors = { Rustic.PaintRed, Rustic.PaintYellow, Rustic.PaintCream, Rustic.PaintBlue }
+		for i = 0, 5 do
+			local x = -1.5 + i * 0.6
+			part(model, "Stem", Vector3.new(0.12, 0.8, 0.12), frame * CFrame.new(x, 1.9, (i % 2 - 0.5) * 0.4), Rustic.PaintGreen)
+			local bloom = part(model, "Bloom", Vector3.new(0.45, 0.45, 0.45), frame * CFrame.new(x, 2.35, (i % 2 - 0.5) * 0.4), colors[i % #colors + 1], Enum.Material.Fabric)
+			bloom.Shape = Enum.PartType.Ball
+			bloom.CanCollide = false
+		end
+	elseif def.look == "bench" then
+		for _, x in { -1.6, 1.6 } do
+			part(model, "Bale", Vector3.new(1.6, 1.6, 2.4), frame * CFrame.new(x, 0.8, 0), Rustic.Hay, Enum.Material.Fabric)
+			part(model, "Twine", Vector3.new(1.66, 1.66, 0.15), frame * CFrame.new(x, 0.8, 0.5), Rustic.Twine, Enum.Material.Fabric).CanCollide = false
+		end
+		local seat = part(model, "Seat", Vector3.new(4.8, 0.3, 1.8), frame * CFrame.new(0, 1.75, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+		local sit = Instance.new("Seat")
+		sit.Name = "Sit"
+		sit.Size = Vector3.new(1.6, 0.2, 1.4)
+		sit.CFrame = seat.CFrame * CFrame.new(0, 0.25, 0)
+		sit.Transparency = 1
+		sit.Anchored = true
+		sit.Parent = model
+	elseif def.look == "lantern" then
+		part(model, "Post", Vector3.new(0.5, 7, 0.5), frame * CFrame.new(0, 3.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+		part(model, "Arm", Vector3.new(0.3, 0.3, 1.6), frame * CFrame.new(0, 6.8, -0.8), Rustic.WoodDark, Enum.Material.Wood)
+		part(model, "Cap", Vector3.new(0.9, 0.3, 0.9), frame * CFrame.new(0, 6.5, -1.5), Rustic.Metal, Enum.Material.Metal)
+		local glass = part(model, "Lamp", Vector3.new(0.7, 0.9, 0.7), frame * CFrame.new(0, 5.9, -1.5), Rustic.PaintYellow, Enum.Material.Neon)
+		glass.CanCollide = false
+		glass.Transparency = 0.2
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 200, 130)
+		light.Range = 16
+		light.Brightness = 1.2
+		light.Parent = glass
+		CollectionService:AddTag(glass, "NightLamp")
+	elseif def.look == "scarecrow" then
+		local post = part(model, "Post", Vector3.new(0.4, 6.5, 0.4), frame * CFrame.new(0, 3.25, 0), Rustic.WoodDark, Enum.Material.Wood)
+		local body = Instance.new("Model")
+		body.Name = "Body"
+		body.Parent = model
+		part(body, "Arms", Vector3.new(4.2, 0.35, 0.35), frame * CFrame.new(0, 4.8, 0), Rustic.WoodDark, Enum.Material.Wood)
+		part(body, "Shirt", Vector3.new(1.8, 2, 0.9), frame * CFrame.new(0, 4.3, 0), Rustic.PaintRed, Enum.Material.Fabric)
+		part(body, "Sleeves", Vector3.new(3.6, 0.6, 0.6), frame * CFrame.new(0, 4.8, 0), Rustic.PaintRedDark, Enum.Material.Fabric)
+		local head = part(body, "Head", Vector3.new(1.2, 1.2, 1.2), frame * CFrame.new(0, 5.95, 0), Rustic.Cloth, Enum.Material.Fabric)
+		head.Shape = Enum.PartType.Ball
+		part(body, "Hat", Vector3.new(1.8, 0.15, 1.8), frame * CFrame.new(0, 6.6, 0), Rustic.Hay, Enum.Material.Fabric)
+		part(body, "Crown", Vector3.new(1, 0.6, 1), frame * CFrame.new(0, 6.95, 0), Rustic.Hay, Enum.Material.Fabric)
+		Skins.dress("scarecrow", post, body, frame, CFrame.Angles(0, 0, 0))
+	end
+	return model
+end
+
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
@@ -524,6 +585,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, buildParking(plot, item, def))
 	elseif def.kind == "blueprint" then
 		table.insert(item.instances, buildBlueprint(plot, item, def))
+	elseif def.kind == "decor" then
+		table.insert(item.instances, buildDecor(plot, item, def))
 	end
 	for _, cell in item.cells do
 		for _, level in levelsOf(def) do
@@ -1389,6 +1452,7 @@ local function lamp(parent, at, theme)
 	light.Range = 18
 	light.Brightness = 1.2
 	light.Parent = lantern
+	CollectionService:AddTag(lantern, "NightLamp") -- lit from dusk to dawn (WorldClock)
 end
 
 -- Builds the plot's fence, sign and lamps in a theme (an id from LandConfig.Themes; unknown ids get the default).
