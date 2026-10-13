@@ -1,6 +1,8 @@
 """Vehicles in the house style (LT2 shapes, Rustic finish): hand carriers, trucks, boats and trailers.
 
-Every size is in studs (1 stud = 0.28 m). Vehicles face -y, wheels on the ground at z=0.
+Every size is in studs (1 stud = 0.28 m). Builders face -y, wheels on the ground at z=0; the export
+turns them to face +y (glTF/Roblox -Z) and splits wheels, tailgates and couplers into their own
+meshes (lib/rig.py).
 The medium_trailer and the truck cabs follow the game's Trailer.luau / BaseLine.luau parts.
 
 Run through rustic_props.py:
@@ -18,6 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 sys.path.insert(0, HERE)
 import style  # noqa: E402
+from rig import tag, wheel_uid  # noqa: E402
 from style import box, cap_uv, cyl  # noqa: E402,F401
 
 STUD = 0.28
@@ -98,7 +101,7 @@ def tire(f, x, y, r, w, hub="metal", verts=12):
     side = 1 if x >= 0 else -1
     parts.append(C(f, hub, r * 0.55, w + 0.1, (x + side * 0.02, y, r), axis="x", verts=10, rounded=False))
     parts.append(C(f, "metal", r * 0.2, w + 0.3, (x + side * 0.05, y, r), axis="x", verts=6, rounded=False))
-    return parts
+    return tag(parts, "wheel", wheel_uid(x, y))
 
 
 def ring(r_out, r_in, width, n=14):
@@ -138,7 +141,7 @@ def spoked_wheel(f, x, y, r, w, spokes=6):
                                  round_edges=False),
                          "handle", along="x"))
     parts.append(f.apply(cyl(r * 0.1 * STUD, (w + 0.5) * STUD, (0, 0, 0), verts=6, rot=(0, PI / 2, 0)), "metal"))
-    return place(parts, (x, y, r))
+    return tag(place(parts, (x, y, r)), "wheel", wheel_uid(x, y))
 
 
 def open_tray(f, kind, w, d, h, z0, wall=0.25, flare=1.0, along="y"):
@@ -289,7 +292,8 @@ def truck(f, paint, k=1.0, wide=1.0, wheel_r=1.3, hood_d=3.4, rear_len=7.0, rear
         for x in (-1, 1):
             parts += tire(f, x * wx, y, wheel_r, tw, hub="glow" if glow else "metal")
             if dual:
-                parts.append(C(f, "tire", wheel_r, tw * 0.9, (x * (wx - tw * 0.95), y, wheel_r), axis="x"))
+                parts += tag([C(f, "tire", wheel_r, tw * 0.9, (x * (wx - tw * 0.95), y, wheel_r), axis="x")],
+                             "wheel", wheel_uid(x * wx, y))
     if stacks:
         for x in (-1, 1):
             yst = yc1 + sleeper + 0.5
@@ -348,7 +352,7 @@ def cargo_bed(f, key, nl, nw, wall_h, yc, floor="handle", wall="handle", tail_h=
     for x in (-1, 1):
         parts.append(flat(f, wall, (WALL_T, Lo, wall_h), (x * (Wi + WALL_T) / 2, yc, z + wall_h / 2), along="y"))
     parts.append(flat(f, wall, (Wi, WALL_T, wall_h), (0, yc - (Li + WALL_T) / 2, z + wall_h / 2)))
-    parts.append(flat(f, wall, (Wi, WALL_T, tail_h), (0, yc + (Li + WALL_T) / 2, z + tail_h / 2)))
+    parts += tag([flat(f, wall, (Wi, WALL_T, tail_h), (0, yc + (Li + WALL_T) / 2, z + tail_h / 2))], "Tailgate", yc)
     return parts, Lo, Wo
 
 
@@ -725,8 +729,8 @@ def trailer(f, key, nl, nw, wall_h, wheel_r, axles, tongue=4.5, hitch_z=2.2, wal
     tip = (0, yf - tongue, hitch_z)
     for x in (-1, 1):
         parts.append(beam(f, "metal", (x * rx, yf + 0.6, rz), tip, 0.4))
-    parts.append(B(f, "metal", (0.7, 1.0, 0.5), (0, tip[1] - 0.3, hitch_z)))
-    parts.append(C(f, "metal", 0.35, 0.3, (0, tip[1] - 0.7, hitch_z - 0.2), verts=8))
+    parts += tag([B(f, "metal", (0.7, 1.0, 0.5), (0, tip[1] - 0.3, hitch_z)),
+                  C(f, "metal", 0.35, 0.3, (0, tip[1] - 0.7, hitch_z - 0.2), verts=8)], "Coupler", y0)
     if jack:
         jy = tip[1] + tongue * 0.35
         jz = hitch_z + (rz - hitch_z) * 0.35
@@ -755,7 +759,7 @@ def wagon_trailer(f):
             parts += spoked_wheel(f, x * (W / 2 + 0.45), y, 1.5, 0.4, spokes=6)
     # Wooden tongue with a ring hitch, resting on the ground.
     parts.append(beam(f, "handle", (0, -1.6, 2.0), (0, -L / 2 - 4.5, 0.35), 0.4))
-    parts.append(C(f, "metal", 0.45, 0.15, (0, -L / 2 - 4.9, 0.3), verts=10))
+    parts += tag([C(f, "metal", 0.45, 0.15, (0, -L / 2 - 4.9, 0.3), verts=10)], "Coupler")
     return parts
 
 
@@ -810,6 +814,8 @@ def bale_rack_trailer(f):
             parts.append(flat(f, "handle", (0.12, L, 0.3), (x * (W / 2 + 0.06), 0, FLOOR + z), along="y"))
     return parts
 
+
+RIG_FLIP = True  # builders face -y; turn to +y so the glTF faces -Z
 
 PROPS = {
     "two_wheel_handcart": two_wheel_handcart,
