@@ -322,3 +322,25 @@ do
 	end
 	print(("signpost distances %d %s"):format(count, signsOk and "ok" or "WRONG"))
 end
+
+-- First-visit pans (#24): every region but the cave has a focus on dry ground or the sky platform.
+do
+	local Disc = require({ __path = "Services.Discoveries" })
+	local MapC = require({ __path = "Shared.Config.WorldMap" })
+	local ok, n = true, 0
+	for _, entry in Disc.all() do
+		if entry.kind == "region" then
+			local focus = Disc.focus(entry.id)
+			if entry.id == "cave" then
+				if focus then ok = false print("WARN the cave should have no pan") end
+			elseif not focus then
+				ok = false
+				print("WARN no first-visit pan focus for", entry.id)
+			else
+				n += 1
+				if focus.Y < MapC.SeaLevel then ok = false print("WARN pan focus under the sea", entry.id) end
+			end
+		end
+	end
+	print(("region intro pans %d %s"):format(n, ok and "ok" or "WRONG"))
+end
