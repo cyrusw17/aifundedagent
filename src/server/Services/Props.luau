@@ -275,13 +275,25 @@ function Props.weldTo(model, anchor, fallback, loose)
 			part.Transparency = 1
 		end
 		if not skip[part] then
-			local weld = Instance.new("WeldConstraint")
+			-- A Weld with its offset written out, not a WeldConstraint: a tool is built outside the Workspace, and a
+			-- WeldConstraint there can take its offset later, after the handle has already moved to the hand.
+			local weld = Instance.new("Weld")
 			weld.Part0 = anchor
 			weld.Part1 = part
+			weld.C0 = anchor.CFrame:ToObjectSpace(part.CFrame)
 			weld.Parent = part
 		end
 	end
 	if fallback then
+		-- Where the mesh should sit on its anchor and how big it is, so each client can check the mesh really
+		-- landed there before it hides the fallback (PropMeshes.client.luau).
+		local center, size = bounds(partsOf(model))
+		local anchorLink = Instance.new("ObjectValue")
+		anchorLink.Name = "Anchor"
+		anchorLink.Value = anchor
+		anchorLink.Parent = model
+		model:SetAttribute("MeshOffset", anchor.CFrame:PointToObjectSpace(center))
+		model:SetAttribute("MeshLength", math.max(size.X, size.Y, size.Z))
 		local link = Instance.new("ObjectValue")
 		link.Name = "Fallback"
 		link.Value = fallback
