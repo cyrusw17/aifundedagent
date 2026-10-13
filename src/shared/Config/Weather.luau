@@ -98,4 +98,16 @@ Weather.FrontWarnSeconds = 60
 Weather.FrontMinutes = { 3, 5 } -- how long a front lasts once it arrives
 Weather.FrontGapMinutes = { 4, 9 } -- clear spell between fronts
 
+-- Thunderstorm (Addiction push H7): about once an hour the whole server gets a storm for a few minutes. It is
+-- announced StormWarnSeconds ahead, darkens every sky with lightning, and multiplies the needle mutation odds by
+-- StormMutationOdds while it lasts (Weather.needleOdds, read by Needle's roll). It doesn't rain on hay by itself.
+Weather.StormEveryMinutes = { 50, 70 } -- gap from one storm's end to the next storm's warning
+Weather.StormMinutes = 3
+Weather.StormWarnSeconds = 60
+Weather.StormMutationOdds = 5
+Weather.StormText = "A thunderstorm is rolling in! In 60 seconds, mutated needles are 5x as likely for 3 minutes."
+Weather.StormStartText = "Thunderstorm! Mutated needles are 5x as likely for 3 minutes."
+-- Weather kinds that make a needle found out in them roll the "Wet" mutation (Weather.needleOdds).
+Weather.WetKinds = { rain = true }
+
 return Weather
