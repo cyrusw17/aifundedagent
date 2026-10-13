@@ -24,6 +24,9 @@ local Announce = require(script.Parent.Announce)
 
 local Bales = {}
 
+-- Bale meshes not named after their hay type (Blender names them for the grass).
+local BALE_MESH = { keys = "bale_seagrass", bobbin = "bale_thread" }
+
 local rng = Random.new()
 local folder = nil
 local dropOff = nil -- the pad where set-down bales are kept for later
@@ -65,7 +68,7 @@ local function buildBale(position, hayType)
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
 	-- Each region's hay has its own bale mesh (bale_pine, bale_star, ...); the meadow bale is hay_bale.
-	local regionalName = ("bale_%s"):format(hayType)
+	local regionalName = BALE_MESH[hayType] or ("bale_%s"):format(hayType)
 	local regional = hayType ~= "meadow" and Props.has(regionalName)
 	local mesh = Props.make(regional and regionalName or "hay_bale", body.CFrame, SIZE)
 	if mesh then

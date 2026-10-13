@@ -157,6 +157,8 @@ return {
 		bale_star = 4.68,
 		bale_swamp = 4.69,
 		bale_volcano = 4.69,
+		bale_seagrass = 4.69, -- Thimble Keys hay ("keys")
+		bale_thread = 4.69, -- Bobbin Rock hay ("bobbin")
 		golden_hay_bale = 4.63,
 		-- Needles: the 12 types and the rarity set share one shape; the bin has a NeedleFill mesh
 		master_needle_shard = 1.52,
@@ -173,6 +175,8 @@ return {
 		needle_ice = 1.21,
 		needle_legendary = 1.2,
 		needle_obsidian = 1.2,
+		needle_coral = 1.2,
+		needle_brass = 1.2,
 		needle_pearl = 1.25,
 		needle_phantom = 1.21,
 		needle_pine = 1.2,
