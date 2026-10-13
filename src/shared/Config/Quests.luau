@@ -422,7 +422,7 @@ Quests.Trucks = {
 	},
 }
 
--- Everything a quest can give. kind: gear (a perk on a tool), gloves (an id in Config/Gloves QuestTiers), truck (an id
+-- Everything a quest can give. kind: gear (a perk on a tool), gloves (a quest shovel tier: an id in Config/Gloves QuestTiers), truck (an id
 -- in Trucks above), relic (a mystery item for the collection), unlock (a quest-only build piece in Config/Land).
 Quests.Rewards = {
 	golden_shovel = {
@@ -439,23 +439,23 @@ Quests.Rewards = {
 	},
 	scarecrow_gloves = {
 		kind = "gloves",
-		name = "Scarecrow Gloves",
-		blurb = "Tier 2 gloves stuffed with straw. Wear them from the quest log.",
+		name = "Scarecrow Shovel",
+		blurb = "A tier 2 shovel with a straw-wrapped handle. Equip it from the quest log.",
 	},
 	frostbite_mitts = {
 		kind = "gloves",
-		name = "Frostbite Mitts",
-		blurb = "Tier 3 gloves. Frozen hay feels like meadow hay.",
+		name = "Frostbite Spade",
+		blurb = "A tier 3 spade rimed with frost. Frozen hay feels like meadow hay.",
 	},
-	magma_grips = { kind = "gloves", name = "Magma Grips", blurb = "Tier 4 gloves that shrug off the heat." },
+	magma_grips = { kind = "gloves", name = "Magma Shovel", blurb = "A tier 4 shovel that shrugs off the heat." },
 	kraken_gauntlets = {
 		kind = "gloves",
-		name = "Kraken Gauntlets",
-		blurb = "Tier 5 gauntlets from the bottom of the sea.",
+		name = "Kraken Spade",
+		blurb = "A tier 5 spade from the bottom of the sea.",
 	},
 	starweave_gloves = {
 		kind = "gloves",
-		name = "Starweave Gloves",
+		name = "Starweave Shovel",
 		blurb = "Tier 6. Star hay is no heavier than meadow hay.",
 	},
 	old_bessie = { kind = "truck", name = "Old Bessie", blurb = "Call her from the quest log." },
@@ -660,15 +660,15 @@ Quests.List = {
 		giver = "Hank",
 		region = "Meadow",
 		requires = { "first_haul" },
-		blurb = "Bare hands get tired fast. Gloves let you scoop more and carry heavier hay.",
+		blurb = "The old shovel tires you out fast. A better one scoops more and carries heavier hay.",
 		steps = {
 			{
 				kind = "own",
 				what = "gloves_tier",
 				value = 1,
-				hint = "The glove stand is next to the sell pad.",
+				hint = "The shovel stand (SHOVELS) is next to the sell pad.",
 				place = "gloves",
-				text = "Wear Work Gloves or better (glove stand by the shop)",
+				text = "Equip a Garden Shovel or better (shovel stand by the shop)",
 			},
 			{
 				kind = "event",
@@ -678,7 +678,7 @@ Quests.List = {
 				text = "Break open 5 bales",
 			},
 		},
-		reward = { cash = 250 }, -- pays back the Work Gloves (Prices.Gloves.work)
+		reward = { cash = 250 }, -- pays back the Garden Shovel (Prices.Gloves.work)
 	},
 	{
 		id = "wheels",
@@ -1246,7 +1246,7 @@ Quests.List = {
 				event = "bale_broken",
 				count = 20,
 				filter = { hayType = "volcano" },
-				hint = "Ashen hay grows on the Volcano's slopes. Good gloves help with the weight.",
+				hint = "Ashen hay grows on the Volcano's slopes. Its heat needs a tier 4 shovel: an Iron Spade or the Magma Shovel.",
 				text = "Break 20 bales of ashen hay",
 			},
 		},
