@@ -28,15 +28,18 @@ local T = Factory.TileSize
 local TOP = Factory.BeltTop
 local ORIGIN = Vector3.new(48, 0, -40) -- ground corner of grid cell 0,0
 
-local BLUE = Color3.fromRGB(60, 110, 200)
-local ORANGE = Color3.fromRGB(240, 173, 46)
-local WOOD = Color3.fromRGB(139, 90, 43)
-local PLANKS = Color3.fromRGB(150, 110, 70)
-local IRON = Color3.fromRGB(70, 70, 76)
-local STEEL = Color3.fromRGB(150, 158, 166)
-local RED = Color3.fromRGB(192, 57, 43)
-local CLEAN_HAY = Color3.fromRGB(244, 218, 120)
-local GREEN = Color3.fromRGB(88, 190, 96)
+-- Rustic palette (blender/lib/style.py): weathered wood, rusty metal, muted straw.
+-- Pads keep a soft glow so they still read as buttons.
+local BODY = Color3.fromRGB(179, 153, 115) -- machine body: weathered planks
+local RUST = Color3.fromRGB(102, 66, 42) -- roofs and trim: rust
+local WOOD = Color3.fromRGB(133, 110, 82)
+local PLANKS = Color3.fromRGB(179, 153, 115)
+local IRON = Color3.fromRGB(41, 33, 26)
+local STEEL = Color3.fromRGB(128, 117, 105)
+local TWINE = Color3.fromRGB(97, 84, 69) -- twine
+local CLEAN_HAY = Color3.fromRGB(219, 204, 153)
+local GREEN = Color3.fromRGB(150, 170, 100)
+local PAD = Color3.fromRGB(205, 150, 80)
 
 local rng = Random.new()
 local folder = nil
@@ -140,7 +143,7 @@ local function spawnCleanBale(position, ownerId, hay)
 	body.Anchored = false
 	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
 	for _, x in { -1.2, 1.2 } do
-		local band = part(body, "Twine", Vector3.new(0.2, 2.7, 3.3), body.CFrame * CFrame.new(x, 0, 0), RED, Enum.Material.Fabric)
+		local band = part(body, "Twine", Vector3.new(0.2, 2.7, 3.3), body.CFrame * CFrame.new(x, 0, 0), TWINE, Enum.Material.Fabric)
 		band.Anchored = false
 		band.CanCollide = false
 		band.CanQuery = false
@@ -240,10 +243,10 @@ local function buildBin(gx, gz)
 	local length = T * 2
 	part(model, "Floor", Vector3.new(T, 0.4, length), CFrame.new(center + Vector3.new(0, 0.2, 0)), PLANKS, Enum.Material.WoodPlanks)
 	for _, sx in { -1, 1 } do
-		part(model, "Wall", Vector3.new(0.4, 3, length), CFrame.new(center + Vector3.new(sx * (T / 2 - 0.2), 1.5, 0)), WOOD, Enum.Material.Wood)
+		part(model, "Wall", Vector3.new(0.4, 3, length), CFrame.new(center + Vector3.new(sx * (T / 2 - 0.2), 1.5, 0)), WOOD, Enum.Material.WoodPlanks)
 	end
 	for _, sz in { -1, 1 } do
-		part(model, "Wall", Vector3.new(T, 3, 0.4), CFrame.new(center + Vector3.new(0, 1.5, sz * (length / 2 - 0.2))), WOOD, Enum.Material.Wood)
+		part(model, "Wall", Vector3.new(T, 3, 0.4), CFrame.new(center + Vector3.new(0, 1.5, sz * (length / 2 - 0.2))), WOOD, Enum.Material.WoodPlanks)
 	end
 	binInside = CFrame.new(center + Vector3.new(0, 0.4, 0))
 	local post = part(model, "SignPost", Vector3.new(0.4, 0.4, 0.4), CFrame.new(center + Vector3.new(0, 3, 0)), WOOD)
@@ -265,10 +268,10 @@ local function buildSorter(gx, gz)
 
 	local height = 7
 	for _, sx in { -1, 1 } do
-		part(model, "Side", Vector3.new(0.6, height, T * 2), CFrame.new(center + Vector3.new(sx * (T / 2 - 0.3), TOP + height / 2, 0)), BLUE)
+		part(model, "Side", Vector3.new(0.6, height, T * 2), CFrame.new(center + Vector3.new(sx * (T / 2 - 0.3), TOP + height / 2, 0)), BODY, Enum.Material.WoodPlanks)
 	end
-	part(model, "Roof", Vector3.new(T + 0.4, 1, T * 2 + 0.4), CFrame.new(center + Vector3.new(0, TOP + height + 0.5, 0)), ORANGE)
-	part(model, "Hopper", Vector3.new(T - 1.4, 1.4, 3), CFrame.new(center + Vector3.new(0, TOP + height + 1.7, -1)), BLUE)
+	part(model, "Roof", Vector3.new(T + 0.4, 1, T * 2 + 0.4), CFrame.new(center + Vector3.new(0, TOP + height + 0.5, 0)), RUST, Enum.Material.CorrodedMetal)
+	part(model, "Hopper", Vector3.new(T - 1.4, 1.4, 3), CFrame.new(center + Vector3.new(0, TOP + height + 1.7, -1)), STEEL, Enum.Material.Metal)
 	-- The flap blocks the way in. Bales wait against it until the sorter takes them.
 	local flap = part(model, "Flap", Vector3.new(T - 1.2, height - 0.6, 0.4), CFrame.new(Vector3.new(center.X, TOP + (height - 0.6) / 2 + 0.3, entryZ + 0.2)), IRON)
 	flap.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 100, 1)
@@ -358,11 +361,11 @@ local function buildBuyer(gx, gz)
 	model.Name = "HayBuyer"
 	model.Parent = folder
 	local floorY = TOP - 2
-	part(model, "Floor", Vector3.new(T, 0.4, T), CFrame.new(center + Vector3.new(0, floorY, 0)), GREEN)
+	part(model, "Floor", Vector3.new(T, 0.4, T), CFrame.new(center + Vector3.new(0, floorY, 0)), WOOD, Enum.Material.WoodPlanks)
 	part(model, "Base", Vector3.new(T, floorY, T), CFrame.new(center + Vector3.new(0, floorY / 2, 0)), WOOD, Enum.Material.WoodPlanks)
-	part(model, "Back", Vector3.new(0.4, 5, T), CFrame.new(center + Vector3.new(T / 2 - 0.2, floorY + 2.5, 0)), ORANGE)
+	part(model, "Back", Vector3.new(0.4, 5, T), CFrame.new(center + Vector3.new(T / 2 - 0.2, floorY + 2.5, 0)), PLANKS, Enum.Material.WoodPlanks)
 	for _, sz in { -1, 1 } do
-		part(model, "Side", Vector3.new(T, 5, 0.4), CFrame.new(center + Vector3.new(0, floorY + 2.5, sz * (T / 2 - 0.2))), ORANGE)
+		part(model, "Side", Vector3.new(T, 5, 0.4), CFrame.new(center + Vector3.new(0, floorY + 2.5, sz * (T / 2 - 0.2))), PLANKS, Enum.Material.WoodPlanks)
 	end
 	sign(model.Back, "HAY BUYER", Vector3.new(0, 5, 0))
 
@@ -399,7 +402,7 @@ function BaseLine.build(worldFolder)
 	folder.Parent = worldFolder
 
 	-- Concrete slab under the whole base.
-	part(folder, "Slab", Vector3.new(T * 8, 0.2, T * 8), CFrame.new(ORIGIN + Vector3.new(T * 3.5, 0.1, T * 2.5)), Color3.fromRGB(200, 196, 186))
+	part(folder, "Slab", Vector3.new(T * 8, 0.2, T * 8), CFrame.new(ORIGIN + Vector3.new(T * 3.5, 0.1, T * 2.5)), Color3.fromRGB(150, 140, 125), Enum.Material.Concrete)
 
 	-- The line, on the grid. Dock at the east end, then west, south through the sorter, east to the buyer.
 	grid = Conveyors.newGrid(folder, ORIGIN)
@@ -426,7 +429,7 @@ function BaseLine.build(worldFolder)
 			toast(player, why)
 		end
 	end)
-	local _, unloadLabel = stepPad("UnloadPad", cell(4, -1), ORANGE, "UNLOAD TRAILER", function(player)
+	local _, unloadLabel = stepPad("UnloadPad", cell(4, -1), PAD, "UNLOAD TRAILER", function(player)
 		if Trailer.state == "parked" then
 			Trailer.unload()
 			toast(player, "Unloading onto the belt.")
@@ -436,7 +439,7 @@ function BaseLine.build(worldFolder)
 			toast(player, "Wait until the trailer has backed up to the dock.")
 		end
 	end)
-	stepPad("SellNeedlesPad", cell(0, 4), ORANGE, ("SELL NEEDLES\n$%d each"):format(needle.sortedValue), sellNeedles)
+	stepPad("SellNeedlesPad", cell(0, 4), PAD, ("SELL NEEDLES\n$%d each"):format(needle.sortedValue), sellNeedles)
 
 	local words = {
 		none = { "ORDER HAY TRAILER", "UNLOAD TRAILER" },

@@ -16,12 +16,14 @@ local BED_WIDTH = 6
 local BED_TOP = Factory.BeltTop + 0.5 -- a little above the belt, so bales drop onto it
 local BALE_LONG, BALE_HIGH = 4.6, 2.6 -- Bales.luau size, turned to lie along the trailer
 
-local RED = Color3.fromRGB(192, 57, 43)
-local PLANKS = Color3.fromRGB(150, 110, 70)
-local IRON = Color3.fromRGB(70, 70, 76)
-local CAB = Color3.fromRGB(60, 110, 200)
-local GLASS = Color3.fromRGB(40, 34, 28)
-local CREAM = Color3.fromRGB(244, 239, 224)
+-- Rustic palette (blender/lib/style.py): weathered planks, rusty steel, dark bark-brown tires.
+local SIDES = Color3.fromRGB(179, 153, 115)
+local PLANKS = Color3.fromRGB(133, 110, 82)
+local IRON = Color3.fromRGB(102, 66, 42)
+local TIRE = Color3.fromRGB(41, 33, 26)
+local CAB = Color3.fromRGB(107, 94, 84)
+local GLASS = Color3.fromRGB(41, 33, 26)
+local CREAM = Color3.fromRGB(128, 117, 105)
 
 local SLICK = PhysicalProperties.new(0.7, 0, 0, 100, 1)
 local GRIP = PhysicalProperties.new(0.7, 1.2, 0, 100, 1)
@@ -66,30 +68,30 @@ local function buildRig(pivot)
 	rig.bed = part(rig, "Bed", Vector3.new(BED_WIDTH, 0.6, BED_LENGTH), CFrame.new(0, -0.3, -BED_LENGTH / 2), PLANKS, Enum.Material.WoodPlanks)
 	rig.bed.CustomPhysicalProperties = GRIP
 	for _, sx in { -1, 1 } do
-		local wall = part(rig, "Wall", Vector3.new(0.3, 2.4, BED_LENGTH), CFrame.new(sx * 2.85, 1.2, -BED_LENGTH / 2), RED)
+		local wall = part(rig, "Wall", Vector3.new(0.3, 2.4, BED_LENGTH), CFrame.new(sx * 2.85, 1.2, -BED_LENGTH / 2), SIDES, Enum.Material.WoodPlanks)
 		wall.CustomPhysicalProperties = SLICK
-		part(rig, "Chassis", Vector3.new(0.8, 1, BED_LENGTH), CFrame.new(sx * 2, -1.1, -BED_LENGTH / 2), IRON, Enum.Material.Metal)
+		part(rig, "Chassis", Vector3.new(0.8, 1, BED_LENGTH), CFrame.new(sx * 2, -1.1, -BED_LENGTH / 2), IRON, Enum.Material.CorrodedMetal)
 		for _, z in { -3, -6.2, -27, -31.5 } do
 			part(
 				rig,
 				"Wheel",
 				Vector3.new(0.8, 2.8, 2.8),
 				CFrame.new(sx * 2.6, wheelY, z),
-				IRON,
+				TIRE,
 				Enum.Material.SmoothPlastic,
 				Enum.PartType.Cylinder
 			)
 		end
 	end
-	part(rig, "FrontWall", Vector3.new(BED_WIDTH, 2.4, 0.3), CFrame.new(0, 1.2, -BED_LENGTH + 0.15), RED)
-	part(rig, "Hitch", Vector3.new(1, 0.6, 2), CFrame.new(0, -1.1, -BED_LENGTH - 1), IRON, Enum.Material.Metal)
+	part(rig, "FrontWall", Vector3.new(BED_WIDTH, 2.4, 0.3), CFrame.new(0, 1.2, -BED_LENGTH + 0.15), SIDES, Enum.Material.WoodPlanks)
+	part(rig, "Hitch", Vector3.new(1, 0.6, 2), CFrame.new(0, -1.1, -BED_LENGTH - 1), IRON, Enum.Material.CorrodedMetal)
 
 	-- The truck: chassis, cab with a dark windshield, and a hood.
-	part(rig, "TruckChassis", Vector3.new(5, 1, 9), CFrame.new(0, -1.6, -29.5), IRON, Enum.Material.Metal)
-	part(rig, "Cab", Vector3.new(5.6, 4.6, 4.4), CFrame.new(0, 1.2, -28.4), CAB)
+	part(rig, "TruckChassis", Vector3.new(5, 1, 9), CFrame.new(0, -1.6, -29.5), IRON, Enum.Material.CorrodedMetal)
+	part(rig, "Cab", Vector3.new(5.6, 4.6, 4.4), CFrame.new(0, 1.2, -28.4), CAB, Enum.Material.Metal)
 	part(rig, "Windshield", Vector3.new(4.8, 1.8, 0.2), CFrame.new(0, 2.2, -30.65), GLASS)
-	part(rig, "Hood", Vector3.new(5.2, 2.2, 3.4), CFrame.new(0, -0.1, -32.3), CAB)
-	part(rig, "Grille", Vector3.new(4, 1.4, 0.2), CFrame.new(0, -0.1, -34.05), CREAM)
+	part(rig, "Hood", Vector3.new(5.2, 2.2, 3.4), CFrame.new(0, -0.1, -32.3), CAB, Enum.Material.Metal)
+	part(rig, "Grille", Vector3.new(4, 1.4, 0.2), CFrame.new(0, -0.1, -34.05), CREAM, Enum.Material.Metal)
 
 	local root = part(rig, "Pivot", Vector3.new(1, 1, 1), CFrame.new(), CREAM)
 	root.Transparency = 1

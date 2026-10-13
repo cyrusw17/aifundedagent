@@ -12,10 +12,11 @@ local Conveyors = {}
 local T = Factory.TileSize
 local RAIL = 0.3
 local RAIL_HEIGHT = 1.2
-local FRAME = Color3.fromRGB(60, 110, 200)
-local BELT = Color3.fromRGB(70, 70, 76)
-local RAIL_COLOR = Color3.fromRGB(240, 173, 46)
-local LEG = Color3.fromRGB(150, 158, 166)
+-- Rustic palette (blender/lib/style.py): weathered wood frame, dark rubber belt, rusty steel rails and legs.
+local FRAME = Color3.fromRGB(179, 153, 115)
+local BELT = Color3.fromRGB(41, 33, 26)
+local RAIL_COLOR = Color3.fromRGB(128, 117, 105)
+local LEG = Color3.fromRGB(102, 66, 42)
 
 Conveyors.TILE = T
 Conveyors.Dirs = {
@@ -75,7 +76,7 @@ function Conveyors.place(grid, gx, gz, dir, openBack)
 	belt:SetAttribute("Speed", Factory.BeltSpeed)
 	CollectionService:AddTag(belt, "ConveyorBelt")
 
-	part(model, "Frame", Vector3.new(T, 0.6, T - 0.2), facing * CFrame.new(0, -0.7, 0), FRAME)
+	part(model, "Frame", Vector3.new(T, 0.6, T - 0.2), facing * CFrame.new(0, -0.7, 0), FRAME, Enum.Material.WoodPlanks)
 	for _, sx in { -1, 1 } do
 		for _, sz in { -1, 1 } do
 			local legHeight = Factory.BeltTop - 1
@@ -85,7 +86,7 @@ function Conveyors.place(grid, gx, gz, dir, openBack)
 				Vector3.new(0.4, legHeight, 0.4),
 				CFrame.new(ground + Vector3.new(sx * (T / 2 - 0.6), legHeight / 2, sz * (T / 2 - 0.6))),
 				LEG,
-				Enum.Material.Metal
+				Enum.Material.CorrodedMetal
 			)
 		end
 	end
@@ -100,7 +101,7 @@ local function addRail(tile, side, top)
 	local ground = top - Vector3.new(0, Factory.BeltTop, 0)
 	local center = ground + side * (T / 2 - RAIL / 2) + Vector3.new(0, Factory.BeltTop + RAIL_HEIGHT / 2, 0)
 	local size = side.X ~= 0 and Vector3.new(RAIL, RAIL_HEIGHT, T) or Vector3.new(T, RAIL_HEIGHT, RAIL)
-	local rail = part(tile.model, "Rail", size, CFrame.new(center), RAIL_COLOR)
+	local rail = part(tile.model, "Rail", size, CFrame.new(center), RAIL_COLOR, Enum.Material.Metal)
 	rail.CustomPhysicalProperties = SLICK
 end
 

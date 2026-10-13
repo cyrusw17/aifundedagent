@@ -5,7 +5,7 @@ local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local SLATS = 3
-local SLAT_COLOR = Color3.fromRGB(110, 110, 118)
+local SLAT_COLOR = Color3.fromRGB(77, 64, 51)
 
 local belts = {} -- belt part -> its slats
 
