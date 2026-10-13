@@ -46,6 +46,8 @@ function Bank.account(state)
 	end
 	a.balance = typeof(a.balance) == "number" and a.balance or 0
 	a.earned = typeof(a.earned) == "number" and a.earned or 0
+	-- Earned by selling, without one-time rewards (Bank.earn). Saves from before it existed count all their earnings.
+	a.sold = typeof(a.sold) == "number" and a.sold or a.earned
 	a.loans = typeof(a.loans) == "table" and a.loans or {}
 	a.history = typeof(a.history) == "table" and a.history or {}
 	return a
@@ -130,6 +132,18 @@ Bank.money = money
 
 -- Pays a player for a sale. Running loans take their share first; the rest goes to the wallet. Returns what reached
 -- the wallet and what went to loans.
+-- One-time rewards (by their history note): they count as earnings for loans and credit, but not as selling, so a
+-- fresh slot can't collect them and trade the cash away (Prices.Trade.MinSoldToGiveCash).
+local ONE_TIME = { "Secret: ", "Discovered ", "Maze: ", "Quest: ", "Finder's reward" }
+local function oneTime(note)
+	for _, prefix in ONE_TIME do
+		if typeof(note) == "string" and string.sub(note, 1, #prefix) == prefix then
+			return true
+		end
+	end
+	return false
+end
+
 function Bank.earn(player, amount, note)
 	local state = player and Data.get(player)
 	amount = math.floor(tonumber(amount) or 0)
@@ -138,6 +152,9 @@ function Bank.earn(player, amount, note)
 	end
 	local a = account(state)
 	a.earned += amount
+	if not oneTime(note) then
+		a.sold += amount
+	end
 	state.lastEarnAt = os.clock()
 
 	local net, repaid = amount, 0
@@ -449,6 +466,13 @@ function Bank.settleTrade(a, b, terms)
 	local aCash, bCash = cash(terms.aCash), cash(terms.bCash)
 	if not aCash or not bCash then
 		return false, "That amount of cash isn't valid."
+	end
+	local need = Prices.Trade.MinSoldToGiveCash or 0
+	for _, side in { { a, sa, aCash }, { b, sb, bCash } } do
+		if side[3] > 0 and not Config.InfiniteMoney and account(side[2]).sold < need then
+			return false,
+				("%s can trade items, but can't hand over cash until this farm has sold %s worth."):format(side[1].DisplayName, money(need))
+		end
 	end
 	local aOwes, bOwes = aCash + Bank.tradeFee(aCash), bCash + Bank.tradeFee(bCash)
 	-- Only your own money trades; loan money held for purchases doesn't (Bank.held).

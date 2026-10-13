@@ -242,6 +242,10 @@ Prices.SorterBalesPerMinute = {
 Prices.Trade = {
 	Fee = 25, -- per side that gives cash, per trade
 	CashShare = 0.05, -- of the cash a side gives
+	-- A save slot can hand over cash only once it has made this much from selling (not from one-time rewards like
+	-- secrets, discoveries, mazes, quests and finds). About 2 hours of a new player's farming, so a fresh alt slot
+	-- can't collect one-time rewards and pass the cash on. Items can always be traded.
+	MinSoldToGiveCash = 25000,
 }
 
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
