@@ -1046,6 +1046,74 @@ function LOOKS.spool(m, cf)
 	return spool
 end
 
+-- A shard's glint: a small gold crystal turning slowly in the air, lit.
+function LOOKS.shardglint(m, cf)
+	local glint = part(
+		m,
+		"ShardGlint",
+		Vector3.new(0.5, 1.6, 0.5),
+		cf * CFrame.new(0, 2, 0) * CFrame.Angles(0, 0, math.rad(15)),
+		Color3.fromRGB(242, 196, 70),
+		Enum.Material.Neon
+	)
+	glint.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Range = 12
+	light.Parent = glint
+	return glint
+end
+
+-- The stitched pine: a thick old trunk with a seam of gold stitches up its side.
+function LOOKS.stitchedpine(m, cf)
+	local trunk = part(
+		m,
+		"StitchedTrunk",
+		Vector3.new(14, 3.4, 3.4),
+		cf * CFrame.new(0, 7, 0) * CFrame.Angles(0, 0, math.pi / 2),
+		Rustic.WoodDark,
+		Enum.Material.Wood,
+		Enum.PartType.Cylinder
+	)
+	part(
+		m,
+		"Crown",
+		Vector3.new(9, 10, 9),
+		cf * CFrame.new(0, 17, 0),
+		Color3.fromRGB(62, 92, 58),
+		Enum.Material.Grass,
+		Enum.PartType.Ball
+	).CanCollide =
+		false
+	for i = 0, 5 do
+		local stitch = part(
+			m,
+			"Stitch",
+			Vector3.new(1.2, 0.2, 0.2),
+			cf * CFrame.new(0, 2.5 + i * 1.6, -1.75) * CFrame.Angles(0, 0, (i % 2 == 0) and 0.5 or -0.5),
+			Color3.fromRGB(242, 196, 70),
+			Enum.Material.Neon
+		)
+		stitch.CanCollide = false
+	end
+	return trunk
+end
+
+-- The Master Needle, waiting in pieces on its pedestal (the spot is built on the pedestal's top).
+function LOOKS.masterneedle(m, cf)
+	local needle = part(
+		m,
+		"MasterNeedle",
+		Vector3.new(0.3, 4, 0.3),
+		cf * CFrame.new(0, 2.4, 0) * CFrame.Angles(0, 0, math.rad(8)),
+		Color3.fromRGB(242, 214, 120),
+		Enum.Material.Neon
+	)
+	needle.CanCollide = false
+	needle.Transparency = 0.4
+	return needle
+end
+
 -- A corn key: a small glowing brass key on a corn husk.
 function LOOKS.cornkey(m, cf)
 	local husk =
@@ -1139,7 +1207,7 @@ local function buildSpot(id, position, cframe)
 	marker.Parent.Enabled = false
 	marker.TextColor3 = Color3.fromRGB(255, 214, 120)
 
-	if spot.prompted then
+	if spot.prompted and not def.npc then -- a townsperson's own Talk prompt answers an npc spot (hookGiver)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "QuestPrompt"
 		prompt.ObjectText = def.name
@@ -2190,6 +2258,45 @@ function Quests.has(player, rewardId)
 	return q ~= nil and q.earned[rewardId] == true
 end
 
+-- A townsperson (Regions townsperson, tagged QuestGiver) that a spot names with npc = their id: the spot stands at
+-- their feet for the quest marker and waypoints, and their own Talk prompt also answers it. They keep saying their
+-- lines when no quest needs them.
+local function hookGiver(model)
+	local giverId = model:GetAttribute("QuestGiver")
+	local torso = model.PrimaryPart
+	if not torso or model:GetAttribute("QuestHooked") then
+		return
+	end
+	for spotId, def in QuestConfig.Spots do
+		if def.npc == giverId then
+			model:SetAttribute("QuestHooked", true)
+			local x, z = torso.Position.X, torso.Position.Z
+			buildSpot(spotId, Vector3.new(x, 0, z))
+			reachable[def.region] = true
+			local prompt = torso:FindFirstChildWhichIsA("ProximityPrompt")
+			if prompt then
+				prompt.Triggered:Connect(function(player)
+					Quests.usePrompt(player, spotId)
+				end)
+			end
+		end
+	end
+end
+
+-- The Master Needle's pedestal in the Loom Room (SpindleDoor.luau): the finale's spot sits on top of it.
+local function hookPedestal(pedestal)
+	if not pedestal:IsA("BasePart") then
+		return
+	end
+	for spotId, def in QuestConfig.Spots do
+		if def.pedestal then
+			local top = pedestal.Position + Vector3.new(0, pedestal.Size.Y / 2, 0)
+			buildSpot(spotId, nil, CFrame.new(top))
+			reachable[def.region] = true
+		end
+	end
+end
+
 -- Bounty boards (the Homestead hub's, the ferry promenades'): using one opens your quest log at the Bounties tab.
 local function hookBoard(board)
 	if not board:IsA("BasePart") or board:GetAttribute("QuestHooked") then
@@ -2296,6 +2403,20 @@ function Quests.build(worldFolder)
 		end
 		moveScarecrow()
 		refreshSign()
+		for tag, hook in { QuestGiver = hookGiver, MasterNeedlePedestal = hookPedestal } do
+			CollectionService:GetInstanceAddedSignal(tag):Connect(function(instance)
+				hook(instance)
+				for player in players do
+					local q = questsOf(player)
+					if q and unlockQuests(q) then
+						publish(player)
+					end
+				end
+			end)
+			for _, instance in CollectionService:GetTagged(tag) do
+				hook(instance)
+			end
+		end
 		CollectionService:GetInstanceAddedSignal("BountyBoard"):Connect(hookBoard)
 		for _, board in CollectionService:GetTagged("BountyBoard") do
 			hookBoard(board)
