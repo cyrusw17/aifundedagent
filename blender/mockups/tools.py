@@ -1,6 +1,6 @@
-"""Mockup of the three tools, using the part sizes from
-src/server/Services/Avatar.luau (shovel and rake) and the R6 arm size for bare hands.
-Shown head-down, the way they meet the hay.
+"""Mockup of the tools in the house style, using the props in
+blender/props/rustic_props.py. Front three are in the game today
+(bare hands, shovel, rake); the rest are modeled but not in the game yet.
 
 Run:
   python blender/mockups/tools.py [out_folder]
@@ -17,24 +17,24 @@ import mock  # noqa: E402
 from mock import rgb  # noqa: E402
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
+F = mock.rustic_finish()
 
-WOOD = mock.mat("wood", rgb(*mock.WOOD_TONES[1]), 0.7)
-STEEL = mock.mat("steel", rgb(150, 158, 166), 0.3, 0.9)
-SKIN = mock.mat("skin", rgb(234, 184, 146), 0.6)
-SLEEVE = mock.mat("sleeve", rgb(52, 118, 196), 0.7)
-FLOOR = mock.mat("floor", rgb(106, 166, 90), 1.0)
-PLINTH = mock.mat("plinth", rgb(225, 215, 195), 0.8)
+SKIN = mock.mat("skin", rgb(204, 160, 124), 0.7)
+SLEEVE = mock.mat("sleeve", rgb(88, 102, 120), 0.8)
+FLOOR = mock.mat("floor", rgb(112, 128, 82), 1.0)
+PLINTH = mock.mat("plinth", rgb(196, 186, 162), 0.9)
 INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
 SUB = mock.mat("sub", rgb(90, 80, 70), 0.9)
-HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(mock.HAY_PALETTE["mids"])]
+HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(
+    [(219, 204, 153), (189, 168, 112), (168, 149, 95), (133, 115, 71)])]
 rng = random.Random(4)
+UP = (math.pi / 2, 0, 0)
 
-mock.box("floor", (80, 1, 40), (0, 0, -0.5), FLOOR)
-UP = (math.pi / 2, 0, 0)  # labels stand up facing the camera
+mock.box("floor", (120, 1, 60), (0, 0, -0.5), FLOOR)
 
 
-def plinth(x):
-    mock.cylinder("plinth", 3.6, 0.6, (x, 0, 0.3), PLINTH, verts=40)
+def plinth(x, r=2.3):
+    mock.cylinder("plinth", r, 0.5, (x, 0, 0.25), PLINTH, verts=12)
 
 
 def pieces(cx, cy, cz, n, spread):
@@ -45,50 +45,48 @@ def pieces(cx, cy, cz, n, spread):
         o.rotation_euler = (rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), rng.uniform(0, math.pi))
 
 
-def titles(x, name, lines):
-    mock.label(name, (x, 0, 10.6), 1.1, INK, rot=UP)
+def titles(x, name, lines, z=7.2, size=0.85):
+    mock.label(name, (x, 0, z), size, INK, rot=UP)
     for k, line in enumerate(lines):
-        mock.label(line, (x, 0, 9.6 - k * 0.7), 0.5, SUB, rot=UP)
+        mock.label(line, (x, 0, z - 0.85 - k * 0.6), 0.42, SUB, rot=UP)
 
 
-# Bare hands: two blocky arms gripping a whole hay barrel.
-X = -10
+GAP = 7.2
+xs = [(i - 2.5) * GAP for i in range(6)]
+
+# Bare hands: two R6 arms lifting a whole bale.
+X = xs[0]
 plinth(X)
-mock.tub("barrel", (X, 0, 0.6), 1.9, 2.4, seed=3)
-mock.hay_heap("barrelhay", (X, 0, 3.0), 2.0, 1.8, seed=2)
+mock.bale((X, 0, 1.6), 0.0, F)
 for side in (-1, 1):
-    arm = mock.box("arm", (1, 2, 1), (X + side * 2.6, -0.2, 3.2), SLEEVE, rot=(0, side * 0.35, 0))
-    hand = mock.box("hand", (1, 0.9, 1), (X + side * 2.25, -0.2, 2.0), SKIN, rot=(0, side * 0.35, 0))
-titles(X, "BARE HANDS", ["Click a barrel to lift the whole thing", "Carry it to the drop-off or sell pad"])
+    mock.box("arm", (1, 2, 1), (X + side * 2.6, 0, 3.6), SLEEVE, rot=(0, side * 0.25, 0))
+    mock.box("hand", (1, 0.9, 1), (X + side * 2.45, 0, 2.5), SKIN, rot=(0, side * 0.25, 0))
+titles(X, "BARE HANDS", ["Click a bale to lift it", "Carry it, stack it, sell it"])
 
-# Shovel: handle 0.4x1.6, shaft 0.4x3, blade 1.2x1.5x0.12, flipped so the blade is at the bottom.
-X = 0
+# Shovel: the small spade (about 2.7 studs), standing in loose hay.
+X = xs[1]
 plinth(X)
-tilt = (0.25, 0, 0)
-top = 7.6
-mock.box("handle", (0.4, 1.6, 0.4), (X, 0, top - 0.8), WOOD)
-mock.box("grip", (1.1, 0.3, 0.3), (X, 0, top), WOOD)
-mock.box("shaft", (0.4, 3, 0.4), (X, 0, top - 3.1), WOOD)
-mock.box("blade", (1.2, 1.5, 0.12), (X, -0.05, top - 5.35), STEEL)
-mock.box("blade_lip", (1.2, 0.12, 0.5), (X, -0.25, top - 6.05), STEEL)
-pieces(X + 0.3, -0.6, 0.6, 9, 1.4)
-titles(X, "SHOVEL", ["Click a barrel to smash it into pieces", "Click loose hay to scoop 6 pieces"])
+mock.prop("basic_shovel", (X, 0, 0.5), rot=(0.12, 0, 0.3), f=F)
+pieces(X + 0.4, -0.8, 0.5, 9, 1.3)
+titles(X, "SHOVEL", ["Click a bale to smash it", "Click loose hay to scoop it"])
 
-# Rake: shaft 0.4x3.6, crossbar 3.2x0.25, six 1-stud teeth, flipped so the teeth are at the bottom.
-X = 10
+# Rake: long garden rake, teeth down.
+X = xs[2]
 plinth(X)
-top = 7.8
-mock.box("handle", (0.4, 1.6, 0.4), (X, 0, top - 0.8), WOOD)
-mock.box("shaft", (0.4, 3.6, 0.4), (X, 0, top - 3.4), WOOD)
-mock.box("bar", (3.2, 0.25, 0.3), (X, 0, top - 5.3), STEEL)
-for i in range(6):
-    mock.box("tooth", (0.12, 1, 0.12), (X - 1.4 + i * 0.56, 0, top - 5.9), STEEL)
-pieces(X, -1.0, 0.6, 14, 2.6)
-titles(X, "RAKE", ["Click the ground to drag loose hay", "toward you, spreading it out"])
+mock.prop("garden_rake", (X, 0, 0.55), rot=(0.18, 0, 0.2), f=F)
+pieces(X, -1.0, 0.5, 12, 2.2)
+titles(X, "RAKE", ["Click loose hay to drag it", "toward you"])
 
-mock.label("TOOLS", (0, 4, 13.2), 1.6, INK, rot=UP)
+# Modeled, not in the game yet.
+for X, key, name in ((xs[3], "wide_scoop", "WIDE SCOOP"), (xs[4], "pitchfork", "PITCHFORK"),
+                     (xs[5], "hay_hook", "HAY HOOK")):
+    plinth(X, 2.0)
+    mock.prop(key, (X, 0, 0.5), rot=(0.12, 0, 0.3), f=F)
+    titles(X, name, ["Modeled, not in", "the game yet"], z=7.2, size=0.65)
 
-mock.scene_setup(world_color=(0.78, 0.84, 0.9), res=(1800, 1000), samples=48)
-mock.sun(rotation=(0.8, 0.1, 0.5), energy=3.5)
-mock.camera((0, -48, 11), look_at=(0, 0, 6.0), lens=42)
+mock.label("TOOLS", (0, 4, 10.2), 1.5, INK, rot=UP)
+
+mock.scene_setup(world_color=(0.74, 0.76, 0.74), res=(2000, 1000), samples=48)
+mock.sun(rotation=(0.8, 0.1, 0.5), energy=3.2)
+mock.camera((0, -52, 9), look_at=(0, 0, 4.4), lens=40)
 mock.render(mock.out_path("tools.png"))

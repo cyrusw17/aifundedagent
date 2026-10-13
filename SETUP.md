@@ -28,7 +28,7 @@ Checked so far: `rojo build default.project.json -o test.rbxl` builds the projec
 
 ## What to expect in the first slice
 
-Press Play. You spawn on a small pad at base camp. Walk to the three hay barrels, hold the prompt ("Scoop hay") and your wheelbarrow fills (HUD, top left). Walk to the hay shop on the right and press "Sell hay". The toast says how many hidden needles the shop found in your hay and paid $1 each for. Barrels refill 30 seconds after they run empty.
+Press Play. You spawn on a small pad at base camp. Walk to the three hay bales, hold the prompt ("Scoop hay") and your wheelbarrow fills (HUD, top left). Walk to the hay shop on the right and press "Sell hay". The toast says how many hidden needles the shop found in your hay and paid $1 each for. Bales refill 30 seconds after they run empty.
 
 Saving: DataStores only work in Studio if the place is published to Roblox and Game Settings > Security > "Enable Studio Access to API Services" is on. Otherwise you will see a warning in Output and progress simply will not save. The game still plays.
 
@@ -36,9 +36,9 @@ Saving: DataStores only work in Studio if the place is published to Roblox and G
 
 Each tool does one job. Number keys (or the hotbar) switch tools; press the same number again for bare hands.
 
-- **Bare hands:** grab the whole barrel. A small "Pick up" button floats over the nearest barrel (it works with any tool in hand and puts the tool away), or click the barrel with empty hands. You carry the real barrel and walk slower. Click or tap anywhere (or press G) to put it down; it falls and rolls. A barrel left out in the field disappears after 3 minutes; set it on the brown BARREL DROP-OFF pad by the spawn and it stays until you smash or sell it.
-- **Shovel (slot 1, equipped on spawn):** click a barrel and it smashes open. The staves and hoops fly apart and the hay spills out as a pile of loose pieces. Click the pile to scoop a few pieces at a time into your arms.
-- **Rake (slot 2):** click the ground near the pile. The rake drags the pieces toward you and spreads them across the ground.
-- **Selling:** the yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole barrel on it, or rake loose pieces onto it.
+- **Picking up a bale:** walk up to it and a small "Pick up" button appears. Click or tap it (or press F). It only shows with empty hands: press the tool's number again to put the tool away. With a tool out, clicks go to the tool. You carry the real bale and walk slower. The button changes to "Put down"; click it, click anywhere, or press G to set the bale down. It lands square on whatever is in front of you, so set one down facing another bale and it stacks on top. A bale left out in the field disappears after 3 minutes; set it on the brown BALE DROP-OFF pad by the spawn and it stays until you smash or sell it.
+- **Shovel (slot 1, equipped on spawn):** click a bale: the twine snaps, the bale bursts and the hay spills out as a pile of loose pieces. Face the pile and click to scoop a few pieces at a time into your arms.
+- **Rake (slot 2):** face loose hay and click. The rake drags the pieces toward you and spreads them across the ground.
+- **Selling:** the glowing SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole bale on it, or rake loose pieces onto it.
 - **HUD:** top left shows cash, the hay you carry, and one line saying what a click does with what is in your hands.
 - Tuning numbers are in `src/shared/Config/Game.luau` (swing angles, carry speed, cooldowns).

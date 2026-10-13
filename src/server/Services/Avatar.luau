@@ -10,9 +10,11 @@ local Groups = require(script.Parent.Groups)
 
 local Avatar = {}
 
+Avatar.onToolActivated = nil -- set by Tools.init: function(player, kind) for each click with a tool
+
 local rigs = {}
 
-local WOOD = Color3.fromRGB(139, 90, 43)
+local WOOD = Color3.fromRGB(128, 105, 77) -- rustic weathered handle
 
 -- A tool with a wooden handle plus extra welded parts. parts is a list of { name, size, offset, color, material }.
 local function buildTool(name, tip, parts)
@@ -49,13 +51,13 @@ end
 
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
-	return buildTool("Shovel", "Scoops hay pieces. Click the hay.", {
+	return buildTool("Shovel", "Face a bale to smash it, or a pile to scoop it, and click.", {
 		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
 			Vector3.new(1.2, 1.5, 0.12),
 			CFrame.new(0, 4.35, 0),
-			Color3.fromRGB(150, 158, 166),
+			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
 	})
@@ -63,7 +65,7 @@ end
 
 -- A long shaft with a crossbar and a row of teeth at the end.
 local function buildRake()
-	local steel = Color3.fromRGB(150, 158, 166)
+	local steel = Color3.fromRGB(107, 94, 84)
 	local parts = {
 		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },
 		{ "Bar", Vector3.new(3.2, 0.25, 0.3), CFrame.new(0, 4.5, 0), steel, Enum.Material.Metal },
@@ -77,7 +79,7 @@ local function buildRake()
 			Enum.Material.Metal,
 		})
 	end
-	return buildTool("Rake", "Drags hay pieces across the ground. Click where you want to rake.", parts)
+	return buildTool("Rake", "Face loose hay and click to drag it toward you.", parts)
 end
 
 -- Finds a shoulder joint for either rig type. side is "Right" or "Left".
@@ -97,9 +99,18 @@ local function tweenMotor(motor, base, degrees, seconds, style)
 	if not motor or not motor.Parent or not base then
 		return
 	end
+	-- Some rigs lock the shoulder joint (Studio reports C0 as read only). The arm pose is only cosmetic, so if it
+	-- cannot move, skip it rather than let the error stop the swing, the scoop or the carry.
 	local goal = { C0 = base * CFrame.Angles(math.rad(degrees), 0, 0) }
-	TweenService:Create(motor, TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out), goal)
-		:Play()
+	local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	local ok = pcall(function()
+		TweenService:Create(motor, info, goal):Play()
+	end)
+	if not ok then
+		pcall(function()
+			motor.C0 = goal.C0
+		end)
+	end
 end
 
 local function tweenArm(rig, degrees, seconds, style)
@@ -135,7 +146,7 @@ local function setup(player, character)
 	}
 	rigs[player] = rig
 
-	-- No shovel while carrying a barrel.
+	-- No shovel while carrying a bale.
 	character.ChildAdded:Connect(function(child)
 		if rig.carrying and child:IsA("Tool") then
 			task.defer(function()
@@ -155,10 +166,20 @@ local function setup(player, character)
 	end
 	character.DescendantAdded:Connect(groupPart)
 
+	-- A click with a tool in hand fires its Activated signal on the server too, so tools need no client code.
+	local function hook(tool)
+		tool.Activated:Connect(function()
+			if Avatar.onToolActivated then
+				Avatar.onToolActivated(player, tool.Name)
+			end
+		end)
+		return tool
+	end
+
 	local backpack = player:WaitForChild("Backpack")
-	local shovel = buildShovel()
+	local shovel = hook(buildShovel())
 	shovel.Parent = backpack
-	buildRake().Parent = backpack
+	hook(buildRake()).Parent = backpack
 	humanoid:EquipTool(shovel)
 end
 
@@ -221,7 +242,7 @@ function Avatar.swing(player, kind, onImpact)
 	return true
 end
 
--- Both arms hold a barrel in front of the chest; walking slows down and the shovel is put away.
+-- Both arms hold a bale in front of the chest; walking slows down and the shovel is put away.
 function Avatar.setCarry(player)
 	local rig = rigs[player]
 	if not rig or rig.carrying then

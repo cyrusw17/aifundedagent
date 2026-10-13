@@ -1,6 +1,6 @@
-"""Mockup sheet of the hay types: one hay per map, matching the needle types in
-src/shared/Config/Needles.luau (each map's hay hides that map's needle).
-Colors and effects are a proposal; the game only has Meadow hay so far.
+"""Mockup sheet of the hay types in the house style: stacks of square bales,
+one hay per map, matching the needle types in src/shared/Config/Needles.luau.
+Only Meadow hay is in the game; the other colors and extras are a proposal.
 
 Run:
   python blender/mockups/hay_types.py [out_folder]
@@ -18,93 +18,99 @@ from mock import rgb  # noqa: E402
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
-# name, needle, sorted value, hay colors, needle color, needle glow, extra
+# name, needle, sorted value, hay (light, mid, dark) 0-255 or None for the house hay,
+# twine (0-255) or None for plain twine, needle color, needle glow, extra
 HAY_TYPES = [
-    ("Meadow", "Steel", 100, None, (170, 175, 182), 0, None),
-    ("Pine Forest", "Pine", 110, [(196, 186, 92), (170, 160, 78), (120, 140, 70)], (46, 100, 52), 0, "pinecone"),
-    ("Desert", "Sand", 140, [(236, 214, 160), (222, 196, 136), (246, 230, 186)], (214, 170, 96), 0, None),
-    ("Snow Peak", "Ice", 160, [(226, 214, 168), (210, 200, 160), (245, 248, 252)], (150, 210, 245), 1.5, "snow"),
-    ("Swamp", "Bog", 170, [(128, 128, 64), (104, 108, 56), (92, 80, 48)], (70, 96, 60), 0, "moss"),
-    ("Volcano", "Obsidian", 300, [(70, 56, 48), (52, 44, 40), (96, 64, 44)], (24, 20, 30), 0, "embers"),
-    ("Cave", "Geode", 340, [(150, 146, 140), (124, 122, 120), (170, 160, 146)], (170, 90, 220), 2.0, "crystals"),
-    ("Sky Island", "Cloud", 700, [(236, 240, 250), (214, 224, 244), (246, 236, 210)], (170, 210, 255), 1.0, "cloud"),
-    ("Haunted Grove", "Phantom", 800, [(120, 104, 140), (96, 84, 116), (140, 128, 150)], (140, 255, 190), 4.0, "wisps"),
-    ("Star Hay", "Cosmic", 5000, [(48, 40, 110), (70, 50, 140), (30, 28, 80)], (255, 230, 140), 6.0, "stars"),
+    ("Meadow", "Steel", 100, None, None, (170, 175, 182), 0, None),
+    ("Pine Forest", "Pine", 110, ((206, 196, 112), (170, 160, 78), (110, 128, 62)), None, (46, 100, 52), 0, "pinecone"),
+    ("Desert", "Sand", 140, ((246, 230, 186), (226, 204, 150), (196, 166, 110)), None, (214, 170, 96), 0, None),
+    ("Snow Peak", "Ice", 160, ((240, 236, 214), (214, 204, 164), (176, 168, 136)), (120, 150, 176), (150, 210, 245), 1.5, "snow"),
+    ("Swamp", "Bog", 170, ((140, 140, 76), (110, 112, 58), (78, 70, 42)), None, (70, 96, 60), 0, "moss"),
+    ("Volcano", "Obsidian", 300, ((112, 84, 64), (72, 58, 48), (44, 36, 32)), (140, 52, 34), (24, 20, 30), 0, "embers"),
+    ("Cave", "Geode", 340, ((176, 170, 160), (140, 136, 130), (100, 98, 96)), (110, 76, 140), (170, 90, 220), 2.0, "crystals"),
+    ("Sky Island", "Cloud", 700, ((246, 246, 250), (220, 226, 240), (184, 192, 214)), (120, 160, 210), (170, 210, 255), 1.0, "cloud"),
+    ("Haunted Grove", "Phantom", 800, ((150, 136, 168), (110, 98, 130), (76, 66, 96)), (70, 150, 110), (140, 255, 190), 4.0, "wisps"),
+    ("Star Hay", "Cosmic", 5000, ((96, 84, 170), (62, 50, 130), (34, 30, 84)), (220, 180, 80), (255, 230, 140), 6.0, "stars"),
 ]
 
-FLOOR = mock.mat("floor", rgb(214, 206, 188), 1.0)
-TILE = mock.mat("tile", rgb(238, 232, 218), 0.9)
+FLOOR = mock.mat("floor", rgb(112, 128, 82), 1.0)
+TILE = mock.mat("tile", rgb(196, 186, 162), 0.9)
 INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
-SUB = mock.mat("sub", rgb(100, 90, 80), 0.9)
-UP = (math.pi / 2, 0, 0)
+SUB = mock.mat("sub", rgb(80, 72, 62), 0.9)
 
-mock.box("floor", (120, 1, 80), (0, 0, -0.5), FLOOR)
-SPACING_X, SPACING_Y = 9.0, 10.5
+mock.box("floor", (140, 1, 90), (0, 0, -0.5), FLOOR)
+SPACING_X, SPACING_Y = 11.0, 12.5
 
 
 def needle(x, y, z, color, glow, rng):
-    m = mock.mat(f"needle{color}", rgb(*color), 0.3, 0.6 if not glow else 0.0, emit=glow)
-    mock.cylinder("needle", 0.07, 1.6, (x, y, z), m, verts=6,
-                  rot=(rng.uniform(0.5, 1.2), 0, rng.uniform(0, math.tau)))
+    m = mock.mat(f"needle{color}", rgb(*color), 0.4, 0.5 if not glow else 0.0, emit=glow)
+    mock.box("needle", (0.14, 1.8, 0.14), (x, y, z), m, rot=(rng.uniform(0.6, 1.1), 0, rng.uniform(0, math.tau)))
 
 
-for idx, (name, needle_name, value, cols, ncol, glow, extra) in enumerate(HAY_TYPES):
+for idx, (name, needle_name, value, hay, twine, ncol, glow, extra) in enumerate(HAY_TYPES):
     row, col = divmod(idx, 5)
     cx = (col - 2) * SPACING_X
     cy = row * SPACING_Y
     rng = random.Random(idx + 11)
-    pal = mock.HAY_PALETTE if cols is None else mock.palette(cols)
+    if hay is None:
+        f = mock.rustic_finish()
+    else:
+        pal = mock.rustic_palette(*hay, weather=0.25)
+        tw = mock.rustic_palette(twine, twine, tuple(int(c * 0.7) for c in twine), 0.2) if twine else None
+        f = mock.rustic_finish("hay_" + name.lower().replace(" ", "_"), hay=pal, twine=tw)
 
-    mock.box("tile", (7.6, 0.2, 8.6), (cx, cy - 0.6, 0.1), TILE)
-    mock.tub(name + "_tub", (cx, cy, 0.2), 1.9, 2.2, seed=idx)
-    mock.hay_heap(name, (cx, cy, 2.4), 2.05, 1.8, pal, seed=idx, emit=(0.4 if extra == "stars" else 0.0))
+    mock.box("tile", (9.4, 0.2, 10.6), (cx, cy - 0.8, 0.1), TILE)
+    mock.bale_stack(cx, cy, 0.2, f, layers=2)
+    top = 4.2
     for k in range(3):
-        a = rng.uniform(-2.2, -0.9)
-        needle(cx + math.cos(a) * 1.4, cy + math.sin(a) * 1.1, 3.3 + rng.uniform(-0.2, 0.4), ncol, glow, rng)
+        needle(cx + rng.uniform(-1.4, 1.4), cy - 2.05, rng.uniform(0.9, 3.2), ncol, glow, rng)
 
     if extra == "snow":
-        mock.sphere("snowcap", 1.5, (cx, cy, 4.0), mock.mat("snow", rgb(236, 242, 250), 0.6), scale=(0.8, 0.8, 0.25), subdiv=3)
+        mock.box("snow", (2.3, 0.35, 4.2), (cx, cy, top + 0.17), mock.mat("snow", rgb(236, 242, 250), 0.7))
+        mock.box("snow2", (4.1, 0.25, 2.1), (cx, cy - 1, 2.35), mock.mat("snow", rgb(236, 242, 250), 0.7))
     elif extra == "pinecone":
         for k in range(3):
-            mock.sphere("cone", 0.32, (cx + rng.uniform(-1.4, 1.4), cy - 1.6 - rng.uniform(0, 0.6), 0.5),
-                        mock.mat("pinecone", rgb(110, 70, 40)), scale=(0.8, 0.8, 1.2), subdiv=1)
+            mock.box("cone", (0.5, 0.75, 0.5), (cx + rng.uniform(-2.5, 2.5), cy - 2.9, 0.6),
+                     mock.mat("pinecone", rgb(110, 70, 40)), rot=(0, 0, rng.uniform(0, 1)))
     elif extra == "moss":
         for k in range(6):
-            mock.sphere("moss", 0.35, (cx + rng.uniform(-1.6, 1.6), cy + rng.uniform(-1.6, 1.0), 3.0 + rng.uniform(0, 0.8)),
-                        mock.mat("mossy", rgb(70, 120, 50)), scale=(1.2, 1.2, 0.5), subdiv=1)
+            mock.box("moss", (rng.uniform(0.6, 1.1), 0.25, rng.uniform(0.6, 1.1)),
+                     (cx + rng.uniform(-0.8, 0.8), cy + rng.uniform(-1.6, 1.6), top + 0.2),
+                     mock.mat("mossy", rgb(70, 110, 50)), rot=(0, 0, rng.uniform(0, 1)))
     elif extra == "embers":
         ember = mock.mat("ember", rgb(255, 120, 30), 0.5, emit=8.0)
         for k in range(10):
-            a, d = rng.uniform(0, math.tau), rng.uniform(0, 1.8)
-            mock.sphere("ember", 0.14, (cx + math.cos(a) * d, cy + math.sin(a) * d, 3.3 + rng.uniform(0, 0.9)), ember, subdiv=1)
+            mock.box("ember", (0.25, 0.25, 0.25), (cx + rng.uniform(-1, 1), cy + rng.uniform(-2, 2), top + rng.uniform(0.2, 1.2)), ember,
+                     rot=(rng.uniform(0, 1), rng.uniform(0, 1), 0))
     elif extra == "crystals":
-        crystal = mock.mat("crystal", rgb(170, 90, 220), 0.1, emit=1.2)
+        crystal = mock.mat("crystal", rgb(170, 90, 220), 0.2, emit=1.2)
         for k in range(4):
-            bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.25, depth=1.0,
-                                            location=(cx + rng.uniform(-1.5, 1.5), cy - 1.8, 0.7))
+            bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.3, depth=1.2,
+                                            location=(cx + rng.uniform(-2.5, 2.5), cy - 2.8, 0.8))
             o = bpy.context.active_object
             o.rotation_euler = (rng.uniform(-0.4, 0.4), rng.uniform(-0.4, 0.4), 0)
             o.data.materials.append(crystal)
     elif extra == "cloud":
-        puff = mock.mat("puff", rgb(255, 255, 255), 0.9, emit=0.3)
-        for k in range(5):
-            mock.sphere("puff", rng.uniform(0.5, 0.8), (cx + rng.uniform(-2.4, 2.4), cy + 0.5, 0.6 + rng.uniform(0, 0.4)), puff, subdiv=2)
+        puff = mock.mat("puff", rgb(255, 255, 255), 0.9, emit=0.2)
+        for k in range(4):
+            s = rng.uniform(0.9, 1.4)
+            mock.box("puff", (s, s * 0.7, s), (cx + rng.uniform(-3, 3), cy - 2.6, 0.6), puff, rot=(0, 0, rng.uniform(0, 1)))
     elif extra == "wisps":
         wisp = mock.mat("wisp", rgb(140, 255, 190), 0.5, emit=5.0)
         for k in range(5):
-            mock.sphere("wisp", rng.uniform(0.12, 0.22), (cx + rng.uniform(-2.2, 2.2), cy - 1.0, 4.4 + rng.uniform(0, 1.4)), wisp, subdiv=1)
+            mock.sphere("wisp", rng.uniform(0.15, 0.25), (cx + rng.uniform(-2, 2), cy - 1.5, top + rng.uniform(0.4, 1.8)), wisp, subdiv=1)
     elif extra == "stars":
         star = mock.mat("star", rgb(255, 240, 180), 0.5, emit=10.0)
         for k in range(14):
-            a, d = rng.uniform(0, math.tau), rng.uniform(0, 2.1)
-            mock.sphere("star", 0.1, (cx + math.cos(a) * d, cy + math.sin(a) * d, 3.0 + rng.uniform(0, 1.3)), star, subdiv=1)
+            mock.box("star", (0.18, 0.18, 0.18), (cx + rng.uniform(-2.4, 2.4), cy + rng.uniform(-2.4, 2.4), rng.uniform(0.6, top + 1.4)), star,
+                     rot=(0.6, 0.6, 0))
 
-    mock.label(name.upper(), (cx, cy - 3.5, 0.25), 0.62, INK)
-    mock.label(f"{needle_name} needles  ·  {value}", (cx, cy - 4.3, 0.25), 0.42, SUB)
+    mock.label(name.upper(), (cx, cy - 4.2, 0.25), 0.72, INK)
+    mock.label(f"{needle_name} needles  ·  {value}", (cx, cy - 5.1, 0.25), 0.46, SUB)
 
-mock.label("HAY TYPES  (one per map)", (0, 2 * SPACING_Y - 3.0, 0.25), 1.0, INK)
+mock.label("HAY TYPES  (one per map)", (0, 2 * SPACING_Y - 3.5, 0.25), 1.1, INK)
 
-mock.scene_setup(world_color=(0.8, 0.82, 0.86), res=(2000, 1300), samples=48)
-mock.sun(rotation=(0.6, 0.15, 0.4), energy=2.6)
-mock.camera((0, -30, 52), look_at=(0, 4.6, 0), lens=40)
+mock.scene_setup(world_color=(0.74, 0.76, 0.74), res=(2000, 1300), samples=48)
+mock.sun(rotation=(0.6, 0.15, 0.4), energy=3.0)
+mock.camera((0, -34, 60), look_at=(0, 5.0, 0), lens=40)
 mock.render(mock.out_path("hay_types.png"))

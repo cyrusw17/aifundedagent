@@ -84,124 +84,79 @@ def label(text, loc, size, material, rot=(0, 0, 0), align="CENTER", bold=True):
     o.location = loc
     o.rotation_euler = rot
     o.data.materials.append(material)
+    o.visible_shadow = False
     bpy.context.collection.objects.link(o)
     return o
 
 
-# House palette (sRGB 0-255), shared with blender/props/hay_barrel.py. See style/STYLE.md.
-HAY_PALETTE = {
-    "root": (199, 158, 69),
-    "mids": [(245, 214, 107), (235, 196, 87), (252, 227, 133), (224, 184, 79)],
-    "tip": (255, 242, 179),
-}
-WOOD_TONES = [(140, 87, 46), (153, 97, 51), (128, 77, 41)]
-WOOD_INSIDE = (77, 46, 26)
-IRON = (61, 61, 69)
+# ---------------------------------------------------------------- house style props
+
+STUD = 0.28  # props in blender/props are modeled in meters
 
 
-def palette(mids, root=None, tip=None):
-    """Hay palette from a few mid shades: darker roots, lighter tips."""
-    root = root or tuple(int(c * 0.78) for c in mids[0])
-    tip = tip or tuple(int(c + (255 - c) * 0.45) for c in mids[-1])
-    return {"root": root, "mids": list(mids), "tip": tip}
+def rustic_finish(name="rustic", hay=None, twine=None):
+    """The house finish (blender/lib/style.py). hay/twine swap those palettes
+    (light, mid, dark sRGB 0-1) for map-specific hay."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
+    import style
+    f = style.rustic()
+    if hay or twine:
+        f.pal = dict(f.pal)
+        f.pal["hay"] = hay or f.pal["hay"]
+        f.pal["twine"] = twine or f.pal["twine"]
+        f.name = name
+    return f
 
 
-_vcol = None
+def prop(key, loc, rot_z=0.0, f=None, rot=None):
+    """Build a house-style prop from blender/props/rustic_props.py, scaled to studs."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
+    import rustic_props
+    f = f or rustic_finish()
+    parts = rustic_props.PROPS[key](f)
+    root = bpy.data.objects.new(key, None)
+    bpy.context.collection.objects.link(root)
+    for o in parts:
+        o.parent = root
+    root.scale = (1 / STUD,) * 3
+    root.location = loc
+    root.rotation_euler = rot or (0, 0, rot_z)
+    return root
 
 
-def vcol_mat():
-    """Matte material that takes its color from the mesh's 'Col' color attribute."""
-    global _vcol
-    if _vcol:
-        return _vcol
-    m = bpy.data.materials.new("vertex_color")
-    m.use_nodes = True
-    nt = m.node_tree
-    bsdf = nt.nodes.get("Principled BSDF")
-    bsdf.inputs["Roughness"].default_value = 0.9
-    attr = nt.nodes.new("ShaderNodeVertexColor")
-    attr.layer_name = "Col"
-    nt.links.new(attr.outputs["Color"], bsdf.inputs["Base Color"])
-    _vcol = m
-    return m
+def finish_part(obj, kind, f, along="x"):
+    """Give a plain mock part a house-style material (kind: hay, bark, wood, handle, metal)."""
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    obj.data.materials.clear()
+    return f.apply(f.shape(obj, round_edges=False), kind, along=along)
 
 
-def spikes(name, items):
-    """One mesh of straw spikes. items: (base, direction, length, radius, root_rgb, tip_rgb, twist)."""
-    import bmesh
-    from mathutils import Vector
-    bm = bmesh.new()
-    col = bm.loops.layers.float_color.new("Col")
-    for base, direction, length, radius, root, tip, twist in items:
-        d = Vector(direction).normalized()
-        side = d.orthogonal().normalized()
-        side.rotate(__import__("mathutils").Quaternion(d, twist))
-        other = d.cross(side)
-        b = Vector(base)
-        ring = [bm.verts.new(b + (side * math.cos(a) + other * math.sin(a) * 0.45) * radius)
-                for a in (0, math.tau / 3, 2 * math.tau / 3)]
-        apex = bm.verts.new(b + d * length)
-        rc, tc = (*rgb(*root), 1.0), (*rgb(*tip), 1.0)
-        for i in range(3):
-            f = bm.faces.new((ring[i], ring[(i + 1) % 3], apex))
-            for loop in f.loops:
-                loop[col] = tc if loop.vert is apex else rc
-    mesh = bpy.data.meshes.new(name)
-    bm.to_mesh(mesh)
-    bm.free()
-    o = bpy.data.objects.new(name, mesh)
-    o.data.materials.append(vcol_mat())
-    bpy.context.collection.objects.link(o)
-    return o
+def bale(loc, rot_z=0.0, f=None):
+    """One 4 x 2 x 2 stud bale with its bottom at loc."""
+    return prop("hay_bale", loc, rot_z, f)
 
 
-def hay_heap(name, center, radius, height, pal=None, tufts=160, seed=1, emit=0.0):
-    """Spiky low-poly hay mound in the barrel's style: a dark-rooted core covered in
-    straw spikes that run from a darker root to a light tip."""
-    import random
-    rng = random.Random(seed)
-    pal = pal or HAY_PALETTE
-    cx, cy, cz = center
-    core = sphere(name + "_core", radius * 0.92, (cx, cy, cz),
-                  mat(name + "_root", rgb(*pal["root"]), 0.95, emit=emit),
-                  scale=(1, 1, height / radius * 0.92), subdiv=2)
-    items = []
-    for i in range(tufts):
-        # Point on the upper part of the mound, pointing outward and a bit up.
-        a = rng.uniform(0, math.tau)
-        el = math.asin(rng.uniform(-0.15, 1.0))
-        nx, ny, nz = math.cos(el) * math.cos(a), math.cos(el) * math.sin(a), math.sin(el)
-        base = (cx + nx * radius * 0.8, cy + ny * radius * 0.8, cz + nz * height * 0.8)
-        direction = (nx + rng.uniform(-0.35, 0.35), ny + rng.uniform(-0.35, 0.35),
-                     nz * (height / radius) + rng.uniform(0.0, 0.5))
-        mid = pal["mids"][i % len(pal["mids"])]
-        tip = tuple(int((m + t) / 2) for m, t in zip(mid, pal["tip"])) if i % 3 else pal["tip"]
-        root = tuple(int((m + r) / 2) for m, r in zip(mid, pal["root"]))
-        items.append((base, direction, rng.uniform(0.35, 0.6) * radius, rng.uniform(0.09, 0.16) * radius,
-                      root, tip, rng.uniform(0, math.tau)))
-    return [core, spikes(name + "_straw", items)]
+def bale_stack(x, y, z=0.0, f=None, layers=2):
+    """Bales stacked in a bond: two side by side, then one across on top."""
+    for layer in range(layers):
+        if layer % 2 == 0:
+            for dy in (-1, 1):
+                bale((x, y + dy, z + layer * 2), 0.0, f)
+        else:
+            bale((x, y, z + layer * 2), math.pi / 2, f)
 
 
-def tub(name, center, radius, height, staves=14, seed=0):
-    """Wooden stave tub with two chunky iron bands, like the game's hay barrel."""
-    import random
-    rng = random.Random(seed)
-    cx, cy, cz = center
-    objs = []
-    width = math.tau * radius / staves * 0.94
-    for i in range(staves):
-        a = i * math.tau / staves
-        tone = WOOD_TONES[rng.randrange(len(WOOD_TONES))]
-        o = box(f"{name}_stave{i}", (width, height * rng.uniform(0.98, 1.03), radius * 0.14),
-                (cx + math.cos(a) * radius, cy + math.sin(a) * radius, cz + height / 2),
-                mat("wood" + str(tone), rgb(*tone), 0.85), rot=(0, 0, a + math.pi / 2))
-        objs.append(o)
-    objs.append(cylinder(name + "_inside", radius * 0.95, height * 0.96, (cx, cy, cz + height / 2),
-                         mat("wood_inside", rgb(*WOOD_INSIDE), 0.9), verts=16))
-    iron = mat("iron", rgb(*IRON), 0.45, 0.85)
-    for h in (0.18, 0.82):
-        objs.append(cylinder(name + "_band", radius * 1.15, height * 0.12, (cx, cy, cz + height * h), iron, verts=16))
-    return objs
+def mix(a, b, t):
+    return tuple(x + (y - x) * t for x, y in zip(a, b))
+
+
+def rustic_palette(light, mid, dark, weather=0.3):
+    """Turn bright (0-255) shades into the muted Rustic look by pulling them toward warm grey."""
+    grey = (0.55, 0.5, 0.42)
+    return tuple(mix(tuple(c / 255 for c in col), grey, weather) for col in (light, mid, dark))
 
 
 def scene_setup(world_color=(0.75, 0.8, 0.85), world_strength=0.9, res=(1600, 1200), samples=48):

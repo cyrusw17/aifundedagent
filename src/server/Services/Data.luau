@@ -39,7 +39,7 @@ function Data.sync(player)
 	player:SetAttribute("Cash", state.cash)
 	player:SetAttribute("LoadHay", state.loadHay)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
-	player:SetAttribute("Carrying", state.carryBarrel ~= nil)
+	player:SetAttribute("Carrying", state.carryBale ~= nil)
 end
 
 function Data.toast(player, text)
@@ -48,7 +48,7 @@ function Data.toast(player, text)
 end
 
 function Data.load(player)
-	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBarrel = nil }
+	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil }
 	if store then
 		local ok, saved = pcall(function()
 			return store:GetAsync(keyFor(player))
