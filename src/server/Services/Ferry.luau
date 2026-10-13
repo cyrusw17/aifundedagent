@@ -22,6 +22,7 @@ local Prices = require(Shared.Config.Prices)
 local Vehicles = require(script.Parent.Vehicles)
 local Bank = require(script.Parent.Bank)
 local Data = require(script.Parent.Data)
+local Props = require(script.Parent.Props)
 local WorldShape = require(script.Parent.WorldShape)
 
 local Ferry = {}
@@ -249,10 +250,11 @@ local function buildDeck(def, cframe, parent)
 		look("PromenadeRail", Vector3.new(0.4, 3, 70), walk * CFrame.new(-3.3, 1.9, 0), Rustic.WoodDark, Enum.Material.Wood)
 		-- Snack stand.
 		local stand = walk * CFrame.new(0.5, 0, -22)
-		look("SnackCounter", Vector3.new(3, 3.2, 8), stand * CFrame.new(-1.5, 2, 0), Rustic.PaintCream, Enum.Material.WoodPlanks)
-		look("SnackAwning", Vector3.new(5, 0.3, 9), stand * CFrame.new(-1, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-12)), Rustic.PaintRed, Enum.Material.Fabric, false)
+		local counter = look("SnackCounter", Vector3.new(3, 3.2, 8), stand * CFrame.new(-1.5, 2, 0), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		local standLook = { counter }
+		standLook[2] = look("SnackAwning", Vector3.new(5, 0.3, 9), stand * CFrame.new(-1, 6.2, 0) * CFrame.Angles(0, 0, math.rad(-12)), Rustic.PaintRed, Enum.Material.Fabric, false)
 		for _, z in { -4, 4 } do
-			look("SnackPole", Vector3.new(0.3, 4.4, 0.3), stand * CFrame.new(1.2, 4, z), Rustic.WoodDark, Enum.Material.Wood, false)
+			standLook[#standLook + 1] = look("SnackPole", Vector3.new(0.3, 4.4, 0.3), stand * CFrame.new(1.2, 4, z), Rustic.WoodDark, Enum.Material.Wood, false)
 		end
 		snacks.counter = look("SnackSign", Vector3.new(0.2, 1.2, 5), stand * CFrame.new(0, 3.9, 0), Rustic.PaintYellow, Enum.Material.WoodPlanks, false)
 		-- Bounty board.
@@ -260,6 +262,20 @@ local function buildDeck(def, cframe, parent)
 		snacks.board = board
 		-- Fishing spot at the stern rail.
 		snacks.fishing = look("FishingSpot", Vector3.new(2, 0.3, 2), walk * CFrame.new(-1.5, 0.45, 30), Rustic.WoodDark, Enum.Material.Wood, false)
+		-- The Blender snack stand (service side +X, toward the lanes, like this one) and fishing spot when imported.
+		-- Each is only a look, welded to its part, which keeps the prompt and stays the look until the mesh loads.
+		table.insert(standLook, snacks.counter)
+		local deckTop = (cframe * walk).Y + 0.4
+		local standMesh = Props.make("ferry_snack_stand", cframe * stand * CFrame.new(-0.9, 3.3, 0))
+		if standMesh then
+			Props.restOn(standMesh, deckTop)
+			Props.weldTo(standMesh, counter, standLook)
+		end
+		local spotMesh = Props.make("fishing_spot", cframe * walk * CFrame.new(-1.5, 2, 30))
+		if spotMesh then
+			Props.restOn(spotMesh, deckTop)
+			Props.weldTo(spotMesh, snacks.fishing, snacks.fishing)
+		end
 	end
 
 	-- Everything rides on the deck.

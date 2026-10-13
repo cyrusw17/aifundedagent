@@ -288,6 +288,19 @@ return function(SelfTest)
 			t.check("the bank still has its teller window", bank:FindFirstChild("TellerWindow") ~= nil)
 		end
 
+		-- 3c. The free hay wagon wears the Blender wagon and tractor, which ride with it.
+		local okWagon, HayWagon = pcall(require, script.Parent.Parent.Services.HayWagon)
+		local wagon = okWagon and HayWagon.model
+		for _, name in { "hay_wagon", "farm_tractor" } do
+			if not Props.has(name) then
+				t.skip("the hay wagon wears " .. name, "not imported")
+			elseif not wagon then
+				t.skip("the hay wagon wears " .. name, "no hay wagon built")
+			else
+				t.check("the hay wagon wears " .. name, wagon:FindFirstChild(name, true) ~= nil)
+			end
+		end
+
 		-- 4. Nothing Import 3D made is left lying in the Workspace.
 		local stray = {}
 		if Workspace:FindFirstChild("Scene") then

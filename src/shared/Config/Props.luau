@@ -13,18 +13,18 @@ return {
 		-- Hay, tools and small props
 		hay_bale = 4.6,
 		round_bale = 3.7,
-		basic_shovel = 2.7,
+		basic_shovel = 2.73,
 		wide_scoop = 2.8,
 		garden_rake = 5.0,
 		pitchfork = 5.3,
 		steel_fork = 5.2,
 		hay_hook = 1.27,
-		hand_sieve = 5.9,
+		hand_sieve = 13.66,
 		silver_sieve_net = 3.7,
 		magnet_wand = 3.9,
 		needle_tweezers = 2.35,
 		needle_tray = 3.0,
-		sorter_boost_oil = 1.6,
+		sorter_boost_oil = 1.57,
 		barrel_auger = 4.6,
 		hay_vacuum_hose = 3.8,
 		wheelbarrow = 5.5,
@@ -65,8 +65,11 @@ return {
 		splitter = 6.2,
 		needle_type_splitter = 8.5,
 		optical_sorter = 12.0,
-		magnet_drum = 11.8,
-		shaker_table = 9.0,
+		magnet_drum = 16.11,
+		-- the small decor versions of the first sorter tiers (Blender batch 4)
+		hand_sieve_table = 5.92,
+		shaker_table_small = 9.01,
+		shaker_table = 13.66,
 		hopper_feeder = 10.6,
 		hay_baler = 18.6,
 		hay_press = 12.1,
@@ -75,9 +78,9 @@ return {
 		alloy_mixer = 10.5,
 		alien_collector = 12.4,
 		-- Region treat machines (Treat.luau): two belt cells long, belt along X, belt top 3.5
-		thawing_shed = 14.1,
+		thawing_shed = 14.59,
 		drying_rack = 12.0,
-		ash_sifter = 13.1,
+		ash_sifter = 12.39,
 		starbeam_collector = 22.0, -- one 6x6 tile, as tall as the part-built tower in Starbeam.luau
 		-- Buildings and storage
 		bale_rack = 18.3,
@@ -115,7 +118,7 @@ return {
 		cactus_b = 7,
 		dead_tree_a = 16.3,
 		dead_tree_b = 13.0,
-		reeds_clump = 3,
+		reeds_clump = 3.05,
 		rock_a = 4.53,
 		rock_b = 3.15,
 		rock_c = 1.55,
@@ -147,6 +150,11 @@ return {
 		straw_crown = 1.45,
 		corn_moon_charm = 1.05,
 		lucky_thimble = 0.5,
+		-- Rides and set pieces (Blender batch 4)
+		hay_wagon = 16.05,
+		farm_tractor = 8.68,
+		ferry_snack_stand = 9.04,
+		fishing_spot = 3.04,
 		rarity_needle = 1.2, -- the one needle mesh every rarity tier shares (same length as the game's needle)
 		-- Robux truck skins: same size as the cash truck each one repaints
 		homestead_classic = 27.5,

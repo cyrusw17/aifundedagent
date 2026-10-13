@@ -15,6 +15,7 @@ local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local WorldShape = require(script.Parent.WorldShape)
 local Regions = require(script.Parent.Regions)
+local Props = require(script.Parent.Props)
 
 local HayWagon = {}
 
@@ -115,14 +116,15 @@ local function buildWagon(parent)
 	local origin = CFrame.new()
 	local bed = part(model, "Bed", Vector3.new(8, 0.8, 14), origin * CFrame.new(0, 2.4, 2), Rustic.Wood, Enum.Material.WoodPlanks)
 	model.PrimaryPart = bed
+	local wagonLook, tractorLook = { bed }, {} -- the part looks the Blender wagon and tractor replace
 	for _, side in { -1, 1 } do
-		part(model, "Rail", Vector3.new(0.4, 1.4, 14), origin * CFrame.new(side * 3.9, 3.5, 2), Rustic.WoodDark)
+		wagonLook[#wagonLook + 1] = part(model, "Rail", Vector3.new(0.4, 1.4, 14), origin * CFrame.new(side * 3.9, 3.5, 2), Rustic.WoodDark)
 		for _, z in { -3, 7 } do
-			part(model, "Wheel", Vector3.new(0.6, 3.2, 3.2), origin * CFrame.new(side * 4.3, 1.6, z), Rustic.WoodDark, Enum.Material.Wood, Enum.PartType.Cylinder)
+			wagonLook[#wagonLook + 1] = part(model, "Wheel", Vector3.new(0.6, 3.2, 3.2), origin * CFrame.new(side * 4.3, 1.6, z), Rustic.WoodDark, Enum.Material.Wood, Enum.PartType.Cylinder)
 		end
 	end
 	-- A heap of hay down the middle to lean on, and benches facing out.
-	part(model, "HayHeap", Vector3.new(2.4, 1.6, 12), origin * CFrame.new(0, 3.6, 2), Color3.fromRGB(189, 168, 112), Enum.Material.Grass)
+	wagonLook[#wagonLook + 1] = part(model, "HayHeap", Vector3.new(2.4, 1.6, 12), origin * CFrame.new(0, 3.6, 2), Color3.fromRGB(189, 168, 112), Enum.Material.Grass)
 	local seats = {}
 	for i = 0, SEATS - 1 do
 		local side = i % 2 == 0 and -1 or 1
@@ -133,12 +135,12 @@ local function buildWagon(parent)
 	end
 	-- The tractor in front.
 	local t = origin * CFrame.new(0, 0, -9)
-	part(model, "TractorBody", Vector3.new(4, 3, 6), t * CFrame.new(0, 3, 0), Rustic.PaintGreen, Enum.Material.Metal)
-	part(model, "TractorHood", Vector3.new(3, 2, 3), t * CFrame.new(0, 3.5, -3.5), Rustic.PaintGreen, Enum.Material.Metal)
-	part(model, "TractorStack", Vector3.new(0.5, 3, 0.5), t * CFrame.new(1, 6, -3), Color3.fromRGB(60, 58, 56), Enum.Material.Metal)
+	tractorLook[#tractorLook + 1] = part(model, "TractorBody", Vector3.new(4, 3, 6), t * CFrame.new(0, 3, 0), Rustic.PaintGreen, Enum.Material.Metal)
+	tractorLook[#tractorLook + 1] = part(model, "TractorHood", Vector3.new(3, 2, 3), t * CFrame.new(0, 3.5, -3.5), Rustic.PaintGreen, Enum.Material.Metal)
+	tractorLook[#tractorLook + 1] = part(model, "TractorStack", Vector3.new(0.5, 3, 0.5), t * CFrame.new(1, 6, -3), Color3.fromRGB(60, 58, 56), Enum.Material.Metal)
 	for _, side in { -1, 1 } do
-		part(model, "TractorWheel", Vector3.new(1.2, 4.4, 4.4), t * CFrame.new(side * 2.6, 2.2, 1.5), Color3.fromRGB(40, 38, 36), Enum.Material.Rubber, Enum.PartType.Cylinder)
-		part(model, "TractorFront", Vector3.new(0.8, 2.4, 2.4), t * CFrame.new(side * 1.8, 1.2, -3.5), Color3.fromRGB(40, 38, 36), Enum.Material.Rubber, Enum.PartType.Cylinder)
+		tractorLook[#tractorLook + 1] = part(model, "TractorWheel", Vector3.new(1.2, 4.4, 4.4), t * CFrame.new(side * 2.6, 2.2, 1.5), Color3.fromRGB(40, 38, 36), Enum.Material.Rubber, Enum.PartType.Cylinder)
+		tractorLook[#tractorLook + 1] = part(model, "TractorFront", Vector3.new(0.8, 2.4, 2.4), t * CFrame.new(side * 1.8, 1.2, -3.5), Color3.fromRGB(40, 38, 36), Enum.Material.Rubber, Enum.PartType.Cylinder)
 	end
 	part(model, "Driver", Vector3.new(1.6, 2.6, 1), t * CFrame.new(0, 5.6, 1.5), Color3.fromRGB(120, 92, 70), Enum.Material.Fabric)
 	part(model, "DriverHat", Vector3.new(2.2, 0.5, 2.2), t * CFrame.new(0, 7.2, 1.5), Color3.fromRGB(189, 168, 112), Enum.Material.Fabric)
@@ -155,6 +157,23 @@ local function buildWagon(parent)
 	label.Text = "FREE HAY WAGON"
 	label.Parent = gui
 	gui.Parent = board
+	table.insert(wagonLook, board)
+
+	-- The Blender wagon (origin at the bed center, board at the back, tongue to the front) and tractor, when
+	-- imported. Only looks, welded to the bed; the seats, driver and prompt stay parts, and each client keeps the
+	-- part wagon until the meshes have loaded.
+	local wagonMesh = Props.make("hay_wagon", origin * CFrame.new(0, 2.75, 2 - 0.58))
+	if wagonMesh then
+		Props.restOn(wagonMesh, origin.Y)
+		wagonMesh.Parent = model
+		Props.weldTo(wagonMesh, bed, wagonLook)
+	end
+	local tractorMesh = Props.make("farm_tractor", t * CFrame.new(0, 3.5, -0.65))
+	if tractorMesh then
+		Props.restOn(tractorMesh, origin.Y)
+		tractorMesh.Parent = model
+		Props.weldTo(tractorMesh, bed, tractorLook)
+	end
 
 	-- Ride: seats you in a free seat (riders only, no cargo).
 	local prompt = Instance.new("ProximityPrompt")
