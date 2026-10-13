@@ -20,6 +20,7 @@ local placeRemote = state:WaitForChild("Place")
 local removeRemote = state:WaitForChild("Remove")
 local crewRemote = state:WaitForChild("Crew")
 local visitRemote = state:WaitForChild("Visit")
+local expandRemote = state:WaitForChild("Expand")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -264,6 +265,9 @@ local rotateButton = button(actions, "TURN (R)", INK)
 rotateButton.Size = UDim2.fromOffset(96, 34)
 local removeButton = button(actions, "REMOVE (X)", RED)
 removeButton.Size = UDim2.fromOffset(110, 34)
+local expandButton = button(actions, "EXPAND", GREEN)
+expandButton.Size = UDim2.fromOffset(130, 34)
+expandButton.Visible = false
 local crewButton = button(actions, "CREW", PICKED)
 crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
@@ -347,6 +351,34 @@ local function refreshCrew()
 		crewMessage.Text = "Nobody else is on this server yet."
 	end
 end
+
+local function refreshExpand()
+	local index = player:GetAttribute("LandPlot") or 0
+	local info = state:FindFirstChild("Plot" .. index)
+	local locked = info and info:GetAttribute("LockedRows") or 0
+	expandButton.Visible = locked > 0
+	expandButton.Text = ("EXPAND  $%d"):format(LandConfig.ExpansionPrice)
+end
+for _, info in state:GetChildren() do
+	if info:IsA("Configuration") then
+		info:GetAttributeChangedSignal("LockedRows"):Connect(refreshExpand)
+	end
+end
+player:GetAttributeChangedSignal("LandPlot"):Connect(refreshExpand)
+refreshExpand()
+local expandBusy = false
+expandButton.Activated:Connect(function()
+	if expandBusy then
+		return
+	end
+	expandBusy = true
+	local ok, _, message = pcall(function()
+		return expandRemote:InvokeServer()
+	end)
+	expandBusy = false
+	infoLabel.Text = ok and (message or "") or "Couldn't reach the server."
+	refreshExpand()
+end)
 
 crewButton.Activated:Connect(function()
 	crewPanel.Visible = not crewPanel.Visible
@@ -509,7 +541,8 @@ local function updateGhost()
 	local valid = true
 	for _, cell in cells do
 		local x, z = cell[1], cell[2]
-		local onPlot = x >= 0 and z >= 0 and x < tilesX and z < tilesZ
+		local fromBack = info:GetAttribute("Open") == "S" and z or tilesZ - 1 - z
+		local onPlot = x >= 0 and z >= 0 and x < tilesX and z < tilesZ and fromBack >= (info:GetAttribute("LockedRows") or 0)
 		local free = not taken[x .. "," .. z]
 		if not onPlot or (removing and free) or (not removing and not free) then
 			valid = false

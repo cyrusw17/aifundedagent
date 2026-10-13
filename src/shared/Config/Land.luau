@@ -23,6 +23,9 @@ return {
 		{ zone = "plot_6", name = "Plot 6", price = PRICE, tiles = TILES, open = "N" },
 	},
 	StripDepth = 8,
+	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
+	ExpansionRows = 2,
+	ExpansionPrice = Prices.PlotExpansion,
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
 	OfficeCenter = Vector3.new(-20, 0, 49),
@@ -62,6 +65,7 @@ return {
 			land = {
 				owned = true,
 				plot = 4,
+				expansions = 2, -- the whole plot
 				items = ({
 					-- Silo -> belts -> magnet drum -> belts -> hay buyer, along the back fence.
 					{ id = "silo", gx = 1, gz = 1, dir = "E", stored = 20 },

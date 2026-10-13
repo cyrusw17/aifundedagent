@@ -194,6 +194,8 @@ local function stateFrom(saved)
 			plot = typeof(saved.land.plot) == "number" and saved.land.plot or nil,
 			items = saved.land.items,
 			needles = countMap(saved.land.needles),
+			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
+			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
 		}
 	end
 	return state
