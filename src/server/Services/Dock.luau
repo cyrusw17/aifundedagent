@@ -12,6 +12,10 @@ local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 
+-- The shared trucks live in Vehicles.luau (Starting biome thread, PR #15). It is optional here so the base also runs
+-- on branches without it.
+local Vehicles = script.Parent:FindFirstChild("Vehicles") and require(script.Parent.Vehicles)
+
 local Dock = {}
 
 local ZONE_LENGTH = 30 -- how far from the dock edge a parked bed's cargo can reach
@@ -51,18 +55,37 @@ function Dock.isBusy()
 	return busy
 end
 
--- A truck's tailgate (any part tagged "Tailgate") swings out of the way while the dock unloads, then comes back.
+local function inZone(position)
+	local p = zone:PointToObjectSpace(position)
+	return math.abs(p.X) <= ZONE_WIDTH / 2 and math.abs(p.Y) <= ZONE_HEIGHT / 2 and math.abs(p.Z) <= ZONE_LENGTH / 2
+end
+
+-- Opens the tailgate of every player truck parked in the dock zone (Vehicles.setTailgate). Trucks without that API
+-- can tag their tailgate part "Tailgate" instead, and it is moved out of the way. Returns a function that closes them.
 local function openTailgates()
-	local opened = {}
+	local trucks, tagged = {}, {}
+	if Vehicles and Vehicles.all then
+		for truck in Vehicles.all() do
+			local chassis = truck.PrimaryPart
+			if chassis and inZone(chassis.Position) and Vehicles.setTailgate(truck, true) then
+				table.insert(trucks, truck)
+			end
+		end
+	end
 	for _, p in Workspace:GetPartBoundsInBox(zone, Vector3.new(ZONE_WIDTH, ZONE_HEIGHT, ZONE_LENGTH)) do
-		if CollectionService:HasTag(p, "Tailgate") and not opened[p] then
-			opened[p] = { canCollide = p.CanCollide, transparency = p.Transparency }
+		if CollectionService:HasTag(p, "Tailgate") and not tagged[p] then
+			tagged[p] = { canCollide = p.CanCollide, transparency = p.Transparency }
 			p.CanCollide = false
 			p.Transparency = 1
 		end
 	end
 	return function()
-		for p, was in opened do
+		for _, truck in trucks do
+			if truck.Parent then
+				Vehicles.setTailgate(truck, false)
+			end
+		end
+		for p, was in tagged do
 			if p.Parent then
 				p.CanCollide = was.canCollide
 				p.Transparency = was.transparency
