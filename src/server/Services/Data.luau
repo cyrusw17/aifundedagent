@@ -172,6 +172,7 @@ local function stateFrom(saved)
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
+		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -344,6 +345,7 @@ function Data.save(player)
 		trucks = state.trucks,
 		trailers = state.trailers,
 		pocket = state.pocket,
+		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
