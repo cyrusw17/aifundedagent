@@ -134,8 +134,8 @@ local function startDespawnTimer(b)
 		if b.gone or b.carriedBy or b.home or b.dropToken ~= token then
 			return
 		end
-		if Bales.isAtDropOff(b) then
-			task.delay(Config.DroppedBaleSeconds, check) -- still stored, look again later
+		if Bales.isAtDropOff(b) or b.body:GetAttribute("InTruck") then
+			task.delay(Config.DroppedBaleSeconds, check) -- still stored or riding in a truck, look again later
 			return
 		end
 		Bales.consume(b)

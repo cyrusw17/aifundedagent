@@ -40,6 +40,7 @@ function Data.sync(player)
 	player:SetAttribute("LoadHay", state.loadHay)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
+	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 end
 
 function Data.toast(player, text)
@@ -48,7 +49,7 @@ function Data.toast(player, text)
 end
 
 function Data.load(player)
-	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil }
+	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil, trucks = {} }
 	if store then
 		local ok, saved = pcall(function()
 			return store:GetAsync(keyFor(player))
@@ -56,6 +57,13 @@ function Data.load(player)
 		if ok then
 			if typeof(saved) == "table" and typeof(saved.cash) == "number" then
 				state.cash = saved.cash
+			end
+			if typeof(saved) == "table" and typeof(saved.trucks) == "table" then
+				for _, id in saved.trucks do
+					if typeof(id) == "string" then
+						table.insert(state.trucks, id)
+					end
+				end
 			end
 		else
 			warn("[Needlewood] load failed for " .. player.Name .. ": " .. tostring(saved))
@@ -71,7 +79,7 @@ function Data.save(player)
 		return
 	end
 	local ok, err = pcall(function()
-		store:SetAsync(keyFor(player), { cash = state.cash })
+		store:SetAsync(keyFor(player), { cash = state.cash, trucks = state.trucks })
 	end)
 	if not ok then
 		warn("[Needlewood] save failed for " .. player.Name .. ": " .. tostring(err))
