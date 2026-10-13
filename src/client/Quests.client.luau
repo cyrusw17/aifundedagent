@@ -12,6 +12,7 @@ local UI = Shared:WaitForChild("UI")
 local Kit = require(UI:WaitForChild("Kit"))
 local Menus = require(UI:WaitForChild("Menus"))
 local Waypoint = require(UI:WaitForChild("Waypoint"))
+local Hud = require(UI:WaitForChild("Hud"))
 
 local remotes = ReplicatedStorage:WaitForChild("Quests")
 local getRemote = remotes:WaitForChild("Get")
@@ -57,19 +58,19 @@ local function act(kind, id)
 	return ok
 end
 
--- Quest card: the clock and the quest you are on, under the MAP / SHOP / HELP buttons (Menus.client.luau, 14,246,
--- 36 tall). Click it for the log; GO drops a waypoint on where the step sends you. --------------------------------
+-- Quest card: the clock and the quest you are on, last in the HUD column under the menu buttons (UI/Hud.luau).
+-- Click it for the log; GO drops a waypoint on where the step sends you. -------------------------------------------
 
 local card = Instance.new("TextButton")
 card.Name = "QuestCard"
 card.Text = ""
 card.AutoButtonColor = false
-card.Position = UDim2.fromOffset(14, 290)
+card.LayoutOrder = Hud.Order.Extra
 card.Size = UDim2.fromOffset(230, 0)
 card.AutomaticSize = Enum.AutomaticSize.Y
 card.BackgroundColor3 = C.Wood
 card.BackgroundTransparency = 0.1
-card.Parent = gui
+card.Parent = Hud.column()
 Kit.corner(card, 10)
 Kit.stroke(card, C.Ink, 1.5)
 Kit.pad(card, 8)

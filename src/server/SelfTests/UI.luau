@@ -235,6 +235,21 @@ return function(SelfTest)
 		t.cleanup(bale.body)
 		Bales.breakOpen(player, bale)
 		t.check("Tutorial: breaking a bale marks broke", hasFlag("broke"))
+		-- Collection book: the event bus fills the needle and hay pages (steel and meadow are the starter ones, so
+		-- marking them changes nothing a player would notice).
+		local Events = require(Services.Events)
+		Events.fire(player, "needle_found", 1, { needleId = "steel" })
+		Events.fire(player, "bale_broken", 1, { hayType = "meadow" })
+		task.wait(0.2)
+		t.check(
+			"Codex: a found steel needle fills its page",
+			string.find(player:GetAttribute("CodexNeedles") or "", "steel", 1, true) ~= nil
+		)
+		t.check(
+			"Codex: a broken meadow bale fills its page",
+			string.find(player:GetAttribute("CodexHay") or "", "meadow", 1, true) ~= nil
+		)
+
 		for flag, was in had do
 			if not was then
 				Tutorial.unmark(player, flag)
