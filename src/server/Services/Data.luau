@@ -200,6 +200,7 @@ local function stateFrom(saved)
 			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
 			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
 			theme = typeof(saved.land.theme) == "string" and saved.land.theme or nil, -- plot theme id
+			savedAt = typeof(saved.land.savedAt) == "number" and saved.land.savedAt or nil, -- os.time() of the last save
 		}
 	end
 	return state
