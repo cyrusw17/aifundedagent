@@ -1,7 +1,8 @@
 --!nonstrict
--- The collection book (BOOK under the HUD, or K). Five pages:
+-- The collection book (BOOK under the HUD, or K). Six pages:
 --   FINDS   every foreign object from a burst bale (Config/Finds), kept ones from the "Finds" attribute (Finds.luau)
 --   NEEDLES every needle type (Config/Needles), found ones from "CodexNeedles" (Codex.luau)
+--   INDEX   every needle type plain, Wet and mutated, from "NeedleIndexFound" (NeedleIndex.luau), with milestones
 --   HAY     every hay type (Config/Gloves HayTypes), broken-open ones from "CodexHay" (Codex.luau)
 --   PLACES  every region and landmark (UI/DiscoveryList), found ones from "Discovered" (Discoveries.luau)
 --   SKINS   tool skins a finished page unlocks (Config/ToolSkins), owned from "ToolSkins", worn "ToolSkin<Tool>"
@@ -20,6 +21,7 @@ local Gloves = require(Config:WaitForChild("Gloves"))
 local HayLooks = require(Config:WaitForChild("HayLooks"))
 local DiscoveryList = require(UI:WaitForChild("DiscoveryList"))
 local ToolSkins = require(Config:WaitForChild("ToolSkins"))
+local Prices = require(Config:WaitForChild("Prices"))
 
 local C, F, T = Kit.Theme.Colors, Kit.Theme.Fonts, Kit.Theme.Text
 local player = Players.LocalPlayer
@@ -120,6 +122,78 @@ do
 			return set("CodexNeedles")
 		end,
 		title = "Needle Master",
+	})
+end
+
+-- The needle index (Conveyor's Services/NeedleIndex, CEO H10): every needle type found plain, Wet and mutated, 36
+-- entries in book order (cheapest type first, then plain, Wet, mutated). Found keys come in "NeedleIndexFound"
+-- ("steel", "steel:wet", "cosmic:mutated"); the server pays the milestones in Prices.NeedleIndex.
+local MILESTONES = (Prices :: any).NeedleIndex or {}
+do
+	local defs = {}
+	for _, def in NeedleTypes do
+		table.insert(defs, def)
+	end
+	table.sort(defs, function(a, b)
+		return (Prices.Needles[a.id] or 0) < (Prices.Needles[b.id] or 0)
+	end)
+	local KINDS = {
+		{ suffix = "", label = "", line = "Any %s needle" },
+		{ suffix = ":wet", label = "Wet ", line = "A %s needle from wet hay" },
+		{ suffix = ":mutated", label = "Mutated ", line = "A mutated %s needle" },
+	}
+	local entries = {}
+	for _, def in defs do
+		local look = NEEDLE_COLORS[def.id] or NEEDLE_COLORS.steel
+		local base = Color3.fromRGB(look[1], look[2], look[3])
+		for _, kind in KINDS do
+			local wet, mutated = kind.suffix == ":wet", kind.suffix == ":mutated"
+			table.insert(entries, {
+				id = def.id .. kind.suffix,
+				name = kind.label .. def.name,
+				size = Vector3.new(0.12, 0.12, 1.6),
+				-- Wet needles darker, mutated ones glowing gold-tinted.
+				color = wet and base:Lerp(Color3.fromRGB(40, 60, 90), 0.45)
+					or mutated and base:Lerp(Color3.fromRGB(255, 214, 110), 0.35)
+					or base,
+				material = (mutated or look[4]) and Enum.Material.Neon or Enum.Material.Metal,
+				lines = function(found)
+					return kind.line:format(def.name:lower()),
+						found and "In your index" or ("From %s hay"):format(def.map)
+				end,
+			})
+		end
+	end
+	table.insert(PAGES, {
+		tab = "INDEX",
+		intro = "Every needle type, plain, Wet and mutated. Each new one fills a slot; 25, 50, 75 and 100% pay out.",
+		entries = entries,
+		attribute = "NeedleIndexFound",
+		watch = { "NeedleIndexPercent", "NeedleIndexTitle" },
+		read = function()
+			return set("NeedleIndexFound")
+		end,
+		banner = function(found, total)
+			local percent = player:GetAttribute("NeedleIndexPercent") or math.floor(found / math.max(total, 1) * 100)
+			local nextStep = nil
+			for _, m in MILESTONES do
+				if percent < m.at then
+					nextStep = m
+					break
+				end
+			end
+			local earned = player:GetAttribute("NeedleIndexTitle")
+			local head = ("%d%% found"):format(percent) .. (earned and ("  ·  %s"):format(earned) or "")
+			if nextStep then
+				return ('%s  ·  next: %d%% pays %s and "%s"'):format(
+					head,
+					nextStep.at,
+					Kit.money(nextStep.cash),
+					nextStep.title
+				)
+			end
+			return head .. "  ·  INDEX COMPLETE"
+		end,
 	})
 end
 
@@ -390,7 +464,9 @@ local function render()
 	end
 	intro.Text = page.intro
 	local total = #page.entries
-	if page.skins then
+	if page.banner then
+		banner.Text = page.banner(found, total)
+	elseif page.skins then
 		banner.Text = ("%d of %d skins unlocked."):format(found, total)
 	else
 		banner.Text = found >= total and ("PAGE COMPLETE: %s"):format(page.title)

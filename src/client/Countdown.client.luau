@@ -6,6 +6,8 @@
 --   RegionEvent / RegionEventEnds              when the region event ends (RegionEvents.luau)
 --   WeatherFront / WeatherFrontKind / Phase / At   when a front arrives or clears (Weather.luau)
 --   StormStarts / StormEnds                    when the thunderstorm breaks or ends (Weather.luau)
+--   FestivalName / FestivalRegion / FestivalEnds, FestivalRibbons (player)   the festival (Map)
+--   ContractsResetAt                           when the daily contracts reset (Orders.luau)
 --   HayMarketRestockAt                         when the Hay Market restocks (HayMarket.luau)
 --   SiloFullIn (player)                        seconds until your silo fills, 0 when full (Land.luau)
 --   Cash and Catalog.nextGoal()                how little is left to the next buy
@@ -111,6 +113,26 @@ local function timers()
 		if stormLeft then
 			table.insert(list, { stormLeft, ("⚡ Thunderstorm ends in %s"):format(clock(stormLeft)) })
 		end
+	end
+	local festivalLeft = left("FestivalEnds")
+	local festival = ReplicatedStorage:GetAttribute("FestivalName")
+	if festivalLeft and typeof(festival) == "string" and festival ~= "" then
+		local where = regionNames[ReplicatedStorage:GetAttribute("FestivalRegion")]
+		local ribbons = player:GetAttribute("FestivalRibbons") or 0
+		table.insert(list, {
+			festivalLeft,
+			("🎀 %s%s ends in %s%s"):format(
+				festival,
+				where and (" in " .. where) or "",
+				clock(festivalLeft),
+				ribbons > 0 and ("  ·  %d ribbon%s"):format(ribbons, ribbons == 1 and "" or "s") or ""
+			),
+		})
+	end
+	-- Daily contracts (Orders.luau): only once you have some for today.
+	local reset = left("ContractsResetAt")
+	if reset and typeof(player:GetAttribute("Contracts")) == "string" then
+		table.insert(list, { reset, ("Daily contracts reset in %s"):format(clock(reset)) })
 	end
 	local restock = left("HayMarketRestockAt")
 	if restock then
