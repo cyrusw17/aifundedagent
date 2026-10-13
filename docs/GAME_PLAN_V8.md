@@ -244,21 +244,82 @@ These are target times for a new player:
 - **Trading post:** at Homestead. Players trade needles, blocks and foreign objects, with a 24-hour lock on mythic items.
 - **Visit plots:** players can tour other farms and give them a "Best farm" like. A weekly leaderboard shows the most-liked farms.
 
-### 8. Monetization [CHANGED]
-- **Cosmetic:** truck paint packs, glove skins, plot themes (fences, signs, lights), and VIP name color with a hub lounge.
-- **Convenience that doesn't sell power:**
-  - Auto-Dock: the tailgate opens and unloads by itself when you park.
-  - A bigger silo buffer: +50%, about 30 minutes of hauling saved.
-  - Private servers.
-- **Never sold:** cash, needles, sorter tiers, maze skips, alien steps, or any ranked advantage.
-- Premium Payouts work automatically, since time played counts.
+### 8. Making it addictive, but fair [NEW]
+The aim is a compelling game, not a predatory one. There are no energy timers, no paid stamina, and no punishment for missing a day.
 
-### 9. Saves [CHANGED: clarified]
+- **The reveal moment.** Every sorted needle lands with a glint and a ding, and rarer needles get a colored light and their own sound. A mythic find is announced to the whole server.
+- **Variable rewards.**
+  - Breaking a bale can spill a foreign object (1 in 50 to 1 in 2,000).
+  - About 1 in 500 needles is **mutated** (Rainbow, Giant or Glitch) and sells for 3x to 25x.
+  - A visible luck meter guarantees a rare find after a dry spell.
+- **A goal always on screen.** The HUD shows a progress bar toward your next upgrade, for example "$420 / $600 to Rusty Pickup". There is always a next thing within 10 to 30 minutes.
+- **Reasons to stay in a session.**
+  - The rich field rotates every 20 minutes.
+  - A ferry leaves every 3 minutes.
+  - The Corn Night Maze opens at nightfall.
+  - Bounties refresh daily.
+- **Collection pull.** A codex of needles, foreign objects and blocks shows the silhouettes of what you haven't found yet. Finished pages earn titles.
+- **Showing off.** Players visit plots, give "Best farm" likes, and rare needles go on display walls. Quest trucks are recognizable on the road.
+- **Gentle daily streak.** It gives a small cosmetic and a bonus field marker. Missing a day pauses the streak; it never resets.
+
+### 9. Quest gear and quest trucks (earned, never sold) [NEW]
+Special shovels, rakes, gloves and trucks that you can only get by solving a quest. They are the "secret axe" moments from Lumber Tycoon 2, and they cannot be bought with cash or Robux.
+
+| Reward | Kind | Quest | Perk |
+|---|---|---|---|
+| Golden Shovel | Shovel | Follow the moving scarecrow across Meadow servers | Scoops 2x pieces |
+| Thread Rake | Rake | Find the Tailor's 3 journal pages | Pulls loose needles toward you |
+| Scarecrow Gloves | Gloves, tier 2 | Meadow scarecrow chain, part 2 | Straw trail cosmetic |
+| Frostbite Mitts | Gloves, tier 3 | Snow Peak hidden door, needs a Frozen Bobbin | No cold slowdown |
+| Magma Grips | Gloves, tier 4 | Volcano crater at an eruption | Heat immunity |
+| Kraken Gauntlets | Gloves, tier 5 | Dive the Graveyard of Ships at night | Faster boat loading |
+| Starweave Gloves | Gloves, tier 6 | Alien gauntlet | Full speed on Star Hay |
+| Old Bessie | Truck | Find the barn key, then restore her with a part from 3 regions | Pickup with a 12-bale bed |
+| Sandrunner | Truck | Dig out the Buried Pyramid garage | Fastest off-road pickup |
+| Ghost Hauler | Truck | Haunted Grove phantom quest | Drives only at night, glows, ignores fog |
+| Captain's Barge | Boat | Bobbin Rock captain's log | Private ferry that carries 2 trucks |
+| Starlight Hauler | Truck | Alien gauntlet, with the Starbeam Collector | Semi tractor that pulls any trailer |
+
+### 10. Robux store [CHANGED]
+Rules this store follows (Roblox policy and fairness):
+- Every paid item has a free way to reach the same power. Robux trucks match, and never beat, the cash truck of the same tier.
+- No paid random items. Everything is a direct purchase. If a crate is ever added, its odds are shown before purchase, as Roblox requires, and every item in it can also be bought directly.
+- Nothing paid blocks free progress: no paid maze skips, alien steps, sorter tiers, cash or needles.
+
+**Robux-only trucks** (cosmetic sidegrades, with stats equal to the cash truck of their tier):
+
+| Truck | Tier match | Price | Hook |
+|---|---|---|---|
+| Homestead Classic | Pickup | 399 R$ | 1950s rounded pickup, chrome horn, whitewall tires |
+| Timber Wolf 4x4 | Flatbed | 799 R$ | Lifted off-roader, better grip on dirt, roof lights |
+| Midnight Express | Box truck | 1,199 R$ | Black box truck with marker lights and a neon needle logo |
+| Prairie Schooner | Heavy hauler | 1,799 R$ | Canvas-topped hauler that looks like a covered wagon |
+| Founders' Semi | Semi | 2,499 R$ | Limited launch edition with a numbered plate |
+
+**Gamepasses:**
+
+| Pass | Price | What it does |
+|---|---|---|
+| VIP | 249 R$ | Hub lounge, chat tag, +2 crew slots |
+| Auto-Dock | 299 R$ | Tailgate unloads by itself when you park at a dock |
+| Big Silo | 199 R$ | +50% silo buffer |
+| Paint Studio | 149 R$ | Repaint any truck in any of 40 colors and patterns |
+| Plot Themes | 199 R$ | Fence, sign and lighting sets for your plot |
+| Truck Radio | 99 R$ | In-truck music stations |
+
+**Other products:**
+- **Harvest Pass (season):** a free track plus a 499 R$ premium track, with cosmetics, glove skins, a plot theme and that season's truck skin.
+- **Server boosts, 99 R$:** Hay Fever or a Meteor Shower for everyone on the server. The buyer is thanked server-wide.
+- **Private servers:** 100 R$ a month.
+- **Cosmetic shop:** a direct-buy shop that rotates weekly, with truck skins, glove skins and display-wall frames.
+- Premium Payouts also count, since time played earns.
+
+### 11. Saves [CHANGED: clarified]
 - All three save slots are free.
 - Each slot stores the plot layout, owned trucks and trailers, gloves, money, the collection, and needle counts per bin.
 - Cyrus's preset dev save stays a test fixture. It is not something players get.
 
-### 10. Build notes for the team
+### 12. Build notes for the team
 - Settle on one sorter module. `Machines.luau` and `Separators.luau` both sort hay at the moment.
 - Ship with streaming on, using Atomic models for bales, before the full map lands.
 - Region tiers, needles per bale, and glove tiers should live in one config file, so tuning stays in one place.
