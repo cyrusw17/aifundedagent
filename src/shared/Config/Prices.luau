@@ -137,7 +137,7 @@ Prices.PlotExpansion = 5000
 -- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
 -- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
 Prices.SecondPlot = 60000
-Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the

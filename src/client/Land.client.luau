@@ -776,6 +776,126 @@ local function setTool(name)
 	describeSelection()
 end
 
+-- PRESETS: save the clipboard as a named line blueprint (kept in the save slot), or load one back into the clipboard
+-- to PASTE on any plot (Services/Blueprints.luau).
+local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
+local presetButton = button(actions, "PRESETS", PICKED)
+presetButton.Size = UDim2.fromOffset(100, 34)
+presetButton.Visible = blueprintRemotes ~= nil
+local presetPanel = Instance.new("Frame")
+presetPanel.AnchorPoint = Vector2.new(0.5, 1)
+presetPanel.Position = UDim2.new(0.5, 0, 1, -172)
+presetPanel.Size = UDim2.fromOffset(340, 300)
+presetPanel.BackgroundColor3 = PANEL
+presetPanel.Visible = false
+presetPanel.Parent = gui
+corner(presetPanel, 12)
+local presetStroke = Instance.new("UIStroke", presetPanel)
+presetStroke.Color = INK
+presetStroke.Thickness = 2
+text(presetPanel, "LINE PRESETS", 16, 8, 20)
+local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a preset on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
+local nameBox = Instance.new("TextBox")
+nameBox.Position = UDim2.fromOffset(14, 62)
+nameBox.Size = UDim2.new(1, -118, 0, 30)
+nameBox.PlaceholderText = "Preset name"
+nameBox.Text = ""
+nameBox.ClearTextOnFocus = false
+nameBox.Font = F.Bold
+nameBox.TextSize = 14
+nameBox.TextColor3 = INK
+nameBox.BackgroundColor3 = CARD
+nameBox.Parent = presetPanel
+corner(nameBox, 6)
+local saveButton = button(presetPanel, "SAVE COPY", GREEN)
+saveButton.AnchorPoint = Vector2.new(1, 0)
+saveButton.Position = UDim2.new(1, -14, 0, 62)
+saveButton.Size = UDim2.fromOffset(92, 30)
+local presetList = Instance.new("ScrollingFrame")
+presetList.Position = UDim2.fromOffset(10, 100)
+presetList.Size = UDim2.new(1, -20, 1, -110)
+presetList.BackgroundTransparency = 1
+presetList.BorderSizePixel = 0
+presetList.ScrollBarThickness = 4
+presetList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+presetList.CanvasSize = UDim2.new()
+presetList.Parent = presetPanel
+local presetLayout = Instance.new("UIListLayout", presetList)
+presetLayout.Padding = UDim.new(0, 4)
+
+local function refreshPresets()
+	for _, child in presetList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local ok, saved = pcall(function()
+		return blueprintRemotes.List:InvokeServer()
+	end)
+	if not ok or typeof(saved) ~= "table" then
+		presetMessage.Text = "Couldn't reach the server."
+		return
+	end
+	for _, preset in saved do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -6, 0, 36)
+		row.BackgroundColor3 = CARD
+		row.Parent = presetList
+		corner(row, 6)
+		local label = text(row, ("%s  (%d pieces, $%d)"):format(preset.name, #preset.list, preset.total), 13, 8, 20)
+		label.Size = UDim2.new(1, -150, 0, 20)
+		local load = button(row, "LOAD", GREEN)
+		load.AnchorPoint = Vector2.new(1, 0.5)
+		load.Position = UDim2.new(1, -60, 0.5, 0)
+		load.Size = UDim2.fromOffset(70, 28)
+		load.Activated:Connect(function()
+			clipboard = { list = preset.list, total = preset.total }
+			presetPanel.Visible = false
+			tool = nil
+			setTool("paste")
+		end)
+		local del = button(row, "X", RED)
+		del.AnchorPoint = Vector2.new(1, 0.5)
+		del.Position = UDim2.new(1, -6, 0.5, 0)
+		del.Size = UDim2.fromOffset(44, 28)
+		del.Activated:Connect(function()
+			local done, _, message = pcall(function()
+				return blueprintRemotes.Delete:InvokeServer(preset.name)
+			end)
+			presetMessage.Text = done and (message or "") or "Couldn't reach the server."
+			task.defer(refreshPresets)
+		end)
+	end
+	if #saved == 0 then
+		presetMessage.Text = "No presets yet. COPY an area of your line, name it, and SAVE."
+	end
+end
+
+if blueprintRemotes then
+	presetButton.Activated:Connect(function()
+		presetPanel.Visible = not presetPanel.Visible
+		if presetPanel.Visible then
+			refreshPresets()
+		end
+	end)
+	saveButton.Activated:Connect(function()
+		if not clipboard then
+			presetMessage.Text = "COPY an area of your line first."
+			return
+		end
+		local ok, _, message = pcall(function()
+			return blueprintRemotes.Save:InvokeServer(nameBox.Text, clipboard.list)
+		end)
+		presetMessage.Text = ok and (message or "") or "Couldn't reach the server."
+		refreshPresets()
+	end)
+	player:GetAttributeChangedSignal("Building"):Connect(function()
+		if not player:GetAttribute("Building") then
+			presetPanel.Visible = false
+		end
+	end)
+end
+
 local function undo()
 	if busy then
 		return

@@ -29,6 +29,11 @@ return function(SelfTest)
 		t.check("23 needles pack as 2 bundles + 3", whole == 2 and rest == 3)
 		t.near("optical sorter takes 2 s a bale", Machines.sortSeconds("optical_sorter", 90), 2, 0.01)
 
+		-- Line blueprints keep good copies and refuse bad ones.
+		local Blueprints = require(Services.Blueprints)
+		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
+		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
+
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
 		local boxSize = Vector3.new(190, 40, 190)

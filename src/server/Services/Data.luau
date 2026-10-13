@@ -250,6 +250,8 @@ local function stateFrom(saved)
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
 		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
+		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
+		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
@@ -287,6 +289,7 @@ local function toSave(state)
 		pocket = state.pocket,
 		thatch = state.thatch,
 		materials = state.materials,
+		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
