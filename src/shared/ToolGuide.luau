@@ -1,10 +1,10 @@
 --!strict
--- One plain line per hand tool, glove pair and the wheelbarrow, for the hotbar tooltips, the glove stand and the shop,
--- built from the configs so the numbers are always the real ones ("Leather Gloves: carry 30 more hay, ..."). The same
+-- One plain line per hand tool, shovel tier and the wheelbarrow, for the hotbar tooltips, the shovel rack and the
+-- shop, built from the configs so the numbers are always the real ones ("Steel Shovel: carries 90 hay a load, ..."). The same
 -- pattern as PieceGuide (Conveyor thread) for plot pieces.
 --
 --   ToolGuide.tool("Shovel" | "Rake" | "Wheelbarrow")
---   ToolGuide.glove(def)          -- def: a Config/Gloves Tiers or QuestTiers entry
+--   ToolGuide.glove(def)          -- def: a Config/Gloves Tiers or QuestTiers entry (a shovel tier)
 local Shared = script.Parent
 local Game = require(Shared.Config.Game)
 local Gloves = require(Shared.Config.Gloves)
@@ -19,13 +19,13 @@ local function percent(x: number): string
 	return ("%d%%"):format(math.round(x * 100))
 end
 
--- Walk speed carrying one dry meadow bale with these gloves.
+-- Walk speed carrying one dry meadow bale with this shovel.
 local function baleSpeed(def: any): number
 	local meadow = Gloves.HayTypes.meadow
 	return HayMath.speed(def, WALK, HayMath.baleWeight(meadow, false, Game, Gloves), meadow.tier, Gloves)
 end
 
--- The rarest hays these gloves handle with no extra slowdown, by name ("Desert grass and Frozen hay").
+-- The rarest hays this shovel handles with no extra slowdown, by name ("Desert grass and Frozen hay").
 local function rated(def: any): string?
 	local bestTier = -1
 	for _, hay: any in Gloves.HayTypes do
@@ -49,15 +49,20 @@ local function rated(def: any): string?
 end
 
 function ToolGuide.glove(def: any): string
+	local load = Game.CarryCapacity + def.carryBonus
 	if def.tier == 0 then
-		return ("Bare hands: walk %.1f with a meadow bale. Better gloves carry more, scoop more and walk faster under a load."):format(baleSpeed(def))
+		return ("%s: carries %d hay a load. Walk %.1f with a meadow bale. Better shovels carry more, scoop more and slow you less under a load."):format(
+			def.name,
+			load,
+			baleSpeed(def)
+		)
 	end
 	local parts = {
-		("carry %d more hay"):format(def.carryBonus),
+		("carries %d hay a load (%d more)"):format(load, def.carryBonus),
 		("%d more per scoop"):format(def.scoopBonus),
 		("%s less slowdown"):format(percent(def.relief)),
 	}
-	local line = ("%s: %s. Walk %.1f with a meadow bale (bare hands %.1f)."):format(
+	local line = ("%s: %s. Walk %.1f with a meadow bale (Old Shovel %.1f)."):format(
 		def.name,
 		table.concat(parts, ", "),
 		baleSpeed(def),
@@ -75,17 +80,18 @@ end
 
 function ToolGuide.tool(kind: string): string
 	if kind == "Shovel" then
-		return ("Click a bale to smash it, or loose hay to scoop %d strands (more with gloves and quick combos). With hay in your arms, click a truck bed, belt or the sell pad to pour %d."):format(
+		return ("Click a hay pile or loose hay to scoop %d strands (more with a better shovel and quick combos). With a load on it, click your parked wheelbarrow to tip it in, or a truck bed, belt or the sell pad to pour %d. Click a bale to smash it."):format(
 			Game.ShovelPieces,
 			Game.PourStrands
 		)
 	elseif kind == "Rake" then
-		return ("Pulls loose hay within %d studs toward you. Rake %d or more strands together for a pile the shovel takes in one go. End a stroke at a belt to flick the hay onto it."):format(
+		return ("Pulls loose hay within %d studs toward you, and a few strands off a field's pile each stroke. Rake %d or more strands together for a pile the shovel takes in one go. End a stroke at a belt to flick the hay onto it."):format(
 			Game.RakeRadius,
 			Game.PileMin
 		)
 	elseif kind == "Wheelbarrow" then
-		return ("Holds %d bales and you feel %s of their weight. Click a bale to load it, a truck bed to tip the load in, or the ground to set it down."):format(
+		return ("Put it away to park it, then tip shovel loads in: every %d hay presses a bale. Rolling, it holds %d bales and you feel %s of their weight. Click a bale to load it, or a truck bed to tip the load in."):format(
+			Game.PiecesPerBale,
 			Game.WheelbarrowBales,
 			percent(Game.WheelbarrowLoadFactor)
 		)
@@ -95,10 +101,10 @@ end
 
 -- The wheelbarrow's shop line, with its price.
 function ToolGuide.wheelbarrowShop(): string
-	return ("Wheelbarrow ($%d): holds %d bales, you feel %s of their weight."):format(
+	return ("Wheelbarrow ($%d): fill it from your shovel and every %d hay presses a bale. Holds %d bales to roll to the truck."):format(
 		Prices.Wheelbarrow,
-		Game.WheelbarrowBales,
-		percent(Game.WheelbarrowLoadFactor)
+		Game.PiecesPerBale,
+		Game.WheelbarrowBales
 	)
 end
 

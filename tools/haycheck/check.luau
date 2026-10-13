@@ -191,7 +191,7 @@ check("the shovel tooltip says the scoop size", lines.Shovel:find(tostring(Game.
 check("the rake tooltip says the pile size", lines.Rake:find(tostring(Game.PileMin), 1, true) ~= nil, lines.Rake)
 for _, def in Gloves.Tiers do
 	if def.tier > 0 then
-		check(("%s tooltip says its carry bonus"):format(def.id), lines[def.id]:find(("carry %d more"):format(def.carryBonus), 1, true) ~= nil, lines[def.id])
+		check(("%s tooltip says its carry bonus"):format(def.id), lines[def.id]:find(("(%d more)"):format(def.carryBonus), 1, true) ~= nil, lines[def.id])
 		check(("%s tooltip says double carry only from DoubleCarryTier"):format(def.id), (lines[def.id]:find("two bales", 1, true) ~= nil) == (def.tier >= Game.DoubleCarryTier))
 	end
 end

@@ -3,7 +3,11 @@
 -- and handed out as a tool. With it out, a barrow rolls in front of you. Click a bale to load it (up to
 -- Config.WheelbarrowBales, stacked), click a truck or trailer to tip the load into its bed, or anywhere else to set it
 -- down in front of you. A loaded barrow slows you a little (Config.WheelbarrowLoadFactor of the bales' weight).
--- Putting the barrow away sets its load down.
+--
+-- Putting the barrow away parks it where it stands (its bales are set down first). Shovel loads poured into a
+-- parked barrow (Tools: click it with hay in your arms) fill it, and every Config.PiecesPerBale strands press into a
+-- bale that drops out of the front, ready to lift and throw in the truck (Cyrus, 2026-10-13). Taking the tool out
+-- again brings the barrow back to you, hay and all. The hay in a barrow is not saved, like a hopper's.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -13,7 +17,11 @@ local ToolGuide = require(ReplicatedStorage.Shared.ToolGuide)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
+local Hay = require(script.Parent.Hay)
 local Bales = require(script.Parent.Bales)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
+local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
+local Feedback = require(script.Parent.Feedback)
 
 local Wheelbarrow = {}
 
@@ -25,6 +33,8 @@ local TRAY = CFrame.new(0, -2.2, -4) -- the tray floor's center, from the player
 local BALE_SIZE = Vector3.new(4.6, 2.6, 3.2)
 
 local barrows = {} -- player -> the barrow model while the tool is out
+local parked = {} -- player -> their barrow standing in the world while the tool is away
+local hayIn = {} -- player -> { strands, wet, hayType } poured into their barrow and not yet pressed
 local currentAim = nil -- set by init: function(player, root) -> aim or nil
 
 local function owns(player)
@@ -80,6 +90,58 @@ local function buildBarrow(root)
 	model.PrimaryPart = floor
 	model.Parent = root.Parent
 	return model
+end
+
+-- The loose hay showing in a barrow: a mound in the tray that grows toward a bale's worth, and a count above it.
+local function showFill(player)
+	local model = barrows[player] or parked[player]
+	local tray = model and model:FindFirstChild("Tray")
+	if not tray then
+		return
+	end
+	local fill = hayIn[player]
+	local strands = fill and fill.strands or 0
+	local mound = model:FindFirstChild("HayFill")
+	if strands <= 0 then
+		if mound then
+			mound:Destroy()
+		end
+		local label = tray:FindFirstChild("WorldLabel")
+		if label then
+			label:Destroy()
+		end
+		return
+	end
+	local share = math.clamp(strands / Config.PiecesPerBale, 0, 1)
+	if not mound then
+		mound = makePart(model, "HayFill", Vector3.one, tray.CFrame, Color3.fromRGB(196, 170, 104), Enum.Material.Fabric)
+		local shape = Instance.new("SpecialMesh")
+		shape.MeshType = Enum.MeshType.Sphere
+		shape.Parent = mound
+		mound.CanQuery = true
+		local weld = Instance.new("Weld")
+		weld.Part0 = tray
+		weld.Part1 = mound
+		weld.Parent = mound
+	end
+	local look = Hay.look(fill.hayType)
+	local c = look.colors[1]
+	mound.Color = Color3.fromRGB(c[1], c[2], c[3])
+	local height = 0.3 + share * 1.4
+	mound.Size = Vector3.new(4.6, height, 3.2)
+	local weld = mound:FindFirstChildOfClass("Weld")
+	if weld then
+		weld.C0 = CFrame.new(0, height / 2, 0)
+	end
+	mound.CFrame = tray.CFrame * CFrame.new(0, height / 2, 0)
+	local text = ("Hay %d / %d"):format(strands, Config.PiecesPerBale)
+	local label = tray:FindFirstChild("WorldLabel")
+	local textLabel = label and label:FindFirstChild("Text")
+	if textLabel then
+		textLabel.Text = text
+	else
+		WorldLabel.billboard(tray, text, { offset = Vector3.new(0, 3.5, 0), kind = "status" })
+	end
 end
 
 -- Where the nth bale (1-based) sits: stacked on the tray.
@@ -138,6 +200,177 @@ local function unloadAll(player)
 	end
 	Avatar.refreshSpeed(player)
 	return #load
+end
+
+-- Parks the rolling barrow where it stands: unwelded from the player, set level on the ground and anchored, so a
+-- shovel can fill it (Wheelbarrow.pourIn). Its bales are set down first.
+local function park(player)
+	local model = barrows[player]
+	barrows[player] = nil
+	if not model or not model.Parent then
+		return
+	end
+	local tray = model:FindFirstChild("Tray")
+	if not tray then
+		model:Destroy()
+		return
+	end
+	local look = tray.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(0, 0, -1)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { model, player.Character }
+	local hit = workspace:Raycast(tray.Position + Vector3.new(0, 2, 0), Vector3.new(0, -12, 0), params)
+	local groundY = hit and hit.Position.Y or tray.Position.Y - 1.25
+	-- The wheel (1.4 across) sits 0.55 under the tray floor, so the floor rides 1.25 over the ground.
+	local level = CFrame.lookAt(Vector3.new(tray.Position.X, groundY + 1.25, tray.Position.Z), Vector3.new(tray.Position.X, groundY + 1.25, tray.Position.Z) + flat)
+	local offsets = {}
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			offsets[p] = tray.CFrame:ToObjectSpace(p.CFrame)
+		end
+	end
+	for p, offset in offsets do
+		for _, weld in p:GetChildren() do
+			if weld:IsA("Weld") and not (weld.Part0 and weld.Part0:IsDescendantOf(model)) then
+				weld:Destroy() -- the welds to the player's root; the hay mound's weld to the tray stays
+			end
+		end
+		p.Anchored = true
+		p.CanQuery = true -- so a shovel click can find it
+		p.CanCollide = p.Name ~= "Handle" and p.Name ~= "HayFill"
+		p.CFrame = level * offset
+	end
+	model.Name = "ParkedBarrow"
+	model:SetAttribute("BarrowOwner", player.UserId)
+	model.Parent = workspace
+	parked[player] = model
+	showFill(player)
+end
+
+-- Takes the parked barrow away (the rolling one is built fresh in front of the player).
+local function unpark(player)
+	if parked[player] then
+		parked[player]:Destroy()
+		parked[player] = nil
+	end
+end
+
+-- The player whose barrow part belongs to (a parked one, or one being rolled), or nil.
+function Wheelbarrow.ownerOf(part)
+	local node = part
+	while node and node ~= workspace do
+		if node:IsA("Model") and (node.Name == "ParkedBarrow" or node.Name == "Barrow") then
+			for player, model in parked do
+				if model == node then
+					return player
+				end
+			end
+			for player, model in barrows do
+				if model == node then
+					return player
+				end
+			end
+			return nil
+		end
+		node = node.Parent
+	end
+	return nil
+end
+
+-- Presses a bale's worth of the barrow's hay into a bale, dropped out of the front of the barrow onto the ground.
+local function press(owner)
+	local fill = hayIn[owner]
+	local model = parked[owner] or barrows[owner]
+	local tray = model and model:FindFirstChild("Tray")
+	if not fill or fill.strands < Config.PiecesPerBale or not tray then
+		return nil
+	end
+	local wetShare = fill.strands > 0 and fill.wet / fill.strands or 0
+	fill.wet = math.max(0, fill.wet - math.floor(wetShare * Config.PiecesPerBale + 0.5))
+	fill.strands -= Config.PiecesPerBale
+	local hayType = fill.hayType
+	if fill.strands <= 0 then
+		hayIn[owner] = nil
+	end
+	-- Out over the wheel at the front, a little up, so it tumbles off onto the ground.
+	local at = tray.CFrame * CFrame.new(0, BALE_SIZE.Y / 2 + 0.6, -3.6)
+	local b = Bales.spawn(at.Position, false, false, hayType)
+	b.ownerId = owner.UserId
+	b.body.CFrame = at * CFrame.Angles(0, math.pi / 2, 0)
+	b.body.Anchored = false
+	pcall(function()
+		b.body:SetNetworkOwner(nil)
+	end)
+	if wetShare >= 0.5 then
+		Bales.wet(b)
+	end
+	Feedback.play("BaleSetDown", b.body)
+	return b
+end
+
+-- Pours all the hay in player's arms into the barrow part belongs to (theirs or a friend's; the bales it presses
+-- belong to the barrow's owner). Returns how many strands went in, or 0.
+function Wheelbarrow.pourIn(player, part)
+	local owner = Wheelbarrow.ownerOf(part)
+	local state = Data.get(player)
+	if not owner or not state or (state.loadHay or 0) < Config.HayPerPiece then
+		return 0
+	end
+	local held = math.floor(state.loadHay / Config.HayPerPiece)
+	local split = HayMath.pourSplit({
+		hay = state.loadHay,
+		sorted = state.loadSortedHay,
+		needles = state.loadNeedles,
+		wet = state.loadWetHay,
+	}, held, Config.HayPerPiece)
+	local n = split.n
+	if n <= 0 then
+		return 0
+	end
+	local hayType = state.loadType or "meadow"
+	-- The needles rolled when it was scooped go back with the hay: the bale it becomes rolls its own when broken.
+	state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadWeight, state.loadTier = 0, 0, 0, 0, 0
+	state.loadWetHay = 0
+	state.loadType = nil
+	Data.sync(player)
+	Avatar.refreshSpeed(player)
+
+	local fill = hayIn[owner]
+	if not fill then
+		fill = { strands = 0, wet = 0, hayType = hayType }
+		hayIn[owner] = fill
+	end
+	-- A barrow presses one kind of hay at a time; the kind poured in first wins (it is the bale's hay type).
+	fill.strands += n
+	fill.wet += split.wetOut
+	local made = 0
+	while press(owner) do
+		made += 1
+	end
+	showFill(owner)
+	local root = Avatar.getRoot(player)
+	if root then
+		Feedback.play("Scoop", root, 0.8)
+	end
+	if made > 0 then
+		Data.toast(player, made == 1 and "The barrow is full and pressed a bale. Lift it (F) and throw it in the truck."
+			or ("The barrow pressed %d bales. Lift them (F) and throw them in the truck."):format(made))
+	else
+		Data.toast(player, ("Barrow: %d / %d hay for the next bale."):format(hayIn[owner] and hayIn[owner].strands or 0, Config.PiecesPerBale))
+	end
+	return n
+end
+
+-- How many strands are in player's barrow waiting to be pressed (for the self-tests and the UI).
+function Wheelbarrow.hayIn(player)
+	return hayIn[player] and hayIn[player].strands or 0
+end
+
+-- The parked barrow model of player, or nil (for the self-tests).
+function Wheelbarrow.parkedOf(player)
+	return parked[player]
 end
 
 -- The cargo box (CFrame at its middle, and its size) of the truck or trailer part belongs to, or nil.
@@ -209,7 +442,7 @@ local function use(player)
 		end
 	end
 	if unloadAll(player) == 0 then
-		Data.toast(player, "Click a bale to load it into the barrow.")
+		Data.toast(player, "Click a bale to load it, or put the barrow away to park it and fill it with your shovel.")
 	end
 end
 
@@ -222,15 +455,14 @@ local function makeTool(player)
 	tool.Equipped:Connect(function()
 		local root = Avatar.getRoot(player)
 		if root and not barrows[player] then
+			unpark(player) -- the parked barrow comes back to you, with its hay
 			barrows[player] = buildBarrow(root)
+			showFill(player)
 		end
 	end)
 	tool.Unequipped:Connect(function()
 		unloadAll(player)
-		if barrows[player] then
-			barrows[player]:Destroy()
-			barrows[player] = nil
-		end
+		park(player)
 	end)
 	tool.Activated:Connect(function()
 		use(player)
@@ -276,7 +508,7 @@ local function buy(player)
 	table.insert(state.gear, GEAR_ID)
 	Data.sync(player) -- publishes the "Gear" attribute the goal bar reads
 	give(player)
-	Data.toast(player, "Bought a wheelbarrow. Hauls 3 bales at a time.")
+	Data.toast(player, ("Bought a wheelbarrow. Park it, fill it with %d hay from your shovel and it presses a bale."):format(Config.PiecesPerBale))
 end
 
 -- A barrow on show with a Buy button.
@@ -314,7 +546,7 @@ function Wheelbarrow.init(aimFn)
 		-- Set the load down while the old character still stands there, before it is gone.
 		player.CharacterRemoving:Connect(function()
 			unloadAll(player)
-			barrows[player] = nil
+			park(player) -- it stays where it was, so a respawn does not lose the hay in it
 		end)
 		player.CharacterAdded:Connect(function()
 			task.wait(1) -- after Avatar has handed out the shovel and rake
@@ -329,6 +561,8 @@ function Wheelbarrow.init(aimFn)
 	Players.PlayerRemoving:Connect(function(player)
 		unloadAll(player)
 		barrows[player] = nil
+		unpark(player)
+		hayIn[player] = nil
 	end)
 end
 

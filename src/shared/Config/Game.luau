@@ -47,6 +47,11 @@ return {
 	-- Hay piles: raking at least PileMin strands together into one spot packs them into a single pile the shovel
 	-- takes in one scoop (it ignores the per-scoop size; only your carry room limits it).
 	PileMin = 40,
+	-- Fields grow hay as loose piles, never bales (Hay.spawnFieldPile): one pile holds a bale's worth of strands, the
+	-- shovel scoops from it and each rake stroke pulls this many strands off it. A cleared pile grows back after
+	-- BaleRefillSeconds.
+	FieldPileStrands = 90,
+	RakeFieldStrands = 9,
 	PileRadius = 3,
 	RakeBeltReach = 5, -- a rake stroke ending this close to a conveyor belt flicks the hay up onto it
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
@@ -80,7 +85,7 @@ return {
 	GoldenBaleNeedles = Prices.GoldenBale.needles, -- a golden bale spills this many times the needles
 	CatchRadius = 4.5, -- a thrown bale this close to a bare-handed farm crew teammate is caught
 	CatchWindowSeconds = 1.6, -- how long after the throw a catch can happen
-	DoubleCarryTier = 3, -- gloves of this tier (Reinforced) and up carry two bales, one on top of the other
+	DoubleCarryTier = 3, -- a shovel of this tier (Reinforced) and up lets you carry two bales, one on top of the other
 	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long
 

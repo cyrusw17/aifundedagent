@@ -194,38 +194,78 @@ local function noPlayerChecks(t)
 		local better = heavyHi > heavyLo or (heavyLo <= GloveConfig.MinWalkSpeed and heavyHi >= heavyLo)
 		t.check(label .. " carrying a cloud hay bale", better, ("%.2f -> %.2f"):format(heavyLo, heavyHi))
 	end
-	local dummy = Instance.new("Model")
-	dummy.Name = "GloveDummy"
-	for _, side in { "Right", "Left" } do
-		local hand = Instance.new("Part")
-		hand.Name = side .. "Hand"
-		hand.Anchored = true
-		hand.Size = Vector3.new(0.3, 0.3, 0.3)
-		hand.CFrame = t.place() * CFrame.new(side == "Right" and 1 or -1, 3, 0)
-		hand.Parent = dummy
-	end
-	dummy.Parent = workspace
-	t.cleanup(dummy)
+	-- Gloves are gone: each tier is a shovel, shown as a band at the neck of the one shovel mesh, its name leading the
+	-- tooltip.
+	local shovel = Instance.new("Tool")
+	shovel.Name = "Shovel"
+	local shovelHandle = Instance.new("Part")
+	shovelHandle.Name = "Handle"
+	shovelHandle.Anchored = true
+	shovelHandle.CFrame = t.place() * CFrame.new(0, 3, 0)
+	shovelHandle.Parent = shovel
+	shovel.Parent = workspace
+	t.cleanup(shovel)
 	local seen = {}
 	for _, def in tiers do
-		GloveLooks.dress(dummy, def.id)
-		local worn = dummy.RightHand:FindFirstChild("WornGlove")
-		local wornLeft = dummy.LeftHand:FindFirstChild("WornGlove")
-		if def.id == "bare" then
-			t.check("bare hands wear nothing", worn == nil and wornLeft == nil)
-		else
-			local cuff = worn and worn:FindFirstChild("Cuff")
-			t.check(("%s show on both hands"):format(def.name), worn ~= nil and wornLeft ~= nil and cuff ~= nil)
-			if cuff then
-				local key = ("%s/%s"):format(tostring(cuff.Color), cuff.Material.Name)
-				t.check(("%s look unlike any lower tier"):format(def.name), not seen[key], key)
-				seen[key] = true
-				t.check(("%s cuff rides the hand"):format(def.name), not cuff.Anchored and cuff:FindFirstChildOfClass("Weld") ~= nil)
-			end
+		GloveLooks.dressTool(shovel, def.id)
+		local band = shovel:FindFirstChild("TierBand")
+		t.check(("%s shows a band on the shovel"):format(def.name), band ~= nil and band:FindFirstChildOfClass("Weld") ~= nil)
+		t.check(("%s leads the shovel's tooltip"):format(def.name), shovel.ToolTip:sub(1, #def.name) == def.name, shovel.ToolTip)
+		t.check(("%s is a shovel, not gloves"):format(def.name), not def.name:lower():find("glove") and not def.name:lower():find("hands"), def.name)
+		if band then
+			local key = ("%s/%s"):format(tostring(band.Color), band.Material.Name)
+			t.check(("%s looks unlike any lower tier"):format(def.name), not seen[key], key)
+			seen[key] = true
 		end
 	end
-	GloveLooks.dress(dummy, "bare")
-	t.check("taking gloves off clears the hands", dummy.RightHand:FindFirstChild("WornGlove") == nil)
+	t.equal("dressing again keeps one band", #(function()
+		local bands = {}
+		for _, c in shovel:GetChildren() do
+			if c.Name == "TierBand" then
+				table.insert(bands, c)
+			end
+		end
+		return bands
+	end)(), 1)
+
+	-- Fields grow loose hay piles, never bales: a pile the shovel scoops from, the rake pulls strands off, and that
+	-- grows back once cleared.
+	local keepRefill = Config.BaleRefillSeconds
+	Config.BaleRefillSeconds = 0.2
+	local field = Bales.spawn((t.place() * CFrame.new(0, 0, 0)).Position, true, false, "pine")
+	t.check("a field spot grows a pile, not a bale", field.field == true and Bales.fromPart(field.body) == nil and Hay.isPile(field.body))
+	t.check("the field pile is loose hay the shovel finds", Hay.isPiece(field.body) and Hay.isFieldPile(field.body))
+	t.equal("a field pile holds a bale's worth", Hay.strandsIn(field.body), Config.FieldPileStrands)
+	t.equal("a field pile keeps its hay type", field.body:GetAttribute("HayType"), "pine")
+	local regrown = nil
+	field.onRegrow = function(fresh)
+		regrown = fresh
+	end
+	local beforeRake = Hay.strandsIn(field.body)
+	Hay.rake(field.body.Position, field.body.Position + Vector3.new(6, 0, 0), Config.RakeRadius, 0)
+	t.equal("a rake stroke pulls strands off a field pile", Hay.strandsIn(field.body), beforeRake - Config.RakeFieldStrands)
+	t.wait(0.1)
+	local spilled = 0
+	for _, piece in Hay.near(field.body.Position, 6, nil) do
+		if not Hay.isFieldPile(piece) and not Hay.isNeedle(piece) and piece:GetAttribute("HayType") == "pine" then
+			spilled += Hay.strandsIn(piece)
+		end
+	end
+	t.check("the raked strands come off as pine hay", spilled >= Config.RakeFieldStrands, spilled)
+	for _, piece in Hay.near(field.body.Position, 8, nil) do
+		if not Hay.isFieldPile(piece) then
+			Hay.remove(piece)
+		end
+	end
+	Hay.takeFromPile(field.body, Hay.strandsIn(field.body))
+	t.wait(0.6)
+	t.check("a cleared field pile grows back", regrown ~= nil and regrown.body.Parent ~= nil and Hay.isFieldPile(regrown.body))
+	Config.BaleRefillSeconds = keepRefill
+	if regrown then
+		regrown.noRegrow = true -- a test pile: it should not grow back once taken away
+		Hay.remove(regrown.body)
+	end
+	t.wait(0.3)
 
 	-- Strands take their hay's shape.
 	local strand = Hay.spawnPiece(spot.Position + Vector3.new(10, 2, 0), Vector3.zero, 0, nil, "pine")
@@ -942,6 +982,51 @@ local function withPlayer(t, player)
 			end
 			pequal(t, "every tipped bale is in the bed and loose", inside, Config.WheelbarrowBales)
 			humanoid:UnequipTools()
+			t.wait(0.3)
+
+			-- Put away, the barrow parks; a shovel load tipped in fills it, and a bale's worth presses a bale.
+			local parkedBarrow = Wheelbarrow.parkedOf(player)
+			t.check("putting the barrow away parks it", parkedBarrow ~= nil and parkedBarrow.Parent == workspace)
+			local tray = parkedBarrow and parkedBarrow:FindFirstChild("Tray")
+			if tray then
+				t.check("the parked barrow stays put", tray.Anchored and tray.CanQuery)
+				t.equal("the parked barrow is the player's", Wheelbarrow.ownerOf(tray), player)
+				state.loadHay, state.loadSortedHay, state.loadWetHay, state.loadNeedles = 30, 0, 0, 2
+				state.loadType = "meadow"
+				t.equal("a shovel load tips into the barrow", Wheelbarrow.pourIn(player, tray), 30)
+				t.equal("the barrow holds the hay", Wheelbarrow.hayIn(player), 30)
+				t.equal("the shovel is empty after tipping", state.loadHay, 0)
+				t.check("the barrow shows its hay", parkedBarrow:FindFirstChild("HayFill") ~= nil)
+				local before = {}
+				for _, part in workspace:GetPartBoundsInRadius(tray.Position, 12) do
+					local b = Bales.fromPart(part)
+					if b then
+						before[b] = true
+					end
+				end
+				state.loadHay, state.loadType = Config.PiecesPerBale, "meadow"
+				Wheelbarrow.pourIn(player, tray)
+				t.equal("a bale's worth presses and the rest stays", Wheelbarrow.hayIn(player), 30)
+				local pressed = nil
+				for _, part in workspace:GetPartBoundsInRadius(tray.Position, 12) do
+					local b = Bales.fromPart(part)
+					if b and not before[b] and b.ownerId == player.UserId then
+						pressed = b
+					end
+				end
+				t.check("the pressed bale drops out of the barrow", pressed ~= nil)
+				if pressed then
+					table.insert(made, pressed)
+					t.check("the pressed bale is loose, to lift and throw", not pressed.body.Anchored and not pressed.carriedBy)
+				end
+				-- Taking the barrow out again brings it back, hay and all.
+				humanoid:EquipTool(tool)
+				t.wait(0.3)
+				t.check("taking the barrow out un-parks it", Wheelbarrow.parkedOf(player) == nil and Wheelbarrow.isOut(player))
+				t.equal("its hay comes along", Wheelbarrow.hayIn(player), 30)
+				humanoid:UnequipTools()
+				t.wait(0.2)
+			end
 		else
 			t.skip("wheelbarrow", "the barrow tool was not given")
 		end

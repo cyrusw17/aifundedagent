@@ -22,6 +22,7 @@ local pieces = {} -- piece part -> time it last moved or was made
 local count = 0 -- loose straw strands (needles are counted apart, so they never crowd out new hay)
 local needleCount = 0
 local needleSet = {} -- piece -> true for the visible needles among the pieces
+local fieldSet = {} -- piece -> true for the piles a field grows (never faded, trimmed or counted against the caps)
 
 -- Forgets a piece however it leaves the world. Returns true if it was still known.
 local function forget(piece)
@@ -29,7 +30,9 @@ local function forget(piece)
 		return false
 	end
 	pieces[piece] = nil
-	if needleSet[piece] then
+	if fieldSet[piece] then
+		fieldSet[piece] = nil
+	elseif needleSet[piece] then
 		needleSet[piece] = nil
 		needleCount -= 1
 	else
@@ -83,6 +86,9 @@ function Hay.init(parent)
 			task.wait(3)
 			local now = os.clock()
 			for piece, born in pieces do
+				if fieldSet[piece] then
+					continue -- a field's own pile stays until it is cleared, then grows back (Hay.spawnFieldPile)
+				end
 				-- Needles stay much longer than straw, so there is time to find them, but not forever.
 				local life = if needleSet[piece] or piece:GetAttribute("Strands")
 					then Config.LooseNeedleLifetime
@@ -139,7 +145,7 @@ local function trimPiles()
 	while true do
 		local piles, oldest, oldestTime = 0, nil, math.huge
 		for piece, born in pieces do
-			if Hay.isPile(piece) then
+			if Hay.isPile(piece) and not fieldSet[piece] then
 				piles += 1
 				if born < oldestTime then
 					oldest, oldestTime = piece, born
@@ -357,12 +363,81 @@ function Hay.takeFromPile(pile, n)
 	end
 end
 
+-- The strands, attributes and boosts a field pile passes to hay that leaves it loose (a rake spill): its hay type,
+-- wetness and boosts, with a golden pile's GoldenBaleNeedles folded into NeedleBoost like a golden bale's strands.
+local function fieldAttributes(pile)
+	local attrs = {
+		HayType = pile:GetAttribute("HayType"),
+		Wet = pile:GetAttribute("Wet"),
+		MutationBoost = pile:GetAttribute("MutationBoost"),
+	}
+	local needleBoost = Hay.boostOf(pile, "NeedleBoost")
+	if pile:GetAttribute("GoldenField") == true then
+		needleBoost *= Config.GoldenBaleNeedles
+	end
+	if math.abs(needleBoost - 1) > 1e-6 then
+		attrs.NeedleBoost = needleBoost
+	end
+	return attrs
+end
+
+-- A field's hay: a mound of a bale's worth of loose strands (Config.FieldPileStrands) that the shovel scoops from
+-- and the rake pulls strands off. It is anchored and never fades; once it is cleared, onCleared() runs (Bales
+-- grows a fresh one there). position is the ground point under it.
+function Hay.spawnFieldPile(position, hayType, onCleared)
+	hayType = hayType or "meadow"
+	local look = Hay.look(hayType)
+	local c = look.colors[1]
+	local pile = Instance.new("Part")
+	pile.Name = "HayPile"
+	pile.Anchored = true
+	pile.Color = Color3.fromRGB(c[1], c[2], c[3])
+	pile.Material = Enum.Material.Fabric
+	pile.CollisionGroup = Groups.Loose
+	pile.TopSurface = Enum.SurfaceType.Smooth
+	pile.BottomSurface = Enum.SurfaceType.Smooth
+	local mound = Instance.new("SpecialMesh")
+	mound.MeshType = Enum.MeshType.Sphere
+	mound.Parent = pile
+	pile:SetAttribute("HayType", hayType)
+	pile:SetAttribute("Field", true)
+	shapePile(pile, Config.FieldPileStrands)
+	pile.CFrame = CFrame.new(position + Vector3.new(0, pile.Size.Y / 2 - 0.15, 0))
+	pieces[pile] = os.clock()
+	fieldSet[pile] = true
+	pile.Destroying:Connect(function()
+		forget(pile)
+		if onCleared then
+			onCleared()
+		end
+	end)
+	-- Fields can be laid out before Hay.init makes the folder; they join it as soon as it is there.
+	if Hay.folder then
+		pile.Parent = Hay.folder
+	else
+		task.spawn(function()
+			while not Hay.folder do
+				task.wait()
+			end
+			if pieces[pile] then -- not scooped away in the meantime
+				pile.Parent = Hay.folder
+			end
+		end)
+	end
+	return pile
+end
+
+-- True for a pile a field grows (Hay.spawnFieldPile).
+function Hay.isFieldPile(piece)
+	return fieldSet[piece] == true
+end
+
 -- Packs the loose strands raked around a spot into one pile, once there are PileMin of them (an existing pile there
 -- grows instead). Sorted hay only piles with sorted hay, so a pile is sorted or not as a whole.
 local function packPile(at, ownerId)
 	local groups = {}
 	for _, piece in Hay.near(at, Config.PileRadius, nil) do
-		if not needleSet[piece] then
+		if not needleSet[piece] and not fieldSet[piece] then
 			local key = piece:GetAttribute("Sorted") and "sorted" or "raw"
 			groups[key] = groups[key] or { strands = 0, parts = {}, pile = nil, boosts = {} }
 			local g = groups[key]
@@ -492,7 +567,39 @@ function Hay.rakeOntoBelt(center, belt, landAt, radius, ownerId)
 end
 
 function Hay.rake(center, gatherAt, radius, ownerId)
-	local list = Hay.near(center, radius, nil)
+	local found = Hay.near(center, radius, nil)
+	local list = {}
+	for _, piece in found do
+		if fieldSet[piece] then
+			-- A field's pile stays put: the tines pull a few clumps off its near side, which come along with the rest.
+			local take = math.min(Config.RakeFieldStrands, Hay.strandsIn(piece))
+			local attrs = fieldAttributes(piece)
+			local from = piece.Position
+			local toward = Vector3.new(gatherAt.X - from.X, 0, gatherAt.Z - from.Z)
+			local side = toward.Magnitude > 0.1 and toward.Unit or Vector3.zero
+			local spill = from + side * (piece.Size.X / 2) + Vector3.new(0, 0.6, 0)
+			Hay.takeFromPile(piece, take)
+			local left = take
+			while left > 0 do
+				local n = math.min(Config.StrandsPerClump, left)
+				left -= n
+				local clump = Hay.spawnPiece(
+					spill + Vector3.new(rng:NextNumber(-0.8, 0.8), 0, rng:NextNumber(-0.8, 0.8)),
+					side * 4,
+					ownerId,
+					"Straw",
+					attrs.HayType,
+					n
+				)
+				for name, value in attrs do
+					clump:SetAttribute(name, value)
+				end
+				table.insert(list, clump)
+			end
+		else
+			table.insert(list, piece)
+		end
+	end
 	for _, piece in list do
 		-- Raked straw is paid to the raker; a visible needle stays with whoever's bale it came from.
 		if not needleSet[piece] then

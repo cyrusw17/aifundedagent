@@ -701,9 +701,44 @@ function Bales.release(b, root)
 	startDespawnTimer(b)
 end
 
--- position is the ground point under the bale. home bales regrow after being smashed or lifted, as the same hay.
--- hayType is a Config/Gloves hay (meadow when nil). Set b.onRegrow(newBale) to hear about the bale that grows back.
+-- Fields grow loose hay, never bales: a home spot gets a field pile (Hay.spawnFieldPile) that grows back
+-- Config.BaleRefillSeconds after it is cleared. The record has the fields callers use on a home bale (body, hayType,
+-- home, onRegrow), so a region can tint it, boost it and hear about the regrow; b.field marks it as a pile, and
+-- b.noRegrow = true stops it growing back.
+local function spawnFieldPile(position, fadeIn, hayType)
+	local b = { hayType = hayType, home = true, field = true, spawnPosition = position }
+	b.body = Hay.spawnFieldPile(position, hayType, function()
+		if b.noRegrow then
+			return -- set by whoever takes the field away for good (a self-test)
+		end
+		task.delay(Config.BaleRefillSeconds, function()
+			if folder and folder.Parent then
+				local fresh = spawnFieldPile(position, true, hayType)
+				if b.onRegrow then
+					b.onRegrow(fresh)
+				end
+			end
+		end)
+	end)
+	-- Now and then a field grows a golden pile: it glints, and holds Config.GoldenBaleNeedles times the needles.
+	if rng:NextInteger(1, Config.GoldenBaleOneIn) == 1 then
+		Bales.makeGolden(b, fadeIn)
+	end
+	if fadeIn then
+		local shown = b.body.Transparency
+		b.body.Transparency = 1
+		TweenService:Create(b.body, TweenInfo.new(0.7), { Transparency = shown }):Play()
+	end
+	return b
+end
+
+-- position is the ground point under the bale. home is a field's own spot: it grows a hay pile there instead of a
+-- bale (spawnFieldPile above), which grows back once cleared. hayType is a Config/Gloves hay (meadow when nil). Set
+-- b.onRegrow(fresh) to hear about the pile that grows back.
 function Bales.spawn(position, home, fadeIn, hayType)
+	if home then
+		return spawnFieldPile(position, fadeIn, hayType)
+	end
 	local body, prompt = buildBale(position, hayType)
 	local b = {
 		hayType = hayType,
@@ -719,10 +754,6 @@ function Bales.spawn(position, home, fadeIn, hayType)
 		gone = false,
 	}
 	byBody[body] = b
-	-- Now and then a field bale grows golden: it glints, and holds Config.GoldenBaleNeedles times the needles.
-	if home and rng:NextInteger(1, Config.GoldenBaleOneIn) == 1 then
-		Bales.makeGolden(b, fadeIn)
-	end
 	body.Parent = folder
 
 	if fadeIn then
@@ -770,10 +801,15 @@ function Bales.makeGolden(b, announce)
 	light.Brightness = 1.2
 	light.Range = 10
 	light.Parent = body
-	b.prompt.ObjectText = "Golden " .. (b.prompt.ObjectText ~= "" and b.prompt.ObjectText or "bale")
+	if b.prompt then
+		b.prompt.ObjectText = "Golden " .. (b.prompt.ObjectText ~= "" and b.prompt.ObjectText or "bale")
+	end
 	if announce then
 		local hay = GloveConfig.HayTypes[b.hayType or "meadow"]
-		Announce.say(("A golden bale has grown in the %s fields!"):format(hay and hay.map or "Meadow"), "gold")
+		Announce.say(
+			("A golden %s has grown in the %s fields!"):format(b.field and "hay pile" or "bale", hay and hay.map or "Meadow"),
+			"gold"
+		)
 	end
 end
 

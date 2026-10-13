@@ -246,6 +246,18 @@ local function useShovel(player, root, aim)
 	if not state then
 		return
 	end
+	-- A parked wheelbarrow clicked: tip the whole load in; a bale's worth presses into a bale (Wheelbarrow.pourIn).
+	local barrowPart = aim and aim.part and Wheelbarrow.ownerOf(aim.part) and aim.part
+	if barrowPart and (barrowPart.Position - root.Position).Magnitude <= Config.ToolReach + 3 then
+		if state.loadHay < Config.HayPerPiece then
+			Data.toast(player, "Scoop hay from a pile first, then click the barrow to tip it in.")
+			return
+		end
+		Avatar.swing(player, "Shovel", function()
+			Wheelbarrow.pourIn(player, barrowPart)
+		end)
+		return
+	end
 	-- Hay in your arms and a truck bed, hopper, belt or sell pad clicked: pour it there.
 	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim, root)
 	if target then
@@ -265,18 +277,18 @@ local function useShovel(player, root, aim)
 	end
 
 	if #targetPieces(1) == 0 then
-		Data.toast(player, "No hay there. Click a bale or a hay piece.")
+		Data.toast(player, "No hay there. Click a hay pile or loose hay.")
 		return
 	end
 	local capacity = Gloves.carryCapacity(player)
 	if state.loadHay + Config.HayPerPiece > capacity then
-		Data.toast(player, "You are carrying all the hay you can. Sell it at the pad by the shop.")
+		Data.toast(player, "Your shovel is full. Tip it into your wheelbarrow, a truck bed or the sell pad.")
 		return
 	end
 
 	Avatar.swing(player, "Shovel", function()
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
-		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
+		-- A better shovel scoops more; hay rarer than your shovel is rated for scoops less.
 		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
 		-- The hay's tier comes from the first strand in reach, not a needle (needles carry no hay type).
 		local first
@@ -397,7 +409,7 @@ function Tools.init()
 			return canDrive ~= nil and (canDrive(a, b) == true or canDrive(b, a) == true)
 		end
 	end
-	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
+	-- The shovel rack and the wheelbarrow stand go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")
 		local pad = world and world:WaitForChild("SellPad", 10)
