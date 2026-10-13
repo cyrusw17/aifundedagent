@@ -858,6 +858,10 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
+	local s = Data.get(player)
+	if def.quest and not (s and typeof(s.quests) == "table" and typeof(s.quests.earned) == "table" and s.quests.earned[def.id]) then
+		return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
+	end
 	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
 	if not paid then
 		return false, short

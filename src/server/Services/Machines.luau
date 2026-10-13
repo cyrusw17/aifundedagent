@@ -38,6 +38,7 @@ local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
 local Market = require(script.Parent.Market)
+local Events = require(script.Parent.Events)
 
 local Machines = {}
 
@@ -321,6 +322,7 @@ function Machines.needleBin(parent, frame)
 			return
 		end
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
+		Events.fire(player, "needles_sold", count)
 	end
 
 	-- Needles in the bin, as { [key] = count } with Needle.keyOf keys ("steel", or "steel*12" when mutated); a bundle
@@ -644,8 +646,12 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					local take = nil
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
+						local seller = ownerId
 						take = function()
 							Bales.consume(b)
+							if seller then
+								Events.fire(seller, "bale_sold", 1, { hayType = hayType })
+							end
 						end
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
