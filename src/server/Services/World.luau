@@ -18,6 +18,7 @@ local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabe
 local Bank = require(script.Parent.Bank)
 local Market = require(script.Parent.Market)
 local Orders = require(script.Parent.Orders)
+local HayMarket = require(script.Parent.HayMarket)
 local WorldMap = require(script.Parent.WorldMap)
 local Chutes = require(script.Parent.Chutes)
 local Quests = require(script.Parent.Quests)
@@ -124,6 +125,8 @@ function World.build()
 
 	-- NPC buyer orders and their delivery pad, on the west side of camp (Orders.luau).
 	Orders.build(folder, Vector3.new(-34, 0, 6))
+	-- The Hay Market stall: rare bales, new stock every 5 minutes (HayMarket.luau).
+	HayMarket.build(folder, Vector3.new(-36, 0, -22))
 
 	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(
