@@ -10,14 +10,16 @@ local remotes = ReplicatedStorage:WaitForChild("BankRemotes")
 local request = remotes:WaitForChild("Request")
 local openRemote = remotes:WaitForChild("Open")
 
-local DARK = Color3.fromRGB(20, 34, 26)
-local PANEL = Color3.fromRGB(46, 40, 32)
-local ROW = Color3.fromRGB(62, 54, 43)
-local CREAM = Color3.fromRGB(236, 226, 200)
-local MUTED = Color3.fromRGB(184, 172, 146)
-local GREEN = Color3.fromRGB(125, 255, 168)
-local RED = Color3.fromRGB(255, 140, 120)
-local BRASS = Color3.fromRGB(196, 160, 82)
+-- Colors from the shared Rustic theme (UI/Theme.luau): a dark wood panel with cream text.
+local Theme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Theme"))
+local DARK = Theme.Colors.Ink
+local PANEL = Theme.Colors.Wood
+local ROW = Theme.Colors.WoodLight
+local CREAM = Theme.Colors.Cream
+local MUTED = Color3.fromRGB(214, 202, 172)
+local GREEN = Theme.Colors.Cash
+local RED = Color3.fromRGB(240, 150, 128)
+local BRASS = Theme.Colors.Hay
 
 local function money(n)
 	n = math.floor(n or 0)
