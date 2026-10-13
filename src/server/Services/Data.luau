@@ -236,6 +236,30 @@ local function landFrom(land)
 	}
 end
 
+-- Trade locks (Trade.luau): { [needleKey] = { { count, untilTime }, ... } } for mythic needles received in a trade.
+-- Locks that have run out are dropped on load.
+local function tradeLocksFrom(saved)
+	local out = {}
+	if typeof(saved) ~= "table" then
+		return out
+	end
+	local now = os.time()
+	for key, list in saved do
+		if typeof(key) == "string" and typeof(list) == "table" then
+			local locks = {}
+			for _, lock in list do
+				if typeof(lock) == "table" and typeof(lock.count) == "number" and lock.count >= 1 and typeof(lock.untilTime) == "number" and lock.untilTime > now then
+					table.insert(locks, { count = math.floor(lock.count), untilTime = lock.untilTime })
+				end
+			end
+			if #locks > 0 then
+				out[key] = locks
+			end
+		end
+	end
+	return out
+end
+
 -- A fresh state from a saved table (or an empty one).
 local function stateFrom(saved)
 	saved = typeof(saved) == "table" and saved or {}
@@ -274,6 +298,7 @@ local function stateFrom(saved)
 		codex = typeof(saved.codex) == "table" and saved.codex or {},
 		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
+		tradeLocks = tradeLocksFrom(saved.tradeLocks), -- mythic needles received in a trade can't be traded on for a day
 	}
 	state.savedCash = state.cash
 	state.land = landFrom(saved.land)
@@ -303,6 +328,7 @@ local function toSave(state)
 		settings = state.settings,
 		codex = state.codex,
 		quests = state.quests,
+		tradeLocks = state.tradeLocks,
 	}
 end
 
