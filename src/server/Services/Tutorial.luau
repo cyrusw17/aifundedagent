@@ -71,6 +71,15 @@ function Tutorial.earned(player, amount)
 	end
 end
 
+-- Clears a flag (the self-test puts back what it changed).
+function Tutorial.unmark(player, flag)
+	local t = stateOf(player)
+	if t and t.flags[flag] then
+		t.flags[flag] = nil
+		publish(player)
+	end
+end
+
 -- For piece placement (Land.onPlace): marks "sorter" when the piece is a needle separator.
 function Tutorial.placed(player, pieceId)
 	if separators[pieceId] then

@@ -43,7 +43,8 @@ local function publish(player)
 	end
 end
 
-local function set(player, key, value)
+-- Also called by the self-test (SelfTests/UI.luau).
+function Settings.set(player, key, value)
 	local def = typeof(key) == "string" and Settings.Keys[key]
 	local state = Data.get(player)
 	if not def or not state then
@@ -65,7 +66,7 @@ function Settings.start()
 	remote.Name = "Set"
 	remote.Parent = folder
 	folder.Parent = ReplicatedStorage
-	remote.OnServerEvent:Connect(set)
+	remote.OnServerEvent:Connect(Settings.set)
 	Data.loaded.Event:Connect(publish)
 end
 
