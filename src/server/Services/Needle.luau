@@ -31,8 +31,8 @@ local Needle = {}
 
 local SIZE = Vector3.new(1.2, 0.15, 0.15)
 local PICKUP_REACH = 10
-local MUTATION_CHANCE = 1 / 500
-local MUTATION_MIN, MUTATION_MAX = 3, 25
+local MUTATION_CHANCE = 1 / Prices.Mutation.oneIn
+local MUTATION_MIN, MUTATION_MAX = Prices.Mutation.min, Prices.Mutation.max
 -- For tools/linecheck's million-needle check (CEO #32).
 Needle.MUTATION = { chance = MUTATION_CHANCE, min = MUTATION_MIN, max = MUTATION_MAX }
 local FANFARE = "rbxasset://sounds/victory.wav"
