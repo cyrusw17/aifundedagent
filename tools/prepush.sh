@@ -27,6 +27,7 @@ step "mapcheck";      python3 tools/mapcheck/run.py "$LUAU" | grep -E "^TOTAL|^b
 step "linecheck";     python3 tools/linecheck/run.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck"
 step "line rates";    python3 tools/linecheck/rates.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck/rates.py"
 step "line saves";    python3 tools/linecheck/saves.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck/saves.py"
+step "junctions";     python3 tools/linecheck/junctions.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck/junctions.py"
 step "templates";     python3 tools/linecheck/templates.py | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck/templates.py"
 step "rate limit";    "$LUAU" tests/rate_limit.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/rate_limit.luau"
 step "line math";     "$LUAU" tests/line_math.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/line_math.luau"
