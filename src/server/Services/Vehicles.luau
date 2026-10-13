@@ -37,8 +37,10 @@ local SHAPES = {
 	-- Rusty Pickup: bed 14.6 long x 10.2 wide inside, 3.2 walls, floor top 3.5 (BUILD_REGISTRY.md). Bales lie
 	-- lengthwise, three along and three across (3 x 4.6 = 13.8 long, 3 x 3.2 = 9.6 wide), 9 to a layer.
 	rusty_pickup = {
-		wheel = 1.65,
-		track = 4.3,
+		-- Wheels match the Blender rig (Wheel_L1/R1.. in rusty_pickup.glb), so the welded mesh wheels sit on the rollers.
+		wheel = 1.62,
+		track = 3.9,
+		axles = { -11.2, 8.8 },
 		deck = 2.6,
 		cabW = 9.0,
 		cabH = 6.6,
@@ -135,8 +137,8 @@ function Vehicles.build(def, pivot, parent)
 	model.PrimaryPart = chassis
 
 	-- Wheels double as the rollers the truck rides on.
-	local axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 2 }
-	if def.style == "hauler" then
+	local axles = S.axles or { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 2 }
+	if def.style == "hauler" and not S.axles then
 		axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 4.2, L / 2 - WHEEL_RADIUS * 1.6 }
 	end
 	local wheels = {}
