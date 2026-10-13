@@ -195,6 +195,46 @@ return function(SelfTest)
 		Catalog.who = saved
 		t.check("goal ladder and shop ran", ok, if ok then nil else tostring(err))
 
+		-- Discoveries: the map stamps and the book's PLACES page use UI/DiscoveryList, which must list exactly what the
+		-- server pays for (Discoveries.all), in the same order, each with a map position inside the world.
+		local DiscoveryList = require(Shared.UI.DiscoveryList)
+		local okD, server = pcall(function()
+			return require(Services.Discoveries).all()
+		end)
+		if not okD then
+			t.skip("discovery list matches the server", "Discoveries.luau is not in this build")
+		else
+			local mine = DiscoveryList.all()
+			t.equal("discovery count", #mine, #server)
+			local mismatched = {}
+			for i, d in server do
+				if not mine[i] or mine[i].id ~= d.id then
+					table.insert(mismatched, ("%d: %s vs %s"):format(i, d.id, mine[i] and mine[i].id or "none"))
+				end
+			end
+			t.check("discovery ids in the server's order", #mismatched == 0, table.concat(mismatched, "; "))
+			local Map = require(Shared.Config.WorldMap)
+			local outside = {}
+			for _, d in mine do
+				local at = d.at
+				if
+					typeof(at) ~= "Vector2"
+					or at.X < Map.Bounds.min.X
+					or at.X > Map.Bounds.max.X
+					or at.Y < Map.Bounds.min.Y
+					or at.Y > Map.Bounds.max.Y
+				then
+					table.insert(outside, d.id)
+				end
+			end
+			t.check("every discovery has a map spot for its stamp", #outside == 0, table.concat(outside, ", "))
+			local found = DiscoveryList.found(fakePlayer({ Discovered = "old_well,pine" }))
+			t.check(
+				"the Discovered attribute reads as found ids",
+				found.old_well == true and found.pine == true and not found.snow
+			)
+		end
+
 		-- With a player in a loaded slot: settings and tutorial flags.
 		local player = t.player(10)
 		local Data = require(Services.Data)

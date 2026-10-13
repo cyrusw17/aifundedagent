@@ -17,7 +17,7 @@ distances. They are not playtest data. Each one is written down in the model so 
   and machines pay themselves back on the V8 schedule.
 - **The bank makes the big prices fair.** A used pickup costs $6,000, like a real one. You can't pay cash for it in your
   first 15 minutes, but you can put $1,200 down and let the bank lend the rest.
-- **A first playthrough reaches the Semi in about 14 hours** of play (model, one player, buying in a sensible order).
+- **A first playthrough reaches the Semi in about 15 hours** of play (model, one player, buying in a sensible order).
 
 ## How prices are set
 
@@ -206,8 +206,26 @@ Priced from the V8 payback targets, for Meadow hay with the sorter kept full:
 | Hand sieve | 15% | 2 | $75 | $3,360 | $250 | $500 | 9 min |
 | Shaker table | 35% | 4 | $115 | $16,320 | $1,500 | $4,000 | 15 min |
 | Conveyor sorter | 55% | 8 | $155 | $51,840 | $5,000 | $25,000 | 29 min |
-| Magnet drum | 75% | 16 | $195 | $142,080 | $15,000 | $175,000 | 74 min |
-| Optical sorter | 92% | 30 | $229 | $327,600 | $50,000 | $1,100,000 | 201 min |
+| Magnet drum | 75% | 16 | $210 | $156,480 | $15,000 | $190,000 | 73 min |
+| Optical sorter | 92% | 30 | $275 | $410,400 | $50,000 | $1,350,000 | 197 min |
+
+The magnet drum grades its needles A (+10%) and the optical sorter grades them S (+25%) (`Prices.NeedleGrades`,
+Conveyor's line simulator `tools/line_sim.py`). Grades made both machines pay back about 20% faster than the V8 targets
+(67 and 161 minutes), so their prices went up to hold the targets: the magnet drum from $175,000 to $190,000 and the
+optical sorter from $1.1M to $1.35M. Repricing beats rewriting the targets because the targets are what keep each
+sorter a goal of similar weight at its stage; the grades still make the upgrade feel better per needle.
+
+**Region machines.** Snow and Swamp hay can't be sorted until it goes through a thawing shed or a drying rack, and
+Volcano hay sorts at a penalty without an ash sifter (Conveyor's `Services/Treat.luau`). Each is priced to pay back in
+about 20 to 25 minutes of a solo haul (3 to 4 bales a minute) at the stage where you reach that region, not with a
+full magnet drum, which a solo player can't feed. At the first prices ($10,000, $20,000 and $60,000) they paid back in
+4 to 16 minutes at a realistic haul.
+
+| Machine | Region | Your line when you get there | Extra $/hour at ~3.5 bales/min | Was | Now | Payback |
+|---|---|---|---|---|---|---|
+| Thawing shed | Snow Peak | Box truck, conveyor sorter | about $81,000 | $10,000 | $30,000 | 22 min |
+| Drying rack | Swamp | Box truck, magnet drum | about $155,000 | $20,000 | $50,000 | 19 min |
+| Ash sifter | Volcano | Heavy hauler, magnet drum | about $232,000 (lifts the penalty only) | $60,000 | $100,000 | 26 min |
 
 A solo player hauling about 4 bales a minute can't keep a magnet drum or optical sorter full on their own. With a silo
 buffer, a crew, or richer hay, the payback gets much faster: an optical sorter on Cave hay pays back in about 12 minutes.
@@ -343,13 +361,13 @@ loan takes its share of sales after that.
 | Box Truck | $90,000 | 41 min | 4.9 h | financed: $18,000 down |
 | Reinforced Gloves | $45,000 | 40 min | 5.5 h |  |
 | Medium Trailer | $30,000 | 27 min | 6.0 h |  |
-| Magnet drum | $175,000 | 152 min | 8.5 h |  |
-| Iron Gauntlets | $75,000 | 30 min | 9.0 h |  |
-| Heavy Hauler | $350,000 | 28 min | 9.5 h | financed: $70,000 down |
-| Large Trailer | $120,000 | 22 min | 9.8 h |  |
-| Optical sorter | $1,100,000 | 188 min | 13.0 h |  |
-| Starlight Gloves | $400,000 | 32 min | 13.5 h |  |
-| Semi Rig | $1,500,000 | 24 min | 13.9 h | financed: $300,000 down |
+| Magnet drum | $190,000 | 162 min | 8.7 h |  |
+| Iron Gauntlets | $75,000 | 30 min | 9.2 h |  |
+| Heavy Hauler | $350,000 | 28 min | 9.6 h | financed: $70,000 down |
+| Large Trailer | $120,000 | 22 min | 10.0 h |  |
+| Optical sorter | $1,350,000 | 223 min | 13.7 h |  |
+| Starlight Gloves | $400,000 | 32 min | 14.3 h |  |
+| Semi Rig | $1,500,000 | 24 min | 14.7 h | financed: $300,000 down |
 
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
 which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
@@ -359,7 +377,7 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 1. **Pickup price.** V8 proposed $600. With 90-strand bales a player earns about $110 a minute by hand, so $600 would be
    5 minutes. This doc keeps $6,000 and uses the bank so the pickup still arrives at about 15 minutes. One line in
    `Prices.Trucks` changes it.
-2. **Length of the climb.** The model reaches the Semi in about 14 hours; V8 aimed for 40 or more. The lever is the late
+2. **Length of the climb.** The model reaches the Semi in about 15 hours; V8 aimed for 40 or more. The lever is the late
    regions' needles per bale and needle values. Halving them roughly doubles the back half of the game.
 3. **Needles per bale.** These are V8's numbers, which Cyrus hasn't approved yet. Each is one value in
    `Prices.NeedlesPerBale`.
@@ -416,6 +434,23 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
 
+## Wet hay
+
+The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
+(`Prices.WetHayShare`) until it dries, 150 seconds after the rain stops or at once on a drying rack. Needles are
+untouched, so the loss is only on the hay:
+
+| Bale | Dry, sorted | Wet, sorted | Loss |
+|---|---|---|---|
+| Meadow | $245 | $227 | 7% |
+| Swamp | $1,065 | $1,047 | 2% |
+| Sold raw at the public shop (Meadow) | $47 | $29 | 38% |
+
+That's the right size. It hurts most at the very start, when hay is all you sell, which teaches parking under cover
+early; later it's a nudge, and waiting out the rain costs nothing. It doesn't change the drying rack's price: at the
+Swamp stage, rescuing $18 a bale is under 2% of the bale, while the rack's real value is letting Bog reed be sorted
+at all.
+
 ## Golden bales
 
 The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
@@ -436,9 +471,10 @@ field the two boosts stack (2x × 3x = 6x), which is still a single bale.
 
 Land's trading post settles every trade through `Bank.settleTrade(a, b, terms)`. It takes the cash each side offers,
 charges each side a fee, and writes a line to both histories ("Trade with Sam: gave 3 Cosmic needles, got $2,000").
-The fee (`Prices.Trade`) is $25 a side plus 5% of any cash that side hands over. That's under a minute of hand
-earnings for a straight item swap, so it never stops a fair trade, while cash-for-needles deals pay something like the
-market's spread and big cash transfers between accounts carry a real cost. Cash moves wallet to wallet (taking from
+The fee (`Prices.Trade`) is $25 plus 5% of the cash, paid only by a side that hands over cash. A side that only
+gives items pays nothing, so swaps and gifts are free and a brand-new player can always hand a friend a needle.
+Cash-for-needles deals pay something like the market's spread, and big cash transfers between accounts carry a real
+cost. Cash moves wallet to wallet (taking from
 the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
 side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
 
@@ -455,6 +491,7 @@ side can't pay, nothing moves and the post cancels the trade. Trading is free wh
 | Trade fee | `Trade` | `Services/Bank` (settleTrade) |
 | Region events | `RegionEvents` | `Services/RegionEvents` |
 | Region secrets | `Secrets` | `Services/Wilds` |
+| Wet hay | `WetHayShare` | `Config/Game` (WetPriceFactor) |
 | Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |

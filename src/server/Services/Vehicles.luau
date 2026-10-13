@@ -866,6 +866,8 @@ local function setDriveForce(model, extra)
 	end
 end
 
+Vehicles.setDriveForce = setDriveForce -- for self-tests on trucks nobody owns
+
 function Vehicles.release(model, owner)
 	local chassis = model.PrimaryPart
 	chassis.Steer.CFrame = CFrame.Angles(0, yawOf(chassis.CFrame), 0)

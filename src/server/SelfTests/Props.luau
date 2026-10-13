@@ -169,18 +169,18 @@ return function(SelfTest)
 		if imported == 0 then
 			t.skip("numbered props resolve to themselves", "none imported")
 		else
-			local wrong = {}
+			local misnamed = {}
 			for name, length in sizes do
 				if math.abs(length - Config.Sizes[name]) > Config.Sizes[name] * 0.03 + 0.02 then
-					table.insert(wrong, ("%s %.2f (want %.2f)"):format(name, length, Config.Sizes[name]))
+					table.insert(misnamed, ("%s %.2f (want %.2f)"):format(name, length, Config.Sizes[name]))
 				end
 			end
-			t.check("numbered props resolve to themselves", #wrong == 0, #wrong > 0 and table.concat(wrong, ", ") or ("%d props"):format(imported))
+			t.check("numbered props resolve to themselves", #misnamed == 0, #misnamed > 0 and table.concat(misnamed, ", ") or ("%d props"):format(imported))
 		end
 
 		-- 2d. Every region bale fits the canonical 4.6 x 2.6 x 3.2 bale box, long side along X.
-		for _, hay in { "pine", "desert", "snow", "swamp", "volcano", "cave", "sky", "haunted", "star", "seagrass", "thread" } do
-			local name = "bale_" .. hay
+		for _, hay in { "pine", "desert", "snow", "swamp", "volcano", "cave", "sky", "haunted", "star", "keys", "bobbin" } do
+			local name = Config.BaleForHay[hay] or ("bale_" .. hay)
 			if Props.has(name) then
 				local spot = t.place()
 				local model = Props.make(name, spot, Vector3.new(4.6, 2.6, 3.2))

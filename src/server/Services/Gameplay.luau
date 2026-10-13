@@ -29,6 +29,11 @@ Players.PlayerRemoving:Connect(function(player)
 	lastHaySale[player] = nil
 end)
 
+-- What rain costs: wet hay sells at Config.WetPriceFactor of the hay price (the needles in it are unharmed).
+local function wetPenalty(wetHay)
+	return math.floor(math.max(wetHay, 0) * Economy.HAY_PRICE * (1 - Config.WetPriceFactor))
+end
+
 local function hasPocketNeedles(player)
 	return Needle ~= nil and Needle.heldCount(player) > 0
 end
@@ -44,12 +49,15 @@ local function sellHay(player)
 	lastHaySale[player] = os.clock()
 
 	local hay, needles = state.loadHay, state.loadNeedles
-	local value = hay > 0 and Economy.rawLoadValue(hay, needles) or 0
+	local value = hay > 0 and Economy.rawLoadValue(hay, needles) - wetPenalty(math.min(state.loadWetHay or 0, hay)) or 0
 	if hay > 0 then
 		Events.fire(player, "hay_sold", hay)
 	end
 	state.loadHay = 0
 	state.loadNeedles = 0
+	state.loadSortedHay = 0
+	state.loadWetHay = 0
+	state.loadType = nil
 
 	local pocketCount, pocketValue = 0, 0
 	if hasPocketNeedles(player) then
@@ -81,6 +89,9 @@ local function sellBale(b)
 	-- A sorted bale's needles were already taken out (and paid for) by the sorter.
 	local needles = if b.sorted then 0 else Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 	local value = Economy.rawLoadValue(hay, needles)
+	if b.body:GetAttribute("Wet") then
+		value -= wetPenalty(hay)
+	end
 	local owner = b.ownerId and Players:GetPlayerByUserId(b.ownerId)
 	local hayType = b.body:GetAttribute("HayType")
 	Bales.consume(b)
@@ -100,7 +111,7 @@ end
 
 -- Loose hay on the pad is paid to whoever last scooped, raked or smashed it.
 local function sellPieces(pieces)
-	local byOwner, unsortedByOwner, needlesByOwner = {}, {}, {}
+	local byOwner, unsortedByOwner, needlesByOwner, wetByOwner = {}, {}, {}, {}
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
 		if Hay.isNeedle(piece) then
@@ -112,6 +123,9 @@ local function sellPieces(pieces)
 			byOwner[ownerId] = (byOwner[ownerId] or 0) + n
 			if not piece:GetAttribute("Sorted") then
 				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + n
+			end
+			if piece:GetAttribute("Wet") then
+				wetByOwner[ownerId] = (wetByOwner[ownerId] or 0) + n
 			end
 		end
 		Hay.remove(piece)
@@ -125,7 +139,9 @@ local function sellPieces(pieces)
 			-- from a sorted bale has no hidden needles left.
 			local needles =
 				Economy.rollNeedles(rng, (unsortedByOwner[ownerId] or 0) * Config.HayPerPiece, Config.NeedleChancePerHay)
-			local value = Economy.rawLoadValue(hay, needles) + (needlesByOwner[ownerId] or 0)
+			local value = Economy.rawLoadValue(hay, needles)
+				+ (needlesByOwner[ownerId] or 0)
+				- wetPenalty((wetByOwner[ownerId] or 0) * Config.HayPerPiece)
 			Bank.earn(owner, value, "Hay shop")
 			Feedback.sale(owner, value)
 			Data.toast(owner, ("+$%d · %d loose hay"):format(value, hay))

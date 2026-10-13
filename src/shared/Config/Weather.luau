@@ -1,6 +1,7 @@
 --!strict
 -- Weather by region: what can blow through each one and how it looks. Weather is visual plus a little grip on the
--- road (a wet or snowy truck speeds up and brakes slower); it never touches prices, needles or hay.
+-- road (a wet or snowy truck speeds up and brakes slower). Rain also soaks bales left out under the open sky
+-- (Bales.luau, Config/Game WetWeather): heavier and cheaper hay until it dries. It never touches needles.
 -- The server (Services/Weather.luau) rolls each region's weather every few minutes and the client
 -- (Weather.client.luau) draws the one you stand in.
 --
