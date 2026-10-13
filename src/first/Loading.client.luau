@@ -12,6 +12,7 @@ local MIN_SECONDS = 2.5 -- keep it up long enough to read
 local MAX_SECONDS = 45 -- never trap a player behind it
 
 local TIPS = {
+	"A glint in the hay means a needle.",
 	"Smash a bale with the shovel to spill its hay, then rake the strands into a row.",
 	"Needles hide in the hay. Sorted needles are worth far more than loose hay.",
 	"Rarer hay is heavier. Better gloves let you carry it without slowing down.",
