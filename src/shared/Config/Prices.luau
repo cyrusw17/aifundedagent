@@ -82,16 +82,10 @@ Prices.Gloves = {
 	starlight = 400000,
 }
 
--- Land plots (Config/Land Plots, by zone). Price = $2,500 x (tiles / 64)^2, rounded. The smallest plot is the first
--- land goal at about 45 minutes; the biggest is a later move-up that a land loan can bring forward.
-Prices.Plots = {
-	plot_1 = 2500, -- Roadside Patch, 8 x 8
-	plot_2 = 3900, -- Fence Row, 10 x 8
-	plot_3 = 6100, -- Willow Lot, 10 x 10
-	plot_4 = 8800, -- Big Meadow, 12 x 10
-	plot_5 = 4000, -- Creek Corner, 9 x 9
-	plot_6 = 7400, -- Homestead Acre, 11 x 10
-}
+-- A land plot (Config/Land). Every plot is the same 12 x 10 tiles, and a save owns one. It is the first land goal, at
+-- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
+-- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
+Prices.Plot = 2500
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the

@@ -129,20 +129,12 @@ hay that needs them.
 
 ### Land (Land Office)
 
-Price = $2,500 x (tiles / 64)^2, rounded. The smallest plot is the first land goal at about 45 minutes, and bigger
-plots cost more per tile because they fit more and longer lines. Before, prices didn't follow size: Creek Corner (81
-tiles) was cheaper than Fence Row (80 tiles), and Big Meadow cost five times Roadside Patch for under twice the land.
+Every plot is now the same 12 x 10 tiles (the Land Office thread's change), so there is one price: **$2,500**
+(`Prices.Plot`, was $1,500 in that change and $800 to $6,000 before it).
 
-| Plot | Tiles | Was | Now |
-|---|---|---|---|
-| Roadside Patch | 8 x 8 = 64 | $800 | $2,500 |
-| Fence Row | 10 x 8 = 80 | $1,500 | $3,900 |
-| Creek Corner | 9 x 9 = 81 | $1,200 | $4,000 |
-| Willow Lot | 10 x 10 = 100 | $2,500 | $6,100 |
-| Homestead Acre | 11 x 10 = 110 | $4,000 | $7,400 |
-| Big Meadow | 12 x 10 = 120 | $6,000 | $8,800 |
-
-A land loan covers any plot with 20% down.
+It is the first land goal, at about 45 minutes: roughly 15 minutes of pickup earnings once the pickup and wagon are
+paid for. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75. A land loan brings it
+forward to $500 down. $1,500 would arrive only a few minutes after the pickup, before the player has learned to haul.
 
 ### Building on your land
 
@@ -197,7 +189,7 @@ a real boost and stays small next to a big farm's income.
 | Loan | Covers | Fee | Repaid from |
 |---|---|---|---|
 | Truck loan | Trucks and trailers you don't own | 10% | 25% of each sale |
-| Land loan | Any plot, while you own none | 8% | 20% of each sale |
+| Land loan | A plot, while you own none | 8% | 20% of each sale |
 
 You need 20% of the price yourself. The bank deposits the other 80%, adds its fee once, and takes its share out of each
 sale until the loan is paid. There are no due dates, no missed payments and no penalties, and you can pay the rest off
@@ -226,7 +218,7 @@ loan takes its share of sales after that.
 | Work Gloves | $250 | 3 min | 0.1 h |  |
 | Rusty Pickup | $6,000 | 10 min | 0.2 h | financed: $1,200 down |
 | Wagon Trailer | $1,500 | 12 min | 0.4 h |  |
-| Roadside Patch + Hand sieve + first line | $3,600 | 28 min | 0.9 h |  |
+| Plot + Hand sieve + first line | $3,600 | 28 min | 0.9 h |  |
 | Shaker table | $4,000 | 24 min | 1.3 h |  |
 | Leather Gloves | $8,000 | 24 min | 1.7 h |  |
 | Farm Flatbed | $25,000 | 12 min | 1.9 h | financed: $5,000 down |
@@ -266,7 +258,7 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Sorted needle values | `Needles` | `Config/Needles` |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
-| Plots, pieces, refund | `Plots`, `Pieces`, `RefundShare` | `Config/Land` |
+| Plot, pieces, refund | `Plot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |

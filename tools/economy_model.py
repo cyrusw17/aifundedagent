@@ -138,7 +138,7 @@ if __name__ == "__main__":
         ("Work Gloves", 250, 1, None),
         ("Rusty Pickup", 6000, 2, "truck"),
         ("Wagon Trailer", 1500, 3, None),
-        ("Roadside Patch + Hand sieve + first line", 2500 + 500 + 8 * 25 + 400, 3, None),
+        ("Plot + Hand sieve + first line", 2500 + 500 + 8 * 25 + 400, 3, None),
         ("Shaker table", 4000, 4, None),
         ("Leather Gloves", 8000, 5, None),
         ("Farm Flatbed", 25000, 5, "truck"),

@@ -250,8 +250,8 @@ function Bank.withdraw(player, value)
 	return true, ("Withdrew %s."):format(money(amount))
 end
 
--- What each loan can pay for. Truck loans cover trucks you can buy and trailers you don't own; land loans cover plots
--- while the slot owns none.
+-- What each loan can pay for. Truck loans cover trucks you can buy and trailers you don't own; a land loan covers a
+-- plot while the slot owns none.
 local function loanItems(state, kind)
 	local items = {}
 	if kind == "truck" then
@@ -266,9 +266,8 @@ local function loanItems(state, kind)
 			end
 		end
 	elseif kind == "land" and not (state.land and state.land.owned) then
-		for _, def in LandConfig.Plots do
-			table.insert(items, { id = def.zone, name = def.name, price = def.price })
-		end
+		-- Every plot is the same, so the loan is for "a plot" and you pick which one at the Land Office.
+		table.insert(items, { id = "plot", name = "farm plot", price = LandConfig.Plots[1].price })
 	end
 	return items
 end
