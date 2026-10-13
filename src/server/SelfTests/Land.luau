@@ -98,7 +98,7 @@ local function randomSave(rng, big)
 		return {
 			owned = true, plot = rng:NextInteger(1, 6), items = items, needles = needles, crew = { rng:NextInteger(1, 1e9) },
 			expansions = rng:NextInteger(0, 2), binSorted = rng:NextNumber() < 0.5 or nil, binPolisher = rng:NextNumber() < 0.5 or nil,
-			theme = "fieldstone", savedAt = os.time() - rng:NextInteger(0, 1e5),
+			theme = "fieldstone", name = "Needle Acres", savedAt = os.time() - rng:NextInteger(0, 1e5),
 		}
 	end
 	local pocket = {}
@@ -172,6 +172,9 @@ local function registerSaves(SelfTest)
 				end
 				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
 					error("second farm lost")
+				end
+				if first.land.name ~= original.land.name then
+					error("farm name lost")
 				end
 				if first.land.binPolisher ~= original.land.binPolisher or first.land.binSorted ~= original.land.binSorted then
 					error("bin upgrades lost")

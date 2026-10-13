@@ -9,6 +9,7 @@
 -- is rebuilt on that plot, or on the next free one big enough, and the save's truck and trailer park on its parking
 -- pad. The server checks every purchase and placement.
 local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
@@ -57,6 +58,7 @@ end
 local DEFAULT_THEME = LandConfig.Themes[1]
 
 local plots = {} -- index -> plot record
+local farmNames = {} -- userId -> the name on their first farm, for the likes board while they are on this server
 local plotOf = {} -- player -> the plot record they build on (their active farm)
 local farms = {} -- player -> { land = plot, land2 = plot }: every plot they own, by save key
 local lastAction = {} -- player -> os.clock() of their last place or remove
@@ -174,10 +176,12 @@ local function publish(plot)
 	info:SetAttribute("Likes", plot.likes or 0)
 	info:SetAttribute("LockedRows", plot.locked or 0)
 	info:SetAttribute("Theme", plot.theme or "")
+	info:SetAttribute("FarmName", plot.farmName or "")
 	plot.likePrompt.Enabled = plot.ownerId ~= nil
 	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
-		plot.label.Text = ("%s\n%s's farm\n♥ %d this week"):format(plot.def.name:upper(), plot.ownerName, plot.likes or 0)
+		local title = plot.farmName and ("%s\n%s's farm"):format(plot.farmName:upper(), plot.ownerName) or ("%s's farm"):format(plot.ownerName)
+		plot.label.Text = ("%s\n%s\n♥ %d this week"):format(plot.def.name:upper(), title, plot.likes or 0)
 	else
 		plot.label.Text = ("%s FOR SALE\n$%d at the Land Office"):format(plot.def.name:upper(), plot.def.price)
 	end
@@ -604,6 +608,7 @@ local function writeLand(land, plot, ownerId)
 	land.binSorted = plot.binSorted or nil
 	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
+	land.name = plot.farmName or plot.pendingName -- a saved name still being re-filtered stays saved
 	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
 	land.needles = plot.bin.contents(ownerId)
 	local crew = {}
@@ -752,6 +757,23 @@ addBinPrompt = function(plot)
 	plot.polishPrompt = polish
 end
 
+-- Farm names. Anything another player will read goes through Roblox's text filter first, as the owner's own words.
+local NAME_MAX = 24
+local function filterName(raw, userId)
+	local ok, result = pcall(function()
+		return TextService:FilterStringAsync(raw, userId, Enum.TextFilterContext.PublicChat):GetNonChatStringForBroadcastAsync()
+	end)
+	return ok and result or nil
+end
+
+local function setFarmName(plot, name)
+	plot.farmName = name
+	plot.pendingName = nil
+	if plot.ownerId and plot.landKey == "land" then
+		farmNames[plot.ownerId] = name
+	end
+end
+
 local function release(plot)
 	local owner = plot.owner
 	if owner then
@@ -797,6 +819,10 @@ local function release(plot)
 		addBinPrompt(plot)
 	end
 	plot.leftOut = nil
+	if plot.ownerId and farmNames[plot.ownerId] == plot.farmName then
+		farmNames[plot.ownerId] = nil
+	end
+	plot.farmName, plot.pendingName = nil, nil
 	plot.crew = {}
 	plot.locked = 0
 	dress(plot, nil)
@@ -834,6 +860,19 @@ local function claim(plot, player, saved, landKey)
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
 	dress(plot, saved.theme)
+	plot.farmName, plot.pendingName = nil, nil
+	if typeof(saved.name) == "string" and saved.name ~= "" then
+		-- Saved names were filtered when they were set; filter again before showing it, in case the filter changed.
+		local raw = saved.name
+		plot.pendingName = raw
+		task.spawn(function()
+			local clean = filterName(raw, player.UserId)
+			if clean and clean ~= "" and plot.owner == player and plot.landKey == landKey and plot.pendingName == raw then
+				setFarmName(plot, clean)
+				publish(plot)
+			end
+		end)
+	end
 	if saved.binSorted then
 		plot.binSorted = true
 		plot.bin.splitByType()
@@ -1252,6 +1291,45 @@ local function onTheme(player, id)
 	return true, ("Your farm is now %s."):format(themes[id].name:lower())
 end
 
+-- Names the owner's active farm. An empty name clears it.
+local function onName(player, raw)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(raw) ~= "string" then
+		return false, nil
+	end
+	if os.clock() - (lastAction[player] or 0) < 3 then
+		return false, "Wait a moment before renaming again."
+	end
+	lastAction[player] = os.clock()
+	raw = raw:gsub("[%c]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if raw == "" then
+		setFarmName(plot, nil)
+		saveItems(player, plot)
+		publish(plot)
+		return true, "Your farm's name is cleared."
+	end
+	if utf8.len(raw) == nil or utf8.len(raw) > NAME_MAX then
+		return false, ("Farm names are up to %d letters."):format(NAME_MAX)
+	end
+	local clean = filterName(raw, player.UserId)
+	if not clean then
+		return false, "Couldn't check that name right now. Try again."
+	end
+	if plot.owner ~= player then
+		return false, nil
+	end
+	setFarmName(plot, clean)
+	saveItems(player, plot)
+	publish(plot)
+	if clean ~= raw then
+		return true, ("Some of that name was filtered. Your farm is %s."):format(clean)
+	end
+	return true, ("Your farm is now called %s."):format(clean)
+end
+
 -- Adds (on = true) or removes a player from the owner's farm crew.
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
@@ -1541,7 +1619,9 @@ local function buildOffice(parent)
 			local lines = { "BEST FARMS THIS WEEK" }
 			if ok and #top > 0 then
 				for i, entry in top do
-					table.insert(lines, ("%d. %s  ♥ %d"):format(i, entry.name, entry.likes))
+					local farm = farmNames[entry.userId]
+					local who = farm and ("%s (%s)"):format(farm, entry.name) or entry.name
+					table.insert(lines, ("%d. %s  ♥ %d"):format(i, who, entry.likes))
 				end
 			else
 				table.insert(lines, "No likes yet. Visit a farm and like it at its sign.")
@@ -1774,7 +1854,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1809,6 +1889,7 @@ function Land.build(worldFolder)
 	remotes.Paste.OnServerInvoke = guard(onPaste)
 	remotes.Undo.OnServerInvoke = guard(onUndo)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
+	remotes.FarmName.OnServerInvoke = guard(onName)
 	remotes.Switch.OnServerInvoke = guard(onSwitch)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
