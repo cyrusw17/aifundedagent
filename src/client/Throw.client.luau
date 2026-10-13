@@ -3,6 +3,9 @@
 -- click or G to charge a throw: a bar fills, and letting go lobs the bale up to Config.TossRange studs, so loading
 -- a pickup bed is a few quick throws. On a phone, the THROW button does the same: hold it, then let go. The server
 -- does the throwing; this only reports how long the charge was held.
+-- Comfort settings (Settings.luau): "Carry a bale: HOLD F" sets the bale down when you let go of the lift key you are
+-- still holding as it comes up (a quick tap of F still lifts it the usual way), and "Throw button: BIG" makes the
+-- phone button larger.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -150,6 +153,37 @@ end)
 
 local function refreshButton()
 	throwButton.Visible = UserInputService.TouchEnabled and player:GetAttribute("Carrying") == true
+	local big = player:GetAttribute("SettingBigThrow") == true
+	local size = big and 124 or 84
+	throwButton.Size = UDim2.fromOffset(size, size)
+	throwButton.TextSize = big and 22 or 16
+	local corner = throwButton:FindFirstChildOfClass("UICorner")
+	if corner then
+		corner.CornerRadius = UDim.new(0, size / 2)
+	end
 end
 player:GetAttributeChangedSignal("Carrying"):Connect(refreshButton)
+player:GetAttributeChangedSignal("SettingBigThrow"):Connect(refreshButton)
 refreshButton()
+
+-- Hold to carry: the lift keys (the bale's button is F, or X on a gamepad). If one is still down when the bale comes
+-- up, letting go of it sets the bale down.
+local liftedWith = nil
+player:GetAttributeChangedSignal("Carrying"):Connect(function()
+	liftedWith = nil
+	if player:GetAttribute("Carrying") and player:GetAttribute("SettingHoldCarry") == true then
+		if UserInputService:IsKeyDown(Enum.KeyCode.F) then
+			liftedWith = Enum.KeyCode.F
+		elseif UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonX) then
+			liftedWith = Enum.KeyCode.ButtonX
+		end
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if liftedWith and input.KeyCode == liftedWith then
+		liftedWith = nil
+		if player:GetAttribute("Carrying") and not chargeStart then
+			dropRemote:FireServer()
+		end
+	end
+end)
