@@ -23,6 +23,11 @@
       "$properties": {
         "StreamingEnabled": false
       }
+    },
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/first"
+      }
     }
   }
 }
