@@ -26,6 +26,7 @@ local Gloves = require(script.Parent.Gloves)
 local Vehicles = require(script.Parent.Vehicles)
 local WorldShape = require(script.Parent.WorldShape)
 local Regions = require(script.Parent.Regions)
+local MapConfig = require(Shared.Config.WorldMap)
 
 local Quests = {}
 
@@ -704,16 +705,13 @@ function LOOKS.stone(m, cf)
 	return stone
 end
 
--- The Corn Night Maze: a square of corn walls carved by a fixed-seed walk, so every server has the same maze. The
--- entrance is the middle of the south side and the heart (this spot's base) is the middle cell. spot.keyCells gets
--- the three dead ends farthest from the entrance, where the corn keys go.
-local MAZE_CELLS, MAZE_CELL, MAZE_WALL, MAZE_HEIGHT = 9, 8, 1.4, 10
+-- Mazes ---------------------------------------------------------------------------------------------------------------
+-- A maze is an n x n grid of cells carved by a seeded walk, so the same seed gives the same maze on every server.
+-- open[x][z] = { E, S }: the wall east of / south of cell (x, z) is gone; z grows to the south (+Z). The entrance is
+-- the middle of the south side, the heart the middle cell (with a small clearing round it).
 
-function LOOKS.maze(m, cf, spot)
-	local n = MAZE_CELLS
-	local half = n * MAZE_CELL / 2
-	local r = Random.new(20261013)
-	-- open[x][z] = { E = bool, S = bool }: the wall east of / south of cell (x, z) is gone. z grows to the south.
+local function carveMaze(n, seed)
+	local r = Random.new(seed)
 	local open, seen = {}, {}
 	for x = 1, n do
 		open[x], seen[x] = {}, {}
@@ -751,29 +749,23 @@ function LOOKS.maze(m, cf, spot)
 		end
 	end
 	local mid = (n + 1) // 2
-	-- A clearing at the heart: the walls between the middle cell and its neighbors come down.
 	open[mid][mid].E, open[mid][mid].S, open[mid - 1][mid].E, open[mid][mid - 1].S = true, true, true, true
+	return open
+end
 
-	local corn = Color3.fromRGB(150, 146, 74)
-	local function wall(x0, z0, x1, z1)
-		-- A straight run of corn from (x0, z0) to (x1, z1) in maze-local studs.
-		local len = math.max(math.abs(x1 - x0), math.abs(z1 - z0)) + MAZE_WALL
-		local size = x0 == x1 and Vector3.new(MAZE_WALL, MAZE_HEIGHT, len) or Vector3.new(len, MAZE_HEIGHT, MAZE_WALL)
-		local p = part(
-			m,
-			"Corn",
-			size,
-			cf * CFrame.new((x0 + x1) / 2, MAZE_HEIGHT / 2, (z0 + z1) / 2),
-			corn,
-			Enum.Material.Grass
-		)
-		p.CastShadow = false
-	end
+-- Builds the walls as merged straight runs. makeWall(center CFrame, size) makes one; y is the walls' middle height.
+local function mazeWalls(cf, open, n, cell, thick, height, y, makeWall)
+	local half = n * cell / 2
+	local mid = (n + 1) // 2
 	local function edge(i)
-		return -half + (i - 1) * MAZE_CELL
+		return -half + (i - 1) * cell
 	end
-	-- Walls along each row line (south walls), merged into runs; the outer north and south edges too.
-	for z = 0, n do
+	local function wall(x0, z0, x1, z1)
+		local len = math.max(math.abs(x1 - x0), math.abs(z1 - z0)) + thick
+		local size = x0 == x1 and Vector3.new(thick, height, len) or Vector3.new(len, height, thick)
+		makeWall(cf * CFrame.new((x0 + x1) / 2, y, (z0 + z1) / 2), size)
+	end
+	for z = 0, n do -- row lines: the north edge, each cell's south wall, the south edge with its entrance
 		local runStart = nil
 		for x = 1, n + 1 do
 			local closed
@@ -782,7 +774,7 @@ function LOOKS.maze(m, cf, spot)
 			elseif z == 0 then
 				closed = true
 			elseif z == n then
-				closed = x ~= mid -- the entrance
+				closed = x ~= mid
 			else
 				closed = not open[x][z].S
 			end
@@ -794,8 +786,7 @@ function LOOKS.maze(m, cf, spot)
 			end
 		end
 	end
-	-- Walls along each column line (east walls), merged into runs; the outer west and east edges too.
-	for x = 0, n do
+	for x = 0, n do -- column lines: the west edge, each cell's east wall, the east edge
 		local runStart = nil
 		for z = 1, n + 1 do
 			local closed
@@ -814,8 +805,12 @@ function LOOKS.maze(m, cf, spot)
 			end
 		end
 	end
+end
 
-	-- The three dead ends farthest from the entrance (breadth-first from the entrance cell) get the keys.
+-- The dead ends farthest from the entrance first, as local offsets of their cell centers.
+local function mazeDeadEnds(open, n, cell)
+	local mid = (n + 1) // 2
+	local half = n * cell / 2
 	local dist = { [mid .. "," .. n] = 0 }
 	local queue, head = { { mid, n } }, 1
 	local deadEnds = {}
@@ -849,17 +844,16 @@ function LOOKS.maze(m, cf, spot)
 	table.sort(deadEnds, function(a, b)
 		return dist[a[1] .. "," .. a[2]] > dist[b[1] .. "," .. b[2]]
 	end)
-	spot.keyCells = {}
-	for i = 1, math.min(3, #deadEnds) do
-		local c = deadEnds[i]
-		local center = edge(c[1]) + MAZE_CELL / 2
-		local depth = edge(c[2]) + MAZE_CELL / 2
-		table.insert(spot.keyCells, (cf * CFrame.new(center, 0, depth)).Position)
+	local list = {}
+	for _, c in deadEnds do
+		table.insert(list, Vector3.new(-half + (c[1] - 0.5) * cell, 0, -half + (c[2] - 0.5) * cell))
 	end
+	return list
+end
 
-	-- Lanterns at the entrance (the world's lamps light them at dusk) and a sign.
+local function entranceLanterns(m, cf, cell, half)
 	for _, side in { -1, 1 } do
-		local base = cf * CFrame.new(side * (MAZE_CELL / 2 + 1.5), 0, half + 2)
+		local base = cf * CFrame.new(side * (cell / 2 + 1.5), 0, half + 2)
 		part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood)
 		local lantern =
 			part(m, "Lantern", Vector3.new(1, 1.3, 1), base * CFrame.new(0, 6.4, 0), Rustic.Metal, Enum.Material.Metal)
@@ -868,6 +862,26 @@ function LOOKS.maze(m, cf, spot)
 		glow.Range = 16
 		glow.Parent = lantern
 	end
+end
+
+-- The Corn Night Maze (fixed seed). spot.keyCells gets the three farthest dead ends, where the corn keys go.
+local MAZE_CELLS, MAZE_CELL, MAZE_WALL, MAZE_HEIGHT = 9, 8, 1.4, 10
+
+function LOOKS.maze(m, cf, spot)
+	local half = MAZE_CELLS * MAZE_CELL / 2
+	local open = carveMaze(MAZE_CELLS, 20261013)
+	local corn = Color3.fromRGB(150, 146, 74)
+	mazeWalls(cf, open, MAZE_CELLS, MAZE_CELL, MAZE_WALL, MAZE_HEIGHT, MAZE_HEIGHT / 2, function(wcf, size)
+		part(m, "Corn", size, wcf, corn, Enum.Material.Grass).CastShadow = false
+	end)
+	spot.keyCells = {}
+	for i, offset in mazeDeadEnds(open, MAZE_CELLS, MAZE_CELL) do
+		if i > 3 then
+			break
+		end
+		table.insert(spot.keyCells, (cf * CFrame.new(offset)).Position)
+	end
+	entranceLanterns(m, cf, MAZE_CELL, half)
 	local sign = part(
 		m,
 		"Sign",
@@ -877,13 +891,108 @@ function LOOKS.maze(m, cf, spot)
 		Enum.Material.WoodPlanks
 	)
 	label(sign, "CORN MAZE\nKeys glow after dark", Vector3.new(0, 3, 0), 90)
-
 	-- The heart: a scarecrow on a hay-strewn patch, where the keys are brought.
 	local heart =
 		part(m, "Heart", Vector3.new(6, 0.2, 6), cf * CFrame.new(0, 0.1, 0), Rustic.HayLight, Enum.Material.Fabric)
 	heart.CanCollide = false
 	LOOKS.scarecrow(m, cf * CFrame.new(0, 0, -2))
 	return heart
+end
+
+-- The Straw Labyrinth: a new maze every UTC day (rebuilt at midnight UTC). Step through the entrance to start the
+-- clock and reach the bell at the heart to finish; the sign shows today's best time on this server.
+local LAB_CELLS, LAB_CELL, LAB_WALL, LAB_HEIGHT = 9, 8, 1.6, 10
+
+function LOOKS.labyrinth(m, cf, spot)
+	local half = LAB_CELLS * LAB_CELL / 2
+	local open = carveMaze(LAB_CELLS, (os.time() // 86400) * 7349 + 11)
+	local straw = Color3.fromRGB(196, 170, 102)
+	mazeWalls(cf, open, LAB_CELLS, LAB_CELL, LAB_WALL, LAB_HEIGHT, LAB_HEIGHT / 2, function(wcf, size)
+		part(m, "StrawWall", size, wcf, straw, Enum.Material.Fabric).CastShadow = false
+	end)
+	entranceLanterns(m, cf, LAB_CELL, half)
+	-- The start line in the entrance cell.
+	local startLine = part(
+		m,
+		"StartLine",
+		Vector3.new(LAB_CELL - LAB_WALL, 0.1, 1),
+		cf * CFrame.new(0, 0.05, half - 1.5),
+		Rustic.PaintCream,
+		Enum.Material.SmoothPlastic
+	)
+	startLine.CanCollide = false
+	spot.startAt = startLine.Position
+	local sign = part(
+		m,
+		"Sign",
+		Vector3.new(7, 3, 0.3),
+		cf * CFrame.new(LAB_CELL / 2 + 7, 3, half + 3),
+		Rustic.Wood,
+		Enum.Material.WoodPlanks
+	)
+	spot.signLabel = label(sign, "STRAW LABYRINTH\nA new maze every day", Vector3.new(0, 3.5, 0), 90)
+	spot.signLabel.Parent.Size = UDim2.fromOffset(240, 70)
+	-- The finish: a bell on a post at the heart.
+	local floor =
+		part(m, "Finish", Vector3.new(6, 0.2, 6), cf * CFrame.new(0, 0.1, 0), Rustic.HayLight, Enum.Material.Fabric)
+	floor.CanCollide = false
+	part(m, "BellPost", Vector3.new(0.5, 7, 0.5), cf * CFrame.new(0, 3.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+	part(
+		m,
+		"Bell",
+		Vector3.new(1.4, 1.4, 1.4),
+		cf * CFrame.new(0, 6.6, 0.6),
+		Color3.fromRGB(200, 160, 70),
+		Enum.Material.Metal,
+		Enum.PartType.Ball
+	)
+	return floor
+end
+
+-- The Drowned Rows: a maze of old pilings standing out of the sea off the Meadow shore. Swim in from the shore side;
+-- a sunken chest on a raft waits at the heart. Same maze every day.
+local ROWS_CELLS, ROWS_CELL, ROWS_WALL = 7, 10, 1.2
+
+function LOOKS.rows(m, cf, spot)
+	local half = ROWS_CELLS * ROWS_CELL / 2
+	local open = carveMaze(ROWS_CELLS, 1955)
+	local bottom, top = -40, 4 -- pilings run from the sea floor to above the waves (relative to the water)
+	-- The entrance faces the shore (north, -Z): turn the maze half around so its south side looks at the beach.
+	local mazeCf = CFrame.new(cf.Position) * CFrame.Angles(0, math.pi, 0)
+	mazeWalls(mazeCf, open, ROWS_CELLS, ROWS_CELL, ROWS_WALL, top - bottom, (top + bottom) / 2, function(wcf, size)
+		part(m, "Piling", size, wcf, Rustic.WoodDark, Enum.Material.WoodPlanks).CastShadow = false
+	end)
+	-- Floats on the entrance posts so it can be found from the beach.
+	for _, side in { -1, 1 } do
+		local buoy = part(
+			m,
+			"Buoy",
+			Vector3.new(1.6, 1.6, 1.6),
+			mazeCf * CFrame.new(side * (ROWS_CELL / 2 + 1), top + 0.8, half),
+			Rustic.PaintRedDark,
+			Enum.Material.SmoothPlastic,
+			Enum.PartType.Ball
+		)
+		label(buoy, side == 1 and "DROWNED ROWS" or "", Vector3.new(0, 3, 0), 200)
+	end
+	local raft = part(
+		m,
+		"Raft",
+		Vector3.new(7, 0.6, 7),
+		CFrame.new(cf.Position + Vector3.new(0, 0.3, 0)),
+		Rustic.Wood,
+		Enum.Material.WoodPlanks
+	)
+	part(
+		m,
+		"Chest",
+		Vector3.new(2.6, 1.8, 1.8),
+		CFrame.new(cf.Position + Vector3.new(0, 1.5, 0)),
+		Rustic.WoodDark,
+		Enum.Material.WoodPlanks
+	)
+	spot.startAt = (mazeCf * CFrame.new(0, 0, half - ROWS_CELL / 2)).Position
+	return raft
 end
 
 -- A corn key: a small glowing brass key on a corn husk.
@@ -1157,6 +1266,86 @@ local function checkPattern(player, step)
 	return true
 end
 
+-- Timed maze runs ------------------------------------------------------------------------------------------------------
+
+local function runSign(id)
+	local spot = spots[id]
+	if not (spot and spot.signLabel) then
+		return
+	end
+	local name = QuestConfig.Runs[id].name
+	if spot.best then
+		spot.signLabel.Text = ("%s\nToday's best: %.1f s by %s"):format(
+			string.upper(name),
+			spot.best.seconds,
+			spot.best.by
+		)
+	else
+		spot.signLabel.Text = ("%s\nA new maze every day"):format(string.upper(name))
+	end
+end
+
+-- A finished run of maze spot `id`: the server's best time, the day's first-finish pay, and any run quest step.
+local function finishRun(player, id, seconds)
+	local q = questsOf(player)
+	local cfg = QuestConfig.Runs[id]
+	if not q or not cfg then
+		return
+	end
+	local spot = spots[id]
+	if spot and not sandboxes[player] and (not spot.best or seconds < spot.best.seconds) then
+		spot.best = { seconds = seconds, by = player.DisplayName }
+		runSign(id)
+	end
+	q.runs = typeof(q.runs) == "table" and q.runs or {}
+	local record = typeof(q.runs[id]) == "table" and q.runs[id] or {}
+	q.runs[id] = record
+	if typeof(record.best) ~= "number" or seconds < record.best then
+		record.best = seconds
+	end
+	local message = ("%s in %.1f seconds."):format(cfg.name, seconds)
+	if record.day ~= today() then
+		record.day = today()
+		if not sandboxes[player] then
+			Bank.earn(player, cfg.cash, "Maze: " .. cfg.name)
+		end
+		message ..= (" First run today: +$%d"):format(cfg.cash)
+	end
+	Data.toast(player, message)
+	for _, questId in activeIds(q) do
+		local step = currentStep(q, questId)
+		if step and step.kind == "run" and step.spot == id then
+			if not step.seconds or seconds <= step.seconds then
+				advance(player, questId)
+			else
+				Data.toast(player, ("Not quick enough: %.1f s. The bell wants %d."):format(seconds, step.seconds))
+			end
+		end
+	end
+	publish(player)
+end
+
+-- Starts a run when a player crosses a maze's start line, finishes it at the heart, and calls off a run that has
+-- wandered away or gone on too long.
+local function pollRuns(player, info)
+	info.runs = info.runs or {}
+	for id, cfg in QuestConfig.Runs do
+		local spot = spots[id]
+		if not (spot and spot.model and spot.startAt) then
+			continue
+		end
+		local started = info.runs[id]
+		if near(player, { position = spot.startAt }, 3.5) then
+			info.runs[id] = os.clock() -- the clock starts when you leave the line
+		elseif started and near(player, spot, spot.def.radius or 4) then
+			info.runs[id] = nil
+			finishRun(player, id, os.clock() - started)
+		elseif started and (os.clock() - started > cfg.abandon or not near(player, spot, cfg.range)) then
+			info.runs[id] = nil
+		end
+	end
+end
+
 local function pollPlayer(player)
 	local q, s = questsOf(player)
 	if not q then
@@ -1168,6 +1357,7 @@ local function pollPlayer(player)
 		Events.fire(player, "bale_lifted", 1, {})
 	end
 	info.lifted = lifted
+	pollRuns(player, info)
 
 	for _, id in activeIds(q) do
 		local step, entry = currentStep(q, id)
@@ -1931,6 +2121,11 @@ function Quests.press(player, spotId)
 	Quests.usePrompt(player, spotId)
 end
 
+-- For SelfTests: finishes a run of a maze spot in `seconds`, as if the player had run it.
+function Quests.run(player, spotId, seconds)
+	finishRun(player, spotId, seconds)
+end
+
 -- For SelfTests: the built spot for an id ({ def, model, base, position }), or nil.
 function Quests.spot(spotId)
 	return spots[spotId]
@@ -1999,6 +2194,17 @@ function Quests.build(worldFolder)
 				local x, z = landNear(def.world.X, def.world.Y)
 				buildSpot(id, Vector3.new(x, 0, z))
 				reachable[def.region] = true
+			elseif def.sea and isles then
+				-- Out on the water. If a reshape left land there, step out to sea (south) until it is water again.
+				local x, z = def.sea.X, def.sea.Y
+				for _ = 1, 10 do
+					local ok, h, water = pcall(WorldShape.column, x, z)
+					if not ok or (water and h < water - 12) then
+						break
+					end
+					z += 30
+				end
+				buildSpot(id, nil, CFrame.new(x, MapConfig.SeaLevel, z))
 			elseif not def.wander and (def.pos or def.fallback) then
 				buildSpot(id, def.pos or def.fallback)
 			end
@@ -2043,6 +2249,18 @@ function Quests.build(worldFolder)
 			if today() ~= lastDay then
 				lastDay = today()
 				refreshSign()
+				-- The Straw Labyrinth grows a new maze every day; runs in the old one are called off.
+				local lab = spots.straw_labyrinth
+				if lab and lab.model then
+					buildSpot("straw_labyrinth", lab.position)
+					lab.best = nil
+					runSign("straw_labyrinth")
+					for _, info in players do
+						if info.runs then
+							info.runs.straw_labyrinth = nil
+						end
+					end
+				end
 				for player in players do
 					publish(player)
 				end
