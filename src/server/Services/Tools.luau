@@ -14,6 +14,7 @@ local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
+local Gloves = require(script.Parent.Gloves)
 
 local Tools = {}
 
@@ -84,34 +85,71 @@ local function useShovel(player, root, aim)
 		Data.toast(player, "No hay there. Click a bale or a hay piece.")
 		return
 	end
-	if state.loadHay + Config.HayPerPiece > Config.CarryCapacity then
+	local capacity = Gloves.carryCapacity(player)
+	if state.loadHay + Config.HayPerPiece > capacity then
 		Data.toast(player, "You are carrying all the hay you can. Sell it at the pad by the shop.")
 		return
 	end
 
 	Avatar.swing(player, "Shovel", function()
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
-		local room = math.floor((Config.CarryCapacity - state.loadHay) / Config.HayPerPiece)
-		local list = targetPieces(math.min(Config.ShovelPieces, room))
+		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
+		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
+		local first = targetPieces(1)[1]
+		local _, hayTier = if first then Gloves.pieceWeight(first) else 0, 0
+		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier), room))
 		if #list == 0 then
 			return
 		end
-		local hay = #list * Config.HayPerPiece
+		local strands, found = 0, 0
+		for i = #list, 1, -1 do
+			local piece = list[i]
+			if Hay.isNeedle(piece) then
+				if Hay.sharedNeedles then
+					table.remove(list, i) -- a shared needle is picked up by clicking it, so the shovel leaves it
+				else
+					found += 1
+				end
+			else
+				strands += 1
+				local weight, tier = Gloves.pieceWeight(piece)
+				state.loadWeight = (state.loadWeight or 0) + weight
+				state.loadTier = math.max(state.loadTier or 0, tier)
+			end
+		end
+		local hay = strands * Config.HayPerPiece
 		state.loadHay += hay
-		state.loadNeedles += Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+		state.loadNeedles += found + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 		Data.sync(player)
 		Hay.flyToPlayer(root, list)
+		if found > 0 then
+			Data.toast(player, found == 1 and "You found a needle in the hay!" or ("You found %d needles!"):format(found))
+		end
 	end)
 end
 
 local function useRake(player, root, aim)
 	local center = aim and aim.position or spotInFront(root, Config.RakeRadius)
 	Avatar.swing(player, "Rake", function()
-		Hay.rake(center, root.Position, Config.RakeRadius, player.UserId)
+		-- Gather toward the ground a couple of studs in front of the player, on the side the hay is on.
+		local flat = Vector3.new(center.X - root.Position.X, 0, center.Z - root.Position.Z)
+		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+		local gatherAt = root.Position + dir * Config.RakeGatherDistance
+		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
 	end)
 end
 
 function Tools.init()
+	Gloves.init()
+	-- The glove stand goes beside the sell pad once the world has built it.
+	task.defer(function()
+		local world = workspace:FindFirstChild("Needlewood")
+		local pad = world and world:WaitForChild("SellPad", 10)
+		if pad then
+			Gloves.buildStand(world, CFrame.new(pad.Position.X - pad.Size.X / 2 - 3.5, 0, pad.Position.Z))
+		end
+	end)
+
 	local aimRemote = Instance.new("RemoteEvent")
 	aimRemote.Name = "ToolAim"
 	aimRemote.Parent = ReplicatedStorage

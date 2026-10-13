@@ -31,6 +31,7 @@ local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
 local function buildBale(position)
 	local body = Instance.new("Part")
 	body.Name = "HayBale"
+	body:SetAttribute("HayType", "meadow") -- Config/Gloves hay type; set another for rarer bales
 	body.Size = SIZE
 	body.CFrame = CFrame.new(position + Vector3.new(0, SIZE.Y / 2, 0)) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0)
 	body.Color = HAY
@@ -235,6 +236,8 @@ function Bales.breakOpen(player, b)
 		end
 
 		local center = rest.Position
+		-- Which hay this bale holds (set by whoever placed it; meadow by default). Its strands carry it on.
+		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0))
 
@@ -271,7 +274,13 @@ function Bales.breakOpen(player, b)
 			for _ = 1, perWave do
 				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
-				Hay.spawnPiece(center + offset, velocity, baleOwner)
+				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner)
+				piece:SetAttribute("HayType", hayType)
+			end
+			-- Now and then a needle tumbles out with the hay.
+			if rng:NextNumber() < Config.VisibleNeedleChance then
+				local offset = Vector3.new(rng:NextNumber(-1, 1), 2 + wave * 0.5, rng:NextNumber(-1, 1))
+				Hay.spawnPiece(center + offset, Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)), baleOwner, "Needle")
 			end
 			task.wait(0.22)
 		end
@@ -355,8 +364,11 @@ function Bales.drop(player)
 	b.body.AssemblyLinearVelocity = Vector3.zero
 	b.body.AssemblyAngularVelocity = Vector3.zero
 	b.prompt.ActionText = "Pick up"
+	-- A set-down bale is a loose physical block: never welded or anchored, so it can ride in a truck bed and slide
+	-- or tip like real cargo. Roblox picks its network owner automatically, so a bale in a moving truck follows the
+	-- driver's physics instead of lagging behind.
 	pcall(function()
-		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same bale
+		b.body:SetNetworkOwnershipAuto()
 	end)
 
 	Avatar.clearCarry(player)

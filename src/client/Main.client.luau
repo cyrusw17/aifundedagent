@@ -116,7 +116,7 @@ local function refresh()
 	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
 	local cash = player:GetAttribute("Cash") or 0
 	local hay = player:GetAttribute("LoadHay") or 0
-	local cap = player:GetAttribute("LoadCap") or 1
+	local cap = (player:GetAttribute("LoadCap") or 1) + (player:GetAttribute("LoadCapBonus") or 0)
 	local carrying = player:GetAttribute("Carrying")
 	cashLabel.Text = ("$%d"):format(cash)
 	if carrying then
@@ -124,7 +124,7 @@ local function refresh()
 		hintLabel.Text = "Click or G: set it down"
 	else
 		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a bale"
-		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
+		loadLabel.Text = ("Hay %d / %d · %s"):format(hay, cap, player:GetAttribute("GloveName") or "Bare hands")
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
 end
@@ -146,7 +146,35 @@ local function showToast()
 	end)
 end
 
-for _, name in { "Cash", "LoadHay", "LoadCap", "Carrying" } do
+-- The glove stand's buttons read Buy for pairs you do not own, Wear for ones you do, Wearing for the pair on.
+local function updateGlovePrompts()
+	local owned = {}
+	for id in string.gmatch(player:GetAttribute("GlovesOwned") or "", "[^,]+") do
+		owned[id] = true
+	end
+	local wearing = player:GetAttribute("GloveId")
+	for _, prompt in workspace:GetDescendants() do
+		if prompt:IsA("ProximityPrompt") and prompt.Name == "GlovePrompt" then
+			local id = prompt:GetAttribute("GloveId")
+			if id == wearing then
+				prompt.ActionText = "Wearing"
+			elseif owned[id] then
+				prompt.ActionText = "Wear"
+			else
+				prompt.ActionText = ("Buy $%d"):format(prompt:GetAttribute("Price") or 0)
+			end
+		end
+	end
+end
+player:GetAttributeChangedSignal("GlovesOwned"):Connect(updateGlovePrompts)
+player:GetAttributeChangedSignal("GloveId"):Connect(updateGlovePrompts)
+workspace.DescendantAdded:Connect(function(d)
+	if d:IsA("ProximityPrompt") and d.Name == "GlovePrompt" then
+		task.defer(updateGlovePrompts)
+	end
+end)
+
+for _, name in { "Cash", "LoadHay", "LoadCap", "LoadCapBonus", "Carrying", "GloveName" } do
 	player:GetAttributeChangedSignal(name):Connect(refresh)
 end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
