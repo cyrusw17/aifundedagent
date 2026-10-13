@@ -171,7 +171,7 @@ refreshButton()
 local liftedWith = nil
 player:GetAttributeChangedSignal("Carrying"):Connect(function()
 	liftedWith = nil
-	if player:GetAttribute("Carrying") and player:GetAttribute("SettingHoldCarry") == true then
+	if player:GetAttribute("Carrying") and player:GetAttribute("SettingHoldToCarry") == true then
 		if UserInputService:IsKeyDown(Enum.KeyCode.F) then
 			liftedWith = Enum.KeyCode.F
 		elseif UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonX) then
