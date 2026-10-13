@@ -263,6 +263,15 @@ Prices.Travel = {
 -- under cover or wait out the rain (it dries 150 s after), never a disaster.
 Prices.WetHayShare = 0.6
 
+-- Mutated needles (Needle.rollMutation): 1 found needle in oneIn is mutated and sells for min to max times its value
+-- (announced to the server). The average mutation is 14x, so mutations add (14 - 1) / 500 = 2.6% to needle income: a
+-- jackpot moment, not a source. A mutated Cosmic needle can be worth $125,000.
+Prices.Mutation = {
+	oneIn = 500,
+	min = 3,
+	max = 25,
+}
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
