@@ -193,6 +193,18 @@ Prices.Starbeam = {
 -- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
 -- PolishPerMinute needles a minute; the rest stay plain.
 Prices.PolishBonus = 0.25
+
+-- Needle grades: the sorter that finds a needle grades it, and a better grade sells for more. It keeps upgrading
+-- worth it once a sorter's recovery is "good enough". B adds nothing.
+Prices.NeedleGrades = { B = 0, A = 0.10, S = 0.25 }
+Prices.SorterGrade = {
+	hand_sieve = "B",
+	shaker_table = "B",
+	conveyor_sorter = "B",
+	magnet_drum = "A",
+	optical_sorter = "S",
+	alien_collector = "S",
+}
 Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket

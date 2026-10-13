@@ -134,14 +134,11 @@ local function deliverNeedles(player)
 	if not i then
 		return
 	end
-	local pocket = Needle.held(player)
-	local have = pocket[offer.needle] or 0
-	local count = math.min(have, want)
-	if count <= 0 then
+	-- Any grade or polish of the type counts, cheapest first (Needle.take).
+	local count = math.min(Needle.plainCount(player, offer.needle), want)
+	if count <= 0 or not Needle.take(player, offer.needle, count) then
 		return
 	end
-	pocket[offer.needle] = have - count > 0 and have - count or nil
-	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	credit(player, i, offer, count)
 end
 
