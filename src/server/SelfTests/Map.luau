@@ -182,7 +182,9 @@ return function(SelfTest)
 				end
 			end
 		end
-		if WorldTerrain.isReady() then
+		if workspace:GetAttribute("Headless") == true then
+			t.skip("every road sample sits on terrain at road height", "headless: no terrain raycasts")
+		elseif WorldTerrain.isReady() then
 			t.check(("every road sample sits on terrain at road height (%d samples)"):format(samples), #holes == 0, #holes > 0 and table.concat(holes, "; ", 1, math.min(#holes, 8)) or nil)
 		end
 		t.check("no solid part stands in a road lane", #blocked == 0, #blocked > 0 and table.concat(blocked, "; ", 1, math.min(#blocked, 8)) or nil)
@@ -382,7 +384,11 @@ return function(SelfTest)
 			local wagonWait = HayWagon.state.wait
 			HayWagon.state.wait = 0
 			HayWagon.step(1)
-			t.check("...and moves along its road", (HayWagon.model:GetPivot().Position - before).Magnitude > 1)
+			if workspace:GetAttribute("Headless") == true then
+				t.skip("...and moves along its road", "headless: the wagon follows terrain raycasts")
+			else
+				t.check("...and moves along its road", (HayWagon.model:GetPivot().Position - before).Magnitude > 1)
+			end
 			HayWagon.state.wait = wagonWait
 		end
 
