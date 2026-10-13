@@ -358,7 +358,9 @@ end
 
 function Avatar.getRoot(player)
 	local rig = rigs[player]
-	return rig and rig.root
+	-- Right after a respawn the rig can still point at the old, removed character until setup catches up.
+	local root = rig and rig.root
+	return root and root.Parent and root or nil
 end
 
 function Avatar.start()

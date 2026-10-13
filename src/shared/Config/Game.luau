@@ -17,6 +17,8 @@ return {
 	PiecesPerBale = 90, -- small straw strands spilled by one bale
 	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away
+	LooseNeedleLifetime = 600, -- a spilled needle nobody picks up stays this long (it is worth finding)
+	MaxLooseNeedles = 120, -- past this many lying around, the oldest needle goes
 	BaleRefillSeconds = 45, -- placeholder until we decide how bales refill
 
 	-- Tools
