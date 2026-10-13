@@ -2434,9 +2434,13 @@ local function friends(a, b)
 	return friendCache[k]
 end
 
+-- The alt rule on a save: it has sold at least Prices.Trade.MinSoldToGiveCash.
+local function seasonedState(s)
+	return typeof(s) == "table" and Bank.account(s).sold >= (PricesConfig.Trade and PricesConfig.Trade.MinSoldToGiveCash or 0)
+end
+
 local function seasoned(player)
-	local s = Data.get(player)
-	return s ~= nil and Bank.account(s).sold >= (PricesConfig.Trade and PricesConfig.Trade.MinSoldToGiveCash or 0)
+	return seasonedState(Data.get(player))
 end
 
 local function onPlot(plot, player)
@@ -2449,14 +2453,16 @@ local function onPlot(plot, player)
 	return p.X >= 0 and p.X <= plot.size.X and p.Z >= 0 and p.Z <= plot.size.Z and p.Y > -10 and p.Y < 60
 end
 
--- The helper switching the bonus on for a plot, or nil. isFriend is (owner, helper) -> bool, for tests.
-local function helperOn(plot, players, isFriend)
+-- The helper switching the bonus on for a plot, or nil. isFriend is (owner, helper) -> bool; isSeasoned (helper) ->
+-- bool defaults to the alt rule on their loaded save (tests pass their own).
+local function helperOn(plot, players, isFriend, isSeasoned)
+	isSeasoned = isSeasoned or seasoned
 	local owner = plot.owner
 	if not owner or not plot.ownerId then
 		return nil
 	end
 	for _, other in players do
-		if other ~= owner and onPlot(plot, other) and seasoned(other) then
+		if other ~= owner and onPlot(plot, other) and isSeasoned(other) then
 			if (plot.crew and plot.crew[other.UserId]) or isFriend(owner, other) then
 				return other
 			end
@@ -2494,6 +2500,8 @@ end
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
 	helperOn = helperOn,
+	seasonedState = seasonedState,
+	joinLimit = joinLimit,
 	boostBales = boostBales,
 	siloTotals = siloTotals,
 	siloFullIn = siloFullIn,
