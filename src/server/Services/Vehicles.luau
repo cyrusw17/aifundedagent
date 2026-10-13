@@ -51,6 +51,10 @@ local SHAPES = {
 		bedGap = 0.4, -- between the cab and the bed
 		meshSize = Vector3.new(10.9, 9.2, 27.5), -- the box the Blender mesh is stretched over
 	},
+	-- The other trucks keep the default body; these widths match their re-exported Blender meshes.
+	farm_flatbed = { bedW = 11.4, meshW = 11.4 },
+	box_truck = { bedW = 11.1, meshW = 11.1 },
+	heavy_hauler = { meshW = 12.2 }, -- bed stays 10.2 inside; the mesh's extra width is fenders and racks
 }
 
 local function shapeOf(def)
@@ -257,7 +261,13 @@ function Vehicles.build(def, pivot, parent)
 	end
 
 	-- The Blender mesh, when imported, takes over the look. The parts stay for collisions.
-	local meshSize = S.meshSize or Vector3.new(6, cabTop, L + 0.6)
+	local top = cabTop
+	if def.style == "box" then
+		top = DECK + 8.8 -- the cargo box stands above the cab
+	elseif def.style == "semi" then
+		top = DECK + 9.5 -- exhaust stacks
+	end
+	local meshSize = S.meshSize or Vector3.new(S.meshW or math.max(BED_W, CAB_W), top, L + 0.6)
 	local mesh = Props.make(def.id, pivot * CFrame.new(0, meshSize.Y / 2, 0), meshSize, def.meshTurn and CFrame.Angles(0, math.rad(def.meshTurn), 0))
 	if mesh then
 		-- The parts stay visible until this client has loaded the mesh (PropMeshes.client.luau), then hide.
@@ -766,6 +776,8 @@ local function updateCargo()
 				if not riding[b] then
 					b.body:SetAttribute("InTruck", true)
 				end
+				-- Whoever hauls a bale gets paid for it at the sell shop, even if it was pushed in rather than carried.
+				b.ownerId = b.ownerId or player.UserId
 				pcall(function()
 					if b.body:GetNetworkOwner() ~= player then
 						b.body:SetNetworkOwner(player)
@@ -802,19 +814,7 @@ function Vehicles.spawnOwned(player, truckId, cframe, opts)
 	Vehicles.makeDrivable(truck, player)
 	Vehicles.setOwned(player, truck)
 
-	local trailer = nil
-	local trailerDef = opts.trailer and Vehicles.getTrailer(opts.trailer)
-	if trailerDef then
-		local _, _, bedLength = trailerSize(trailerDef)
-		local behind = def.length / 2 + 0.9 + trailerDef.tongue + bedLength / 2
-		trailer = Vehicles.buildTrailer(trailerDef, cframe * CFrame.new(0, 0, behind), parent)
-		trailer.Name = player.Name .. "'s " .. trailerDef.name
-		Vehicles.makeTrailerLive(trailer, player)
-		Vehicles.setOwnedTrailer(player, trailer)
-		Vehicles.hitch(truck, trailer)
-	elseif opts.trailer then
-		warn("[Needlewood] unknown trailer " .. tostring(opts.trailer))
-	end
+	local trailer = opts.trailer and Vehicles.spawnTrailer(opts.trailer, truck)
 
 	Vehicles.release(truck, player)
 	local seat = truck:FindFirstChild("DriverSeat")
@@ -823,6 +823,26 @@ function Vehicles.spawnOwned(player, truckId, cframe, opts)
 		prompt.Enabled = true -- nobody is in it yet
 	end
 	return truck, trailer
+end
+
+-- Builds the truck owner's trailer behind a truck that is already in the world and hitches it. Returns the trailer.
+-- (For callers that place the truck themselves; spawnOwned does both.)
+function Vehicles.spawnTrailer(trailerId, truck)
+	local def = Vehicles.getTrailer(trailerId)
+	local owner = Players:GetPlayerByUserId(truck:GetAttribute("OwnerId") or 0)
+	local truckDef = Vehicles.get(truck:GetAttribute("TruckId"))
+	if not def or not owner or not truckDef then
+		warn("[Needlewood] spawnTrailer: unknown trailer or truck owner " .. tostring(trailerId))
+		return nil
+	end
+	local _, _, bedLength = trailerSize(def)
+	local behind = truckDef.length / 2 + 0.9 + def.tongue + bedLength / 2
+	local trailer = Vehicles.buildTrailer(def, Vehicles.groundCFrame(truck) * CFrame.new(0, 0, behind), truck.Parent)
+	trailer.Name = owner.Name .. "'s " .. def.name
+	Vehicles.makeTrailerLive(trailer, owner)
+	Vehicles.setOwnedTrailer(owner, trailer)
+	Vehicles.hitch(truck, trailer)
+	return trailer
 end
 
 -- folder: where player trucks and trailers go.
