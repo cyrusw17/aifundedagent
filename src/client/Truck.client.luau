@@ -38,7 +38,7 @@ hint.BackgroundTransparency = 0.1
 hint.Font = F.Bold
 hint.TextSize = 15
 hint.TextColor3 = Theme.Colors.Cream
-local DRIVE_HINT = "W/S drive   A/D steer   Q horn   Space get out   T tow"
+local DRIVE_HINT = "W/S drive   A/D steer   X horn   Space get out   T tow"
 hint.Text = DRIVE_HINT
 hint.Visible = false
 Kit.corner(hint, 8)
@@ -264,7 +264,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or not active then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.Q then
+	if input.KeyCode == Enum.KeyCode.X then -- not Q: Q opens the quest log (Quests.client)
 		local horn = ReplicatedStorage:FindFirstChild("TruckHorn")
 		if horn then
 			horn:FireServer()

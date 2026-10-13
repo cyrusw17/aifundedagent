@@ -2,13 +2,14 @@
 -- How driving feels from this client: dust off the rear wheels of every truck rolling over dirt, grass, sand or snow,
 -- and, while you drive, a camera that eases back and widens a little with speed so a fast truck reads as fast.
 -- Everything here is local and visual: the emitters are made on this client and nothing is sent to the server.
--- StreamingEnabled-safe: trucks are found by scanning what this client has, and dropped when they stream out.
+-- StreamingEnabled-safe: trucks are found by their TruckModel tag (Vehicles.build) as they stream in, and dropped when
+-- they stream out. Nothing here walks the Workspace.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
-local SCAN_EVERY = 2 -- seconds between looks for trucks that streamed in or were bought
 local DUST_RANGE = 220 -- only trucks this close to the camera kick up dust
 local DUST_FROM = 8 -- studs per second before any dust shows
 local DUST_FULL = 40 -- full dust at this speed
@@ -70,6 +71,7 @@ local function track(model)
 	params.FilterDescendantsInstances = { model }
 	params.IgnoreWater = false
 	trucks[model] = {
+		chassis = chassis,
 		params = params,
 		emitters = {
 			makeEmitter(chassis, Vector3.new(-trackX, below, length * 0.3)),
@@ -78,36 +80,49 @@ local function track(model)
 	}
 end
 
-local function scan()
-	for model in trucks do
-		if not model.Parent or not model.PrimaryPart then
-			trucks[model] = nil
-		end
+-- A truck model can stream in before its chassis does: retry until the PrimaryPart is there.
+local function watchTruck(model)
+	if not model:IsA("Model") then
+		return
 	end
-	for _, d in workspace:GetDescendants() do
-		if d:IsA("Model") and d:GetAttribute("TruckId") and d:FindFirstChild("DriverSeat") then
-			track(d)
-		end
+	if model.PrimaryPart then
+		track(model)
+		return
 	end
+	local conn
+	conn = model:GetPropertyChangedSignal("PrimaryPart"):Connect(function()
+		if model.PrimaryPart then
+			conn:Disconnect()
+			track(model)
+		end
+	end)
 end
 
-local sinceScan = SCAN_EVERY
+local function untrack(model)
+	trucks[model] = nil
+end
+
+CollectionService:GetInstanceAddedSignal("TruckModel"):Connect(watchTruck)
+CollectionService:GetInstanceRemovedSignal("TruckModel"):Connect(untrack)
+for _, model in CollectionService:GetTagged("TruckModel") do
+	watchTruck(model)
+end
+
 local fov = BASE_FOV
 local zoom = BASE_ZOOM
 local driving = false
 
 RunService.Heartbeat:Connect(function(dt)
-	sinceScan += dt
-	if sinceScan >= SCAN_EVERY then
-		sinceScan = 0
-		scan()
-	end
-
 	local camera = workspace.CurrentCamera
 	local eye = camera and camera.CFrame.Position or Vector3.zero
 	for model, t in trucks do
 		local chassis = model.PrimaryPart
-		if not chassis or not model.Parent then
+		if chassis ~= t.chassis then
+			-- The chassis streamed out (and maybe back in as a new part): start over on whatever is there now.
+			trucks[model] = nil
+			if model.Parent then
+				watchTruck(model)
+			end
 			continue
 		end
 		local rate = 0
