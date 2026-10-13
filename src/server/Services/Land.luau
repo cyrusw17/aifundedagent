@@ -574,12 +574,8 @@ local function fits(plot, def, gx, gz, dir, ignore)
 end
 
 -- What gets saved: the plot and the pieces by id, anchor cell and direction (and a silo's bales).
-local function saveItems(player, plot)
-	local s = Data.get(player)
-	local land = s and s[plot.landKey or "land"]
-	if not land then
-		return
-	end
+-- Writes a plot into its save table (plot-local, so it loads onto any free plot). ownerId picks whose bin needles go in.
+local function writeLand(land, plot, ownerId)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
@@ -596,12 +592,21 @@ local function saveItems(player, plot)
 	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
 	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
-	land.needles = plot.bin.contents(player.UserId)
+	land.needles = plot.bin.contents(ownerId)
 	local crew = {}
 	for userId in plot.crew do
 		table.insert(crew, userId)
 	end
 	land.crew = crew
+end
+
+local function saveItems(player, plot)
+	local s = Data.get(player)
+	local land = s and s[plot.landKey or "land"]
+	if not land then
+		return
+	end
+	writeLand(land, plot, player.UserId)
 	plot.dirty = false
 end
 
@@ -1706,6 +1711,28 @@ local function onLoaded(player)
 		end)
 	end
 end
+
+-- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
+Land.test = {
+	plots = plots,
+	pieces = pieces,
+	farms = farms,
+	plotOf = plotOf,
+	key = key,
+	levelsOf = levelsOf,
+	turnFor = turnFor,
+	fits = fits,
+	spawnItem = spawnItem,
+	destroyItem = destroyItem,
+	writeLand = writeLand,
+	claim = claim,
+	release = release,
+	pickPlot = pickPlot,
+	restoreNeedles = restoreNeedles,
+	mailbox = mailbox,
+	onPlace = onPlace,
+	onUndo = onUndo,
+}
 
 function Land.build(worldFolder)
 	local folder = Instance.new("Folder")
