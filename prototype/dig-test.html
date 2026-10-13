@@ -1,0 +1,469 @@
+<title>Needlewood Dig Test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;800&display=swap">
+<style>
+/* Layout: a playable prototype of the one verb the whole game rests on. HUD on top, the hay pile canvas, a tool bar, then notes on what is being tested. */
+:root{
+  --bg:#f3f6ee; --surface:#ffffff; --fg:#1d2a22; --muted:#55645a; --line:#d5ded0;
+  --accent:#d98a0b; --accent-fg:#ffffff; --green:#2f6b4a; --chip:#e7efe0; --warn:#b3402a;
+  --display:'Lilita One','Trebuchet MS',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a14; --surface:#18271e; --fg:#e8f0e4; --muted:#9db0a2; --line:#2a3d31;
+  --accent:#f0ad2e; --accent-fg:#1b1200; --green:#6cc38f; --chip:#203329; --warn:#ff8a6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a14; --surface:#18271e; --fg:#e8f0e4; --muted:#9db0a2; --line:#2a3d31;
+  --accent:#f0ad2e; --accent-fg:#1b1200; --green:#6cc38f; --chip:#203329; --warn:#ff8a6b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding-inline:16px;padding-block:24px 56px}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.01em;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.9rem,5vw,2.8rem);line-height:1.05}
+h2{font-size:1.5rem;margin-block:36px 8px}
+p{margin:0}
+.kicker{font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:.75rem;color:var(--green)}
+.sub{color:var(--muted);max-width:66ch}
+
+.goal{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:14px}
+.goal .tail{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-family:var(--display);display:grid;place-items:center}
+.goal b{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.goal span{font-weight:700}
+.dots{display:flex;gap:5px;margin-left:auto;flex:none}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent)}
+
+.hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
+.hud>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+.hud small{display:block;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hud b{font-family:var(--display);font-weight:400;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.bag{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:2px}
+.bag i{display:block;height:100%;background:var(--accent);width:0}
+
+.stage{position:relative;margin-top:10px;border:3px solid var(--fg);border-radius:14px;overflow:hidden;background:#6aa65a;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
+.toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:#14221a;color:#fff;font-family:var(--display);padding:6px 16px;border-radius:99px;font-size:1.05rem;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1}
+.heat{position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:8px;background:#000a;color:#fff;border-radius:99px;padding:4px 12px 4px 6px;font-weight:800;font-size:.85rem}
+.heat i{display:block;width:70px;height:8px;border-radius:4px;background:#fff3;overflow:hidden}
+.heat i u{display:block;height:100%;width:0;background:hsl(210 80% 60%)}
+
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.bar button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 12px;min-height:44px}
+.bar button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-fg)}
+.bar button:disabled{opacity:.5;cursor:not-allowed}
+.bar button.go{border-color:var(--green);background:var(--green);color:var(--bg)}
+.bar button:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.bar .sp{flex:1}
+.shop{display:none;margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.shop.open{display:block}
+.shop .row{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.shop .row:last-child{border:0}
+.shop .row div{flex:1;min-width:0}
+.shop .row b{font-family:var(--display);font-weight:400}
+.shop .row span{display:block;color:var(--muted);font-size:.85rem}
+.shop button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:10px;padding:6px 12px}
+.shop button:disabled{opacity:.45;border-color:var(--line);background:var(--chip);color:var(--muted);cursor:not-allowed}
+.codex{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.codex span{display:flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px 12px 3px 8px;font-weight:800;font-size:.88rem;font-variant-numeric:tabular-nums}
+.codex svg{width:18px;height:18px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.panel h3{font-size:1.1rem;margin-bottom:4px}
+.panel ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:.93rem}
+.foot{margin-top:36px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:14px}
+
+.hud b small{font-size:.7rem;color:var(--muted);font-family:var(--body);font-weight:800}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:3px}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.meter.luck i{background:linear-gradient(90deg,#79b6e8,#d44bd0)}
+.chip2[hidden]{display:none}
+.chip2{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--green);background:var(--chip);border-radius:99px;padding:1px 8px;margin-top:2px}
+.hud button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--green);background:var(--green);color:var(--bg);border-radius:8px;padding:2px 10px;margin-top:3px}
+.hud button:disabled{opacity:.45;cursor:not-allowed}
+.polish{position:absolute;right:10px;top:10px;display:flex;gap:10px;align-items:center;background:#14221af0;color:#fff;border-radius:14px;padding:8px 12px;max-width:min(300px,80%)}
+.polish[hidden]{display:none}
+.polish svg{width:54px;height:54px;flex:none}
+.polish b{font-family:var(--display);font-weight:400;font-size:1.05rem;display:block}
+.polish span{font-size:.82rem;opacity:.85;display:block}
+.polish button{font:inherit;font-weight:800;cursor:pointer;border:0;background:#f2b705;color:#2a1c00;border-radius:8px;padding:6px 12px;margin-top:4px;min-height:36px}
+.mut{background:linear-gradient(90deg,#ff5a5a,#ffd23f,#3fd0ff,#b45cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pb{margin:6px 0}
+.pb label{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;font-weight:700}
+.pb label span{color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.pb button{font:inherit;font-weight:800;cursor:pointer;border:2px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:1px 10px;margin-left:8px}
+.feed div{font-size:.88rem;color:var(--muted);padding:2px 0;border-bottom:1px dashed var(--line)}
+.feed div b{color:var(--fg)}
+.feed div.rare b{color:var(--accent)}
+.panel h3 small{font-family:var(--body);font-size:.7rem;color:var(--muted);font-weight:800;letter-spacing:.05em}
+</style>
+
+<div class="wrap">
+  <div class="kicker">Playable prototype · Addiction pass</div>
+  <h1>Needlewood Dig Test 2</h1>
+  <p class="sub" style="margin-top:8px">Same dig, now with the hooks from the engagement audit. Needles glint in their rarity color, a near miss shouts at you, finds chain into combos, luck builds when you find common needles, and every find ends with a polish step that can reveal a mutation. Press and drag across the hay.</p>
+
+  <div class="goal" aria-live="polite"><div class="tail">T</div><div><b>The Tailor says</b><span id="goalText"></span></div><div class="dots" id="dots"></div></div>
+
+  <div class="hud">
+    <div><small>Cash</small><b id="cash">$0</b></div>
+    <div><small>Hay bag</small><b id="hay">0 / 150</b><div class="bag"><i id="bagbar"></i></div></div>
+    <div><small>Needles</small><b id="nfound">0 / 6</b></div>
+    <div><small>Tool</small><b id="toolname">Hands</b></div>
+    <div><small>Luck</small><b id="lucktxt">0%</b><div class="meter luck"><i id="luckbar"></i></div></div>
+    <div><small>Combo</small><b id="combo">&mdash;</b></div>
+    <div><small>Idle line</small><b id="bank">$0</b><button type="button" id="collect" disabled>Collect</button></div>
+    <div><small>Daily streak</small><b id="streak">Day 1</b><span class="chip2" id="freeze" hidden>Freeze used</span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" width="960" height="540" aria-label="A pile of hay. Press and drag to dig for hidden needles."></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="polish" id="polish" hidden><svg id="psvg" viewBox="0 0 64 64" aria-hidden="true"></svg><div><b id="ptitle"></b><span id="psub"></span><button type="button" id="pbtn">Polish</button></div></div>
+    <div class="heat"><span id="heatTxt">Cold</span><i><u id="heatBar"></u></i></div>
+  </div>
+
+  <div class="bar" id="bar">
+    <span id="tools" style="display:contents"></span>
+    <span class="sp"></span>
+    <button type="button" id="sell" class="go">Sell hay to cow</button>
+    <button type="button" id="shopBtn" aria-pressed="false">Shop</button>
+    <button type="button" id="snd" aria-pressed="false">Sound off</button>
+    <button type="button" id="restack">Re-stack</button>
+  </div>
+
+  <div class="shop" id="shop"></div>
+  <div class="codex" id="codex" aria-label="Needles found"></div>
+  <div class="cols">
+    <div class="panel"><h3>Bounties</h3><div id="bounties"></div></div>
+    <div class="panel"><h3>Almost there</h3><div id="almost"></div></div>
+    <div class="panel"><h3>Server feed <small>(SIMULATED)</small></h3><div class="feed" id="feed"></div></div>
+  </div>
+
+  <h2>What changed from the first test</h2>
+  <div class="cols">
+    <div class="panel"><h3>New hooks to feel</h3><ul><li><b>Rarity tell.</b> The sparkle takes the needle's color.</li><li><b>Near miss.</b> SO CLOSE bobs over your tool.</li><li><b>Combo.</b> Chain finds within 45 seconds for up to x2.5.</li><li><b>Luck.</b> Common finds fill the bar. Full means the next find upgrades a tier.</li><li><b>Polish.</b> Tap the dusty needle to reveal a mutation.</li></ul></div>
+    <div class="panel"><h3>Questions for a tester</h3><ul><li>Do you want to keep digging after five minutes?</li><li>Did the ring tell you where to go without being told?</li><li>Was the first needle too easy, too slow, or about right?</li><li>Did the rake feel worth buying?</li></ul></div>
+    <div class="panel"><h3>Also here</h3><ul><li>Bounties and an Almost there panel, so something is always nearly done.</li><li>An idle line that earns while you are away, up to 8 hours.</li><li>A daily streak that forgives one missed day.</li><li>A simulated server feed. The other players are fake.</li></ul></div>
+  </div>
+
+  <p class="foot">Prototype for feel only. Prices, rarities and tool ranges are placeholders to tune from playtests. Design review: the Needlewood Design Review page.</p>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cv'),cx=cv.getContext('2d');
+  var CS=20,COLS=48,ROWS=27,W=960,H=540;
+  var RAR=[
+    {n:'Steel',c:'#9aa6b2',p:.58,v:25,beam:60},
+    {n:'Bronze',c:'#c0773a',p:.25,v:80,beam:90},
+    {n:'Silver',c:'#79b6e8',p:.11,v:220,beam:120},
+    {n:'Gold',c:'#f2c230',p:.05,v:700,beam:170},
+    {n:'Legendary',c:'#d44bd0',p:.01,v:3000,beam:260}
+  ];
+  var TOOLS=[
+    {id:'hands',n:'Hands',r:1.15,d:1,range:7,price:0},
+    {id:'rake',n:'Rake',r:1.9,d:1,range:9,price:120},
+    {id:'fork',n:'Pitchfork',r:2.7,d:2,range:11,price:450},
+    {id:'det',n:'Detector',r:2.7,d:2,range:20,price:1400}
+  ];
+  var S;
+  function el(i){return document.getElementById(i)}
+  function newStack(){
+    var g=[],mask=[],jit=[],i,x,y;
+    for(y=0;y<ROWS;y++){for(x=0;x<COLS;x++){
+      var dx=(x+.5-COLS/2)/(COLS/2-1),dy=(y+.5-ROWS/2)/(ROWS/2-.5),m=dx*dx+dy*dy<1;
+      mask.push(m);
+      g.push(m?(3+Math.floor((1-Math.sqrt(dx*dx+dy*dy))*4+Math.random()*1.5)):0);
+      jit.push([Math.random(),Math.random()*Math.PI]);
+    }}
+    var needles=[],tries=0;
+    function pick(near){
+      for(var k=0;k<200;k++){
+        var px=near?Math.floor(COLS/2+(Math.random()-.5)*16):Math.floor(Math.random()*COLS),py=near?Math.floor(ROWS/2+(Math.random()-.5)*8):Math.floor(Math.random()*ROWS),idx=py*COLS+px;
+        if(mask[idx]&&g[idx]>=2&&!needles.some(function(n){return Math.hypot(n.x-px,n.y-py)<6}))return {x:px,y:py}
+      }
+      return {x:COLS/2|0,y:ROWS/2|0};
+    }
+    var first=pick(true);first.r=0;first.found=false;needles.push(first);
+    while(needles.length<6){
+      var p=pick(false),roll=Math.random(),acc=0,r=0;
+      for(i=0;i<RAR.length;i++){acc+=RAR[i].p;if(roll<=acc){r=i;break}}
+      p.r=r;p.found=false;needles.push(p);
+    }
+    needles.forEach(function(n){g[n.y*COLS+n.x]=Math.max(g[n.y*COLS+n.x],2)});
+    return {g:g,mask:mask,jit:jit,needles:needles,t0:performance.now(),dug:0};
+  }
+  var st={cash:0,hay:0,cap:150,capCost:200,tool:0,owned:[1,0,0,0],sold:0,found:0,counts:[0,0,0,0,0],step:0,sound:false,dugTotal:0,luck:0,combo:0,comboT:0,bank:0,streak:1,
+    bounty:[{t:'Dig 150 hay',k:'hay',goal:150,p:0,r:150,c:false},{t:'Find 2 needles',k:'find',goal:2,p:0,r:220,c:false},{t:'Find a Silver or better',k:'rare',goal:1,p:0,r:500,c:false}]};
+  var HAYV=.2,shake=0,shaking=false,RATE=6,CAPBANK=RATE*60*8;
+  S=newStack();
+  var fx=[],pulls=[],ptr={x:-1,y:-1,down:false,in:false},last=0,flash=0,hintShown=false;
+
+  /* ---- audio ---- */
+  var ac=null,osc=null,gain=null;
+  function audioOn(){
+    try{
+      if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();osc=ac.createOscillator();gain=ac.createGain();osc.type='sine';osc.frequency.value=220;gain.gain.value=0;osc.connect(gain);gain.connect(ac.destination);osc.start()}
+      if(ac.state==='suspended')ac.resume();
+    }catch(e){st.sound=false}
+  }
+  function hum(h){
+    if(!ac||!st.sound)return;
+    try{osc.frequency.setTargetAtTime(220+h*620,ac.currentTime,.05);gain.gain.setTargetAtTime(h>.12&&ptr.in?.03+h*.05:0,ac.currentTime,.05)}catch(e){}
+  }
+  function chime(r){
+    if(!ac||!st.sound)return;
+    try{
+      for(var i=0;i<=r+1;i++){
+        var o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=520*Math.pow(1.25,i);
+        g.gain.setValueAtTime(0,ac.currentTime+i*.08);g.gain.linearRampToValueAtTime(.12,ac.currentTime+i*.08+.02);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+i*.08+.5);
+        o.connect(g);g.connect(ac.destination);o.start(ac.currentTime+i*.08);o.stop(ac.currentTime+i*.08+.55);
+      }
+    }catch(e){}
+  }
+
+  /* ---- helpers ---- */
+  function toast(t,ms){var e=el('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove('show')},ms||1800)}
+  function nearest(px,py){
+    var best=1e9,bn=null;
+    S.needles.forEach(function(n){if(n.found)return;var d=Math.hypot(n.x+.5-px,n.y+.5-py);if(d<best){best=d;bn=n}});
+    return {d:best,n:bn};
+  }
+  function money(n){return '$'+Math.round(n).toLocaleString('en-US')}
+  function toolNow(){return TOOLS[st.tool]}
+
+  /* ---- digging ---- */
+  function dig(){
+    if(!ptr.in)return;
+    var t=toolNow(),cxp=ptr.x/CS,cyp=ptr.y/CS,removed=0,full=false;
+    var x0=Math.max(0,Math.floor(cxp-t.r)),x1=Math.min(COLS-1,Math.ceil(cxp+t.r)),y0=Math.max(0,Math.floor(cyp-t.r)),y1=Math.min(ROWS-1,Math.ceil(cyp+t.r));
+    for(var y=y0;y<=y1;y++)for(var x=x0;x<=x1;x++){
+      if(Math.hypot(x+.5-cxp,y+.5-cyp)>t.r)continue;
+      var i=y*COLS+x;if(S.g[i]<=0)continue;
+      var room=Math.floor((st.cap-st.hay)/HAYV+1e-9);
+      if(room<=0){full=true;continue}
+      var take=Math.min(t.d,S.g[i],room);
+      S.g[i]-=take;st.hay+=take*HAYV;removed+=take;st.dugTotal+=take;bump('hay',take*HAYV);
+      if(Math.random()<.5)fx.push({x:(x+.5)*CS,y:(y+.5)*CS,vx:(Math.random()-.5)*160,vy:-60-Math.random()*140,life:.6,type:'hay'});
+      if(S.g[i]===0){S.needles.forEach(function(n){if(!n.found&&n.x===x&&n.y===y)pull(n)})}
+    }
+    if(full&&!removed)toast('Bag full. Sell hay to the cow.');
+    ui();
+  }
+  var MUT=[{n:'',m:1,p:.7},{n:'Giant',m:2,p:.15},{n:'Rainbow',m:3,p:.08},{n:'Glitch',m:4,p:.06},{n:'Cosmic',m:10,p:.01}];
+  function rollMut(){var r=Math.random(),a=0;for(var i=0;i<MUT.length;i++){a+=MUT[i].p;if(r<=a)return MUT[i]}return MUT[0]}
+  function bump(k,v){st.bounty.forEach(function(b){if(b.k===k&&!b.c)b.p=Math.min(b.goal,b.p+v)})}
+  function pull(n){
+    n.found=true;st.found++;
+    var lucky=false;
+    if(st.luck>=100){n.r=Math.min(4,n.r+1);st.luck=0;lucky=true}
+    else st.luck=Math.min(100,st.luck+(n.r<=1?25:n.r===2?10:0));
+    st.counts[n.r]++;
+    st.combo=st.comboT>0?st.combo+1:1;st.comboT=45;
+    var r=RAR[n.r];
+    pulls.push({x:(n.x+.5)*CS,y:(n.y+.5)*CS,t:0,r:n.r});
+    flash=n.r>=2?.5:.25;shake=6+n.r*5;chime(n.r);
+    bump('find',1);if(n.r>=2)bump('rare',1);
+    toast((lucky?'LUCKY! ':'')+r.n+' Needle found!',2200);
+    feedAdd('<b>You</b> found a '+r.n+' Needle',n.r>=2);
+    var left=S.needles.filter(function(q){return !q.found}).length;
+    if(left===1)setTimeout(function(){toast('Last needle in this Stack. Where is it?',2600)},2400);
+    if(left===0)setTimeout(function(){toast('Stack cleaned out. Press Re-stack.',3000)},2800);
+    if(navigator.vibrate){try{navigator.vibrate(n.r>=2?[40,40,80]:30)}catch(e){}}
+    queuePolish({r:n.r,mut:rollMut(),cm:Math.min(2.5,1+(st.combo-1)*.5)});
+    ui();
+  }
+  /* polish step: wipe the dust to reveal a mutation */
+  var pq=[],pcur=null,ptaps=3,ptimer=0;
+  function needleSvg(color,dust,mut){
+    var stroke=mut&&mut.n==='Rainbow'?'url(#rbw)':color;
+    return '<defs><linearGradient id="rbw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a5a"/><stop offset=".4" stop-color="#ffd23f"/><stop offset=".7" stop-color="#3fd0ff"/><stop offset="1" stop-color="#b45cff"/></linearGradient></defs><path d="M8 56 L52 12" stroke="'+stroke+'" stroke-width="'+(mut&&mut.n==='Giant'?8:5)+'" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="14" rx="4.5" ry="7" transform="rotate(45 50 14)" fill="none" stroke="'+stroke+'" stroke-width="3.5"/>'+(dust>0?'<circle cx="32" cy="32" r="29" fill="#b9a07a" opacity="'+(dust*.9).toFixed(2)+'"/>':'');
+  }
+  function queuePolish(p){pq.push(p);if(!pcur)nextPolish()}
+  function nextPolish(){
+    pcur=pq.shift();if(!pcur){el('polish').hidden=true;return}
+    ptaps=3;el('polish').hidden=false;showPolish();clearTimeout(ptimer);ptimer=setTimeout(finishPolish,6500);
+  }
+  function showPolish(){
+    var r=RAR[pcur.r];
+    el('psvg').innerHTML=needleSvg(r.c,ptaps/3,null);
+    el('ptitle').textContent='Dusty '+r.n+' Needle';
+    el('psub').textContent='Polish it to reveal what it is.';
+    el('pbtn').textContent='Polish ('+ptaps+')';el('pbtn').hidden=false;
+  }
+  function finishPolish(){
+    if(!pcur)return;clearTimeout(ptimer);
+    var r=RAR[pcur.r],m=pcur.mut,val=Math.round(r.v*m.m*pcur.cm);
+    st.cash+=val;
+    el('psvg').innerHTML=needleSvg(r.c,0,m);
+    el('ptitle').innerHTML=(m.n?'<span class="mut">'+m.n+'</span> ':'')+r.n+' Needle';
+    el('psub').textContent='+'+money(val)+(m.m>1?' (x'+m.m+' mutation)':'')+(pcur.cm>1?' (combo x'+pcur.cm.toFixed(1)+')':'');
+    el('pbtn').hidden=true;
+    if(m.m>=3){flash=.45;shake=14;chime(4);feedAdd('<b>You</b> polished a '+m.n+' '+r.n+' Needle',true)}
+    var done=pcur;pcur=null;ui();
+    setTimeout(function(){if(!pcur)nextPolish()},1700);
+  }
+  el('pbtn').addEventListener('click',function(){if(!pcur)return;ptaps--;if(ptaps<=0)finishPolish();else showPolish()});
+
+  /* ---- render ---- */
+  var HAY=['#6b4a2b','#ead27e','#e0bf58','#d4aa42','#c1952f','#aa8024'];
+  function draw(now){
+    var i,x,y,dt=Math.min(.05,(now-last)/1000||0);last=now;
+    if(st.comboT>0){st.comboT-=dt;if(st.comboT<=0){st.comboT=0;st.combo=0}}
+    st.bank=Math.min(CAPBANK,st.bank+dt*RATE/60);
+    if(now-(draw.u||0)>250){draw.u=now;hudTick()}
+    cx.fillStyle='#6aa65a';cx.fillRect(0,0,W,H);
+    shaking=false;if(shake>.3){cx.save();cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake=Math.max(0,shake-dt*34);shaking=true}
+    for(y=0;y<ROWS;y++)for(x=0;x<COLS;x++){
+      i=y*COLS+x;
+      if(!S.mask[i]){cx.fillStyle=((x+y)&1)?'#66a056':'#6caa5c';cx.fillRect(x*CS,y*CS,CS,CS);continue}
+      var d=S.g[i],j=S.jit[i][0];
+      cx.fillStyle=d>0?HAY[Math.min(5,d)]:(j>.5?'#6b4a2b':'#74522f');
+      cx.fillRect(x*CS,y*CS,CS,CS);
+      if(d>0){
+        cx.strokeStyle='rgba(120,80,10,.45)';cx.lineWidth=1.4;cx.beginPath();
+        var a=S.jit[i][1],cxx=x*CS+CS/2,cyy=y*CS+CS/2;
+        cx.moveTo(cxx-Math.cos(a)*7,cyy-Math.sin(a)*7);cx.lineTo(cxx+Math.cos(a)*7,cyy+Math.sin(a)*7);cx.stroke();
+        cx.strokeStyle='rgba(255,245,190,.35)';cx.beginPath();cx.moveTo(cxx-Math.sin(a)*5,cyy+Math.cos(a)*5);cx.lineTo(cxx+Math.sin(a)*5,cyy-Math.cos(a)*5);cx.stroke();
+      }
+    }
+    /* glints: needles near the surface sparkle */
+    var tt=now/1000;
+    S.needles.forEach(function(n){
+      if(n.found)return;
+      var dep=S.g[n.y*COLS+n.x],hint=(!hintShown&&n.r===0&&st.found===0&&(now-S.t0)>75000);
+      if(dep<=1||hint){
+        var s=.6+.4*Math.sin(tt*6+n.x),px=(n.x+.5)*CS,py=(n.y+.5)*CS;
+        cx.globalAlpha=.5+.45*s;cx.fillStyle=RAR[n.r].c;cx.beginPath();
+        for(var k=0;k<8;k++){var ang=k*Math.PI/4,rad=(k%2?4:12)*s*(1+n.r*.18);cx.lineTo(px+Math.cos(ang)*rad,py+Math.sin(ang)*rad)}
+        cx.closePath();cx.fill();cx.globalAlpha=1;cx.fillStyle='#fff';cx.beginPath();cx.arc(px,py,2.6,0,6.3);cx.fill();
+      }
+    });
+    /* pulls */
+    pulls=pulls.filter(function(p){return p.t<1.8});
+    pulls.forEach(function(p){
+      p.t+=dt;var r=RAR[p.r],k=Math.min(1,p.t/.5),up=-60*k-p.t*20,fade=Math.max(0,1-Math.max(0,p.t-1)/.8);
+      var grad=cx.createLinearGradient(0,p.y-r.beam,0,p.y);grad.addColorStop(0,'rgba(255,255,255,0)');grad.addColorStop(1,r.c);
+      cx.globalAlpha=.55*fade;cx.fillStyle=grad;cx.fillRect(p.x-8-p.r*3,p.y-r.beam*k*2,16+p.r*6,r.beam*k*2);cx.globalAlpha=fade;
+      cx.save();cx.translate(p.x,p.y+up);cx.rotate(-.8);cx.strokeStyle=r.c;cx.lineWidth=4;cx.lineCap='round';cx.beginPath();cx.moveTo(-18,0);cx.lineTo(18,0);cx.stroke();
+      cx.lineWidth=2.5;cx.beginPath();cx.ellipse(17,0,5,2.5,0,0,Math.PI*2);cx.stroke();cx.restore();cx.globalAlpha=1;
+    });
+    /* particles */
+    fx=fx.filter(function(f){return f.life>0});
+    fx.forEach(function(f){f.life-=dt;f.vy+=420*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;cx.globalAlpha=Math.max(0,f.life/.6);cx.fillStyle='#e9cf78';cx.fillRect(f.x-2,f.y-2,5,2.5);cx.globalAlpha=1});
+    /* cursor ring and heat */
+    if(ptr.in){
+      var t=toolNow(),q=nearest(ptr.x/CS,ptr.y/CS),h=q.n?Math.pow(Math.max(0,1-q.d/t.range),1.2):0;
+      var hue=210*(1-h),pulse=1+Math.sin(now/(280-h*200))*.08*(.3+h);
+      cx.strokeStyle='hsl('+hue+' 85% '+(60-h*8)+'%)';cx.lineWidth=3+h*3;cx.beginPath();cx.arc(ptr.x,ptr.y,t.r*CS*pulse,0,Math.PI*2);cx.stroke();
+      cx.strokeStyle='rgba(255,255,255,.55)';cx.lineWidth=1;cx.setLineDash([4,4]);cx.beginPath();cx.arc(ptr.x,ptr.y,t.r*CS*pulse+6,0,Math.PI*2);cx.stroke();cx.setLineDash([]);
+      if(t.id==='det'&&q.n){
+        var ang=Math.atan2((q.n.y+.5)*CS-ptr.y,(q.n.x+.5)*CS-ptr.x),ax=ptr.x+Math.cos(ang)*(t.r*CS+22),ay=ptr.y+Math.sin(ang)*(t.r*CS+22);
+        cx.save();cx.translate(ax,ay);cx.rotate(ang);cx.fillStyle='#fff';cx.strokeStyle='#14221a';cx.lineWidth=2;cx.beginPath();cx.moveTo(10,0);cx.lineTo(-6,-7);cx.lineTo(-6,7);cx.closePath();cx.fill();cx.stroke();cx.restore();
+      }
+      el('heatBar').style.width=Math.round(h*100)+'%';el('heatBar').style.background='hsl('+hue+' 85% 58%)';
+      el('heatTxt').textContent=h>.85?'Burning':h>.6?'Hot':h>.3?'Warm':'Cold';
+      if(q.n&&q.d<2.6){
+        cx.font='22px "Lilita One",sans-serif';cx.textAlign='center';cx.lineWidth=5;cx.strokeStyle='#14221a';cx.fillStyle='#ffe066';
+        var bob=Math.sin(now/90)*3;cx.strokeText('SO CLOSE!',ptr.x,ptr.y-t.r*CS-16+bob);cx.fillText('SO CLOSE!',ptr.x,ptr.y-t.r*CS-16+bob);
+      }
+      hum(h);
+    }else{hum(0)}
+    if(shaking){cx.restore()}
+    if(flash>0){cx.fillStyle='rgba(255,255,255,'+flash+')';cx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*1.2)}
+    if(ptr.down&&now-(dig.l||0)>110){dig.l=now;dig()}
+    requestAnimationFrame(draw);
+  }
+
+  /* ---- UI ---- */
+  var GOALS=[
+    ['Press and drag across the hay with your hands. Follow the ring: blue is cold, red is hot.',function(){return st.dugTotal>=60}],
+    ['Keep digging toward the red. Find your first needle.',function(){return st.found>=1}],
+    ['Nice. Fill your bag a bit, then sell hay to the cow.',function(){return st.sold>=1}],
+    ['Open the Shop and buy a Rake. It clears a wider patch.',function(){return st.owned[1]===1}],
+    ['Find three needles in total. Try the Pitchfork when you can.',function(){return st.found>=3}],
+    ['Next in the full game: a wheelbarrow to haul a bale home. Keep digging for rarer needles.',function(){return false}]
+  ];
+  function ui(){
+    el('cash').textContent=money(st.cash);
+    el('hay').textContent=Math.floor(st.hay)+' / '+st.cap;el('bagbar').style.width=Math.min(100,st.hay/st.cap*100)+'%';
+    el('nfound').textContent=S.needles.filter(function(n){return n.found}).length+' / 6';
+    el('toolname').textContent=toolNow().n;
+    el('sell').disabled=Math.floor(st.hay)<1;
+    while(st.step<GOALS.length-1&&GOALS[st.step][1]())st.step++;
+    el('goalText').textContent=GOALS[st.step][0];
+    el('dots').innerHTML=GOALS.map(function(g,i){return '<i class="'+(i<=st.step?'on':'')+'"></i>'}).join('');
+    var tb='';TOOLS.forEach(function(t,i){tb+='<button type="button" data-t="'+i+'" aria-pressed="'+(st.tool===i)+'"'+(st.owned[i]?'':' disabled')+'>'+t.n+'</button>'});
+    el('tools').innerHTML=tb;
+    el('codex').innerHTML=RAR.map(function(r,i){return '<span><svg viewBox="0 0 64 64" style="color:'+r.c+'"><path d="M8 56 L52 12" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="none"/><ellipse cx="50" cy="14" rx="4.5" ry="7" transform="rotate(45 50 14)" fill="none" stroke="currentColor" stroke-width="4"/></svg>'+r.n+' '+st.counts[i]+'</span>'}).join('');
+    var sh='';TOOLS.slice(1).forEach(function(t,k){var i=k+1;sh+='<div class="row"><div><b>'+t.n+'</b><span>Radius '+t.r+', digs '+t.d+' deep, senses needles '+t.range+' cells away</span></div>'+(st.owned[i]?'<span>Owned</span>':'<button type="button" data-b="'+i+'"'+(st.cash<t.price?' disabled':'')+'>'+money(t.price)+'</button>')+'</div>'});
+    sh+='<div class="row"><div><b>Bigger bag</b><span>+100 hay capacity</span></div><button type="button" data-b="bag"'+(st.cash<st.capCost?' disabled':'')+'>'+money(st.capCost)+'</button></div>';
+    el('shop').innerHTML=sh;
+    renderExtras();
+  }
+  el('tools').addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;st.tool=+b.dataset.t;ui()});
+  el('shop').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-b]');if(!b)return;var k=b.dataset.b;
+    if(k==='bag'){if(st.cash>=st.capCost){st.cash-=st.capCost;st.cap+=100;st.capCost=Math.round(st.capCost*1.6)}}
+    else{var t=TOOLS[+k];if(st.cash>=t.price&&!st.owned[+k]){st.cash-=t.price;st.owned[+k]=1;st.tool=+k;toast(t.n+' bought!')}}
+    ui();
+  });
+  el('sell').addEventListener('click',function(){var v=Math.floor(st.hay);if(v<1)return;st.cash+=v;st.hay=0;st.sold++;toast('Sold '+v+' hay for '+money(v));ui()});
+  el('shopBtn').addEventListener('click',function(){var o=el('shop').classList.toggle('open');this.setAttribute('aria-pressed',o)});
+  el('snd').addEventListener('click',function(){st.sound=!st.sound;this.setAttribute('aria-pressed',st.sound);this.textContent=st.sound?'Sound on':'Sound off';if(st.sound)audioOn();else hum(0)});
+  el('restack').addEventListener('click',function(){S=newStack();fx=[];pulls=[];toast('Fresh Stack!');ui()});
+
+  /* ---- extras: hud, bounties, idle line, streak, feed ---- */
+  function hudTick(){
+    var cm=Math.min(2.5,1+(st.combo-1)*.5);
+    el('combo').innerHTML=st.combo>0?'x'+cm.toFixed(1)+' <small>'+Math.ceil(st.comboT)+'s</small>':'&mdash;';
+    el('lucktxt').textContent=Math.round(st.luck)+'%';el('luckbar').style.width=st.luck+'%';
+    var b=Math.floor(st.bank);el('bank').innerHTML=money(b)+' <small>of '+money(CAPBANK)+'</small>';el('collect').disabled=b<1;
+  }
+  function bar(label,val,txt,btn){return '<div class="pb"><label>'+label+'<span>'+txt+(btn||'')+'</span></label><div class="meter"><i style="width:'+Math.min(100,val*100)+'%"></i></div></div>'}
+  function renderExtras(){
+    el('bounties').innerHTML=st.bounty.map(function(b,i){
+      var done=b.p>=b.goal;
+      return bar(b.t,b.p/b.goal,b.c?'Claimed':Math.floor(b.p)+' / '+b.goal,done&&!b.c?'<button type="button" data-c="'+i+'">Claim '+money(b.r)+'</button>':'');
+    }).join('');
+    var nx=-1;for(var i=1;i<TOOLS.length;i++)if(!st.owned[i]){nx=i;break}
+    var left=S.needles.filter(function(n){return n.found}).length;
+    el('almost').innerHTML=
+      (nx>=0?bar('Next tool: '+TOOLS[nx].n,st.cash/TOOLS[nx].price,Math.min(100,Math.round(st.cash/TOOLS[nx].price*100))+'% funded'):bar('All tools owned',1,'Done'))+
+      bar('This Stack',left/6,left+' / 6 needles')+
+      bar('Bag',st.hay/st.cap,Math.floor(st.hay)+' / '+st.cap)+
+      bar('Next lucky upgrade',st.luck/100,Math.round(st.luck)+'%');
+    el('streak').textContent='Day '+st.streak;
+    hudTick();
+  }
+  el('bounties').addEventListener('click',function(e){var b=e.target.closest('button[data-c]');if(!b)return;var q=st.bounty[+b.dataset.c];if(q.p>=q.goal&&!q.c){q.c=true;st.cash+=q.r;toast('Bounty claimed! +'+money(q.r));ui()}});
+  el('collect').addEventListener('click',function(){var v=Math.floor(st.bank);if(v<1)return;st.cash+=v;st.bank=0;toast('Collected '+money(v)+' from your line');ui()});
+  var NAMES=['Mika','Juno','Rex','Pip','Sol','Ari','Tess','Bo'],PLACES=['Pine Forest','Meadow Farm','Snow Peak','Desert Dunes'],FEED=[];
+  function feedAdd(html,rare){FEED.unshift('<div class="'+(rare?'rare':'')+'">'+html+'</div>');FEED=FEED.slice(0,4);el('feed').innerHTML=FEED.join('')}
+  function fakeFeed(){
+    var n=NAMES[Math.floor(Math.random()*NAMES.length)],r=Math.random(),k=r<.5?1:r<.8?2:r<.95?3:4;
+    feedAdd('<b>'+n+'</b> found a '+RAR[k].n+' Needle in '+PLACES[Math.floor(Math.random()*PLACES.length)],k>=3);
+    setTimeout(fakeFeed,9000+Math.random()*8000);
+  }
+  setTimeout(fakeFeed,3500);feedAdd('<b>Server</b> The Golden Needle spawns at dusk',false);
+  /* persistence: idle line while away, daily streak with a forgiving freeze */
+  try{
+    var ls=window.localStorage,seen=+ls.getItem('nw_seen')||0;
+    if(seen){var away=Math.min(480,(Date.now()-seen)/60000);st.bank=Math.min(CAPBANK,Math.floor(away*RATE));if(st.bank>=5)setTimeout(function(){toast('Welcome back! Your line made '+money(st.bank),3600)},900)}
+    var today=new Date().toISOString().slice(0,10),d0=ls.getItem('nw_day'),sk=+ls.getItem('nw_streak')||0;
+    if(!d0)sk=1;else if(d0!==today){var diff=Math.round((Date.parse(today)-Date.parse(d0))/86400000);if(diff===1)sk++;else if(diff===2){sk++;el('freeze').hidden=false}else sk=1}
+    ls.setItem('nw_day',today);ls.setItem('nw_streak',sk);st.streak=sk;
+  }catch(e){}
+  function saveSeen(){try{localStorage.setItem('nw_seen',Date.now())}catch(e){}}
+  setInterval(saveSeen,10000);window.addEventListener('pagehide',saveSeen);
+
+  /* ---- pointer ---- */
+  function pos(e){var r=cv.getBoundingClientRect();ptr.x=(e.clientX-r.left)*W/r.width;ptr.y=(e.clientY-r.top)*H/r.height;ptr.in=true}
+  cv.addEventListener('pointerdown',function(e){pos(e);ptr.down=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}dig.l=performance.now();dig()});
+  cv.addEventListener('pointermove',function(e){pos(e)});
+  cv.addEventListener('pointerup',function(e){ptr.down=false;if(e.pointerType!=='mouse')ptr.in=false});
+  cv.addEventListener('pointercancel',function(){ptr.down=false;ptr.in=false});
+  cv.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse'){ptr.in=false;ptr.down=false}});
+  ui();requestAnimationFrame(draw);
+})();
+</script>
