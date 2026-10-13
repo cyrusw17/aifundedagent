@@ -40,6 +40,27 @@ end
 local overlap = OverlapParams.new()
 
 local HayLooks = require(ReplicatedStorage.Shared.Config.HayLooks)
+local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+
+-- A bale's or strand's boost (NeedleBoost, MutationBoost): a positive number, else 1.
+function Hay.boostOf(part, name)
+	local v = part:GetAttribute(name)
+	return (typeof(v) == "number" and v > 0 and v == v) and v or 1
+end
+
+-- The boosts a bale passes on to its strands, and strands to the pile or bale they end up in.
+Hay.BoostAttributes = { "NeedleBoost", "MutationBoost" }
+
+-- The chance each unit of hay in this bale or strand hides a needle: its hay type's (Prices.needleChance), times its
+-- NeedleBoost (rich field, chute, region event, Hay Market; a golden bale's strands carry its golden multiple), and a
+-- golden bale's GoldenBaleNeedles. Capped at 1.
+function Hay.needleChanceOf(part)
+	local chance = Prices.needleChance(part:GetAttribute("HayType")) * Hay.boostOf(part, "NeedleBoost")
+	if part:GetAttribute("GoldenField") == true then
+		chance *= Config.GoldenBaleNeedles
+	end
+	return math.min(chance, 1)
+end
 
 -- The look for a hay type (Config/HayLooks), meadow when unknown.
 function Hay.look(hayType)
@@ -343,8 +364,11 @@ local function packPile(at, ownerId)
 	for _, piece in Hay.near(at, Config.PileRadius, nil) do
 		if not needleSet[piece] then
 			local key = piece:GetAttribute("Sorted") and "sorted" or "raw"
-			groups[key] = groups[key] or { strands = 0, parts = {}, pile = nil }
+			groups[key] = groups[key] or { strands = 0, parts = {}, pile = nil, boosts = {} }
 			local g = groups[key]
+			for _, name in Hay.BoostAttributes do
+				g.boosts[name] = (g.boosts[name] or 0) + Hay.strandsIn(piece) * Hay.boostOf(piece, name)
+			end
 			if Hay.isPile(piece) and not g.pile then
 				g.pile = piece
 			else
@@ -391,6 +415,11 @@ local function packPile(at, ownerId)
 			end
 			for _, piece in g.parts do
 				Hay.remove(piece)
+			end
+			-- The pile keeps its strands' boosts, weighted by how many strands brought each.
+			for name, sum in g.boosts do
+				local boost = sum / g.strands
+				pile:SetAttribute(name, math.abs(boost - 1) > 1e-6 and boost or nil)
 			end
 			-- Grow it upward, so the bigger mound does not sink into the ground and pop out.
 			local oldHeight = pile.Size.Y

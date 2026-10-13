@@ -8,6 +8,7 @@ local Prices = require(script.Parent.Prices)
 return {
 	DespawnSeconds = 300, -- an unclaimed find fades after this long
 	PickupReach = 12,
+	OwnerSeconds = 60, -- only whoever broke the bale can keep its find this long; after that anyone can
 	Items = {
 		{
 			id = "boot",

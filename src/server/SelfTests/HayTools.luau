@@ -328,6 +328,16 @@ local function noPlayerChecks(t)
 	end
 	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
 
+	-- Hidden needles: each piece rolls at its own hay type's chance and boosts (script audit), not Meadow's.
+	local probe = Instance.new("Part")
+	probe:SetAttribute("HayType", "pine")
+	t.near("pine hay hides pine's share of needles", Hay.needleChanceOf(probe), Prices.needleChance("pine"), 1e-9)
+	probe:SetAttribute("NeedleBoost", 2)
+	t.near("...times its NeedleBoost", Hay.needleChanceOf(probe), math.min(2 * Prices.needleChance("pine"), 1), 1e-9)
+	probe:SetAttribute("NeedleBoost", 1e6)
+	t.check("...never over 1", Hay.needleChanceOf(probe) == 1)
+	probe:Destroy()
+
 	-- Earned tool skins: a page unlocks only when complete, and a skin recolors the tool and comes off cleanly.
 	local commonFinds = {}
 	for _, id in SkinConfig.CommonFinds do
@@ -350,8 +360,22 @@ local function noPlayerChecks(t)
 	blade.Color = Color3.fromRGB(100, 100, 100)
 	blade.Material = Enum.Material.Metal
 	blade.Parent = tool
+	-- A Rustic mesh part as the server holds it: hidden until the client swaps the mesh in (Props.weldTo).
+	local meshPart = Instance.new("Part")
+	meshPart.Name = "MeshBlade"
+	meshPart.Color = Color3.fromRGB(100, 100, 100)
+	meshPart.Transparency = 1
+	meshPart:SetAttribute("MeshTransparency", 0)
+	meshPart.Parent = tool
+	local invisible = Instance.new("Part")
+	invisible.Name = "Hitbox"
+	invisible.Color = Color3.fromRGB(100, 100, 100)
+	invisible.Transparency = 1
+	invisible.Parent = tool
 	t.cleanup(tool)
 	ToolSkins.dress(tool, "golden_shovel")
+	t.check("a skin recolors the mesh too", meshPart.Color ~= Color3.fromRGB(100, 100, 100))
+	t.check("...but not a part meant to stay invisible", invisible.Color == Color3.fromRGB(100, 100, 100))
 	t.check("a skin recolors the tool", blade.Color ~= Color3.fromRGB(100, 100, 100) and tool:GetAttribute("Skin") == "golden_shovel")
 	t.check("...and the golden one glints", tool:FindFirstChild("SkinGlint", true) ~= nil)
 	ToolSkins.dress(tool, nil)
@@ -648,6 +672,11 @@ local function edgeCases(t, player, state, root, stand)
 	t.equal("finding another after trading it away pays nothing", Bank.wallet(state) - cash1, 0)
 	t.equal("...and the reward stays marked paid", state.findsPaid.boot, 1)
 	t.equal("...though it is kept", state.finds.boot, 1)
+	-- A find someone else just broke out of a bale is theirs for a while: nobody nearby can take it.
+	local cash2 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot", player.UserId + 1)
+	t.equal("someone else's fresh find can't be taken", state.finds.boot, 1)
+	t.equal("...and pays nothing", Bank.wallet(state) - cash2, 0)
 	-- The test's reward is not real money: put the wallet back where it was.
 	if Config.InfiniteMoney then
 		state.savedCash = cash0
@@ -767,6 +796,7 @@ local function withPlayer(t, player)
 		-- Break with the shovel: the first bale ever always spills a needle.
 		Gloves.setFirstBaleBroken(player, false)
 		local third = bale(spot * CFrame.new(-10, 0, -4))
+		third.body:SetAttribute("MutationBoost", 3) -- a Hay Market bale: its odds must ride on its strands
 		Bales.breakOpen(player, third)
 		t.wait(1.6)
 		local burst = (spot * CFrame.new(-10, 0, -4)).Position
@@ -780,6 +810,13 @@ local function withPlayer(t, player)
 			end
 		end
 		t.check("a broken bale spills strands", strands >= Config.PiecesPerBale * 0.8, strands)
+		local boosted = 0
+		for _, p in strandsNear(burst, 14) do
+			if not Hay.isNeedle(p) and p:GetAttribute("MutationBoost") == 3 then
+				boosted += 1
+			end
+		end
+		t.check("its strands keep the bale's MutationBoost", parts > 0 and boosted == parts, ("%d of %d"):format(boosted, parts))
 		-- Part budget (Hay #24): the strands come out in clumps, a third of the parts for the same hay.
 		local perClump = Config.StrandsPerClump or 1
 		t.check("a broken bale spills clumps, not single strands", parts <= math.ceil(Config.PiecesPerBale / perClump), parts)

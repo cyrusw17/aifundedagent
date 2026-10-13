@@ -49,6 +49,13 @@ local function keep(player, part, def)
 	if (part.Position - root.Position).Magnitude > FindsConfig.PickupReach + 2 then
 		return
 	end
+	-- The find is the bale breaker's for a while, so nobody nearby can grab it (and its one-time reward) first.
+	local ownerId = part:GetAttribute("OwnerId")
+	local claimUntil = part:GetAttribute("ClaimUntil")
+	if ownerId and ownerId ~= player.UserId and claimUntil and workspace:GetServerTimeNow() < claimUntil then
+		Data.toast(player, "Someone else broke that bale. Their find is theirs for now.")
+		return
+	end
 	part:Destroy()
 	state.finds = state.finds or {}
 	state.findsPaid = state.findsPaid or {}
@@ -71,7 +78,7 @@ local function keep(player, part, def)
 	end
 end
 
-local function spawnFind(def, position, velocity)
+local function spawnFind(def, position, velocity, ownerId)
 	local part = Instance.new("Part")
 	part.Name = "Find_" .. def.id
 	part.Size = Vector3.new(def.size[1], def.size[2], def.size[3])
@@ -81,6 +88,10 @@ local function spawnFind(def, position, velocity)
 	part.CollisionGroup = Groups.Loose
 	part.AssemblyLinearVelocity = velocity
 	part:SetAttribute("FindId", def.id)
+	if ownerId then
+		part:SetAttribute("OwnerId", ownerId)
+		part:SetAttribute("ClaimUntil", workspace:GetServerTimeNow() + (FindsConfig.OwnerSeconds or 60))
+	end
 
 	-- Catches the eye like a needle does.
 	local glint = Instance.new("Sparkles")
@@ -106,11 +117,12 @@ local function spawnFind(def, position, velocity)
 	return part
 end
 
--- One roll for a burst bale. Returns the find part, or nil when nothing turned up.
-function Finds.roll(position)
+-- One roll for a burst bale. Returns the find part, or nil when nothing turned up. ownerId (whoever broke the bale)
+-- alone can keep it for FindsConfig.OwnerSeconds.
+function Finds.roll(position, ownerId)
 	for _, def in rarestFirst do
 		if rng:NextInteger(1, def.oneIn) == 1 then
-			return spawnFind(def, position, Vector3.new(rng:NextNumber(-3, 3), 7, rng:NextNumber(-3, 3)))
+			return spawnFind(def, position, Vector3.new(rng:NextNumber(-3, 3), 7, rng:NextNumber(-3, 3)), ownerId)
 		end
 	end
 	return nil
@@ -134,8 +146,9 @@ local function onLoaded(player)
 	publish(player)
 end
 
--- Test hook (SelfTests/HayTools): keeps a find as if the player clicked it, with no reach check or part.
-function Finds.keepForTest(player, id)
+-- Test hook (SelfTests/HayTools): keeps a find as if the player clicked it, with no reach check or part. claimedBy
+-- (a UserId) makes it a find someone else broke out of a bale a moment ago.
+function Finds.keepForTest(player, id, claimedBy)
 	local def = byId[id]
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not def or not root then
@@ -146,8 +159,15 @@ function Finds.keepForTest(player, id)
 	part.Transparency = 1
 	part.CanCollide = false
 	part.Position = root.Position
+	if claimedBy then
+		part:SetAttribute("OwnerId", claimedBy)
+		part:SetAttribute("ClaimUntil", workspace:GetServerTimeNow() + (FindsConfig.OwnerSeconds or 60))
+	end
 	part.Parent = workspace
 	keep(player, part, def)
+	if part.Parent then
+		part:Destroy() -- not kept: the test leaves nothing lying around
+	end
 end
 
 function Finds.init()
