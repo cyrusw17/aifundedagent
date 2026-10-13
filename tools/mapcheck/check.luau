@@ -150,3 +150,10 @@ Lighting.ClockTime = 0
 Wilds.refreshGhost()
 if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
 print("wilds", wildsOk and "ok" or "WRONG")
+
+-- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
+local mapParts = 0
+for _, d in workspace:GetDescendants() do
+	if d:IsA("BasePart") then mapParts += 1 end
+end
+print("map parts", mapParts, mapParts <= 12000 and "within 12000" or "WARN over the map's 12000 share")

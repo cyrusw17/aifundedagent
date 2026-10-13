@@ -32,13 +32,13 @@ local F = Theme.Fonts
 local hint = Instance.new("TextLabel")
 hint.AnchorPoint = Vector2.new(0.5, 1)
 hint.Position = UDim2.new(0.5, 0, 1, -90)
-hint.Size = UDim2.fromOffset(420, 26)
+hint.Size = UDim2.fromOffset(480, 26)
 hint.BackgroundColor3 = Theme.Colors.Wood
 hint.BackgroundTransparency = 0.1
 hint.Font = F.Bold
 hint.TextSize = 15
 hint.TextColor3 = Theme.Colors.Cream
-local DRIVE_HINT = "W/S drive   A/D steer   Space get out   T tow"
+local DRIVE_HINT = "W/S drive   A/D steer   Q horn   Space get out   T tow"
 hint.Text = DRIVE_HINT
 hint.Visible = false
 Kit.corner(hint, 8)
@@ -54,6 +54,7 @@ local function stop()
 		return
 	end
 	active.connection:Disconnect()
+	active.recovered:Disconnect()
 	local chassis = active.chassis
 	if chassis.Parent then
 		active.drive.PlaneVelocity = Vector2.zero
@@ -146,6 +147,13 @@ local function start(seat)
 	active = state
 	hint.Text = DRIVE_HINT
 	hint.Visible = true
+
+	-- Flipped or towed (Vehicles.recover): start again from where the truck now stands, not the old heading.
+	state.recovered = model:GetAttributeChangedSignal("RecoveredAt"):Connect(function()
+		state.yaw = yawOf(chassis.CFrame)
+		state.speed = 0
+		state.up = Vector3.yAxis
+	end)
 
 	state.connection = RunService.Heartbeat:Connect(function(dt)
 		if not seat.Parent or seat.Occupant == nil then
@@ -253,7 +261,17 @@ end
 -- stuck in a ditch or on a rock; a truck on its roof gets a "Flip upright" button beside it instead.
 local towAskedAt = -math.huge
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed or not active or input.KeyCode ~= Enum.KeyCode.T then
+	if processed or not active then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Q then
+		local horn = ReplicatedStorage:FindFirstChild("TruckHorn")
+		if horn then
+			horn:FireServer()
+		end
+		return
+	end
+	if input.KeyCode ~= Enum.KeyCode.T then
 		return
 	end
 	if os.clock() - towAskedAt > 3 then

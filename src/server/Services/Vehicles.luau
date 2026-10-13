@@ -75,9 +75,46 @@ local SHAPES = {
 		bedGap = 0.5,
 		meshSize = Vector3.new(11.4, 8.3, 24.4),
 	},
-	box_truck = { bedW = 11.1, meshSize = Vector3.new(11.1, 10.2, 29.4) },
+	-- Box Truck: a tall box over a 4 x 3 bale bed, two layers, roll-up door up and a low tailgate across the back.
+	-- From blender/props/vehicles.py box_truck: wheels 1.45 at x 4.4, axles -12.5 and 11.1, bed center 4.2.
+	box_truck = {
+		wheel = 1.45,
+		track = 4.4,
+		axles = { -12.5, 11.1 },
+		deck = 2.6,
+		cabW = 9.1,
+		cabH = 5.6,
+		cabD = 4.62,
+		hood = 3.98,
+		bedW = 10.8,
+		bedFloor = 3.5,
+		bedWall = 6.4,
+		tailH = 2.6, -- the tailgate is low; the open door above it is how bales go in
+		roof = true,
+		bedLen = 19.8,
+		bedGap = 0.4,
+		meshSize = Vector3.new(11.1, 10.2, 29.4),
+	},
 	semi_rig = { meshSize = Vector3.new(9.8, 10.4, 25.3) },
-	heavy_hauler = { meshW = 12.2 }, -- bed stays 10.2 inside; the mesh's extra width is fenders and racks
+	-- Heavy Hauler: a steel tub for 5 x 3 bales, two layers, tandem rear axles. From blender/props/vehicles.py
+	-- heavy_hauler: wheels 1.5 at x 4.4, axles -15.6, 12.0 and 15.4, bed center 5.2. The mesh's extra width is the
+	-- fenders and racks; the bed stays 10.2 inside.
+	heavy_hauler = {
+		wheel = 1.5,
+		track = 4.4,
+		axles = { -15.6, 12.0, 15.4 },
+		deck = 2.6,
+		cabW = 9.1,
+		cabH = 6.2,
+		cabD = 5.28,
+		hood = 4.45,
+		bedW = 10.8,
+		bedFloor = 3.5,
+		bedWall = 5.4,
+		bedLen = 24.4,
+		bedGap = 1.3,
+		meshW = 12.2,
+	},
 }
 
 local function shapeOf(def)
@@ -174,7 +211,7 @@ function Vehicles.build(def, pivot, parent)
 			table.insert(wheels, wheel)
 			add("Hub", Vector3.new(0.95, WHEEL_RADIUS * 0.8, WHEEL_RADIUS * 0.8), CFrame.new(side * (TRACK + 0.02), WHEEL_RADIUS, z), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder, false)
 			-- Rear wheels on a bed truck sit under the bed floor, so only the front ones get a fender.
-			if z < 0 or (def.style ~= "pickup" and def.style ~= "hauler" and def.style ~= "flatbed") then
+			if z < 0 or not (S.bedLen or def.style == "pickup" or def.style == "hauler") then
 				box("Fender", Vector3.new(1.2, 0.4, WHEEL_RADIUS * 2 + 0.8), side * TRACK, WHEEL_RADIUS * 2 + 0.3, z, paint, Enum.Material.Metal)
 			end
 		end
@@ -236,11 +273,12 @@ function Vehicles.build(def, pivot, parent)
 		backLength = S.bedLen
 	end
 	local backZ = backStart + backLength / 2
-	if def.style == "pickup" or def.style == "hauler" or def.style == "flatbed" then
+	if def.style == "pickup" or def.style == "hauler" or def.style == "flatbed" or def.style == "box" then
 		-- An open bed for hay bales. Bales ride loose: the grippy floor and the walls are all that hold them, so hard
 		-- turns and bumps can still spill them. The floor top sits at S.bedFloor to meet the conveyor dock belt.
-		local wall = def.style == "hauler" and 3 or S.bedWall
-		local wooden = def.style == "hauler" or def.style == "flatbed"
+		local wall = S.bedWall
+		local gate = S.tailH or wall
+		local wooden = def.style == "flatbed"
 		local floorTop = math.max(S.bedFloor, DECK + 0.4)
 		local floor = box("BedFloor", Vector3.new(BED_W, 0.4, backLength), 0, floorTop - 0.2, backZ, Rustic.Metal, Enum.Material.Metal)
 		floor.CustomPhysicalProperties = BED_GRIP
@@ -263,19 +301,19 @@ function Vehicles.build(def, pivot, parent)
 		end
 		box("BedFront", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, backStart + 0.175, paint, Enum.Material.Metal)
 		local tailZ = backStart + backLength - 0.175
-		local tailgate = box("Tailgate", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, tailZ, paint, Enum.Material.Metal)
+		local tailgate = box("Tailgate", Vector3.new(BED_W, gate, 0.35), 0, floorTop + gate / 2, tailZ, paint, Enum.Material.Metal)
 		tailgate.CustomPhysicalProperties = BED_GRIP
 		CollectionService:AddTag(tailgate, "Tailgate") -- the conveyor dock (PR #13 Dock.luau) drops it while unloading
 		-- Closed and dropped spots, from the chassis center. Open, it hangs straight down behind the bed with its top
 		-- edge at the floor, so a truck backed flush to the dock has nothing in the way of the belt.
-		model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + wall / 2 - (DECK - 0.4), tailZ))
-		model:SetAttribute("TailgateOpen", CFrame.new(0, floorTop - wall / 2 - (DECK - 0.4), tailZ + 0.35))
+		model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + gate / 2 - (DECK - 0.4), tailZ))
+		model:SetAttribute("TailgateOpen", CFrame.new(0, floorTop - gate / 2 - (DECK - 0.4), tailZ + 0.35))
+		if S.roof then
+			box("BoxRoof", Vector3.new(BED_W, 0.3, backLength), 0, floorTop + wall + 0.15, backZ, Rustic.PaintCream, Enum.Material.Metal)
+		end
 		-- The cargo zone, from the chassis center (which sits DECK - 0.4 above the ground).
 		model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + 3 - (DECK - 0.4), backZ))
 		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.7, 6, backLength - 0.7))
-	elseif def.style == "box" then
-		box("CargoBox", Vector3.new(BED_W, 8.6, backLength - 0.2), 0, DECK + 4.5, backZ + 0.1, Rustic.PaintCream, Enum.Material.Metal)
-		box("BoxStripe", Vector3.new(BED_W + 0.05, 1, backLength - 0.2), 0, DECK + 2.4, backZ + 0.1, paint, Enum.Material.Metal, false)
 	elseif def.style == "semi" then
 		box("FifthWheel", Vector3.new(4, 0.4, 4), 0, DECK + 0.2, backZ + 1, Rustic.Metal, Enum.Material.DiamondPlate)
 		for _, side in { -1, 1 } do
@@ -1077,6 +1115,7 @@ function Vehicles.recover(player, mode)
 	end
 	setDown(truck, ground, truck:GetAttribute("Deck") - 0.4)
 	chassis.Steer.CFrame = CFrame.Angles(0, yawOf(ground), 0)
+	truck:SetAttribute("RecoveredAt", os.clock()) -- the driver's client takes its new heading from here (Truck.client)
 	if hitched then
 		local def = Vehicles.getTrailer(trailer:GetAttribute("TrailerId"))
 		local truckDef = Vehicles.get(truck:GetAttribute("TruckId"))
@@ -1113,6 +1152,25 @@ function Vehicles.init(folder)
 		end
 		return Vehicles.recover(player, mode)
 	end
+
+	-- The horn: Q while driving (Truck.client.luau). Played on the server so everyone near hears it.
+	local hornRemote = Instance.new("RemoteEvent")
+	hornRemote.Name = "TruckHorn"
+	hornRemote.Parent = game:GetService("ReplicatedStorage")
+	local lastHorn = {}
+	hornRemote.OnServerEvent:Connect(function(player)
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		local truck = seat and seat.Name == "DriverSeat" and seat.Parent
+		if not truck or not truck:GetAttribute("TruckId") or os.clock() - (lastHorn[player] or 0) < 0.6 then
+			return
+		end
+		lastHorn[player] = os.clock()
+		require(script.Parent.Feedback).play("TruckHorn", truck.PrimaryPart)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastHorn[player] = nil
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		if owned[player] then
 			owned[player]:Destroy()
