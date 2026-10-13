@@ -409,11 +409,12 @@ return function(SelfTest)
 				fn(spammer)
 			end
 			local ok, why = fn(spammer)
+			local burst = calls -- counted before the refill below lets one more through
 			now = 2
 			local again = fn(spammer)
 			RateLimit.clock = clock
 			RateLimit.report = report
-			t.check("a burst of remote calls is cut off at the bucket size", calls == 3, ("got %d calls through"):format(calls))
+			t.check("a burst of remote calls is cut off at the bucket size", burst == 3, ("got %d calls through"):format(burst))
 			t.check("a refused call says to slow down", ok == false and why == RateLimit.BUSY)
 			t.check("the bucket refills over time", again == true and calls == 4)
 		else
@@ -724,10 +725,14 @@ return function(SelfTest)
 			t.check("visiting a farm is refused while carrying hay", not visited)
 		end
 
+		-- Build actions are debounced (ownPlot: 0.12 s between a player's actions), so wait between them like a
+		-- player's clicks would.
 		local before = #mine.list
-		local placed = L.onPlace(player, "belt", spot[1], spot[2], "N")
-		t.check("place builds a belt", placed and #mine.list == before + 1)
-		local undone = L.onUndo(player)
-		t.check("undo takes it away again", undone and #mine.list == before)
+		task.wait(0.2)
+		local placed, placeWhy = L.onPlace(player, "belt", spot[1], spot[2], "N")
+		t.check("place builds a belt", placed and #mine.list == before + 1, placeWhy)
+		task.wait(0.2)
+		local undone, undoWhy = L.onUndo(player)
+		t.check("undo takes it away again", undone and #mine.list == before, undoWhy)
 	end)
 end
