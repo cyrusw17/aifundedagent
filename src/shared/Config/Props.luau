@@ -177,6 +177,8 @@ return {
 		needle_ice = 1.21,
 		needle_legendary = 1.2,
 		needle_obsidian = 1.2,
+		needle_coral = 1.2,
+		needle_brass = 1.2,
 		needle_pearl = 1.25,
 		needle_phantom = 1.21,
 		needle_pine = 1.2,
