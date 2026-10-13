@@ -17,6 +17,7 @@ local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
+local Finds = require(script.Parent.Finds)
 
 local Bales = {}
 
@@ -320,6 +321,10 @@ function Bales.breakOpen(player, b)
 				Feedback.needle(needle, Hay.needleValue(needle))
 			end
 			task.wait(0.22)
+		end
+		-- Once in a while something odd was baled up with the hay (Config/Finds).
+		if not sorted then
+			Finds.roll(center + Vector3.new(0, 2, 0))
 		end
 	end)
 end
