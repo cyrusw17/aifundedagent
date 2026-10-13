@@ -137,6 +137,7 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_polisher = 12000,
 }
 Prices.RefundShare = 0.5
 
@@ -145,6 +146,11 @@ Prices.RefundShare = 0.5
 Prices.Starbeam = {
 	minutes = 10,
 }
+
+-- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
+-- PolishPerMinute needles a minute; the rest stay plain.
+Prices.PolishBonus = 0.25
+Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.

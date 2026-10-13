@@ -14,6 +14,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -221,6 +222,52 @@ function Machines.needleBin(parent, frame)
 		return CORNER[corners[needleId]]
 	end
 
+	-- The needle polisher upgrade: a polishing wheel on the bin's side that polishes needles resting in the bin, up to
+	-- Prices.PolishPerMinute a minute (a bundle counts as 10). Polished needles sell for Prices.PolishBonus more.
+	local polisher = nil
+	function bin.fitPolisher()
+		if polisher then
+			return
+		end
+		model:SetAttribute("Polisher", true)
+		local side = frame * CFrame.new(T / 2 + 0.9, 0, 0)
+		polisher = Instance.new("Model")
+		polisher.Name = "NeedlePolisher"
+		polisher:SetAttribute("Running", false)
+		polisher.Parent = model
+		local base = part(polisher, "Base", Vector3.new(1.4, 2.4, 2.4), side * CFrame.new(0, 1.2, 0), C.wood, Enum.Material.WoodPlanks)
+		local wheel = part(polisher, "Wheel", Vector3.new(0.5, 2, 2), side * CFrame.new(0, 3.2, 0), C.metal, Enum.Material.Metal)
+		wheel.Shape = Enum.PartType.Cylinder
+		wheel:SetAttribute("Motion", "Spin")
+		CollectionService:AddTag(wheel, "PropMotion")
+		Skins.dress("needle_polisher", base, polisher, side)
+		local spark = Instance.new("ParticleEmitter")
+		spark.Rate = 0
+		spark.Lifetime = NumberRange.new(0.2, 0.4)
+		spark.Speed = NumberRange.new(4, 8)
+		spark.LightEmission = 1
+		spark.Size = NumberSequence.new(0.15, 0)
+		spark.Parent = wheel
+		task.spawn(function()
+			local budget = 0
+			while polisher.Parent do
+				task.wait(1)
+				budget = math.min(budget + Prices.PolishPerMinute / 60, Prices.PolishPerMinute)
+				local worked = false
+				for _, n in Needle.inBox(inside, insideSize) do
+					local count = Needle.count(n)
+					if not n:GetAttribute("Polished") and budget >= count then
+						Needle.polish(n)
+						budget -= count
+						worked = true
+					end
+				end
+				polisher:SetAttribute("Running", worked)
+				spark.Rate = worked and 40 or 0
+			end
+		end)
+	end
+
 	function bin.splitByType()
 		if corners then
 			return
@@ -282,7 +329,7 @@ function Machines.needleBin(parent, frame)
 		local byKey = {}
 		for _, n in Needle.inBox(inside, insideSize) do
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
-				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"))
+				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"))
 				byKey[key] = (byKey[key] or 0) + Needle.count(n)
 			end
 		end
@@ -302,7 +349,7 @@ function Machines.needleBin(parent, frame)
 			return floor * CFrame.new(-1.95 + col * 1.3, 0.3 + layer * 0.6, -2.3 + row * 0.2)
 		end
 		for key, count in byKey do
-			local id, mult = Needle.parseKey(key)
+			local id, mult, polished = Needle.parseKey(key)
 			if typeof(count) ~= "number" then
 				continue
 			end
@@ -316,23 +363,23 @@ function Machines.needleBin(parent, frame)
 				end
 				if mult == 1 then
 					while count >= Needle.BUNDLE do
-						Needle.bundle(cornerSpot(), ownerId, id).Anchored = true
+						Needle.bundle(cornerSpot(), ownerId, id, polished).Anchored = true
 						count -= Needle.BUNDLE
 					end
 				end
 				for _ = 1, count do
-					Needle.make(cornerSpot(), ownerId, id, mult).Anchored = true
+					Needle.make(cornerSpot(), ownerId, id, mult, polished).Anchored = true
 				end
 				continue
 			end
 			if mult == 1 then
 				while count >= Needle.BUNDLE do
-					Needle.bundle(nextSpot(), ownerId, id).Anchored = true
+					Needle.bundle(nextSpot(), ownerId, id, polished).Anchored = true
 					count -= Needle.BUNDLE
 				end
 			end
 			for _ = 1, count do
-				local n = Needle.make(nextSpot(), ownerId, id, mult)
+				local n = Needle.make(nextSpot(), ownerId, id, mult, polished)
 				n.Anchored = true
 			end
 		end
@@ -586,22 +633,32 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					if payTo then
 						ownerId = payTo(ownerId)
 					end
-					Bales.consume(sortedBale)
-					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
+					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
+					if ownerId then
+						Bales.consume(sortedBale)
+						Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
+					end
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId, hayType = 0, nil, "meadow"
+					local take = nil
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
-						Bales.consume(b)
+						take = function()
+							Bales.consume(b)
+						end
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
-						Hay.remove(p)
+						take = function()
+							Hay.remove(p)
+						end
 					end
 					if hay > 0 and ownerId and payTo then
 						ownerId = payTo(ownerId)
 					end
+					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
 					if hay > 0 and ownerId then
+						take()
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }
 						t.hay += hay
 						t.needles += Economy.rollNeedles(rng, hay, needleChance(hayType))
