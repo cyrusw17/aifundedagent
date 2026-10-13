@@ -18,6 +18,7 @@ local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local LineMath = require(Shared.LineMath)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
@@ -448,10 +449,7 @@ end
 -- Seconds a sorter spends on one bale's worth of hay, from its tier's hay per minute.
 function Machines.sortSeconds(tierId, hay)
 	local tier = tiers[tierId]
-	if not tier or tier.hayPerMin == math.huge then
-		return 0.4
-	end
-	return math.max(hay / tier.hayPerMin * 60, 0.5) -- no upper clamp, so every tier's speed is felt
+	return LineMath.sortSeconds(tier and tier.hayPerMin or math.huge, hay) -- no upper clamp, so every tier's speed is felt
 end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
@@ -572,7 +570,15 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
 		LineStats.record(ownerId, "needles", found)
 		sorted += 1
+		model:SetAttribute("Sorted", sorted)
 		refreshLabel()
+	end
+
+	-- Hay that was sorted upstream goes straight out the far end.
+	local function passThrough(p)
+		p.CFrame = out * CFrame.new(0, 0, rng:NextNumber(-1, 1))
+		p.AssemblyLinearVelocity = Vector3.zero
+		p.AssemblyAngularVelocity = Vector3.zero
 	end
 
 	-- The Alien collector (quest only) sorts everything instantly at 100%, but only while its beam is up: a player
@@ -622,10 +628,18 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			local bale, loose = nil, {}
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
-				if b and not b.gone and not b.carriedBy and not b.breaking and not b.sorted then
-					bale = bale or b
+				if b and not b.gone and not b.carriedBy and not b.breaking then
+					if not b.sorted then
+						bale = bale or b
+					elseif p == b.body then
+						passThrough(p) -- already sorted upstream: never sorted twice, and never left jamming the flap
+					end
 				elseif Hay.isPiece(p) then
-					table.insert(loose, p)
+					if p:GetAttribute("Sorted") then
+						passThrough(p)
+					else
+						table.insert(loose, p)
+					end
 				end
 			end
 			if bale then
@@ -694,6 +708,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					local b = Bales.fromPart(p)
 					local hay, ownerId, hayType = 0, nil, "meadow"
 					local take = nil
+					local clean = false
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
 						local seller = ownerId
@@ -705,6 +720,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						end
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
+						clean = p:GetAttribute("Sorted") == true -- from a sorted bale that broke: its needles are gone
 						take = function()
 							Hay.remove(p)
 						end
@@ -717,7 +733,9 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						take()
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }
 						t.hay += hay
-						t.needles += Economy.rollNeedles(rng, hay, needleChance(hayType))
+						if not clean then
+							t.needles += Economy.rollNeedles(rng, hay, needleChance(hayType))
+						end
 						unsorted[ownerId] = t
 					end
 				end
@@ -757,8 +775,19 @@ function Machines.splitter(grid, gx, gz, dir, rule)
 	local label = sign(belt, rule == "sorted" and "SPLITTER\nsorted left" or "SPLITTER", Vector3.new(0, 4, 0))
 	label.Parent.MaxDistance = 40
 
+	-- A side is a way out when a tile there takes loads from this side: any flat belt not running straight back at us,
+	-- or a ramp whose foot is that cell and climbs away from us (its sides are rails).
 	local function open(side)
-		return Conveyors.tileAt(grid, gx + math.round(side.X), gz + math.round(side.Z)) ~= nil
+		local nx, nz = gx + math.round(side.X), gz + math.round(side.Z)
+		local n = Conveyors.tileAt(grid, nx, nz)
+		if not n then
+			return false
+		end
+		if n.kind == "ramp" then
+			local i = n.inAt
+			return i ~= nil and i.level == 0 and i.gx == nx and i.gz == nz and (n.d - side).Magnitude < 0.01
+		end
+		return (n.d + side).Magnitude > 0.01
 	end
 
 	local going = {} -- part -> side it is being pushed out of
