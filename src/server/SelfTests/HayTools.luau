@@ -3,6 +3,8 @@
 -- rake and the config. The rest uses the first player in the game and puts their position, carried hay and
 -- first-bale flag back afterwards: lift, set down, stack, break (the first-bale needle), scoop with the combo, sell
 -- at the pad, a pocket needle, and the wheelbarrow. A sale made here is real money in the player's slot.
+-- Edge cases: leaving mid-carry, two players after one bale, a bale set down into a truck bed (and a barrow tipped
+-- into one), selling with nothing to sell, and a flood of loose hay staying under its caps without leaking.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Services = script.Parent.Parent.Services
@@ -20,6 +22,7 @@ local Hay = require(Services.Hay)
 local Gloves = require(Services.Gloves)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
+local Bank = require(Services.Bank)
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
@@ -110,7 +113,124 @@ local function noPlayerChecks(t)
 			Hay.remove(p)
 		end
 	end
+
+	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
+	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.
+	local base = Hay.stats()
+	local floodAt = t.place().Position + Vector3.new(0, 3, 0)
+	local flood = {}
+	local started = os.clock()
+	local strandsWanted = Config.MaxLoosePieces + 150
+	for i = 1, strandsWanted do
+		table.insert(flood, Hay.spawnPiece(floodAt + Vector3.new(i % 20, 0, math.floor(i / 20) % 20), Vector3.zero, 0))
+	end
+	local perStrand = (os.clock() - started) / strandsWanted * 1000
+	started = os.clock()
+	for i = 1, Config.MaxLooseNeedles + 30 do
+		table.insert(flood, Hay.spawnPiece(floodAt + Vector3.new(i % 20, 1, 0), Vector3.zero, 0, "Needle"))
+	end
+	local perNeedle = (os.clock() - started) / (Config.MaxLooseNeedles + 30) * 1000
+	local stats = Hay.stats()
+	t.check("loose strands stay at the cap in a flood", stats.strands <= Config.MaxLoosePieces, stats.strands)
+	t.check("loose needles stay at the cap in a flood", stats.needles <= Config.MaxLooseNeedles, stats.needles)
+	t.equal("every tracked piece is counted (no leak)", stats.tracked, stats.strands + stats.needles)
+	t.check("a strand spawns in under 1 ms at the cap", perStrand < 1, ("%.3f ms"):format(perStrand))
+	t.check("a needle spawns in under 2 ms at the cap", perNeedle < 2, ("%.3f ms"):format(perNeedle))
+	local alive = 0
+	for _, p in flood do
+		if p.Parent then
+			alive += 1
+			p:Destroy() -- destroyed from outside, as a clicked-up needle is: Hay must still forget it
+		end
+	end
+	t.wait(0.1)
+	local cleared = Hay.stats()
+	t.check("trimmed pieces really left the world", alive <= Config.MaxLoosePieces + Config.MaxLooseNeedles, alive)
+	t.equal("destroyed pieces are forgotten (strands)", cleared.strands, base.strands)
+	t.equal("destroyed pieces are forgotten (needles)", cleared.needles, base.needles)
+	t.equal("destroyed pieces are forgotten (tracked)", cleared.tracked, base.tracked)
 	clearBales()
+end
+
+-- A stand-in truck bed on the test pad: an anchored floor with its top at 3.5 like the pickup's, in a model carrying
+-- the same CargoOffset / CargoSize attributes the real trucks do.
+local function truckBed(t, at)
+	local model = Instance.new("Model")
+	model.Name = "SelfTestTruckBed"
+	local floor = Instance.new("Part")
+	floor.Name = "Bed"
+	floor.Anchored = true
+	floor.Size = Vector3.new(10, 1, 14)
+	floor.CFrame = at * CFrame.new(0, 3, 0)
+	floor.Parent = model
+	model.PrimaryPart = floor
+	model:SetAttribute("CargoOffset", CFrame.new(0, 2.5, 0))
+	model:SetAttribute("CargoSize", Vector3.new(9.6, 4, 13.6))
+	model.Parent = workspace
+	t.cleanup(model)
+	return { model = model, floor = floor, top = floor.Position.Y + 0.5 }
+end
+
+local function inBed(bed, b)
+	local localPos = bed.floor.CFrame:PointToObjectSpace(b.body.Position)
+	return math.abs(localPos.X) <= 5 and math.abs(localPos.Z) <= 7 and b.body.Position.Y > bed.top
+end
+
+-- Loose: not anchored and not joined to anything, so it slides and tips like real cargo.
+local function isLoose(b)
+	if b.body.Anchored or b.body.AssemblyRootPart ~= b.body then
+		return false
+	end
+	for _, j in b.body:GetJoints() do
+		if j:IsA("JointInstance") or j:IsA("WeldConstraint") then
+			return false
+		end
+	end
+	return true
+end
+
+local function edgeCases(t, player, state, root, stand)
+	local spot = t.place()
+
+	-- Two players after one bale: whoever holds it first keeps it; nobody else can lift, barrow or break it.
+	stand(spot)
+	local contested = bale(spot * CFrame.new(0, 0, -4))
+	t.wait(0.2)
+	local other = { Name = "SelfTestOther", UserId = -1 } -- stands in for a second player already holding it
+	contested.carriedBy = other
+	Bales.pickup(player, contested)
+	t.check("a bale someone else holds can't be lifted", state.carryBale ~= contested and contested.carriedBy == other)
+	Bales.breakOpen(player, contested)
+	t.check("...or broken open", not contested.breaking and not contested.gone)
+	contested.carriedBy = nil
+	Bales.pickup(player, contested)
+	t.check("once free, the first to grab it holds it", state.carryBale == contested)
+	t.check("...and a second grab is refused", not Bales.stow(player, contested, root, CFrame.new()))
+	Bales.drop(player)
+
+	-- Leaving the game mid-carry: the held bale goes away and nothing stays stuck to the player.
+	local leaving = bale(spot * CFrame.new(0, 0, -4))
+	t.wait(0.2)
+	Bales.pickup(player, leaving)
+	local held = state.carryBale == leaving
+	Bales.playerLeft(player)
+	t.check("leaving mid-carry removes the carried bale", held and leaving.gone and leaving.body.Parent == nil)
+	t.check("...and frees the hands", state.carryBale == nil)
+	Avatar.clearCarry(player)
+
+	-- Set a bale down into a truck bed: it lands on the bed floor, loose, never welded to the truck.
+	local bedSpot = t.place()
+	local bed = truckBed(t, bedSpot)
+	local cargo = bale(spot * CFrame.new(10, 0, -4))
+	stand(spot * CFrame.new(10, 0, 0))
+	Bales.pickup(player, cargo)
+	-- Two studs off the bed's back end, facing in; the set-down spot lands about 4 studs ahead, inside the bed.
+	stand(bedSpot * CFrame.new(0, 0, 9))
+	Bales.drop(player)
+	t.wait(1)
+	t.near("a bale set down into a truck bed rests on the bed floor", cargo.body.Position.Y - bed.top, BALE.Y / 2, 0.6)
+	t.check("...inside the bed", inBed(bed, cargo))
+	t.check("...loose, never welded", isLoose(cargo))
 end
 
 local function withPlayer(t, player)
@@ -216,6 +336,11 @@ local function withPlayer(t, player)
 			if pocketOk then
 				t.equal("the sell pad buys pocket needles too", Needle.heldCount(player), 0)
 			end
+			-- Standing on the pad with an empty load and an empty pocket pays nothing and breaks nothing.
+			local before = Bank.wallet(state)
+			t.wait(2.2)
+			t.equal("selling with nothing to sell pays nothing", Bank.wallet(state), before)
+			t.equal("...and leaves the load empty", state.loadHay, 0)
 		else
 			t.skip("sell pad", "no Needlewood.SellPad in the world")
 		end
@@ -242,10 +367,29 @@ local function withPlayer(t, player)
 			end
 			t.equal("the barrow holds 3 bales", loaded, Config.WheelbarrowBales)
 			t.equal("unloading sets all 3 down", Wheelbarrow.unload(player), Config.WheelbarrowBales)
+
+			-- Tip a full barrow into a truck bed: every bale lands inside the box, loose.
+			local bed = truckBed(t, t.place())
+			local tipped = {}
+			for i = 1, Config.WheelbarrowBales do
+				local b = bale(spot * CFrame.new(20 + i * 6, 0, 8))
+				Wheelbarrow.load(player, b)
+				table.insert(tipped, b)
+			end
+			t.equal("a full barrow tips into a truck bed", Wheelbarrow.tipInto(player, bed.floor), Config.WheelbarrowBales)
+			t.wait(1.5)
+			local inside = 0
+			for _, b in tipped do
+				if inBed(bed, b) and isLoose(b) then
+					inside += 1
+				end
+			end
+			t.equal("every tipped bale is in the bed and loose", inside, Config.WheelbarrowBales)
 			humanoid:UnequipTools()
 		else
 			t.skip("wheelbarrow", "the barrow tool was not given")
 		end
+		edgeCases(t, player, state, root, stand)
 		if not hadBarrow then
 			table.remove(state.gear, table.find(state.gear, "wheelbarrow"))
 			local left = player.Backpack:FindFirstChild("Wheelbarrow")

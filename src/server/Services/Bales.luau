@@ -667,6 +667,19 @@ local function scanStacks()
 	end
 end
 
+-- A bale does not stay stuck to a player who left the game: whatever they held goes, and their hands are free.
+function Bales.playerLeft(player)
+	for _, b in byBody do
+		if b.carriedBy == player and not b.gone then
+			Bales.consume(b)
+		end
+	end
+	local state = Data.get(player)
+	if state then
+		state.carryBale = nil
+	end
+end
+
 function Bales.init(worldFolder)
 	folder = worldFolder
 
@@ -697,14 +710,7 @@ function Bales.init(worldFolder)
 		watch(player)
 	end
 
-	-- A bale does not stay stuck to a player who left the game.
-	Players.PlayerRemoving:Connect(function(player)
-		for _, b in byBody do
-			if b.carriedBy == player then
-				Bales.consume(b)
-			end
-		end
-	end)
+	Players.PlayerRemoving:Connect(Bales.playerLeft)
 end
 
 return Bales

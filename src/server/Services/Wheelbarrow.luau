@@ -139,6 +139,15 @@ local function unloadAll(player)
 	return #load
 end
 
+-- Tips the barrow's load into the cargo box of the truck or trailer that part belongs to. Returns how many went in.
+function Wheelbarrow.tipInto(player, part)
+	local box, size = cargoOf(part)
+	if not box then
+		return 0
+	end
+	return tipInto(player, box, size)
+end
+
 -- Loads a bale into the player's barrow (it must be out and have room). Returns true if it went in.
 function Wheelbarrow.load(player, bale)
 	local state = Data.get(player)
