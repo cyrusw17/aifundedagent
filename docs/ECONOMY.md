@@ -197,6 +197,23 @@ shows today's price for every type, with an arrow. Every needle sale goes throug
 display wall and the ding pitch all follow the market. The earning tables above use list prices, since the swing
 averages out.
 
+### NPC buyer orders
+
+A board on the west side of base camp shows three orders from local buyers, with new ones every 20 minutes
+(`Services/Orders.luau`, numbers in `Prices.Orders`). Deliver on the pad beside it: set bales on it, or step on it with
+needles in your pocket. Each unit pays straight away, up to the order's amount for each player, so nothing is lost
+when the orders change.
+
+| Order | Amount | Pays | Why |
+|---|---|---|---|
+| Hay bales | 8 to 16 | $71 each (1.5x the public shop) | Gives a no-plot player a better buyer than the shop |
+| Sorted bales | 10 to 20 | $90 each (2x a hay buyer) | The sorting is already done, so the buyer pays for clean hay |
+| Steel needles | 6 to 15 | $125 each (1.25x list) | A small premium; mutated needles stay in your pocket |
+
+A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
+the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
+since they are capped per player.
+
 ## The bank: Meadow Savings & Loan
 
 A stone-and-plank bank on the main road, east of the plot road, with a teller window. Press E at the window to open it.
@@ -233,6 +250,32 @@ the pickup once it has earned its down payment, and big loans come once you have
 **Test money.** With `InfiniteMoney` on, shops are free and the HUD shows the test balance as before. The wallet, bank,
 loans and history underneath stay real and are saved, so the bank can be tested with real numbers. (Before this change,
 anything earned while test money was on was thrown away.)
+
+## Travel fares (for the rest of the map)
+
+Nothing uses these yet. They are in `Prices.Travel` for the world map thread. A fare should be felt but should never
+decide whether a trip is worth making, so each is under 5% of what the trip carries.
+
+| Trip | Fare | Why |
+|---|---|---|
+| Public ferry (to Thimble Keys or Bobbin Rock) | $250 a truck with trailer, each way | Under 5% of a box-truck load of Snow hay |
+| Captain's Barge | Free | Earned by quest |
+| Zeppelin to Sky Island | $1,000 a trip | Under 5% of a pickup load of Sky hay ($1,300 to $7,800 a bale) |
+| Roads, including the Longstitch Highway | Free | Driving is already the cost |
+
+## Robux prices
+
+Recorded in `Prices.Robux` so every price lives in one file. The store waits until the cash economy has been
+playtested (backlog rule). These are V8's prices, kept because they sit in the usual range for Roblox tycoons (a
+99 R$ impulse buy, 149 to 299 R$ passes, and trucks rising with tier). That range is design judgement, not data.
+
+- **Trucks:** Homestead Classic 399, Timber Wolf 4x4 799, Midnight Express 1,199, Prairie Schooner 1,799 and Founders'
+  Semi 2,499 R$. Each one matches the stats of its cash tier exactly. One fix to V8: V8 gives the Timber Wolf "better
+  grip on dirt", which would make it stronger than the cash Flatbed. It should look lifted but drive the same.
+- **Passes:** VIP 249, Auto-Dock 299, Big Silo 199, Paint Studio 149, Plot Themes 199 and Truck Radio 99 R$. Auto-Dock
+  and Big Silo are convenience with a cash match: you can step on UNLOAD yourself, and build a second $5,000 silo.
+- **Other:** Harvest Pass premium track 499 R$, a server boost 99 R$, and a private server 100 R$ a month.
+- No item gives cash, needles, sorter tiers or quest skips, and nothing is random.
 
 ## A first playthrough
 
@@ -288,5 +331,8 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
+| Travel fares | `Travel` | Not wired yet (world map thread) |
+| Robux store | `Robux` | Not wired yet (store waits on playtests) |
+| NPC orders | `Orders` | `Services/Orders.luau` |
 | Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |
