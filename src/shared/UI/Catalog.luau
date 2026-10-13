@@ -13,6 +13,7 @@ local Gloves = require(Config:WaitForChild("Gloves"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Prices = require(Config:WaitForChild("Prices"))
 local PieceGuide = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PieceGuide"))
+local ToolGuide = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ToolGuide")) -- glove lines (Hay thread)
 
 local Catalog = {}
 
@@ -77,12 +78,7 @@ function Catalog.items(tab)
 				table.insert(rows, {
 					id = def.id,
 					name = def.name,
-					blurb = ("Tier %d. +%d hay carried, +%d per scoop, %d%% less slowdown."):format(
-						def.tier,
-						def.carryBonus,
-						def.scoopBonus,
-						math.round(def.relief * 100)
-					),
+					blurb = ToolGuide.glove(def), -- built from the configs, with the walk speed under a bale
 					price = Prices.Gloves[def.id] or def.price,
 					state = def.id == wearing and "wearing" or owned[def.id] and "owned" or "buy",
 					place = "gloves",

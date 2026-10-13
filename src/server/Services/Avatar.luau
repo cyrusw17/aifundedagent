@@ -13,6 +13,7 @@ local Props = require(script.Parent.Props)
 local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
 local Data = require(script.Parent.Data)
 local Gloves = require(script.Parent.Gloves)
+local ToolGuide = require(ReplicatedStorage.Shared.ToolGuide)
 
 local Avatar = {}
 
@@ -74,7 +75,7 @@ end
 
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
-	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
+	local tip = ToolGuide.tool("Shovel") -- the hotbar tooltip, with the real numbers from the configs
 	return addMesh(buildTool("Shovel", tip, {
 		-- A small hand spade matching the Blender basic_shovel at true size: blade tip at y 2.1, blade from 1.4 up.
 		-- Its reach comes from Config ShovelReach/ToolReach, not from its length.
@@ -91,7 +92,7 @@ end
 
 -- A long shaft with a crossbar and a row of teeth at the end.
 local function buildRake()
-	local tip = "Face loose hay and click to drag it toward you."
+	local tip = ToolGuide.tool("Rake")
 	local steel = Color3.fromRGB(107, 94, 84)
 	local parts = {
 		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },

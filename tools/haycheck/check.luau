@@ -170,6 +170,36 @@ for _ = 1, 2000 do
 	end
 end
 
+-- Tooltips (ToolGuide): one line each, from the configs, with no unfilled format codes, and the numbers in them
+-- are the config's.
+local ToolGuide = require({ __path = "Shared.ToolGuide" })
+local lines = {}
+for _, kind in { "Shovel", "Rake", "Wheelbarrow" } do
+	lines[kind] = ToolGuide.tool(kind)
+end
+for _, def in Gloves.Tiers do
+	lines[def.id] = ToolGuide.glove(def)
+end
+for _, def in Gloves.QuestTiers do
+	lines[def.id] = ToolGuide.glove(def)
+end
+lines.shop = ToolGuide.wheelbarrowShop()
+for id, line in lines do
+	check(("tooltip %s is filled in"):format(id), #line > 20 and not line:find("%%[%a]") and not line:find("nil"), line)
+end
+check("the shovel tooltip says the scoop size", lines.Shovel:find(tostring(Game.ShovelPieces), 1, true) ~= nil, lines.Shovel)
+check("the rake tooltip says the pile size", lines.Rake:find(tostring(Game.PileMin), 1, true) ~= nil, lines.Rake)
+for _, def in Gloves.Tiers do
+	if def.tier > 0 then
+		check(("%s tooltip says its carry bonus"):format(def.id), lines[def.id]:find(("carry %d more"):format(def.carryBonus), 1, true) ~= nil, lines[def.id])
+		check(("%s tooltip says double carry only from DoubleCarryTier"):format(def.id), (lines[def.id]:find("two bales", 1, true) ~= nil) == (def.tier >= Game.DoubleCarryTier))
+	end
+end
+print("tooltips:")
+for _, id in { "Shovel", "Rake", "Wheelbarrow", "bare", "work", "leather", "reinforced", "iron", "starlight" } do
+	print("  " .. lines[id])
+end
+
 print(("hay math: %d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	error("hay math checks failed")

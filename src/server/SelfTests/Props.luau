@@ -251,6 +251,19 @@ return function(SelfTest)
 			end
 		end
 
+		-- 3b. The Meadow bank wears the Blender bank: doorway open, walls rebuilt to its shape, the teller still there.
+		local bank = Workspace:FindFirstChild("Bank", true)
+		local bankMesh = bank and bank:FindFirstChild("homestead_bank")
+		if not Props.has("homestead_bank") then
+			t.skip("the bank wears its mesh", "homestead_bank not imported")
+		elseif not bankMesh then
+			t.check("the bank wears its mesh", false, bank and "no homestead_bank in the Bank model" or "no Bank in the Workspace")
+		else
+			t.check("the bank's doorway is open", #Props.find(bankMesh, "Door") == 0)
+			t.check("the bank's walls follow the mesh", bank:FindFirstChild("Walls") ~= nil and #bank.Walls:GetChildren() >= 7)
+			t.check("the bank still has its teller window", bank:FindFirstChild("TellerWindow") ~= nil)
+		end
+
 		-- 4. Nothing Import 3D made is left lying in the Workspace.
 		local stray = {}
 		if Workspace:FindFirstChild("Scene") then
