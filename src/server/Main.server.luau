@@ -28,6 +28,7 @@ NameTags.start()
 TruckSpots.start()
 Avatar.start()
 GloveLooks.start()
+require(Services.GildedSorters).start()
 World.build()
 
 print("[Needlewood] server started. Base camp is ready.")
