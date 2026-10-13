@@ -1,6 +1,6 @@
 # Needlewood economy: what everything costs, and why
 
-Every price lives in one file, `src/shared/Config/Prices.luau`. The shops, sorters, land office, dealer, glove stand
+Every price lives in one file, `src/shared/Config/Prices.luau`. The shops, sorters, land office, dealer, shovel stand
 and bank all read from it. `tools/economy_model.py` re-derives every table in this doc, so when a number changes you
 re-run it rather than redo the maths by hand.
 
@@ -23,7 +23,7 @@ distances. They are not playtest data. Each one is written down in the model so 
 
 1. **Earning rate first.** For each stage of the game, the model works out how many bales a player moves per minute
    and what each bale is worth with the sorter they own. That gives dollars per hour at each stage.
-2. **Then time to afford.** Gloves cost about 30 minutes of what you earn just before you need them. Trucks cost one to
+2. **Then time to afford.** Shovels cost about 30 minutes of what you earn just before you need them. Trucks cost one to
    two hours, so they are real goals. Build pieces cost a few minutes, so building never stalls.
 3. **Then payback.** A machine's price is how long you're willing to wait for it to pay for itself, times the extra
    money it makes. The targets are V8 Part C: hand sieve instant, shaker about 15 minutes, conveyor sorter about 30,
@@ -67,13 +67,13 @@ a minute (30, 15, 7.5, 3.75 and 2 seconds a bale).
 ## What a player earns at each stage
 
 Hand hauling assumes a bale is about 110 studs from the sell pad, carried at the loaded walk speed (7.4 bare, 9.1 with
-Work Gloves) and walked back at 16. Trucks assume 9 seconds to load each bale by hand, 50 seconds of other work per trip,
+Garden Shovel) and walked back at 16. Trucks assume 9 seconds to load each bale by hand, 50 seconds of other work per trip,
 and a round-trip drive from your plot (half a minute in Meadow, 3 to 8 minutes to the other regions).
 
 | Stage | Bales/min hauled | Bales/min sorted | $/hour |
 |---|---|---|---|
 | 1. Hands, bare | 2.3 | 2.3 | $6,573 |
-| 2. Hands, Work Gloves | 2.6 | 2.6 | $7,368 |
+| 2. Hands, Garden Shovel | 2.6 | 2.6 | $7,368 |
 | 2b. Wheelbarrow, public shop | 4.7 | 4.7 | $13,257 |
 | 3. Pickup, public shop | 3.7 | 3.7 | $10,398 |
 | 4. Pickup, plot + Hand sieve | 3.7 | 2.0 | $13,758 |
@@ -97,7 +97,7 @@ building before the bigger trucks go on sale.
 
 **$1,000** (`Prices.Wheelbarrow`; the hay tools thread set $400). It carries 3 bales a push, so by the model it hauls
 about 4.7 bales a minute to the sell pad, double what you carry by hand. Doubling your income is a big step, so it
-should cost about 10 minutes of hand hauling, not 3. At $1,000 it lands about 12 minutes in, between Work Gloves and
+should cost about 10 minutes of hand hauling, not 3. At $1,000 it lands about 12 minutes in, between Garden Shovel and
 the pickup.
 
 One thing to fix in play, not in price: near camp the wheelbarrow outhauls the Rusty Pickup (4.7 bales a minute against
@@ -127,17 +127,19 @@ These were already the prices in code, and the model says they sit in the right 
 | Large Trailer | $120,000 | About a third of the hauler. |
 | Bale Rack | $200,000 | Taller walls, so it carries more layers. |
 
-### Gloves (glove stand)
+### Shovels (shovel stand)
 
-| Gloves | Was | Now | Why |
+The tool tiers were gloves until Cyrus's hay change; they are now shovels, with the same keys (`Prices.Gloves`) and prices.
+
+| Shovel | Was | Now | Why |
 |---|---|---|---|
-| Work Gloves | $250 | $250 | The first thing you buy, about 3 minutes in. |
-| Leather Gloves | $1,500 | $8,000 | About 20 minutes at the shaker stage, just before the tier-2 hay of Desert and Snow. |
-| Reinforced Gloves | $6,000 | $45,000 | About 30 minutes before Swamp's tier-3 hay. |
-| Iron Gauntlets | $25,000 | $75,000 | About 30 minutes before Volcano and Cave. |
-| Starlight Gloves | $150,000 | $400,000 | About 30 minutes before Sky Island and Haunted Grove. |
+| Garden Shovel | $250 | $250 | The first thing you buy, about 3 minutes in. |
+| Steel Shovel | $1,500 | $8,000 | About 20 minutes at the shaker stage, just before the tier-2 hay of Desert and Snow. |
+| Reinforced Shovel | $6,000 | $45,000 | About 30 minutes before Swamp's tier-3 hay. |
+| Iron Spade | $25,000 | $75,000 | About 30 minutes before Volcano and Cave. |
+| Starlight Shovel | $150,000 | $400,000 | About 30 minutes before Sky Island and Haunted Grove. |
 
-The old glove prices were far below the trucks of the same stage, so gloves would have been bought long before the
+The old shovel (then glove) prices were far below the trucks of the same stage, so shovels would have been bought long before the
 hay that needs them.
 
 ### Land (Land Office)
@@ -194,7 +196,7 @@ are below so the whole list lives in one place.
 | Decor: flowers, bench, lantern, scarecrow | $200, $350, $500, $900 | Looks only. Each is a few minutes of early income, so a new farm can look lived in. Later decor should cost more (a fountain or a windmill at $10,000 to $50,000) so rich players still have something to spend on. |
 | Sorter oil | $250 a can | 10% faster for 25 bales. It only pays when the sorter holds the line back, so it is a small treat. |
 
-Quest rewards (the five quest gloves, the Alien Collector, the Starbeam Collector) cost $0 because you earn them; they
+Quest rewards (the five quest shovels, the Alien Collector, the Starbeam Collector) cost $0 because you earn them; they
 can't be bought.
 
 ### Needle sorters
@@ -359,26 +361,26 @@ loan takes its share of sales after that.
 
 | Buy | Price | Time to afford | Total play time | How |
 |---|---|---|---|---|
-| Work Gloves | $250 | 3 min | 0.1 h |  |
+| Garden Shovel | $250 | 3 min | 0.1 h |  |
 | Wheelbarrow | $1,000 | 9 min | 0.2 h |  |
 | Rusty Pickup | $6,000 | 6 min | 0.3 h | financed: $1,200 down |
 | Wagon Trailer | $1,500 | 12 min | 0.5 h |  |
 | Plot + Hand sieve + first line | $3,600 | 28 min | 1.0 h |  |
 | Shaker table | $4,000 | 24 min | 1.4 h |  |
-| Leather Gloves | $8,000 | 24 min | 1.8 h |  |
+| Steel Shovel | $8,000 | 24 min | 1.8 h |  |
 | Farm Flatbed | $25,000 | 12 min | 2.0 h | financed: $5,000 down |
 | Small Trailer | $8,000 | 30 min | 2.5 h |  |
 | Conveyor sorter | $25,000 | 93 min | 4.0 h |  |
 | Hay silo | $5,000 | 10 min | 4.2 h |  |
 | Box Truck | $90,000 | 41 min | 4.9 h | financed: $18,000 down |
-| Reinforced Gloves | $45,000 | 40 min | 5.5 h |  |
+| Reinforced Shovel | $45,000 | 40 min | 5.5 h |  |
 | Medium Trailer | $30,000 | 27 min | 6.0 h |  |
 | Magnet drum | $190,000 | 162 min | 8.7 h |  |
-| Iron Gauntlets | $75,000 | 30 min | 9.2 h |  |
+| Iron Spade | $75,000 | 30 min | 9.2 h |  |
 | Heavy Hauler | $350,000 | 28 min | 9.6 h | financed: $70,000 down |
 | Large Trailer | $120,000 | 22 min | 10.0 h |  |
 | Optical sorter | $1,350,000 | 223 min | 13.7 h |  |
-| Starlight Gloves | $400,000 | 32 min | 14.3 h |  |
+| Starlight Shovel | $400,000 | 32 min | 14.3 h |  |
 | Semi Rig | $1,500,000 | 24 min | 14.7 h | financed: $300,000 down |
 
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
@@ -391,7 +393,7 @@ maps). Medians, in minutes:
 
 | Buy | Table above | Sim, hand loading | Sim, bale toss + field chutes | + land loan | 2-player crew |
 |---|---|---|---|---|---|
-| Work Gloves | 6 | 2 | 2 | 2 | 1 |
+| Garden Shovel | 6 | 2 | 2 | 2 | 1 |
 | Wheelbarrow | 12 | 9 | 9 | 9 | 5 |
 | Rusty Pickup (loan) | 18 | 15 | 15 | 15 | 8 |
 | Plot + Hand sieve + first line | 60 | 50 | 34 | 28 | 16 |
@@ -415,11 +417,11 @@ a truck stops being the slow part. The needle market barely slows a solo player.
    Retuning the mid-game now would answer half of that question before he has.
 
 **If the stopwatch confirms the sim** (toss under 4 s and trip overhead under 60 s), the retune is ready: raise the
-shaker table, leather gloves, flatbed and conveyor sorter by about 1.6x ($6,500, $13,000, $40,000 and $40,000),
+shaker table, Steel Shovel, flatbed and conveyor sorter by about 1.6x ($6,500, $13,000, $40,000 and $40,000),
 which puts them back on the table's times without touching the early game or Cyrus's hay price. Re-run
 `python3 tools/pacing_sim.py` and `python3 tools/line_sim.py --check` after any change.
 
-Two early gaps were also looked at on purpose. **Work Gloves at 2 minutes** (target 6) stay: the 6 came from rounding
+Two early gaps were also looked at on purpose. **Garden Shovel at 2 minutes** (target 6) stay: the 6 came from rounding
 the table to 0.1 h, and a near-instant first purchase teaches the shop loop. **The plot** stays at $2,500: with toss
 and chutes it lands at 34 minutes, inside the target, and at 28 with a land loan.
 
@@ -429,13 +431,13 @@ The second table from `tools/pacing_sim.py` turns on, one at a time, what v1 lef
 
 | Buy | Target | v1 (solo, hand loading) | + toss + chute | + needle market | + land loan | + 2-player crew |
 |---|---|---|---|---|---|---|
-| Work Gloves | 6 | 2 | 2 | 2 | 2 | 1 |
+| Garden Shovel | 6 | 2 | 2 | 2 | 2 | 1 |
 | Wheelbarrow | 12 | 9 | 9 | 9 | 9 | 5 |
 | Rusty Pickup | 18 | 15 | 15 | 15 | 15 | 8 |
 | Wagon Trailer | 30 | 23 | 23 | 23 | 23 | 13 |
 | Plot + Hand sieve + first line | 60 | 50 | 34 | 34 | 28 | 16 |
 | Shaker table | 84 | 71 | 44 | 43 | 39 | 24 |
-| Leather Gloves | 108 | 92 | 58 | 57 | 55 | 36 |
+| Steel Shovel | 108 | 92 | 58 | 57 | 55 | 36 |
 | Farm Flatbed | 120 | 103 | 64 | 63 | 62 | 41 |
 | Small Trailer | 150 | 127 | 79 | 77 | 76 | 52 |
 | Conveyor sorter | 240 | over 180 | 124 | 123 | 120 | 86 |
@@ -480,7 +482,7 @@ hardest region to reach and 8 bales was under 7 minutes of income there. The res
 
 Map's two ferry islands get their own hay and needles, so a ferry trip is worth its fare:
 
-| Hay | Region | Glove tier | Weight | Needles/bale | Needle | Sorted value | Bale sorted |
+| Hay | Region | Shovel tier | Weight | Needles/bale | Needle | Sorted value | Bale sorted |
 |---|---|---|---|---|---|---|---|
 | Bog reed | Swamp | 3 | 2.4 | 6 | Bog | $170 | $1,065 |
 | **Sea grass** | **Thimble Keys** | 3 | 2.2 | 6 | **Coral** | **$220** | **$1,365** |
@@ -498,7 +500,7 @@ crater.
 Quest rewards live in `Config/Quests` (Quests thread) and pay with a "Quest: " note, so they count for credit but not
 toward the trade-cash `sold` total. The ladder runs from $150 for the first errand to $15,000 for the last Weaver
 chapter before the finale, each sized against the next thing the player is saving for (the second quest pays back
-the Work Gloves, the fourth half a plot). Daily bounties pay $150 to $1,200 and daily maze runs $300 to $400.
+the Garden Shovel, the fourth half a plot). Daily bounties pay $150 to $1,200 and daily maze runs $300 to $400.
 
 The Weaver finale (all twelve Master Needle shards) pays **$100,000** with the Master Needle. Twelve shards take a
 player through Swamp, Thimble Keys and the late regions, where income is $150,000 to $440,000 an hour, so Quests'
@@ -515,7 +517,7 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 
 | Secret | Where | What gates it | Reward |
 |---|---|---|---|
-| Ember Cache | Volcano crater | Tier 4 gloves ($75,000 Iron Gauntlets) | $40,000 |
+| Ember Cache | Volcano crater | Tier 4 shovel ($75,000 Iron Spade) | $40,000 |
 | Lost Kite | Under Sky Island's rim | $1,000 zeppelin fare | $25,000 |
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
@@ -646,8 +648,8 @@ already hauled into your silos, and hauling is what limits income.
 ## Pacing scale (CEO H18)
 
 The stacked-boost week showed boosts shorten the climb, so the prices now have one dial, `Prices.PacingScale`. Every
-truck, trailer, glove and build piece at $4,000 or more (`PacingFrom`) is multiplied by it and rounded to two
-significant figures. The first hour never changes: Work Gloves, the wheelbarrow, the Rusty Pickup (`PacingKeep`), the
+truck, trailer, shovel and build piece at $4,000 or more (`PacingFrom`) is multiplied by it and rounded to two
+significant figures. The first hour never changes: Garden Shovel, the wheelbarrow, the Rusty Pickup (`PacingKeep`), the
 wagon, the plot, the hand sieve and a first line all stay as written. The daily contract tiers start at lifetime-sales
 marks, so they stretch by the same factor. The tables in this doc show the prices as written; the game charges them
 times the scale. `tools/line_sim.py`, `pacing_sim.py` and `economy_model.py` apply the same rule.
@@ -777,7 +779,7 @@ prefix or be a known sale.
 | Sorted needle values | `Needles` | `Config/Needles` |
 | Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
-| Gloves | `Gloves` | `Config/Gloves` |
+| Shovels | `Gloves` | `Config/Gloves` |
 | Trade fee | `Trade` | `Services/Bank` (settleTrade) |
 | Region events | `RegionEvents` | `Services/RegionEvents` |
 | Region secrets | `Secrets` | `Services/Wilds` |

@@ -146,8 +146,10 @@ Prices.Trailers = {
 -- Gloves and the pickup (docs/ECONOMY.md).
 Prices.Wheelbarrow = 1000
 
--- Gloves (Config/Gloves Tiers, by id). Each pair costs about 30 minutes of what you earn just before you need it for
--- the next region's heavier hay. Work Gloves are the first purchase, two or three minutes in.
+-- Shovel tiers (Config/Gloves Tiers, by id; the keys kept their old glove names). Each shovel costs about 30 minutes of
+-- what you earn just before you need it for the next region's heavier hay: Old Shovel (free), Garden Shovel (work, the
+-- first purchase, two or three minutes in), Steel Shovel (leather), Reinforced Shovel, Iron Spade (iron), Starlight
+-- Shovel.
 Prices.Gloves = {
 	bare = 0,
 	work = 250,
