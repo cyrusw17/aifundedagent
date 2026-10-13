@@ -5,21 +5,22 @@
 return {
 	RefundShare = 0.5, -- removing a piece gives back this share of its price
 
-	-- Every plot is a grid of 6 stud conveyor tiles: tiles.X across (east-west) by tiles.Z (north-south). corner is the
-	-- ground corner with the lowest X and Z. Each plot also has an 8 stud strip on its north side with its sign, needle
-	-- bin and SELL NEEDLES pad. The plot road runs south at x = 40, so west plots open east and east plots open west.
+	-- The six plot zones are laid out by the biome thread in Meadow.luau (Plots, 72 x 72 each, a lane at z = 156 between
+	-- the two rows). Each plot here fills one zone with a grid of 6 stud conveyor tiles, tiles.X east-west by tiles.Y
+	-- north-south, plus an 8 stud strip along the lane side (open) with its sign, needle bin and SELL NEEDLES pad.
+	-- The rest of the zone stays grass, so plots differ in size as well as price.
 	Plots = {
-		{ name = "Roadside Patch", price = 800, corner = Vector3.new(-16, 0, 56), tiles = Vector2.new(8, 8), open = "E" },
-		{ name = "Fence Row", price = 1200, corner = Vector3.new(48, 0, 56), tiles = Vector2.new(9, 9), open = "W" },
-		{ name = "Willow Lot", price = 2000, corner = Vector3.new(-28, 0, 116), tiles = Vector2.new(10, 10), open = "E" },
-		{ name = "Creek Field", price = 3000, corner = Vector3.new(48, 0, 122), tiles = Vector2.new(9, 12), open = "W" },
-		{ name = "Big Meadow", price = 6000, corner = Vector3.new(-52, 0, 188), tiles = Vector2.new(14, 14), open = "E" },
-		{ name = "Homestead Acre", price = 5000, corner = Vector3.new(48, 0, 206), tiles = Vector2.new(10, 14), open = "W" },
+		{ zone = "plot_1", name = "Roadside Patch", price = 800, tiles = Vector2.new(8, 8), open = "S" },
+		{ zone = "plot_2", name = "Fence Row", price = 1500, tiles = Vector2.new(10, 8), open = "S" },
+		{ zone = "plot_3", name = "Willow Lot", price = 2500, tiles = Vector2.new(10, 10), open = "S" },
+		{ zone = "plot_4", name = "Big Meadow", price = 6000, tiles = Vector2.new(12, 10), open = "N" },
+		{ zone = "plot_5", name = "Creek Corner", price = 1200, tiles = Vector2.new(9, 9), open = "N" },
+		{ zone = "plot_6", name = "Homestead Acre", price = 4000, tiles = Vector2.new(11, 10), open = "N" },
 	},
 	StripDepth = 8,
 
-	-- The land office, where plots are bought. Its open front faces north toward the main road.
-	OfficeCenter = Vector3.new(14, 0, 40),
+	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
+	OfficeCenter = Vector3.new(-20, 0, 49),
 
 	-- Everything an owner can build. size is tiles across (to the right of the facing direction) by tiles along it.
 	-- Separators are the Machines.luau needle sorter; their id is the tier in Sorters.luau, which sets how many needles
@@ -49,8 +50,8 @@ return {
 			trailers = { "wagon_trailer" },
 			land = {
 				owned = true,
-				plot = 5, -- Big Meadow
-				items = {
+				plot = 4, -- Big Meadow
+				items = ({
 					-- Silo -> belts -> magnet drum -> belts -> hay buyer, along the north side.
 					{ id = "silo", gx = 1, gz = 1, dir = "E", stored = 20 },
 					{ id = "belt", gx = 3, gz = 1, dir = "E" },
@@ -64,9 +65,9 @@ return {
 					{ id = "shaker_table", gx = 4, gz = 5, dir = "E" },
 					{ id = "belt", gx = 6, gz = 5, dir = "E" },
 					{ id = "hay_buyer", gx = 7, gz = 5, dir = "E" },
-					-- Truck and hitched trailer park along the south side, facing the road.
-					{ id = "parking", gx = 6, gz = 10, dir = "E" },
-				},
+					-- Truck and hitched trailer park on the east side, facing north toward the lane.
+					{ id = "parking", gx = 10, gz = 8, dir = "N" },
+				} :: { any }),
 			},
 		},
 	},

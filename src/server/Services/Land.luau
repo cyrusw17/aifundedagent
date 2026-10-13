@@ -16,6 +16,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
 local LandConfig = require(Shared.Config.Land)
+local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
@@ -307,10 +308,9 @@ local function parkVehicles(player, plot)
 		end
 	end
 	if not at then
-		local gate = plot.def.open == "E" and Vector3.new(plot.corner.X + plot.size.X - 12, 0, plot.corner.Z + plot.size.Z - 6)
-			or Vector3.new(plot.corner.X + 12, 0, plot.corner.Z + plot.size.Z - 6)
-		local face = plot.def.open == "E" and Vector3.xAxis or -Vector3.xAxis
-		at = CFrame.lookAt(gate, gate + face)
+		-- No parking pad: on the lane in front of the plot, facing east.
+		local gate = Vector3.new(plot.corner.X + plot.size.X / 2, 0, plot.laneZ)
+		at = CFrame.lookAt(gate, gate + Vector3.xAxis) * CFrame.new(0, 0, -10)
 	end
 	-- The truck's middle sits half its length back from the front of the pad.
 	local truckCF = at * CFrame.new(0, 0.3, def.length / 2) -- on top of the pad
@@ -321,8 +321,10 @@ local function parkVehicles(player, plot)
 		Vehicles.setOwned(player, model)
 		Vehicles.place(model, truckCF)
 		local trailerId = s.trailers and s.trailers[1]
-		if trailerId and Vehicles.spawnTrailer then
-			Vehicles.spawnTrailer(trailerId, model)
+		-- The trailer hitch belongs to Vehicles.luau (biome thread); used once it exists.
+		local spawnTrailer = (Vehicles :: any).spawnTrailer
+		if trailerId and spawnTrailer then
+			spawnTrailer(trailerId, model)
 		end
 		Vehicles.release(model, player)
 	end)
@@ -497,33 +499,52 @@ local function fence(parent, a, b)
 	end
 end
 
+local function zoneOf(def)
+	for _, zone in Meadow.Plots do
+		if zone.id == def.zone then
+			return zone
+		end
+	end
+	error("no Meadow plot zone " .. tostring(def.zone))
+end
+
 local function buildPlot(parent, index, def)
-	local corner = def.corner
+	-- The grid is centered east-west in its Meadow zone, with the strip on the lane side (open) and the grid behind it.
+	local zone = zoneOf(def)
 	local size = Vector3.new(def.tiles.X * T, 0, def.tiles.Y * T)
+	local x0 = math.floor((zone.min.X + zone.max.X - size.X) / 2)
+	local x1 = x0 + size.X
+	local stripZ, z0, z1
+	if def.open == "S" then
+		stripZ = zone.max.Y - STRIP / 2
+		z1 = zone.max.Y
+		z0 = zone.max.Y - STRIP - size.Z
+	else
+		stripZ = zone.min.Y + STRIP / 2
+		z0 = zone.min.Y
+		z1 = zone.min.Y + STRIP + size.Z
+	end
+	local corner = Vector3.new(x0, 0, def.open == "S" and z0 or z0 + STRIP)
 	local model = Instance.new("Model")
 	model.Name = "Plot" .. index
 	model.Parent = parent
 
-	-- Packed dirt over the build grid, and a strip on the north side for the sign and the needle bin.
+	-- Packed dirt over the build grid, and the strip for the sign and the needle bin.
 	part(model, "Ground", Vector3.new(size.X, 0.2, size.Z), CFrame.new(corner + Vector3.new(size.X / 2, 0.1, size.Z / 2)), Rustic.Dirt, Enum.Material.Ground)
-	part(model, "Strip", Vector3.new(size.X, 0.2, STRIP), CFrame.new(corner + Vector3.new(size.X / 2, 0.1, -STRIP / 2)), Rustic.Mud, Enum.Material.Ground)
+	part(model, "Strip", Vector3.new(size.X, 0.2, STRIP), CFrame.new((x0 + x1) / 2, 0.1, stripZ), Rustic.Mud, Enum.Material.Ground)
 
-	-- Fence on three sides. The side facing the plot road stays open.
-	local x0, x1 = corner.X, corner.X + size.X
-	local z0, z1 = corner.Z - STRIP, corner.Z + size.Z
+	-- Fence on three sides. The lane side stays open.
 	local fences = Instance.new("Model")
 	fences.Name = "Fence"
 	fences.Parent = model
-	fence(fences, Vector3.new(x0, 0, z0), Vector3.new(x1, 0, z0))
-	fence(fences, Vector3.new(x0, 0, z1), Vector3.new(x1, 0, z1))
-	local farX = def.open == "E" and x0 or x1
-	fence(fences, Vector3.new(farX, 0, z0), Vector3.new(farX, 0, z1))
+	fence(fences, Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1))
+	fence(fences, Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1))
+	local farZ = def.open == "S" and z0 or z1
+	fence(fences, Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ))
 
-	-- The needle bin sits at the road end of the strip, with its SELL NEEDLES pad toward the road.
-	local stripZ = corner.Z - STRIP / 2
-	local binX = def.open == "E" and x1 - T * 1.5 or x0 + T * 1.5
-	local inward = def.open == "E" and -1 or 1
-	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX + inward, 0, stripZ))
+	-- The needle bin sits at the west end of the strip, with its SELL NEEDLES pad toward the middle.
+	local binX = x0 + T * 0.5 + 0.5
+	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX - 1, 0, stripZ))
 
 	-- Sign post in the middle of the strip.
 	local post = part(model, "SignPost", Vector3.new(0.8, 6, 0.8), CFrame.new((x0 + x1) / 2, 3, stripZ), Rustic.WoodDark, Enum.Material.Wood)
@@ -551,6 +572,7 @@ local function buildPlot(parent, index, def)
 		def = def,
 		corner = corner,
 		size = size,
+		laneZ = def.open == "S" and z1 + 8 or z0 - 8,
 		tiles = { X = def.tiles.X, Z = def.tiles.Y },
 		model = model,
 		items = items,
@@ -586,12 +608,12 @@ local function buildOffice(parent)
 	-- A map of the plots on the back wall, drawn to scale.
 	local map = part(model, "PlotMap", Vector3.new(9, 5, 0.2), at(0, 6, 4.1), Rustic.Cloth, Enum.Material.Fabric)
 	-- Seen from the counter you face south, so south is up and west is on your right.
-	local scale = 1 / 48
+	local scale = 1 / 32
 	for _, def in LandConfig.Plots do
-		local w, d = def.tiles.X * T * scale, def.tiles.Y * T * scale
-		local cx = (def.corner.X + def.tiles.X * T / 2 - 28) * scale
-		local cz = (def.corner.Z + def.tiles.Y * T / 2 - 173) * scale
-		part(model, "MapPlot", Vector3.new(w - 0.1, d - 0.1, 0.1), map.CFrame * CFrame.new(cx, cz, -0.12), Rustic.PaintGreen)
+		local zone = zoneOf(def)
+		local mid = (zone.min + zone.max) / 2
+		local w, d = def.tiles.X * T * scale, (def.tiles.Y * T + STRIP) * scale
+		part(model, "MapPlot", Vector3.new(w, d, 0.1), map.CFrame * CFrame.new((mid.X + 26) * scale, (mid.Y - 156) * scale, -0.12), Rustic.PaintGreen)
 	end
 	-- Stand on the rug in front of the counter to open the land panel.
 	local rug = part(model, "Rug", Vector3.new(10, 0.1, 4), at(0, 0.65, -1.6), Rustic.PaintRed, Enum.Material.Fabric)
