@@ -1,6 +1,7 @@
 --!nonstrict
 -- Drives your truck. Runs only while you sit in its driver's seat; the server gave this client the truck's physics.
--- W/S (or the thumbstick) for gas and reverse, A/D to steer, jump to get out.
+-- W/S (or the thumbstick) for gas and reverse, A/D to steer, jump to get out. Getting out sets you down beside the
+-- driver's door; the Drive button there puts you back in.
 -- The truck tilts to follow the ground under its wheels, so hay bales in the bed feel the hills and can shift or
 -- spill on rough driving. Speed changes are kept smooth so a careful driver keeps the load.
 local Players = game:GetService("Players")
@@ -57,9 +58,10 @@ end
 -- The ground's up direction under the four corners of the truck, or nil in the air.
 local function groundUp(model, chassis, params)
 	local length = model:GetAttribute("Length") or 14
+	local track = model:GetAttribute("Track") or 2.8
 	local corners = {}
 	for _, z in { -length / 2 + 2.5, length / 2 - 2.5 } do
-		for _, x in { -2.8, 2.8 } do
+		for _, x in { -track, track } do
 			local origin = chassis.CFrame * Vector3.new(x, 3, z)
 			local hit = workspace:Raycast(origin, Vector3.new(0, -9, 0), params)
 			if not hit then
@@ -158,16 +160,41 @@ local function start(seat)
 	end)
 end
 
+-- Stand the character on the ground beside the driver's door, facing the way the truck faces.
+local function getOut(character, seat)
+	local model = seat.Parent
+	local chassis = model and model.PrimaryPart
+	local exit = seat:GetAttribute("ExitOffset")
+	if not chassis or not exit or not character.Parent then
+		return
+	end
+	local spot = (chassis.CFrame * exit).Position
+	local look = chassis.CFrame.LookVector
+	look = Vector3.new(look.X, 0, look.Z)
+	if look.Magnitude < 0.1 then
+		look = Vector3.new(0, 0, -1)
+	end
+	character:PivotTo(CFrame.lookAt(spot, spot + look.Unit))
+end
+
 local function watch(character)
 	local humanoid = character:WaitForChild("Humanoid")
+	local lastSeat = nil
 	humanoid.Seated:Connect(function(isSeated, seatPart)
 		if isSeated and seatPart and seatPart:IsA("VehicleSeat") and seatPart:GetAttribute("Truck") then
+			lastSeat = seatPart
 			start(seatPart)
 		else
 			stop()
+			local seat = lastSeat
+			lastSeat = nil
+			if seat and humanoid.Health > 0 then
+				task.defer(getOut, character, seat)
+			end
 		end
 	end)
 	if humanoid.SeatPart and humanoid.SeatPart:GetAttribute("Truck") then
+		lastSeat = humanoid.SeatPart
 		start(humanoid.SeatPart)
 	end
 end

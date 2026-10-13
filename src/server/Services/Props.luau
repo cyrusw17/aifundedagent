@@ -6,6 +6,7 @@
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Props)
 
@@ -231,27 +232,40 @@ end
 
 -- Welds a placed prop onto anchor so it moves with it. The prop is only a look: it never collides, is never hit by
 -- clicks (those go to the anchor) and weighs nothing.
-function Props.weldTo(model, anchor)
+-- fallback is the part-built look the mesh replaces (a bale body, a Tool). When given, the mesh starts hidden and the
+-- fallback stays visible; each client swaps them once the mesh has actually loaded (PropMeshes.client.luau), so a
+-- freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
+function Props.weldTo(model, anchor, fallback)
 	for _, part in partsOf(model) do
 		part.Anchored = false
 		part.CanCollide = false
 		part.CanQuery = false
 		part.CanTouch = false
 		part.Massless = true
+		if fallback then
+			part:SetAttribute("MeshTransparency", part.Transparency)
+			part.Transparency = 1
+		end
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = anchor
 		weld.Part1 = part
 		weld.Parent = part
 	end
+	if fallback then
+		local link = Instance.new("ObjectValue")
+		link.Name = "Fallback"
+		link.Value = fallback
+		link.Parent = model
+		CollectionService:AddTag(model, "PropMesh")
+	end
 	model.Parent = anchor
 end
 
--- The props with no job yet, set around base camp: a wheelbarrow by the bale drop-off, a crate and a round bale by
--- the field bales, logs and spare tools by the hay shop. Skipped quietly if they were not imported.
+-- The props with no job yet, set around base camp: a wheelbarrow by the bale drop-off, a crate and a small stack of
+-- bales by the field bales, logs and spare tools by the hay shop. Skipped quietly if they were not imported.
 local DRESSING = {
 	{ "wheelbarrow", Vector3.new(-14, 0, -3), 30, true },
 	{ "hay_crate", Vector3.new(-28, 0, -15), 10, true },
-	{ "round_bale", Vector3.new(-28, 0, -21), 0, true },
 	{ "log", Vector3.new(9, 0, -19), 90, true },
 	{ "log", Vector3.new(9, 0, -20.8), 92, true },
 }
@@ -288,6 +302,15 @@ function Props.dressBaseCamp(parent)
 			for _, part in partsOf(model) do
 				part.CanCollide = false
 			end
+			model.Parent = folder
+		end
+	end
+
+	-- A small stack of square bales by the crate, the same size as the game's bales: two side by side, one on top.
+	local bale = Vector3.new(4.6, 2.6, 3.2)
+	for _, spot in { Vector3.new(-28, 1.3, -20.4), Vector3.new(-28, 1.3, -23.6), Vector3.new(-28, 3.9, -22) } do
+		local model = Props.make("hay_bale", CFrame.new(spot), bale)
+		if model then
 			model.Parent = folder
 		end
 	end

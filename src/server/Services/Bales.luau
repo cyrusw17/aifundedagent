@@ -42,15 +42,14 @@ local function buildBale(position)
 	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
 
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
-	-- stays the real physics block and click target, just invisible.
+	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
 	local mesh = Props.make("hay_bale", body.CFrame, SIZE)
 	if mesh then
-		body.Transparency = 1
-		Props.weldTo(mesh, body)
+		Props.weldTo(mesh, body, body)
 	end
 
-	-- Without the mesh, twine bands wrap the part bale. They are visual only and ride along with it.
-	for _, x in (mesh and {} or TWINE_X) do
+	-- The twine bands wrap the part bale. They are visual only and ride along with it.
+	for _, x in TWINE_X do
 		local band = Instance.new("Part")
 		band.Name = "Twine"
 		band.Size = Vector3.new(0.12, SIZE.Y + 0.06, SIZE.Z + 0.06)

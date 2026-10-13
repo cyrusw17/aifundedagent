@@ -11,7 +11,6 @@
 --   Machines.stepPad(parent, position, color, text, function(player) end)  -- tycoon floor button
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,7 +22,7 @@ local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
-local Groups = require(script.Parent.Groups)
+local Needle = require(script.Parent.Needle)
 
 local Machines = {}
 
@@ -130,42 +129,33 @@ function Machines.stepPad(parent, position, color, text, onStep)
 	return pad, label
 end
 
--- Clean bales come out of a sorter with their needles taken out. They ride the belt to a buyer.
-local cleanBales = {}
-
-local function spawnCleanBale(parent, cframe, ownerId, hay)
-	local body = part(parent, "CleanBale", Vector3.new(4.6, 2.6, 3.2), cframe, C.cleanHay, Enum.Material.Fabric)
-	body.Anchored = false
-	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
-	for _, x in { -1.2, 1.2 } do
-		local band = part(body, "Twine", Vector3.new(0.2, 2.7, 3.3), body.CFrame * CFrame.new(x, 0, 0), C.twine, Enum.Material.Fabric)
-		band.Anchored = false
-		band.CanCollide = false
-		band.CanQuery = false
-		band.Massless = true
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = body
-		weld.Part1 = band
-		weld.Parent = band
-	end
-	body:SetAttribute("OwnerId", ownerId)
-	body:SetAttribute("Hay", hay)
-	cleanBales[body] = true
+-- Sorted bales come out of a sorter with their needles taken out. They are ordinary bales (Bales.spawn, same size
+-- and look as every other bale), marked sorted so no sorter takes them twice and buyers pay only for the hay.
+local function spawnSortedBale(cframe, ownerId, hay)
+	local b = Bales.spawn(Vector3.zero, false, false)
+	b.sorted = true
+	b.sortedHay = hay
+	b.ownerId = ownerId
+	b.body:SetAttribute("Sorted", true)
+	b.body.CFrame = cframe
+	b.body.Anchored = false
 	pcall(function()
-		body:SetNetworkOwner(nil)
+		b.body:SetNetworkOwner(nil)
 	end)
+	local token = b.dropToken
 	task.delay(Factory.LooseBaleSeconds, function()
-		if cleanBales[body] then
-			cleanBales[body] = nil
-			body:Destroy()
+		if not b.gone and not b.carriedBy and b.dropToken == token and not Bales.isAtDropOff(b) then
+			Bales.consume(b)
 		end
 	end)
+	return b
 end
 
--- Needle bin: one cell, open on top. Counts each player's needles and draws them as a pile.
--- It comes with a SELL NEEDLES pad in front (local +Z side) that pays the full sorted price.
+-- Needle bin: one cell, open on top. Sorters throw real needles into it (Needle.luau) and they pile up.
+-- It comes with a SELL NEEDLES pad in front (local +Z side) that pays the full sorted price for your needles in the
+-- bin and any you picked up and carry.
 function Machines.needleBin(parent, frame)
-	local bin = { counts = {}, visible = {} }
+	local bin = {}
 	local model = Instance.new("Model")
 	model.Name = "NeedleBin"
 	model.Parent = parent
@@ -175,80 +165,53 @@ function Machines.needleBin(parent, frame)
 		part(model, "Wall", Vector3.new(T, 3, 0.4), frame * CFrame.new(0, 1.5, sx * (T / 2 - 0.2)), C.wood, Enum.Material.WoodPlanks)
 	end
 	local floor = frame * CFrame.new(0, 0.4, 0)
+	local inside = frame * CFrame.new(0, 2, 0)
+	local insideSize = Vector3.new(T - 0.8, 3.4, T - 0.8)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
 	local function refresh()
-		local total = 0
-		for _, n in bin.counts do
-			total += n
-		end
-		label.Text = ("NEEDLE BIN\n%d %s needles"):format(total, needle.name:lower())
+		label.Text = ("NEEDLE BIN\n%d needles"):format(#Needle.inBox(inside, insideSize))
 	end
 	refresh()
-
-	-- A needle arcs from `from` into the bin, then settles into the pile.
-	local function drop(from, ownerId)
-		local target = floor * CFrame.new(rng:NextNumber(-2, 2), 0.3, rng:NextNumber(-2, 2))
-		local n = part(model, "Needle", Vector3.new(1.2, 0.15, 0.15), CFrame.new(from), C.metal, Enum.Material.Metal)
-		n.Shape = Enum.PartType.Cylinder
-		n.CanCollide = false
-		n.CollisionGroup = Groups.Loose
-		n:SetAttribute("OwnerId", ownerId)
-		table.insert(bin.visible, n)
-		while #bin.visible > Factory.MaxVisibleNeedles do
-			table.remove(bin.visible, 1):Destroy()
+	task.spawn(function()
+		while model.Parent do
+			task.wait(1)
+			refresh()
 		end
-		task.spawn(function()
-			local started = os.clock()
-			local control = (from + target.Position) / 2 + Vector3.new(0, 4, 0)
-			while n.Parent do
-				local alpha = math.min((os.clock() - started) / 0.6, 1)
-				local inv = 1 - alpha
-				n.CFrame = CFrame.new(inv * inv * from + 2 * inv * alpha * control + alpha * alpha * target.Position)
-					* CFrame.Angles(alpha * 9, alpha * 5, 0)
-				if alpha >= 1 then
-					break
-				end
-				RunService.Heartbeat:Wait()
-			end
-			if n.Parent then
-				n.CanCollide = true
-				n.Anchored = false
-				pcall(function()
-					n:SetNetworkOwner(nil)
-				end)
-			end
-		end)
-	end
+	end)
 
-	function bin.add(from, ownerId, count)
-		if ownerId then
-			bin.counts[ownerId] = (bin.counts[ownerId] or 0) + count
-		end
+	-- Throws count needles from `from` into the bin, owned by ownerId.
+	function bin.add(from, ownerId, count, needleId)
 		for i = 1, count do
-			task.delay(i * 0.08, drop, from, ownerId)
+			task.delay(i * 0.08, function()
+				local to = (floor * CFrame.new(rng:NextNumber(-2, 2), 0.3, rng:NextNumber(-2, 2))).Position
+				Needle.throw(from, to, ownerId, needleId)
+			end)
 		end
-		task.delay(count * 0.08 + 0.7, refresh)
 	end
 
 	function bin.sell(player)
-		local count = bin.counts[player.UserId] or 0
-		if count <= 0 then
-			Data.toast(player, "You have no needles in this bin yet. Run some hay through the sorter.")
-			return
-		end
-		bin.counts[player.UserId] = nil
-		for i = #bin.visible, 1, -1 do
-			if bin.visible[i]:GetAttribute("OwnerId") == player.UserId then
-				table.remove(bin.visible, i):Destroy()
+		local byType = Needle.takeHeld(player)
+		for _, n in Needle.inBox(inside, insideSize) do
+			if n:GetAttribute("OwnerId") == player.UserId then
+				local id = n:GetAttribute("NeedleId") or Needle.default.id
+				byType[id] = (byType[id] or 0) + 1
+				n:Destroy()
 			end
 		end
+		local count, value = 0, 0
+		for id, k in byType do
+			count += k
+			value += k * Needle.info(id).sortedValue
+		end
 		refresh()
-		local value = count * needle.sortedValue
-		Machines.pay(player.UserId, value, ("Sold %d sorted %s needles for $%d."):format(count, needle.name:lower(), value))
+		if count == 0 then
+			Data.toast(player, "You have no needles in this bin or your pocket. Run some hay through a sorter.")
+			return
+		end
+		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
 	end
 
-	bin.target = floor.Position + Vector3.new(0, 1, 0)
 	bin.model = model
 	Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, ("SELL NEEDLES\n$%d each"):format(needle.sortedValue), bin.sell)
 	return bin
@@ -323,7 +286,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 		if bin then
 			bin.add(chuteFrom, ownerId, found)
 		end
-		spawnCleanBale(parent, out, ownerId, hay)
+		spawnSortedBale(out, ownerId, hay)
 		sorted += 1
 		label.Text = ("%s\n%d bales sorted, finds %d%%"):format(tier.name:upper(), sorted, math.round(tier.recovery * 100))
 	end
@@ -334,7 +297,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 			local bale, loose = nil, {}
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
-				if b and not b.gone and not b.carriedBy and not b.breaking then
+				if b and not b.gone and not b.carriedBy and not b.breaking and not b.sorted then
 					bale = bale or b
 				elseif Hay.isPiece(p) then
 					table.insert(loose, p)
@@ -357,7 +320,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 end
 
 -- Hay buyer: an open hopper at the end of a belt (the belt comes in from local +Z). Pays whoever owns what drops in:
--- clean bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle.
+-- sorted bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle.
 function Machines.hayBuyer(parent, frame, title)
 	local model = Instance.new("Model")
 	model.Name = "HayBuyer"
@@ -376,12 +339,13 @@ function Machines.hayBuyer(parent, frame, title)
 		while model.Parent do
 			task.wait(0.25)
 			for _, p in Workspace:GetPartBoundsInBox(zone, Vector3.new(T - 0.8, 6, T - 0.8)) do
-				if cleanBales[p] then
-					cleanBales[p] = nil
-					local hay = p:GetAttribute("Hay") or 0
+				local sortedBale = Bales.fromPart(p)
+				if sortedBale and sortedBale.sorted and p == sortedBale.body and not sortedBale.gone and not sortedBale.carriedBy then
+					local hay = sortedBale.sortedHay or 0
 					local value = math.floor(hay * Economy.HAY_PRICE)
-					Machines.pay(p:GetAttribute("OwnerId"), value, ("Paid $%d for %d clean hay."):format(value, hay))
-					p:Destroy()
+					local ownerId = sortedBale.ownerId
+					Bales.consume(sortedBale)
+					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay))
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId = 0, nil

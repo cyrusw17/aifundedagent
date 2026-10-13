@@ -10,6 +10,7 @@ local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Data = {}
 
 local states = {}
+local INFINITE_CASH = 1e9 -- shown and spendable while Config.InfiniteMoney is on
 local store = nil
 
 do
@@ -36,6 +37,9 @@ function Data.sync(player)
 	if not state then
 		return
 	end
+	if Config.InfiniteMoney then
+		state.cash = INFINITE_CASH -- topped back up after every purchase
+	end
 	player:SetAttribute("Cash", state.cash)
 	player:SetAttribute("LoadHay", state.loadHay)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
@@ -58,6 +62,7 @@ function Data.load(player)
 		if ok then
 			if typeof(saved) == "table" and typeof(saved.cash) == "number" then
 				state.cash = saved.cash
+				state.savedCash = saved.cash
 			end
 			if typeof(saved) == "table" and typeof(saved.trucks) == "table" then
 				for _, id in saved.trucks do
@@ -83,7 +88,13 @@ function Data.save(player)
 		return
 	end
 	local ok, err = pcall(function()
+<<<<<<< HEAD
 		store:SetAsync(keyFor(player), { cash = state.cash, trucks = state.trucks, land = state.land })
+=======
+		-- With infinite money on, the save keeps the balance the player had before, not the test cash.
+		local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
+		store:SetAsync(keyFor(player), { cash = cash, trucks = state.trucks })
+>>>>>>> origin/claude/integration-check-krlhv6
 	end)
 	if not ok then
 		warn("[Needlewood] save failed for " .. player.Name .. ": " .. tostring(err))

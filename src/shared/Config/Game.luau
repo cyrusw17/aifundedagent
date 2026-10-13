@@ -5,6 +5,10 @@ return {
 	NeedleChancePerHay = 0.2, -- meadow bales hide about 20 needles per 100 hay
 	AutosaveSeconds = 60,
 
+	-- TESTING: every player has endless cash, so shops can be tried without grinding. Real balances are kept and
+	-- saved as normal underneath; set this to false before launch.
+	InfiniteMoney = true,
+
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,
 	VisibleNeedleChance = 0.2, -- per spill wave (3 per bale): a needle you can see and scoop
@@ -20,7 +24,10 @@ return {
 	ShovelPieces = 12, -- strands per scoop
 	ShovelRadius = 3, -- pieces this close to the clicked spot get scooped, nearest first
 	ScoopCooldownSeconds = 0.85,
-	RakeRadius = 7,
+	RakeRadius = 6, -- strands this close to the click get gathered
+	RakeGatherDistance = 2.5, -- the rake pulls hay to this far in front of you
+	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
+	RakeMaxSpeed = 16,
 	RakeCooldownSeconds = 0.75,
 
 	-- Carrying a whole bale

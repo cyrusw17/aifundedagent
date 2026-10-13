@@ -1,6 +1,6 @@
 --!strict
 -- Trucks sold at the dealer (docs/ITEMS.md). Only the first one can be bought for now; the rest are on the lot
--- with a COMING SOON tag. Prices are placeholders.
+-- with a COMING SOON tag. Prices are placeholders. Lengths match the Blender meshes (Config/Props.luau).
 export type Truck = {
 	id: string,
 	name: string,
@@ -23,7 +23,7 @@ local Trucks: { Truck } = {
 		available = true,
 		style = "pickup",
 		paint = "PaintRed",
-		length = 19.1, -- bed holds 2 x 2 bales lengthwise (BUILD_REGISTRY.md), same as the Blender mesh
+		length = 26.9, -- bed holds 3 x 3 bales a layer, lying lengthwise (BUILD_REGISTRY.md)
 		meshTurn = 0, -- degrees; set to 180 if the imported mesh faces backwards
 		maxSpeed = 46,
 	},
@@ -35,7 +35,7 @@ local Trucks: { Truck } = {
 		available = false,
 		style = "flatbed",
 		paint = "PaintGreen",
-		length = 16,
+		length = 24.4,
 		maxSpeed = 48,
 	},
 	{
@@ -46,7 +46,7 @@ local Trucks: { Truck } = {
 		available = false,
 		style = "box",
 		paint = "PaintCream",
-		length = 17,
+		length = 29.4,
 		maxSpeed = 44,
 	},
 	{
@@ -57,7 +57,7 @@ local Trucks: { Truck } = {
 		available = false,
 		style = "hauler",
 		paint = "PaintYellow",
-		length = 18,
+		length = 36,
 		maxSpeed = 42,
 	},
 	{
@@ -68,7 +68,7 @@ local Trucks: { Truck } = {
 		available = false,
 		style = "semi",
 		paint = "PaintBlue",
-		length = 16,
+		length = 25.3,
 		maxSpeed = 50,
 	},
 }

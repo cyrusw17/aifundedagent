@@ -66,7 +66,7 @@ local function sellPieces(pieces)
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
 		if Hay.isNeedle(piece) then
-			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0) + 1
+			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0) + Hay.needleValue(piece)
 			byOwner[ownerId] = byOwner[ownerId] or 0
 		else
 			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
@@ -78,8 +78,9 @@ local function sellPieces(pieces)
 		local state = owner and Data.get(owner)
 		if state then
 			local hay = n * Config.HayPerPiece
-			local needles = (needlesByOwner[ownerId] or 0) + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
-			local value = Economy.rawLoadValue(hay, needles)
+			-- Hidden needles in loose hay pay the raw price; needles lying in plain sight pay their full value.
+			local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+			local value = Economy.rawLoadValue(hay, needles) + (needlesByOwner[ownerId] or 0)
 			state.cash += value
 			Data.sync(owner)
 			Data.toast(owner, ("Sold %d loose hay for $%d. The shop found %d needles."):format(hay, value, needles))
