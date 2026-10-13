@@ -94,6 +94,18 @@ local function footprintFrame(plot, def, gx, gz, dir)
 end
 
 -- Client-facing copy of a plot's state, so the panel and the build ghost work without asking the server.
+-- Farm crew: players the owner lets drive their truck and work their line. Hay a crew member runs through the plot's
+-- sorters and buyers pays the owner, and the needles it finds go in the owner's bin.
+local CREW_MAX = 6
+local function payeeFor(plot)
+	return function(ownerId)
+		if ownerId and plot.ownerId and (ownerId == plot.ownerId or (plot.crew and plot.crew[ownerId])) then
+			return plot.ownerId
+		end
+		return ownerId
+	end
+end
+
 local function publish(plot)
 	local info = plot.info
 	info:SetAttribute("OwnerId", plot.ownerId or 0)
@@ -103,6 +115,11 @@ local function publish(plot)
 		table.insert(taken, k)
 	end
 	info:SetAttribute("Taken", table.concat(taken, ";"))
+	local crew = {}
+	for userId in plot.crew or {} do
+		table.insert(crew, tostring(userId))
+	end
+	info:SetAttribute("Crew", table.concat(crew, ","))
 	if plot.ownerId then
 		plot.label.Text = ("%s\n%s's farm"):format(plot.def.name:upper(), plot.ownerName)
 	else
@@ -246,9 +263,9 @@ local function spawnItem(plot, def, gx, gz, dir, stored)
 		end
 	end
 	if def.kind == "separator" then
-		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin))
+		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
 	elseif def.kind == "buyer" then
-		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER"))
+		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER", payeeFor(plot)))
 	elseif def.kind == "silo" then
 		table.insert(item.instances, buildSilo(plot, item, def))
 	elseif def.kind == "parking" then
@@ -305,6 +322,11 @@ local function saveItems(player, plot)
 	s.land.items = items
 	s.land.plot = plot.index
 	s.land.needles = plot.bin.contents(player.UserId)
+	local crew = {}
+	for userId in plot.crew do
+		table.insert(crew, userId)
+	end
+	s.land.crew = crew
 	plot.dirty = false
 end
 
@@ -357,6 +379,7 @@ local function release(plot)
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
+	plot.crew = {}
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -367,6 +390,12 @@ local function claim(plot, player, saved)
 	plotOf[player] = plot
 	player:SetAttribute("LandPlot", plot.index)
 	plot.leftOut = {}
+	plot.crew = {}
+	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
+		if typeof(userId) == "number" and userId ~= player.UserId then
+			plot.crew[userId] = true
+		end
+	end
 	for _, s in saved.items or {} do
 		local def = typeof(s) == "table" and pieces[s.id]
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
@@ -501,6 +530,37 @@ end
 -- World -------------------------------------------------------------------------------------------------------------
 
 -- A low wooden fence along one edge, from a to b on the ground.
+-- Adds (on = true) or removes a player from the owner's farm crew.
+local function onCrew(player, userId, on)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(userId) ~= "number" or userId == player.UserId then
+		return false, "Pick another player."
+	end
+	if on then
+		local mate = Players:GetPlayerByUserId(userId)
+		if not mate then
+			return false, "That player isn't on this server."
+		end
+		local count = 0
+		for _ in plot.crew do
+			count += 1
+		end
+		if not plot.crew[userId] and count >= CREW_MAX then
+			return false, ("A crew holds %d players."):format(CREW_MAX)
+		end
+		plot.crew[userId] = true
+		Data.toast(mate, ("%s added you to their farm crew. You can drive their truck, and hay you run through their line pays them."):format(player.DisplayName))
+	else
+		plot.crew[userId] = nil
+	end
+	plot.dirty = true
+	publish(plot)
+	return true, on and "Added to your crew." or "Removed from your crew."
+end
+
 local function fence(parent, a, b)
 	local length = (b - a).Magnitude
 	local along = CFrame.lookAt((a + b) / 2, b)
@@ -599,6 +659,7 @@ local function buildPlot(parent, index, def)
 		bin = Machines.needleBin(model, binFrame),
 		list = {},
 		taken = {},
+		crew = {},
 	}
 	plots[index] = plot
 	publish(plot)
@@ -726,7 +787,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -752,6 +813,12 @@ function Land.build(worldFolder)
 	remotes.Buy.OnServerInvoke = guard(onBuy)
 	remotes.Place.OnServerInvoke = guard(onPlace)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
+	remotes.Crew.OnServerInvoke = guard(onCrew)
+	-- Crew members may drive the owner's truck.
+	Vehicles.canDrive = function(driver, owner)
+		local plot = plotOf[owner]
+		return plot ~= nil and plot.crew[driver.UserId] == true
+	end
 
 	Data.loaded.Event:Connect(onLoaded)
 	for _, player in Players:GetPlayers() do

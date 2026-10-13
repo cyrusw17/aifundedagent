@@ -267,7 +267,8 @@ end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
 -- go in one at a time, the needles it finds fly to `bin` (a Machines.needleBin), and a clean bale comes out the far end.
-function Machines.sorter(parent, frame, tierId, bin)
+-- payTo (optional) maps the owner of incoming hay to who gets paid and owns the needles (a plot's crew pays the owner).
+function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local tier = tiers[tierId] or tiers.conveyor_sorter
 	local center = frame * CFrame.new(0, 0, -T / 2) -- middle of the two cells
 	local model = Instance.new("Model")
@@ -344,10 +345,16 @@ function Machines.sorter(parent, frame, tierId, bin)
 			end
 			if bale then
 				local ownerId = bale.ownerId
+				if payTo then
+					ownerId = payTo(ownerId)
+				end
 				Bales.consume(bale)
 				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId)
 			elseif #loose > 0 then
 				local ownerId = loose[1]:GetAttribute("OwnerId")
+				if payTo then
+					ownerId = payTo(ownerId)
+				end
 				for _, p in loose do
 					Hay.remove(p)
 				end
@@ -359,8 +366,9 @@ function Machines.sorter(parent, frame, tierId, bin)
 end
 
 -- Hay buyer: an open hopper at the end of a belt (the belt comes in from local +Z). Pays whoever owns what drops in:
--- sorted bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle.
-function Machines.hayBuyer(parent, frame, title)
+-- sorted bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle. payTo (optional)
+-- maps that owner to who gets paid, as for Machines.sorter.
+function Machines.hayBuyer(parent, frame, title, payTo)
 	local model = Instance.new("Model")
 	model.Name = "HayBuyer"
 	model.Parent = parent
@@ -383,6 +391,9 @@ function Machines.hayBuyer(parent, frame, title)
 					local hay = sortedBale.sortedHay or 0
 					local value = math.floor(hay * Economy.HAY_PRICE)
 					local ownerId = sortedBale.ownerId
+					if payTo then
+						ownerId = payTo(ownerId)
+					end
 					Bales.consume(sortedBale)
 					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay))
 				else
@@ -394,6 +405,9 @@ function Machines.hayBuyer(parent, frame, title)
 					elseif Hay.isPiece(p) then
 						hay, ownerId = Config.HayPerPiece, p:GetAttribute("OwnerId")
 						Hay.remove(p)
+					end
+					if hay > 0 and ownerId and payTo then
+						ownerId = payTo(ownerId)
 					end
 					if hay > 0 and ownerId then
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }

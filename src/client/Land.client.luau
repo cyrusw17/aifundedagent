@@ -1,7 +1,8 @@
 --!nonstrict
 -- The land office panel and build mode. Stand on the rug at the land office counter to see every plot and buy one.
 -- Once you own land, the BUILD button opens a bar of pieces: pick one, aim at your plot and click (or tap the spot
--- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. The server checks everything.
+-- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. CREW lets other players on the
+-- server drive your truck and run hay through your line for you. The server checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,6 +17,7 @@ local state = ReplicatedStorage:WaitForChild("Land")
 local buyRemote = state:WaitForChild("Buy")
 local placeRemote = state:WaitForChild("Place")
 local removeRemote = state:WaitForChild("Remove")
+local crewRemote = state:WaitForChild("Crew")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -260,8 +262,106 @@ local rotateButton = button(actions, "TURN (R)", INK)
 rotateButton.Size = UDim2.fromOffset(96, 34)
 local removeButton = button(actions, "REMOVE (X)", RED)
 removeButton.Size = UDim2.fromOffset(110, 34)
+local crewButton = button(actions, "CREW", PICKED)
+crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
 doneButton.Size = UDim2.fromOffset(80, 34)
+
+-- Crew panel: everyone else on the server, each with ADD or REMOVE.
+local crewPanel = Instance.new("Frame")
+crewPanel.AnchorPoint = Vector2.new(0.5, 1)
+crewPanel.Position = UDim2.new(0.5, 0, 1, -172)
+crewPanel.Size = UDim2.fromOffset(320, 260)
+crewPanel.BackgroundColor3 = PANEL
+crewPanel.Visible = false
+crewPanel.Parent = gui
+corner(crewPanel, 12)
+local crewStroke = Instance.new("UIStroke", crewPanel)
+crewStroke.Color = INK
+crewStroke.Thickness = 2
+text(crewPanel, "FARM CREW", 16, 8, 20)
+local crewMessage = text(crewPanel, "Crew can drive your truck. Hay they run through your line pays you.", 12, 28, 30, INK, Enum.Font.Gotham)
+local crewList = Instance.new("ScrollingFrame")
+crewList.Position = UDim2.fromOffset(10, 62)
+crewList.Size = UDim2.new(1, -20, 1, -72)
+crewList.BackgroundTransparency = 1
+crewList.BorderSizePixel = 0
+crewList.ScrollBarThickness = 4
+crewList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+crewList.CanvasSize = UDim2.new()
+crewList.Parent = crewPanel
+local crewLayout = Instance.new("UIListLayout", crewList)
+crewLayout.Padding = UDim.new(0, 4)
+
+local function myCrew()
+	local index = player:GetAttribute("LandPlot") or 0
+	local info = state:FindFirstChild("Plot" .. index)
+	local set = {}
+	for id in string.gmatch(info and info:GetAttribute("Crew") or "", "%d+") do
+		set[tonumber(id)] = true
+	end
+	return set
+end
+
+local crewBusy = false
+local function refreshCrew()
+	for _, child in crewList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local crew = myCrew()
+	local others = 0
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			others += 1
+			local row = Instance.new("Frame")
+			row.Size = UDim2.new(1, -6, 0, 36)
+			row.BackgroundColor3 = CARD
+			row.Parent = crewList
+			corner(row, 6)
+			local name = text(row, other.DisplayName, 14, 8, 20)
+			name.Size = UDim2.new(1, -110, 0, 20)
+			local on = crew[other.UserId] == true
+			local b = button(row, on and "REMOVE" or "ADD", on and RED or GREEN)
+			b.AnchorPoint = Vector2.new(1, 0.5)
+			b.Position = UDim2.new(1, -6, 0.5, 0)
+			b.Size = UDim2.fromOffset(84, 28)
+			b.Activated:Connect(function()
+				if crewBusy then
+					return
+				end
+				crewBusy = true
+				local ok, _, message = pcall(function()
+					return crewRemote:InvokeServer(other.UserId, not on)
+				end)
+				crewBusy = false
+				crewMessage.Text = ok and (message or "") or "Couldn't reach the server."
+				task.defer(refreshCrew)
+			end)
+		end
+	end
+	if others == 0 then
+		crewMessage.Text = "Nobody else is on this server yet."
+	end
+end
+
+crewButton.Activated:Connect(function()
+	crewPanel.Visible = not crewPanel.Visible
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerAdded:Connect(function()
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerRemoving:Connect(function()
+	if crewPanel.Visible then
+		task.defer(refreshCrew)
+	end
+end)
 
 local building = false
 local selected = nil -- piece def, or nil while removing
@@ -475,6 +575,9 @@ end
 local function setBuilding(on)
 	building = on
 	bar.Visible = on
+	if not on then
+		crewPanel.Visible = false
+	end
 	buildButton.Visible = not on and (player:GetAttribute("LandPlot") or 0) > 0
 	if on then
 		aim = nil
