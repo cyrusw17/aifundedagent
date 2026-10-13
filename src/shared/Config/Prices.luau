@@ -138,6 +138,7 @@ Prices.Pieces = {
 	display_wall = 1000,
 	hay_press = 8000,
 	needle_polisher = 12000,
+	alloy_mixer = 20000,
 }
 Prices.RefundShare = 0.5
 
