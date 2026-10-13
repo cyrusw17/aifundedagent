@@ -159,14 +159,17 @@ local function trimPiles()
 	end
 end
 
--- What is loose right now, for the self-tests and for spotting a leak: strands (piles count as one), needles, and
--- every piece the module still tracks (which should always be strands + needles).
+-- What is loose right now, for the self-tests and for spotting a leak: strands (piles count as one), needles, field
+-- piles, and every piece the module still tracks (which should always be strands + needles + fields).
 function Hay.stats()
-	local tracked = 0
+	local tracked, fields = 0, 0
 	for _ in pieces do
 		tracked += 1
 	end
-	return { strands = count, needles = needleCount, tracked = tracked }
+	for _ in fieldSet do
+		fields += 1
+	end
+	return { strands = count, needles = needleCount, fields = fields, tracked = tracked }
 end
 
 local function trim()

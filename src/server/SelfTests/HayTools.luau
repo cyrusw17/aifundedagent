@@ -443,7 +443,7 @@ local function noPlayerChecks(t)
 	local stats = Hay.stats()
 	t.check("loose strands stay at the cap in a flood", stats.strands <= Config.MaxLoosePieces, stats.strands)
 	t.check("loose needles stay at the cap in a flood", stats.needles <= Config.MaxLooseNeedles, stats.needles)
-	t.equal("every tracked piece is counted (no leak)", stats.tracked, stats.strands + stats.needles)
+	t.equal("every tracked piece is counted (no leak)", stats.tracked, stats.strands + stats.needles + stats.fields)
 	t.check("a strand spawns in under 1 ms at the cap", perStrand < 1, ("%.3f ms"):format(perStrand))
 	t.check("a needle spawns in under 2 ms at the cap", perNeedle < 2, ("%.3f ms"):format(perNeedle))
 	local alive = 0
@@ -868,7 +868,9 @@ local function withPlayer(t, player)
 		-- Hotbar tooltips come from the configs (ToolGuide, Hay #25), so they never drift from the real numbers.
 		local rake = player.Backpack:FindFirstChild("Rake") or character:FindFirstChild("Rake")
 		if shovel and rake then
-			t.equal("the shovel's tooltip is ToolGuide's", shovel.ToolTip, ToolGuide.tool("Shovel"))
+			-- The shovel's line leads with its tier's name (GloveLooks), then ToolGuide's.
+			local guide = ToolGuide.tool("Shovel")
+			t.check("the shovel's tooltip is ToolGuide's", shovel.ToolTip:sub(-#guide) == guide, shovel.ToolTip)
 			t.equal("the rake's tooltip is ToolGuide's", rake.ToolTip, ToolGuide.tool("Rake"))
 		end
 		-- Comfort settings (Hay #26): stored and published like the other settings, bad values refused.
