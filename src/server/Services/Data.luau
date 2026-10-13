@@ -156,6 +156,7 @@ function Data.sync(player)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
+	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 end
 
 function Data.toast(player, text)
@@ -192,18 +193,19 @@ function Data.listSlots(player)
 		task.wait(0.1)
 	end
 	local list = summaries[player] or {}
-	local preset = presetFor(player) ~= nil
+	local preset = presetFor(player)
 	local out = {}
 	for slot = 1, Data.SLOTS do
 		local s = list[slot]
 		out[slot] = s and { used = true, cash = s.cash, plot = s.plot, trucks = s.trucks, savedAt = s.savedAt }
-			or { used = false, preset = preset }
+			or { used = false, preset = preset ~= nil, plot = preset and preset.land and preset.land.plot or nil }
 	end
 	return out, store ~= nil and player:GetAttribute("SavesOnline") == true
 end
 
--- Loads a slot and starts the game for this player. Returns ok and a message.
-function Data.choose(player, slot)
+-- Loads a slot and starts the game for this player. plot is the plot they picked in the picker (or nil): Land.luau
+-- puts the save's farm there, or buys it for a save with no land yet. Returns ok and a message.
+function Data.choose(player, slot, plot)
 	if states[player] or choosing[player] then
 		return false, "Already playing."
 	end
@@ -232,6 +234,7 @@ function Data.choose(player, slot)
 	end
 	local state = stateFrom(saved)
 	state.slot = slot
+	state.pickedPlot = typeof(plot) == "number" and plot or nil
 	states[player] = state
 	choosing[player] = nil
 	player:SetAttribute("SaveSlot", slot)
@@ -297,8 +300,8 @@ function Data.start()
 		end
 		return slots, online
 	end
-	choose.OnServerInvoke = function(player, slot)
-		local ok, result, message = pcall(Data.choose, player, slot)
+	choose.OnServerInvoke = function(player, slot, plot)
+		local ok, result, message = pcall(Data.choose, player, slot, plot)
 		if not ok then
 			choosing[player] = nil
 			warn("[Needlewood] slot load failed: " .. tostring(result))

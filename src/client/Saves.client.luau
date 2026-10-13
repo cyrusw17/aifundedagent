@@ -72,7 +72,6 @@ local function text(parent, value, size, y, height, color, font)
 end
 
 text(panel, "NEEDLEWOOD", 26, 12, 30)
-text(panel, "Pick a save to play.", 15, 42, 20, INK, Enum.Font.Gotham)
 local message = text(panel, "Loading your saves...", 13, 366, 52, RED, Enum.Font.Gotham)
 
 local busy = false
@@ -93,54 +92,165 @@ local function describe(slot)
 	return table.concat(parts, "  ·  ")
 end
 
-local function show(slots, online)
-	for i, slot in slots do
+local content = Instance.new("Frame")
+content.BackgroundTransparency = 1
+content.Size = UDim2.fromScale(1, 1)
+content.Parent = panel
+local title = text(panel, "", 15, 42, 20, INK, Enum.Font.Gotham)
+local savedSlots, savedOnline = nil, false
+
+local function clear()
+	for _, child in content:GetChildren() do
+		child:Destroy()
+	end
+end
+
+local function makeButton(parent, label, color)
+	local b = Instance.new("TextButton")
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 14
+	b.TextWrapped = true
+	b.Text = label
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.BackgroundColor3 = color
+	b.Parent = parent
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	return b
+end
+
+local function start(i, slot, plot)
+	if busy then
+		return
+	end
+	busy = true
+	message.TextColor3 = INK
+	message.Text = slot.used and "Loading..." or "Starting..."
+	local ok, chosen, reply = pcall(function()
+		return chooseRemote:InvokeServer(i, plot)
+	end)
+	busy = false
+	if ok and chosen then
+		gui:Destroy()
+	else
+		message.TextColor3 = RED
+		message.Text = ok and (reply or "Couldn't load that save.") or "Couldn't reach the server. Try again."
+	end
+end
+
+local showSlots
+
+-- Step 2: where the farm goes. A save with land (or a preset) picks any free plot to farm on; a save with no land
+-- can buy a plot right away or start without one.
+local function showPlots(i, slot)
+	clear()
+	local hasLand = slot.plot ~= nil
+	title.Text = hasLand and ("Save %d: pick the plot for your farm."):format(i)
+		or ("Save %d: buy a plot now, or start without land."):format(i)
+	local state = ReplicatedStorage:WaitForChild("Land", 10)
+	local infos = {}
+	if state then
+		for _, info in state:GetChildren() do
+			if info:IsA("Configuration") then
+				infos[info:GetAttribute("Index")] = info
+			end
+		end
+	end
+
+	local list = Instance.new("ScrollingFrame")
+	list.Position = UDim2.fromOffset(14, 68)
+	list.Size = UDim2.new(1, -28, 0, 248)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 6
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.CanvasSize = UDim2.new()
+	list.Parent = content
+	local layout = Instance.new("UIListLayout", list)
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	for index, def in LandConfig.Plots do
+		local info = infos[index]
+		local ownerId = info and info:GetAttribute("OwnerId") or 0
+		local card = Instance.new("Frame")
+		card.LayoutOrder = index
+		card.Size = UDim2.new(1, -8, 0, 52)
+		card.BackgroundColor3 = CARD
+		card.Parent = list
+		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+		local name = def.name .. (hasLand and slot.plot == index and "  (your farm)" or "")
+		text(card, name, 15, 4, 20)
+		local size = ("%d x %d tiles"):format(def.tiles.X, def.tiles.Y)
+		text(card, hasLand and size or ("%s  ·  $%d"):format(size, def.price), 12, 26, 18, INK, Enum.Font.Gotham)
+		local b
+		if ownerId ~= 0 and ownerId ~= player.UserId then
+			b = makeButton(card, "TAKEN", Color3.fromRGB(150, 140, 120))
+			b.AutoButtonColor = false
+		else
+			b = makeButton(card, hasLand and "FARM HERE" or "BUY", GREEN)
+			b.Activated:Connect(function()
+				start(i, slot, index)
+			end)
+		end
+		b.AnchorPoint = Vector2.new(1, 0.5)
+		b.Position = UDim2.new(1, -8, 0.5, 0)
+		b.Size = UDim2.fromOffset(100, 34)
+	end
+
+	local back = makeButton(content, "BACK", Color3.fromRGB(150, 140, 120))
+	back.Position = UDim2.fromOffset(14, 322)
+	back.Size = UDim2.fromOffset(90, 34)
+	back.Activated:Connect(function()
+		message.Text = ""
+		showSlots()
+	end)
+	if not hasLand then
+		local skip = makeButton(content, "START WITHOUT LAND", BROWN)
+		skip.Position = UDim2.new(1, -194, 0, 322)
+		skip.Size = UDim2.fromOffset(180, 34)
+		skip.Activated:Connect(function()
+			start(i, slot, nil)
+		end)
+	end
+end
+
+-- Step 1: the three slots.
+function showSlots()
+	clear()
+	title.Text = "Pick a save to play."
+	for i, slot in savedSlots do
 		local card = Instance.new("Frame")
 		card.Position = UDim2.fromOffset(14, 72 + (i - 1) * 96)
 		card.Size = UDim2.new(1, -28, 0, 86)
 		card.BackgroundColor3 = CARD
-		card.Parent = panel
+		card.Parent = content
 		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
 		text(card, (slot.used and "LOAD %d" or "SAVE %d"):format(i), 18, 8, 22)
 		local info = text(card, describe(slot), 13, 30, 34, INK, Enum.Font.Gotham)
 		info.Size = UDim2.new(1, -150, 0, 48)
-		local button = Instance.new("TextButton")
+		local button = makeButton(card, slot.used and "LOAD" or "NEW GAME", slot.used and GREEN or BROWN)
 		button.AnchorPoint = Vector2.new(1, 0.5)
 		button.Position = UDim2.new(1, -10, 0.5, 0)
 		button.Size = UDim2.fromOffset(110, 40)
-		button.Font = Enum.Font.GothamBold
 		button.TextSize = 16
-		button.Text = slot.used and "LOAD" or "NEW GAME"
-		button.TextColor3 = Color3.new(1, 1, 1)
-		button.BackgroundColor3 = slot.used and GREEN or BROWN
-		button.Parent = card
-		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
 		button.Activated:Connect(function()
-			if busy then
-				return
-			end
-			busy = true
-			message.TextColor3 = INK
-			message.Text = slot.used and "Loading..." or "Starting..."
-			local ok, chosen, reply = pcall(function()
-				return chooseRemote:InvokeServer(i)
-			end)
-			busy = false
-			if ok and chosen then
-				gui:Destroy()
-			else
-				message.TextColor3 = RED
-				message.Text = ok and (reply or "Couldn't load that save.") or "Couldn't reach the server. Try again."
+			if not busy then
+				showPlots(i, slot)
 			end
 		end)
 	end
-	if online then
+	if savedOnline then
 		message.Text = ""
 	else
 		message.TextColor3 = RED
 		message.Text = "Saving is off, so this game won't be kept. In Studio, turn on Game Settings > Security > "
 			.. "Enable Studio Access to API Services."
 	end
+end
+
+local function show(slots, online)
+	savedSlots, savedOnline = slots, online
+	showSlots()
 end
 
 local ok, slots, online = pcall(function()

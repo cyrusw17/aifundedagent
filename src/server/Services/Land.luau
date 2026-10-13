@@ -286,6 +286,10 @@ local function saveItems(player, plot)
 	for _, item in plot.list do
 		table.insert(items, { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored })
 	end
+	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
+	for _, saved in plot.leftOut or {} do
+		table.insert(items, saved)
+	end
 	s.land.items = items
 	s.land.plot = plot.index
 	plot.dirty = false
@@ -338,6 +342,7 @@ local function release(plot)
 		plot.owner:SetAttribute("LandPlot", 0)
 	end
 	clearPlot(plot)
+	plot.leftOut = nil
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -347,10 +352,15 @@ local function claim(plot, player, saved)
 	plot.owner, plot.ownerId, plot.ownerName = player, player.UserId, player.DisplayName
 	plotOf[player] = plot
 	player:SetAttribute("LandPlot", plot.index)
+	plot.leftOut = {}
 	for _, s in saved.items or {} do
 		local def = typeof(s) == "table" and pieces[s.id]
-		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] and fits(plot, def, s.gx, s.gz, s.dir) then
-			spawnItem(plot, def, s.gx, s.gz, s.dir, typeof(s.stored) == "number" and s.stored or nil)
+		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
+			if fits(plot, def, s.gx, s.gz, s.dir) then
+				spawnItem(plot, def, s.gx, s.gz, s.dir, typeof(s.stored) == "number" and s.stored or nil)
+			else
+				table.insert(plot.leftOut, s)
+			end
 		end
 	end
 	refreshRails(plot)
@@ -562,6 +572,7 @@ local function buildPlot(parent, index, def)
 		corner = corner,
 		size = size,
 		laneZ = def.open == "S" and z1 + 8 or z0 - 8,
+		stripZ = stripZ,
 		tiles = { X = def.tiles.X, Z = def.tiles.Y },
 		model = model,
 		items = items,
@@ -612,19 +623,51 @@ local function buildOffice(parent)
 end
 
 -- A save was picked: give back its farm, if it owns land.
-local function onLoaded(player)
-	local s = Data.get(player)
-	if not s or not (s.land and s.land.owned) then
+-- Puts the player at the front of their plot, on the strip, facing into the farm.
+local function sendHome(player, plot)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character and character:WaitForChild("HumanoidRootPart", 10)
+	if not root or not player.Parent then
 		return
 	end
-	local plot = pickPlot(s.land.plot)
+	local inward = plot.def.open == "S" and -1 or 1
+	local at = Vector3.new(plot.corner.X + plot.size.X / 2 + 8, 4, plot.stripZ)
+	character:PivotTo(CFrame.lookAt(at, at + Vector3.new(0, 0, inward)))
+end
+
+-- A save was picked (with the plot the player chose in the picker, if any): set up its farm, or buy the chosen plot
+-- for a save with no land yet.
+local function onLoaded(player)
+	local s = Data.get(player)
+	if not s then
+		return
+	end
+	local picked = s.pickedPlot and plots[s.pickedPlot]
+	s.pickedPlot = nil
+	if not (s.land and s.land.owned) then
+		if picked then
+			local ok, message = onBuy(player, picked.index)
+			if ok then
+				task.spawn(sendHome, player, picked)
+			else
+				Data.toast(player, message)
+			end
+		end
+		return
+	end
+	local plot = (picked and not picked.ownerId) and picked or pickPlot(s.land.plot)
 	if not plot then
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
 	claim(plot, player, s.land)
 	parkVehicles(player, plot)
-	Data.toast(player, ("Your farm is on %s, down the plot road south of the main road."):format(plot.def.name))
+	task.spawn(sendHome, player, plot)
+	local message = ("Your farm is on %s."):format(plot.def.name)
+	if #plot.leftOut > 0 then
+		message ..= (" %d pieces don't fit here; they're kept in your save for a bigger plot."):format(#plot.leftOut)
+	end
+	Data.toast(player, message)
 end
 
 function Land.build(worldFolder)
