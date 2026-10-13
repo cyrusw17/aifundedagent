@@ -174,6 +174,7 @@ local function stateFrom(saved)
 		gear = stringList(saved.gear), -- other things bought once and kept, like "wheelbarrow"
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
+		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
@@ -352,6 +353,7 @@ function Data.save(player)
 		gear = state.gear,
 		pocket = state.pocket,
 		thatch = state.thatch,
+		materials = state.materials,
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
