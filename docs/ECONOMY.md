@@ -562,6 +562,61 @@ to the whole server. The average mutation is 14x, so mutations add about 2.6% to
 moment, not an income source: a mutated Steel needle is worth $300 to $2,500, and a mutated Cosmic one up to $125,000.
 Mutated needles stay in your pocket at NPC orders and trade like any other item.
 
+**Wet mutation** (`Prices.WetMutation`, Conveyor 814a73f): in a region while it rains, a plain needle has a 1 in 100
+chance to come out Wet at 2x. That adds 1% to needle income, and only while it rains, so with the pity rule
+(under 4%) free rolls stay inside the 5% budget. tests/pity.luau holds storm + Wet + pity at 1.2x to 1.5x of the
+plain mutation value and fails above 2x.
+
+## The Hay Market
+
+A stall at base camp (`Services/HayMarket.luau`, CEO backlog H6) restocks every 5 minutes with three rare bales, three
+of each for the whole server, and each player can buy two per restock. Each slot rolls a kind and a region's hay
+(`Prices.HayMarket`):
+
+| Kind | Needles | Mutation odds | How often |
+|---|---|---|---|
+| Golden Hay | 3x | normal (1 in 500) | 5 in 9 slots |
+| Storm Hay | 2x | 5x (1 in 100) | 3 in 9 |
+| Moon Hay | 1x | 25x (1 in 20) | 1 in 9 |
+
+Hay is Meadow, Pine, Desert, Thimble Keys, Volcano or Bobbin Rock, weighted toward the early ones. Snow and Swamp are
+left out because they need a region machine before they can be sorted.
+
+**Price rule.** No rare bale has a hand-set price. Each costs 85% of what it's worth sorted on a conveyor sorter (55%
+of needles found), with the mutation odds included at the average 14x mutation. That gives:
+
+| Hay | Golden | Storm | Moon |
+|---|---|---|---|
+| Meadow | $330 | $250 | $190 |
+| Pine | $510 | $390 | $290 |
+| Desert | $840 | $630 | $470 |
+| Thimble Keys | $1,940 | $1,430 | $1,060 |
+| Volcano | $3,490 | $2,570 | $1,890 |
+| Bobbin Rock | $4,180 | $3,080 | $2,260 |
+
+With a conveyor sorter or better you make about 15% on each rare bale, plus the lottery of a mutation. Selling one
+raw, hand-sieving it or using a shaker table loses money. So the stall rewards having a line and doesn't replace
+farming.
+
+**Pacing check.** A player who buys the full two bales at every restock, all hour, makes about $4,000 an hour of profit
+on top of farming. That's about 10% at the conveyor-sorter stage ($40,000 an hour) and under 3% from the magnet drum
+on. It needs a trip to the stall every 5 minutes, so most players will catch a few restocks, not all of them. The early
+game is untouched, because a player without a good sorter has no reason to buy. pacing_sim doesn't model the stall,
+and since none of the prices it uses changed, its times stand.
+
+**Mutation budget.** Conveyor's pity rule (`Prices.Pity`: 40 needle-finding bales without a mutation guarantee a x3
+on the next) adds under 4% to needle income, and its test fails at 5%. Rare bales add their own mutations: for a
+player buying every restock at the conveyor stage, about 3.7% of needle income, and under 1% from the magnet drum
+on. Together that's up to about 8% at the conveyor stage for the most dedicated buyer. Those extra mutations are
+paid for, though, since the price includes them; the net gain is the 15% margin above. So the 5% budget stays for
+free rolls like pity. Paid rolls are counted in the pacing check above instead.
+
+**Sorter.** Since Conveyor 814a73f the sorter reads `NeedleBoost` (and `GoldenField`, which Bales turns into 3x)
+for how many needles a bale hides, and `MutationBoost` for each found needle's mutation chance, so a bought bale pays
+what its price assumes. Hand-breaking one uses `NeedleBoost` for the needles that
+spill. ReplicatedStorage attribute `HayMarketRestockAt` is the server time of the next restock, for the HUD
+countdown (UI H2).
+
 ## Golden bales
 
 The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
@@ -621,6 +676,7 @@ prefix or be a known sale.
 | Region secrets | `Secrets` | `Services/Wilds` |
 | Wet hay | `WetHayShare` | `Config/Game` (WetPriceFactor) |
 | Mutated needles | `Mutation` | `Services/Needle` |
+| Hay Market | `HayMarket` | `Services/HayMarket` |
 | Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |

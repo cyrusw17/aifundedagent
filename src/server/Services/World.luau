@@ -12,11 +12,13 @@ local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
 local Trade = require(script.Parent.Trade)
+local Leaderboards = require(script.Parent.Leaderboards)
 local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
 local Market = require(script.Parent.Market)
 local Orders = require(script.Parent.Orders)
+local HayMarket = require(script.Parent.HayMarket)
 local WorldMap = require(script.Parent.WorldMap)
 local Chutes = require(script.Parent.Chutes)
 local Quests = require(script.Parent.Quests)
@@ -123,6 +125,8 @@ function World.build()
 
 	-- NPC buyer orders and their delivery pad, on the west side of camp (Orders.luau).
 	Orders.build(folder, Vector3.new(-34, 0, 6))
+	-- The Hay Market stall: rare bales, new stock every 5 minutes (HayMarket.luau).
+	HayMarket.build(folder, Vector3.new(-36, 0, -22))
 
 	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(
@@ -145,6 +149,7 @@ function World.build()
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
 	Dealer.build(folder)
 	Trade.build(folder) -- the Trading Post between the dealer's lot and base camp
+	Leaderboards.build(folder) -- top sellers and rarest needle, east of the spawn
 	MeadowDecor.build(folder)
 
 	-- The land office and the buildable plots south of the main road.

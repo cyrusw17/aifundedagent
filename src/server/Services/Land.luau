@@ -69,6 +69,7 @@ local DEFAULT_THEME = LandConfig.Themes[1]
 local plots = {} -- index -> plot record
 local farmNames = {} -- userId -> the name on their first farm, for the likes board while they are on this server
 local plotOf = {} -- player -> the plot record they build on (their active farm)
+local publishSilos -- (player) sets SiloFullIn for the HUD; defined below
 local farms = {} -- player -> { land = plot, land2 = plot }: every plot they own, by save key
 local lastAction = {} -- player -> os.clock() of their last place or remove
 local state = nil -- ReplicatedStorage.Land: remotes and what the client needs to know about every plot
@@ -333,6 +334,9 @@ local function buildSilo(plot, item, def)
 			end
 			if changed then
 				refresh()
+				if plot.owner and publishSilos then
+					publishSilos(plot.owner)
+				end
 				plot.dirty = true
 			end
 		end
@@ -2332,8 +2336,165 @@ local function limited(limiter, fn)
 	end
 end
 
+-- Silo fill for the HUD (the UI countdown strip warns before a silo is full): the player attribute SiloFullIn is the
+-- seconds until the silos and barns on their active farm are full at the rate they filled over the last minute. It
+-- is nil when they are not filling (no farm, no silo, emptying or steady), and 0 once they are full while hay still
+-- comes in.
+local SILO_WINDOW = 60 -- seconds of fill history the rate is taken over
+local SILO_MIN_SPAN = 10 -- no estimate from less history than this
+local siloHistory = {} -- player -> { { at, fill, cap }, ... }, oldest first
+
+local function siloTotals(plot)
+	local fill, cap = 0, 0
+	for _, item in plot and plot.list or {} do
+		local def = pieces[item.id]
+		if def and def.kind == "silo" then
+			fill += item.stored or 0
+			cap += def.capacity or LandConfig.SiloCapacity
+		end
+	end
+	return fill, cap
+end
+
+-- Seconds until full from the fill history, or nil. A capacity change (a silo built or sold) restarts the history.
+local function siloFullIn(history, now)
+	local last = history[#history]
+	local first = history[1]
+	if not last or last.cap <= 0 or now - first.at < SILO_MIN_SPAN then
+		return nil
+	end
+	local rate = (last.fill - first.fill) / (last.at - first.at)
+	if rate <= 0 then
+		return nil
+	end
+	return math.max(0, math.ceil((last.cap - last.fill) / rate))
+end
+
+publishSilos = function(player)
+	local now = os.clock()
+	local fill, cap = siloTotals(plotOf[player])
+	local history = siloHistory[player]
+	if not history or (history[1] and history[1].cap ~= cap) then
+		history = {}
+		siloHistory[player] = history
+	end
+	table.insert(history, { at = now, fill = fill, cap = cap })
+	while #history > 2 and now - history[2].at >= SILO_WINDOW do
+		table.remove(history, 1)
+	end
+	player:SetAttribute("SiloFullIn", siloFullIn(history, now))
+end
+
+-- JOIN FARM (the base camp leaderboards, CEO H12): takes a player to the farm a given player owns on this server.
+-- Rate-limited, and refused like any visit while carrying hay. Returns ok, message.
+local joinLimit = RateLimit.new("Land.JoinFarm", 0.5, 2)
+function Land.hasFarm(userId)
+	for _, plot in plots do
+		if plot.ownerId == userId then
+			return true
+		end
+	end
+	return false
+end
+
+function Land.joinFarm(player, userId)
+	if not joinLimit:allow(player) then
+		return false, RateLimit.BUSY
+	end
+	if userId == player.UserId then
+		return false, "That's your own farm."
+	end
+	for _, plot in plots do
+		if plot.ownerId == userId then
+			return onVisit(player, plot.index)
+		end
+	end
+	return false, "They don't have a farm on this server."
+end
+
+-- Play-together bonus (CEO H12): while a friend or crew member of the owner stands on a farm, every unsorted bale on
+-- it gets LandConfig.TogetherBonus times its NeedleBoost, once (TogetherBoost marks it). The sorters read NeedleBoost
+-- as they always do, and strands from a boosted bale keep it. A helper only counts once their own slot has sold
+-- Prices.Trade.MinSoldToGiveCash, the same alt-account rule as handing over cash at the trading post. The owner's
+-- TogetherBonus attribute names who is helping (nil when nobody), for the HUD.
+local PricesConfig = require(Shared.Config.Prices)
+local friendCache = {} -- "low:high" UserIds -> true / false, filled in the background
+local function friends(a, b)
+	local lo, hi = math.min(a.UserId, b.UserId), math.max(a.UserId, b.UserId)
+	local k = lo .. ":" .. hi
+	if friendCache[k] == nil then
+		friendCache[k] = false -- until the check comes back
+		task.spawn(function()
+			local ok, yes = pcall(a.IsFriendsWith, a, b.UserId)
+			friendCache[k] = ok and yes == true
+		end)
+	end
+	return friendCache[k]
+end
+
+local function seasoned(player)
+	local s = Data.get(player)
+	return s ~= nil and Bank.account(s).sold >= (PricesConfig.Trade and PricesConfig.Trade.MinSoldToGiveCash or 0)
+end
+
+local function onPlot(plot, player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return false
+	end
+	local p = root.Position - plot.corner
+	return p.X >= 0 and p.X <= plot.size.X and p.Z >= 0 and p.Z <= plot.size.Z and p.Y > -10 and p.Y < 60
+end
+
+-- The helper switching the bonus on for a plot, or nil. isFriend is (owner, helper) -> bool, for tests.
+local function helperOn(plot, players, isFriend)
+	local owner = plot.owner
+	if not owner or not plot.ownerId then
+		return nil
+	end
+	for _, other in players do
+		if other ~= owner and onPlot(plot, other) and seasoned(other) then
+			if (plot.crew and plot.crew[other.UserId]) or isFriend(owner, other) then
+				return other
+			end
+		end
+	end
+	return nil
+end
+
+local function boostBales(plot)
+	local center = CFrame.new(plot.corner + Vector3.new(plot.size.X / 2, 20, plot.size.Z / 2))
+	for _, p in Workspace:GetPartBoundsInBox(center, Vector3.new(plot.size.X, 60, plot.size.Z)) do
+		local b = Bales.fromPart(p)
+		if b and p == b.body and not b.gone and not b.sorted and p:GetAttribute("TogetherBoost") == nil then
+			local was = p:GetAttribute("NeedleBoost")
+			was = (typeof(was) == "number" and was > 0 and was == was) and was or 1
+			p:SetAttribute("NeedleBoost", was * LandConfig.TogetherBonus)
+			p:SetAttribute("TogetherBoost", true)
+		end
+	end
+end
+
+local function togetherTick()
+	local players = Players:GetPlayers()
+	for _, plot in plots do
+		local helper = helperOn(plot, players, friends)
+		if plot.owner then
+			plot.owner:SetAttribute("TogetherBonus", helper and helper.DisplayName or nil)
+		end
+		if helper then
+			boostBales(plot)
+		end
+	end
+end
+
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	helperOn = helperOn,
+	boostBales = boostBales,
+	siloTotals = siloTotals,
+	siloFullIn = siloFullIn,
 	limits = limits,
 	limited = limited,
 	plots = plots,
@@ -2451,6 +2612,9 @@ function Land.build(worldFolder)
 	task.spawn(function()
 		while true do
 			task.wait(5)
+			for _, player in Players:GetPlayers() do
+				publishSilos(player)
+			end
 			for player, mine in farms do
 				for _, plot in mine do
 					if plot.dirty then
@@ -2466,8 +2630,15 @@ function Land.build(worldFolder)
 			saveItems(player, plot)
 		end
 	end
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			pcall(togetherTick)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		crewInvites[player] = nil
+		siloHistory[player] = nil
 		lastAction[player] = nil
 		history[player] = nil
 		local mine = {}

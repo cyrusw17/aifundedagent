@@ -275,12 +275,58 @@ Prices.Mutation = {
 -- Pity (CEO "Addiction push" H3, src/shared/Pity.luau): after `bales` sorted bales in a row that found needles but no
 -- mutated one, the next such bale makes its first needle mutated at `mult` (the smallest mutation), so a dry run always
 -- ends. A roll under Mutation.oneIn's chance times `nearMiss` that just missed flickers gold ("so close").
--- tests/pity.luau measures what it adds to needle income (not total): hand sieve 3.7%, Meadow conveyor 2.8%, Desert
--- magnet drum 1.4%, Swamp optical 0.6%, Star optical 0.1%. It fails if any case reaches 5%.
+-- tests/pity.luau measures what it adds to needle income (not total): hand sieve 3.9%, Meadow conveyor 2.7%, Desert
+-- magnet drum 1.3%, Swamp optical 0.7%, Star optical 0.1%. It fails if any case reaches 5%.
 Prices.Pity = {
 	bales = 40,
 	mult = 3,
 	nearMiss = 3,
+}
+
+-- The Hay Market (Services/HayMarket.luau, CEO H6): a stall at base camp restocks every RestockSeconds with Slots
+-- rare bales, each a kind (Golden, Storm or Moon Hay) of one region's hay, StockPerSlot of each for the whole server.
+-- A player can buy PerPlayer bales per restock. needles multiplies the bale's hidden needles and mutation multiplies
+-- each found needle's chance to mutate (Prices.Mutation).
+-- Price is not set by hand: it is PriceShare of what the bale is worth sorted on a conveyor sorter
+-- (ReferenceRecovery), mutations included. So a player with a conveyor sorter or better makes a little on every rare
+-- bale and gets a lottery ticket on top, while a player selling raw or hand-sieving loses money on them: rare bales
+-- are a bonus for a working line, not a replacement for farming (ECONOMY.md "The Hay Market").
+Prices.HayMarket = {
+	RestockSeconds = 300,
+	Slots = 3,
+	StockPerSlot = 3,
+	PerPlayer = 2,
+	PriceShare = 0.85,
+	ReferenceRecovery = 0.55,
+	Kinds = {
+		-- weight: how often a slot rolls this kind
+		golden = { name = "Golden Hay", weight = 5, needles = 3, mutation = 1 },
+		storm = { name = "Storm Hay", weight = 3, needles = 2, mutation = 5 },
+		moon = { name = "Moon Hay", weight = 1, needles = 1, mutation = 25 },
+	},
+	-- Which region's hay a slot holds, by weight. Hay that needs a region machine (Snow, Swamp) is left out, so
+	-- any bale can go straight into a sorter.
+	HayTypes = { meadow = 6, pine = 4, desert = 3, keys = 2, volcano = 1, bobbin = 1 },
+}
+
+-- Wet needles (H7 weather, Weather.needleOdds): a needle sorted where it is raining is, 1 in oneIn, a "Wet" needle
+-- worth mult times (x2: under the smallest real mutation, so x2 always means Wet, in saves too). It doesn't end a
+-- pity run. PROPOSED by Conveyor, pending Economy. tests/pity.luau keeps storm + Wet + pity within 2x of the
+-- mutation value of today's rules (pity, no weather) even if it always rained: x1.2 to x1.5.
+Prices.WetMutation = {
+	oneIn = 100,
+	mult = 2,
+}
+
+-- Needle index (CEO "Addiction push" H10, Services/NeedleIndex): every needle type found plain, Wet and mutated
+-- (12 types x 3 = 36 entries). Each milestone pays once per slot (Bank.earn, note "Discovered ...", a one-time
+-- reward) and gives a title; 75% also unlocks the gilded sorter skin. 100% needs a mutated and a Wet Cosmic needle,
+-- so it is an end-game goal; the first 25% (9 entries) comes from the first few regions.
+Prices.NeedleIndex = {
+	{ at = 25, cash = 5000, title = "Needle Spotter" },
+	{ at = 50, cash = 40000, title = "Needle Collector" },
+	{ at = 75, cash = 250000, title = "Needle Curator", skin = "gilded" },
+	{ at = 100, cash = 1000000, title = "Master Indexer" },
 }
 
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times

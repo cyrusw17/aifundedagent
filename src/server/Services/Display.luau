@@ -77,7 +77,7 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		Props.weldTo(mesh, board, look)
 	end
 
-	local function show(slot, n)
+	local function hang(slot, n)
 		if slot.shown then
 			slot.shown:Destroy()
 			slot.shown = nil
@@ -108,6 +108,42 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		end
 		plaque(p, describe(n))
 		slot.shown = p
+	end
+
+	-- A mutated needle on show lights a banner high over the wall, readable from the plot lane and the next farm,
+	-- naming the best one: "★ x12 MUTATED COSMIC ON SHOW". The wall's MutatedOnShow attribute counts them.
+	local banner = nil
+	local function showOff()
+		local best, count = nil, 0
+		for _, slot in slots do
+			local n = slot.needle
+			if n and (n.mult or 1) > 1 then
+				count += 1
+				if not best or Needle.priceOf(n.id, n.mult, n.polished, n.grade) > Needle.priceOf(best.id, best.mult, best.polished, best.grade) then
+					best = n
+				end
+			end
+		end
+		model:SetAttribute("MutatedOnShow", count)
+		if not best then
+			if banner then
+				banner.Parent:Destroy()
+				banner = nil
+			end
+			return
+		end
+		local text = ("★ x%d MUTATED %s ON SHOW"):format(best.mult, Needle.info(best.id).name:upper())
+		if count > 1 then
+			text ..= ("\n+%d more mutated"):format(count - 1)
+		end
+		if not banner then
+			banner = WorldLabel.billboard(model.Cap, text, { kind = "sign", offset = Vector3.new(0, 5, 0), distance = 160, color = Color3.fromRGB(255, 206, 96) })
+		end
+		banner.Text = text
+	end
+	local function show(slot, n)
+		hang(slot, n)
+		showOff()
 	end
 
 	for _, s in saved or {} do

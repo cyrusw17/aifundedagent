@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
 local Alloys = require(ReplicatedStorage.Shared.Config.Alloys)
+local NeedleIndex = require(ReplicatedStorage.Shared.NeedleIndex)
 
 local Data = {}
 
@@ -279,6 +280,8 @@ local function stateFrom(saved)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		-- price hold for needle bins: an index into Machines' HOLD_STEPS, nil when off (Machines.needleBin)
 		needleHold = typeof(saved.needleHold) == "number" and math.clamp(math.floor(saved.needleHold), 1, 4) or nil,
+		-- the needle index (NeedleIndex.luau): { found = { [entry] = true }, paid = { [milestone] = true } }
+		needleIndex = NeedleIndex.clean(saved.needleIndex),
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- finder's rewards already paid in this slot, { [findId] = 1 }: paid once per kind, ever, even if the find is
 		-- later traded away (Finds.luau)
@@ -293,6 +296,7 @@ local function stateFrom(saved)
 		},
 		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		discovered = countMap(saved.discovered), -- regions and landmarks visited, { [id] = 1 } (Discoveries.luau)
+		festivals = countMap(saved.festivals), -- festival ribbons earned, { ["<week>:<region>"] = 1 } (Festival.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -334,11 +338,13 @@ local function toSave(state)
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
 		needleHold = state.needleHold,
+		needleIndex = state.needleIndex and NeedleIndex.toSave(state.needleIndex),
 		finds = state.finds,
 		findsPaid = state.findsPaid,
 		skins = state.skins,
 		secrets = state.secrets,
 		discovered = state.discovered,
+		festivals = state.festivals,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,

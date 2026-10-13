@@ -28,6 +28,7 @@ local Props = require(script.Parent.Props)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
 local Pity = require(ReplicatedStorage.Shared.Pity)
+local NeedleIndex = require(script.Parent.NeedleIndex)
 
 local Needle = {}
 
@@ -57,6 +58,9 @@ local LOOKS = {
 	cosmic = { Color3.fromRGB(80, 70, 220), true },
 }
 local MUTATED_COLOR = Color3.fromRGB(255, 210, 60)
+local WET = Prices.WetMutation
+local WET_COLOR = Color3.fromRGB(90, 150, 210) -- a Wet needle (x2): rain blue, glassy
+Needle.WET_MULT = WET.mult
 local BUNDLE = 10
 local BUNDLE_SIZE = Vector3.new(1.3, 0.55, 0.55)
 local TWINE = Color3.fromRGB(97, 84, 69)
@@ -181,12 +185,35 @@ end
 
 -- Rolls whether a freshly found needle is mutated. Returns its multiplier (1 when it is a normal needle).
 -- The second result is true on a near miss (Prices.Pity.nearMiss): a plain needle that rolled just over the chance.
-function Needle.rollMutation()
-	local roll = Pity.roll(rng:NextNumber(), MUTATION_CHANCE, Prices.Pity.nearMiss)
+-- boost multiplies the chance (a Hay Market bale's MutationBoost times Weather.needleOdds' storm odds); wet (found
+-- where it rains) gives a plain needle a 1 in WetMutation.oneIn chance to come out Wet (x2).
+function Needle.rollMutation(boost, wet)
+	local roll = Pity.roll(rng:NextNumber(), Pity.chance(MUTATION_CHANCE, boost), Prices.Pity.nearMiss)
 	if roll == "hit" then
 		return rng:NextInteger(MUTATION_MIN, MUTATION_MAX), false
 	end
+	if wet and rng:NextNumber() * WET.oneIn < 1 then
+		return WET.mult, false
+	end
 	return 1, roll == "near"
+end
+
+-- Weather at a find: storm odds (5 in a Thunderstorm, else 1) and whether it rains there. Weather (H7) is looked up
+-- on first use, so a build without it, or the offline checks, just get 1, false.
+local weather
+function Needle.weatherAt(position)
+	if weather == nil then
+		local m = script.Parent:FindFirstChild("Weather")
+		local ok, mod = pcall(function()
+			return m and require(m)
+		end)
+		weather = ok and mod and mod.needleOdds and mod or false
+	end
+	if weather then
+		local odds, wet = weather.needleOdds(position)
+		return tonumber(odds) or 1, wet == true
+	end
+	return 1, false
 end
 
 -- How many needles are in this player's pocket.
@@ -279,7 +306,9 @@ end
 -- How a needle of this type looks: its color and material (mutated needles are gold and glow).
 function Needle.look(id, mult)
 	local look = LOOKS[id] or LOOKS.steel
-	if (mult or 1) > 1 then
+	if mult == WET.mult then
+		return WET_COLOR, Enum.Material.Glass
+	elseif (mult or 1) > 1 then
 		return MUTATED_COLOR, Enum.Material.Neon
 	end
 	return look[1], look[2] and Enum.Material.Neon or Enum.Material.Metal
@@ -338,7 +367,7 @@ local function pickUp(player, n, anyReach, quiet)
 	local grade = n:GetAttribute("Grade")
 	local name = (grade and grade .. " grade " or "") .. (polished and "polished " or "") .. Needle.info(id).name:lower()
 	local what = count > 1 and ("a bundle of %d %s needles"):format(count, name)
-		or ("a %s%s needle"):format(mult > 1 and ("x%d MUTATED "):format(mult) or "", name)
+		or ("a %s%s needle"):format(mult == WET.mult and "x2 WET " or mult > 1 and ("x%d MUTATED "):format(mult) or "", name)
 	if not quiet then
 		Data.toast(player, ("Picked up %s ($%d). Any sell pad buys it."):format(what, value))
 	end
@@ -410,13 +439,15 @@ function Needle.spawn(position, ownerId, needleId, mult, polished)
 	n.CollisionGroup = Groups.Loose
 	n:SetAttribute("OwnerId", ownerId)
 	n:SetAttribute("NeedleId", needleId)
+	NeedleIndex.found(ownerId, needleId, mult)
 	if mult > 1 then
 		n:SetAttribute("Mutation", mult)
+		local shine = mult == WET.mult and WET_COLOR or MUTATED_COLOR
 		local sparkle = Instance.new("Sparkles")
-		sparkle.SparkleColor = MUTATED_COLOR
+		sparkle.SparkleColor = shine
 		sparkle.Parent = n
 		local light = Instance.new("PointLight")
-		light.Color = MUTATED_COLOR
+		light.Color = shine
 		light.Range = 8
 		light.Brightness = 2
 		light.Parent = n
@@ -481,7 +512,7 @@ end
 function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	needleId = needleId or Needle.default.id
 	if mult == nil then
-		mult, near = Needle.rollMutation()
+		mult, near = Needle.rollMutation(Needle.weatherAt(from))
 	end
 	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult), grade)
 	n.Anchored = true
@@ -492,7 +523,7 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	light.Brightness = 3
 	light.Parent = n
 	glint(n, mult > 1 and 30 or 8)
-	if mult > 1 then
+	if mult > 1 and mult ~= WET.mult then
 		sound(n, FANFARE, 1)
 		announce(ownerId, needleId, mult)
 	end
