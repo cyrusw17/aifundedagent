@@ -73,3 +73,20 @@ for r, road in Map.Roads do
 	end
 end
 print("loose road starts", loose)
+
+-- The clock: night is night, noon is not, lamps follow.
+local WorldClock = require({ __path = "Services.WorldClock" })
+local Lighting = game:GetService("Lighting")
+local clockOk = true
+for _, case in { { 0, true, true }, { 12, false, false }, { 18.5, false, true }, { 21, true, true }, { 6.5, false, false } } do
+	Lighting.ClockTime = case[1]
+	if WorldClock.isNight() ~= case[2] or WorldClock.lampsOn() ~= case[3] then
+		clockOk = false
+		print("WARN clock wrong at hour", case[1], WorldClock.isNight(), WorldClock.lampsOn())
+	end
+end
+Lighting.ClockTime = 23.5
+if WorldClock.phase() ~= "midnight" then clockOk = false end
+Lighting.ClockTime = 18
+if WorldClock.phase() ~= "dusk" then clockOk = false end
+print("clock", clockOk and "ok" or "WRONG", "atmosphere", Lighting:FindFirstChildOfClass("Atmosphere") and "made" or "missing")

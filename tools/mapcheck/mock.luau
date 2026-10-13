@@ -372,6 +372,7 @@ local services = {
 	CollectionService = {
 		AddTag = function(_, o, tag) TAGS[tag] = (TAGS[tag] or 0) + 1 end,
 		HasTag = function() return false end,
+		RemoveTag = function() end,
 		GetTagged = function() return {} end,
 		GetInstanceAddedSignal = function() return signal() end,
 	},
@@ -381,6 +382,7 @@ local services = {
 	Debris = { AddItem = function() end },
 	Lighting = newInstance("Lighting"),
 }
+services.Lighting.ClockTime = 10
 game = { GetService = function(_, name)
 	return services[name] or setmetatable({}, { __index = function() return function() return nil end end })
 end }
