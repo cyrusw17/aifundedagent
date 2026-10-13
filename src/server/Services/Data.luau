@@ -293,6 +293,7 @@ local function stateFrom(saved)
 		},
 		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		discovered = countMap(saved.discovered), -- regions and landmarks visited, { [id] = 1 } (Discoveries.luau)
+		festivals = countMap(saved.festivals), -- festival ribbons earned, { ["<week>:<region>"] = 1 } (Festival.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -339,6 +340,7 @@ local function toSave(state)
 		skins = state.skins,
 		secrets = state.secrets,
 		discovered = state.discovered,
+		festivals = state.festivals,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,
