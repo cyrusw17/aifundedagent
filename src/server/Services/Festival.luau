@@ -105,7 +105,7 @@ local function decorate(fest)
 	local top = corners[1]:Lerp(corners[2], 0.5) + Vector3.new(0, 1.5, 0)
 	local banner = part(folder, "FestivalBanner", Vector3.new(14, 3, 0.3), CFrame.new(top), Color3.fromRGB(196, 72, 60))
 	banner.CanCollide = false
-	pcall(Regions.billboard, banner, ("%s HAY FESTIVAL\nDouble needles all week"):format(string.upper(fest.name)), Vector3.new(0, 3, 0), 300)
+	pcall(Regions.billboard, banner, ("%s HAY FESTIVAL\n+50%% needles all week"):format(string.upper(fest.name)), Vector3.new(0, 3, 0), 300)
 end
 
 -- Gives the festival's fields their boost (and takes it back from last week's), every few seconds so regrown bales
@@ -154,7 +154,7 @@ function Festival.visit(player, position)
 	end
 	state.festivals[key] = 1
 	publish(player)
-	Data.toast(player, ("Festival ribbon: %s Hay Festival! Bales here hold double needles all week."):format(current.name))
+	Data.toast(player, ("Festival ribbon: %s Hay Festival! Bales here hold 50%% more needles all week."):format(current.name))
 	return true
 end
 
@@ -169,7 +169,7 @@ function Festival.refresh(t)
 	if changed then
 		pcall(decorate, fest)
 		if t == nil then
-			pcall(Announce.say, ("This week's festival: %s! Its hay holds double needles until the week turns."):format(fest.name), "event")
+			pcall(Announce.say, ("This week's festival: %s! Its hay holds 50%% more needles until the week turns."):format(fest.name), "event")
 		end
 	end
 	boostFields(fest)

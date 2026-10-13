@@ -21,6 +21,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
 local LineRate = require(Shared.LineRate)
 local Pity = require(Shared.Pity)
+local Boosts = require(Shared.Boosts)
+local LandConfig = require(Shared.Config.Land)
 local RateLimit = require(Shared.RateLimit)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
@@ -161,6 +163,25 @@ end
 local function boostOf(inst, name)
 	local v = inst:GetAttribute(name)
 	return (typeof(v) == "number" and v > 0 and v == v) and v or 1
+end
+
+-- A bale's needle and mutation boosts at the sorter, with the extras it picked up (play-together needles, storm odds)
+-- stacked under Prices.Boosts.Cap (Boosts.fit, CEO H13). The mutation boost comes back without the storm's odds,
+-- because bin.add multiplies those in where the needles come out.
+local BOOST_TERMS = Boosts.terms(Prices)
+local function baleBoosts(body)
+	local own, together = boostOf(body, "NeedleBoost"), 1
+	if body:GetAttribute("TogetherBoost") == true then
+		together = LandConfig.TogetherBonus or 1
+		own /= together
+	end
+	if body:GetAttribute("GoldenField") == true then
+		own *= Config.GoldenBaleNeedles
+	end
+	local odds = Needle.weatherAt(body.Position)
+	odds = (typeof(odds) == "number" and odds > 0) and odds or 1
+	local needles, mutation = Boosts.fit(BOOST_TERMS, own, boostOf(body, "MutationBoost"), together, odds)
+	return needles, mutation / odds
 end
 
 local function spawnSortedBale(cframe, ownerId, hay, hayType)
@@ -1068,11 +1089,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if need then
 					refuse(bale.ownerId, need) -- not required, so it sorts, at need.penalty of the recovery
 				end
-				local needleBoost = boostOf(bale.body, "NeedleBoost")
-				if bale.body:GetAttribute("GoldenField") == true then
-					needleBoost *= Config.GoldenBaleNeedles
-				end
-				local mutationBoost = boostOf(bale.body, "MutationBoost")
+				local needleBoost, mutationBoost = baleBoosts(bale.body)
 				Bales.consume(bale)
 				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1, needleBoost, mutationBoost)
 			elseif #loose > 0 then

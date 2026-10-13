@@ -441,6 +441,6 @@ return {
 	-- player who visits it that week earns that week's festival ribbon (cosmetic, kept in the save).
 	FestivalEpoch = 1704067200, -- Monday 2024-01-01 00:00 UTC
 	FestivalWeek = 7 * 24 * 3600,
-	FestivalBoost = 2,
+	FestivalBoost = 1.5, -- Economy (H13): 2 put a stacked week over the 2x cap (tools/boost_sim.py)
 	FestivalOrder = { "pine", "valley", "desert", "snow", "swamp", "shore", "haunted", "volcano", "keys", "homestead", "bobbin" }, -- the Spindle has no hay field
 }
