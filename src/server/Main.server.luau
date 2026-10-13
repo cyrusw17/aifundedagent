@@ -3,11 +3,13 @@
 local Services = script.Parent.Services
 
 local Data = require(Services.Data)
+local Bank = require(Services.Bank)
 local World = require(Services.World)
 local Avatar = require(Services.Avatar)
 local GloveLooks = require(Services.GloveLooks)
 
 Data.start()
+Bank.start()
 Avatar.start()
 GloveLooks.start()
 World.build()
