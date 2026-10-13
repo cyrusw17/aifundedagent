@@ -386,19 +386,63 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 ### Checked against the pacing simulator
 
 Conveyor's `tools/pacing_sim.py` plays a new save second by second on the real Meadow layout and configs (20 seeded
-maps). Its medians land 13 to 23% ahead of the table above: Work Gloves at 2 minutes, Wheelbarrow 9, Pickup on a loan
-15, Wagon 23, Plot with a sieve and first line 50, Shaker 71, Leather Gloves 92, Flatbed 104, Small trailer 127, and
-the conveyor sorter after 3 hours. Ahead is the safe side, so no prices changed. Two gaps were looked at on purpose:
+maps). Medians, in minutes:
 
-- **Work Gloves at 2 minutes (target was 6).** Kept. The "6 minutes" came from rounding the table to 0.1 h. The first
-  purchase should land almost at once: it teaches the shop loop and makes the next bale feel lighter right away.
-  Raising it to $500 to reach 6 minutes would push every later step back for no gain.
-- **The plot at 50 minutes (CEO target 35 to 45).** Kept at $2,500. The simulator buys the plot with cash and doesn't
-  model bale toss or field chutes, both of which speed up truck loading, so the real game lands nearer 43 minutes. A
-  player who takes the land loan ($500 down, allowed alongside the truck loan) gets there in about 35. Cutting the plot
-  to $2,000 would gain about 3 minutes and make the first land feel cheap next to a $1,500 wagon.
+| Buy | Table above | Sim, hand loading | Sim, bale toss + field chutes | + land loan | 2-player crew |
+|---|---|---|---|---|---|
+| Work Gloves | 6 | 2 | 2 | 2 | 1 |
+| Wheelbarrow | 12 | 9 | 9 | 9 | 5 |
+| Rusty Pickup (loan) | 18 | 15 | 15 | 15 | 8 |
+| Plot + Hand sieve + first line | 60 | 50 | 34 | 28 | 16 |
+| Shaker table | 84 | 71 | 44 | 39 | 24 |
+| Farm Flatbed (loan) | 120 | 103 | 64 | 62 | 41 |
+| Conveyor sorter | 240 | over 180 | 124 | 120 | 86 |
 
-Re-run `python3 tools/pacing_sim.py` after any change to an early price.
+With bale toss and the field chutes, everything from the plot on lands about 40% ahead of the table, because loading
+a truck stops being the slow part. The needle market barely slows a solo player.
+
+**Decision: keep the prices for the morning playtest and accept the faster mid-game for now.** Three reasons:
+
+1. The speed-up rests on two numbers nobody has measured: about 3 seconds to toss a bale into a bed, and about 50
+   seconds of overhead per truck trip (parking, the chute lever, unloading). If either is twice as long in the real
+   game, most of the gap closes. Cyrus's playtest stopwatch (MORNING_PLAYTEST section 6) measures both.
+2. A faster first two hours is the safer mistake. The first session decides whether a player comes back, and the plot
+   at 34 minutes is right in the CEO's 35 to 45 minute target. The long climb comes later, from the sorter ladder
+   ($190k magnet drum, $1.35M optical sorter), which bale toss and chutes don't touch because a solo player can't
+   keep those sorters full anyway.
+3. Whether the whole climb should be longer is already an open choice for Cyrus (14 hours against V8's 40, below).
+   Retuning the mid-game now would answer half of that question before he has.
+
+**If the stopwatch confirms the sim** (toss under 4 s and trip overhead under 60 s), the retune is ready: raise the
+shaker table, leather gloves, flatbed and conveyor sorter by about 1.6x ($6,500, $13,000, $40,000 and $40,000),
+which puts them back on the table's times without touching the early game or Cyrus's hay price. Re-run
+`python3 tools/pacing_sim.py` and `python3 tools/line_sim.py --check` after any change.
+
+Two early gaps were also looked at on purpose. **Work Gloves at 2 minutes** (target 6) stay: the 6 came from rounding
+the table to 0.1 h, and a near-instant first purchase teaches the shop loop. **The plot** stays at $2,500: with toss
+and chutes it lands at 34 minutes, inside the target, and at 28 with a land loan.
+
+#### Simulator v2: what the game adds beyond the table (CEO #30)
+
+The second table from `tools/pacing_sim.py` turns on, one at a time, what v1 left out. It shows minutes to each buy, as the median of 20 maps.
+
+| Buy | Target | v1 (solo, hand loading) | + toss + chute | + needle market | + land loan | + 2-player crew |
+|---|---|---|---|---|---|---|
+| Work Gloves | 6 | 2 | 2 | 2 | 2 | 1 |
+| Wheelbarrow | 12 | 9 | 9 | 9 | 9 | 5 |
+| Rusty Pickup | 18 | 15 | 15 | 15 | 15 | 8 |
+| Wagon Trailer | 30 | 23 | 23 | 23 | 23 | 13 |
+| Plot + Hand sieve + first line | 60 | 50 | 34 | 34 | 28 | 16 |
+| Shaker table | 84 | 71 | 44 | 43 | 39 | 24 |
+| Leather Gloves | 108 | 92 | 58 | 57 | 55 | 36 |
+| Farm Flatbed | 120 | 103 | 64 | 63 | 62 | 41 |
+| Small Trailer | 150 | 127 | 79 | 77 | 76 | 52 |
+| Conveyor sorter | 240 | over 180 | 124 | 123 | 120 | 86 |
+
+- **Bale toss and the field chute** confirm the "nearer 43 minutes" call above. The plot lands at 34 minutes, inside the CEO's 35 to 45 minute window. From the plot onward, though, every buy lands about 40% ahead of the table: the shaker at 44 minutes against 84, the flatbed at 64 against 120. A truck stops being limited by loading, and the chute alone supplies 10 bales a minute.
+- **The needle market** does not slow a solo player. One line sells far fewer than `NormalSales`, so Steel stays above list price.
+- **A 2-player crew** roughly halves every time. The second player hauls by barrow while the first drives the shared truck.
+- **Assumed, not measured:** tossing a bale takes 3 seconds against 9 to carry one in, and each truck trip has 50 seconds of overhead. A playtest stopwatch on both would settle the toss and chute column.
 
 ## Open choices for Cyrus
 
@@ -448,6 +492,19 @@ is under 2% of a box-truck load, but the crossing takes time, so the island has 
 mainland beside it. Bobbin Rock fits between Volcano and Cave on value and weight, as an island alternative to the
 crater.
 
+## Quest cash
+
+Quest rewards live in `Config/Quests` (Quests thread) and pay with a "Quest: " note, so they count for credit but not
+toward the trade-cash `sold` total. The ladder runs from $150 for the first errand to $15,000 for the last Weaver
+chapter before the finale, each sized against the next thing the player is saving for (the second quest pays back
+the Work Gloves, the fourth half a plot). Daily bounties pay $150 to $1,200 and daily maze runs $300 to $400.
+
+The Weaver finale (all twelve Master Needle shards) pays **$100,000** with the Master Needle. Twelve shards take a
+player through Swamp, Thimble Keys and the late regions, where income is $150,000 to $440,000 an hour, so Quests'
+first $25,000 was 3 to 10 minutes of play: less than the Ember Cache. $100,000 is about 15 minutes at the Volcano
+stage, the biggest one-time payout in the game, and still short of any late machine, so the Master Needle stays the
+prize. (Asked of the Quests thread for PR #38.)
+
 ## Region secrets
 
 Map's four one-time secrets (`Prices.Secrets`) pay once per save slot through `Bank.earn`. Map's first numbers were
@@ -461,6 +518,25 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Lost Kite | Under Sky Island's rim | $1,000 zeppelin fare | $25,000 |
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
+
+Map's twelve hidden spots, one per region and each found from an Old Sign clue, also pay through `Prices.Secrets`
+(`hidden_<region>`). Map's placeholder was $4,000 each, which was a pickup's worth for the four Meadow spots a new player
+can walk to in the first ten minutes. They're scaled to the region instead, at about 5 minutes of income at the stage
+you reach it, and stay smaller than the four big secrets:
+
+| Region | Hidden spot | Reward |
+|---|---|---|
+| Meadow Shore, Mirror Lake Valley, Homestead, Spindle | Driftwood Oak, Willow, Founders' Cairn, Echo Cairn | $500 each |
+| Pine Forest | Hollow Pine | $1,500 |
+| Desert | Prospector's Shed | $2,500 |
+| Snow Peak | Buried Ski Shed | $4,000 |
+| Thimble Keys | Castaway's Chest | $5,000 |
+| Swamp | Sunken Bog Chest | $6,000 |
+| Volcano | Ash Cairn | $10,000 |
+| Bobbin Rock | Spool Shed | $12,000 |
+| Haunted Grove | Whispering Oak | $15,000 |
+
+All twelve together come to $58,000. Like every one-time reward, they count as earnings but not as `sold`.
 
 ## Wet hay
 
@@ -478,6 +554,13 @@ That's the right size. It hurts most at the very start, when hay is all you sell
 early; later it's a nudge, and waiting out the rain costs nothing. It doesn't change the drying rack's price: at the
 Swamp stage, rescuing $18 a bale is under 2% of the bale, while the rack's real value is letting Bog reed be sorted
 at all.
+
+## Mutated needles
+
+1 found needle in 500 is mutated (`Prices.Mutation`, read by Needle.luau) and sells for 3x to 25x its value, announced
+to the whole server. The average mutation is 14x, so mutations add about 2.6% to needle income. That's a jackpot
+moment, not an income source: a mutated Steel needle is worth $300 to $2,500, and a mutated Cosmic one up to $125,000.
+Mutated needles stay in your pocket at NPC orders and trade like any other item.
 
 ## Golden bales
 
@@ -537,6 +620,7 @@ prefix or be a known sale.
 | Region events | `RegionEvents` | `Services/RegionEvents` |
 | Region secrets | `Secrets` | `Services/Wilds` |
 | Wet hay | `WetHayShare` | `Config/Game` (WetPriceFactor) |
+| Mutated needles | `Mutation` | `Services/Needle` |
 | Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |

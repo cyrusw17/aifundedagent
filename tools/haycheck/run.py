@@ -5,7 +5,8 @@
 
 Bundles mapcheck's Roblox mock (tools/mapcheck/mock.luau) with Config/Game, Config/Gloves, Config/Prices and HayMath,
 then runs check.luau (unit checks and a walk-speed table by glove tier and hay type) and, with --fuzz, fuzz.luau (the
-hand loop played at random: lift, set down, throw, break, scoop, pour, sell). Exit code 1 on any FAIL or crash.
+hand loop played at random by four fake players: lift, double carry, set down, throw, barrow, leave and rejoin, finds kept
+and traded). Exit code 1 on any FAIL or crash.
 """
 import os
 import subprocess
@@ -19,6 +20,14 @@ MODULES = {
     "Shared.Config.Game": "shared/Config/Game.luau",
     "Shared.Config.Gloves": "shared/Config/Gloves.luau",
     "Shared.HayMath": "shared/HayMath.luau",
+    "Shared.ToolGuide": "shared/ToolGuide.luau",
+    "Shared.Config.HayLooks": "shared/Config/HayLooks.luau",
+    "Shared.Config.Finds": "shared/Config/Finds.luau",
+    "Shared.Config.Needles": "shared/Config/Needles.luau",
+    "Shared.Config.Props": "shared/Config/Props.luau",
+    "Services.Hay": "server/Services/Hay.luau",
+    "Services.Bales": "server/Services/Bales.luau",
+    "Services.Finds": "server/Services/Finds.luau",
 }
 
 

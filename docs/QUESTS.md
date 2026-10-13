@@ -46,12 +46,18 @@ Quest gear is earned, never sold. No cash or Robux price buys a quest shovel, ra
 
 The Weaver who stitched the isles vanished and the Master Needle broke into twelve shards. The sealed door on the
 Spindle has a socket for each (SpindleDoor.luau lights a socket while anyone on the server holds that shard, in
-`Quests.Collection` order). Six shards come from rituals and region quests; chapter 1 adds the seventh; five more
-(Pine Forest, Homestead, Swamp, Thimble Keys, Shore) wait for later chapters and show as ??? with a hint.
+`Quests.Collection` order). Six shards come from rituals and region quests, six from the Weaver's chapters. With all
+twelve the door opens (on that player's screen) into the Loom Room, where the finale sets them on the pedestal.
 
 | Chapter | Steps | Reward |
 |---|---|---|
 | 1: Still Water | Read the words beside the Spindle door ("Still water keeps the sky. When the sky is darkest, the dropped thread rises. Wind it home."), take the glowing spool from Mirror Lake's west shore at midnight, wind it back at the door | **Master Needle shard: Spindle** |
+| 2: The Tailor's Note | Read the note at the Tailor's Shack (south shore), take the glint under the lighthouse at night | **Shard: Shore** |
+| 3: The Stitched Pine | Break 15 pine bales, open the gold-stitched pine at dusk | **Shard: Pine Forest** |
+| 4: The First Bale | Ask Old Wren (Homestead, by the well; her own Talk prompt answers), take the glint in the hub well at midnight | **Shard: Homestead** |
+| 5: Holding Breath | Find a breathing reed in swamp bales (1 in 40, sure within 80), offer it and 20 bog needles at the sunken stone at night | **Shard: Swamp** |
+| 6: Beads on a String | Touch the 3 bead lanterns on the Thimble Keys, take the bead from their thread at dusk | **Shard: Thimble Keys** |
+| The Master Needle | With all 12 shards: through the Spindle door, set them on the pedestal in the Loom Room | **The Master Needle**, $100,000 |
 
 Bounty boards (the Homestead hub, the ferry promenades) open the quest log at the Bounties tab.
 

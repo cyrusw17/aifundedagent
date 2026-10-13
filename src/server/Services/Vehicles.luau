@@ -14,6 +14,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rustic = require(Shared.Config.Rustic)
 local Trucks = require(Shared.Config.Trucks)
 local Meadow = require(Shared.Config.Meadow)
+local RateLimit = require(Shared.RateLimit)
+
+local hitchLimit = RateLimit.new("Vehicles.Hitch", 1, 2)
 local TrailerDefs = require(Shared.Config.Trailers)
 local Props = require(script.Parent.Props)
 local Bales = require(script.Parent.Bales)
@@ -747,12 +750,10 @@ function Vehicles.makeTrailerLive(model, owner)
 	prompt.RequiresLineOfSight = false
 	prompt.ClickablePrompt = true
 	prompt.Parent = model:FindFirstChild("Coupler") or chassis
-	local lastPress = -math.huge
 	prompt.Triggered:Connect(function(player)
-		if player ~= owner or os.clock() - lastPress < 1 then
+		if player ~= owner or not hitchLimit:allow(player) then
 			return
 		end
-		lastPress = os.clock()
 		if model:GetAttribute("HitchedTo") then
 			Vehicles.unhitch(model)
 		else
@@ -1067,10 +1068,8 @@ end
 -- folder: where player trucks and trailers go.
 -- Recovery -------------------------------------------------------------------------------------------------------
 
-local TOW_COOLDOWN = 30
-local lastTow = {} -- player -> os.clock() of their last tow
-local FLIP_COOLDOWN = 3
-local lastFlip = {}
+local towLimit = RateLimit.new("Vehicles.Tow", 1 / 30, 1) -- one tow every 30 s
+local flipLimit = RateLimit.new("Vehicles.Flip", 1 / 3, 1)
 
 -- The ground under a point, ignoring vehicles, bales and people.
 local function groundY(position, ignore)
@@ -1119,11 +1118,9 @@ function Vehicles.recover(player, mode, to)
 	local hitched = trailer and trailer.Parent and trailer:GetAttribute("HitchedTo") == truck:GetAttribute("TruckId")
 	local ground
 	if mode == "tow" then
-		local since = os.clock() - (lastTow[player] or -math.huge)
-		if since < TOW_COOLDOWN then
-			return false, ("The tow truck is busy. Try again in %d s."):format(math.ceil(TOW_COOLDOWN - since))
+		if not towLimit:allow(player) then
+			return false, ("The tow truck is busy. Try again in %d s."):format(math.ceil((1 - towLimit:left(player)) * 30))
 		end
-		lastTow[player] = os.clock()
 		local spot = Meadow.TowSpot
 		ground = CFrame.lookAt(spot, spot + Vector3.xAxis)
 		-- With streaming on, the driver's client must have the lot loaded before the truck lands there.
@@ -1133,10 +1130,9 @@ function Vehicles.recover(player, mode, to)
 	elseif mode == "rescue" and typeof(to) == "CFrame" then
 		ground = to
 	elseif mode == "flip" then
-		if os.clock() - (lastFlip[player] or -math.huge) < FLIP_COOLDOWN then
-			return false, "Give it a moment."
+		if not flipLimit:allow(player) then
+			return false, RateLimit.BUSY
 		end
-		lastFlip[player] = os.clock()
 		if chassis.AssemblyLinearVelocity.Magnitude > 8 then
 			return false, "Wait for it to stop rolling."
 		end
@@ -1190,22 +1186,17 @@ function Vehicles.init(folder)
 	local hornRemote = Instance.new("RemoteEvent")
 	hornRemote.Name = "TruckHorn"
 	hornRemote.Parent = game:GetService("ReplicatedStorage")
-	local lastHorn = {}
+	local hornLimit = RateLimit.new("Vehicles.Horn", 2, 2)
 	hornRemote.OnServerEvent:Connect(function(player)
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		local seat = humanoid and humanoid.SeatPart
 		local truck = seat and seat.Name == "DriverSeat" and seat.Parent
-		if not truck or not truck:GetAttribute("TruckId") or os.clock() - (lastHorn[player] or 0) < 0.6 then
+		if not truck or not truck:GetAttribute("TruckId") or not hornLimit:allow(player) then
 			return
 		end
-		lastHorn[player] = os.clock()
 		require(script.Parent.Feedback).play("TruckHorn", truck.PrimaryPart)
 	end)
-	Players.PlayerRemoving:Connect(function(player)
-		lastHorn[player] = nil
-		lastTow[player] = nil
-		lastFlip[player] = nil
-	end)
+
 	Players.PlayerRemoving:Connect(function(player)
 		if owned[player] then
 			owned[player]:Destroy()

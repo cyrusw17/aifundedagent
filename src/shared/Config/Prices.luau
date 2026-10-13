@@ -263,6 +263,15 @@ Prices.Travel = {
 -- under cover or wait out the rain (it dries 150 s after), never a disaster.
 Prices.WetHayShare = 0.6
 
+-- Mutated needles (Needle.rollMutation): 1 found needle in oneIn is mutated and sells for min to max times its value
+-- (announced to the server). The average mutation is 14x, so mutations add (14 - 1) / 500 = 2.6% to needle income: a
+-- jackpot moment, not a source. A mutated Cosmic needle can be worth $125,000.
+Prices.Mutation = {
+	oneIn = 500,
+	min = 3,
+	max = 25,
+}
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
@@ -303,7 +312,22 @@ Prices.Secrets = {
 	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
 	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
 	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
-	hidden = 4000, -- each region's hidden spot (hidden_<region>, 12 of them), a short walk off a road from its Old Sign clue (placeholder for Econ)
+	-- Each region's hidden spot (Wilds, hidden_<region>), a short walk off a road from its Old Sign clue. Smaller than
+	-- the four big secrets and scaled to the region: about 5 minutes of income at the stage you reach it, so the
+	-- Meadow ones can't hand a new player a pickup. `hidden` is the fallback for a region not listed. $58,000 in all.
+	hidden = 500,
+	hidden_shore = 500,
+	hidden_valley = 500,
+	hidden_homestead = 500,
+	hidden_spindle = 500,
+	hidden_pine = 1500,
+	hidden_desert = 2500,
+	hidden_snow = 4000,
+	hidden_keys = 5000,
+	hidden_swamp = 6000,
+	hidden_volcano = 10000,
+	hidden_bobbin = 12000,
+	hidden_haunted = 15000,
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

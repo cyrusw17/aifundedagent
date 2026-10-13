@@ -19,6 +19,8 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
+local LineRate = require(Shared.LineRate)
+local RateLimit = require(Shared.RateLimit)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
@@ -34,7 +36,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
 local LineStats = require(script.Parent.LineStats)
-require(script.Parent.Jams) -- watches belts for stuck bales (Jams.luau)
+local Jams = require(script.Parent.Jams) -- watches belts for stuck bales; the sorter lamp asks it
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
@@ -172,6 +174,7 @@ Machines.spawnSortedBale = spawnSortedBale
 
 -- Price holds (CEO #26): a player can tell their needle bins to keep their needles until this server's market pays a
 -- share of list price. state.needleHold is an index into HOLD_STEPS (nil or 0 is off, sell at any price).
+local holdLimit = RateLimit.new("NeedleBin.PriceHold", 3, 4)
 local HOLD_STEPS = { 1, 1.05, 1.1, 1.15 } -- the market swings 0.8 to 1.2 of list (Prices.Market.Swing)
 
 local function holdOf(player)
@@ -441,6 +444,39 @@ function Machines.needleBin(parent, frame)
 		end
 	end)
 
+	-- Take all (CEO #33): every needle of yours in the bin goes into your pocket in one go, to carry to a vault, the
+	-- trading post or an order board. The SELL NEEDLES pad already sells the bin where it stands, so this is the trip.
+	local takePrompt = Instance.new("ProximityPrompt")
+	takePrompt.Name = "TakeAll"
+	takePrompt.ActionText = "Take your needles"
+	takePrompt.ObjectText = "Needle bin"
+	takePrompt.KeyboardKeyCode = Enum.KeyCode.T
+	takePrompt.HoldDuration = 0.6
+	takePrompt.MaxActivationDistance = 9
+	takePrompt.RequiresLineOfSight = false
+	takePrompt.UIOffset = Vector2.new(0, 60) -- below the price hold prompt
+	takePrompt.Parent = model.Floor
+	takePrompt.Triggered:Connect(function(player)
+		if not holdLimit:allow(player) or not Data.get(player) then
+			return
+		end
+		local taken = 0
+		for _, n in Needle.inBox(inside, insideSize) do
+			if n:GetAttribute("OwnerId") == player.UserId then
+				local count = Needle.count(n)
+				Needle.giveKey(player, Needle.keyOfPart(n), count)
+				taken += count
+				n:Destroy()
+			end
+		end
+		refresh()
+		if taken == 0 then
+			Data.toast(player, "None of the needles in this bin are yours.")
+			return
+		end
+		Data.toast(player, ("Took %d needles out of the bin. Any SELL pad, vault or order board takes them from your pocket."):format(taken))
+	end)
+
 	-- Cycles the player's price hold: off, then at list price, then 5%, 10% and 15% over it.
 	local holdPrompt = Instance.new("ProximityPrompt")
 	holdPrompt.Name = "PriceHold"
@@ -451,6 +487,9 @@ function Machines.needleBin(parent, frame)
 	holdPrompt.RequiresLineOfSight = false
 	holdPrompt.Parent = model.Floor
 	holdPrompt.Triggered:Connect(function(player)
+		if not holdLimit:allow(player) then
+			return
+		end
 		local state = Data.get(player)
 		if not state then
 			return
@@ -514,6 +553,25 @@ function Machines.needleBin(parent, frame)
 
 	-- Puts saved needles ({ [key] = count }, as contents returns) straight back in the bin, plain ones tied in bundles,
 	-- laid in rows on the floor (anchored, so a big pile can't spill).
+	-- Lays count saved needles of one key at spot() as Needle.bundleIn would leave them: a crate once there are
+	-- LineMath.CRATE_AT bundles' worth (or mutated needles), bundles of 10, and loose singles, all anchored.
+	local function placeStack(spot, ownerId, id, mult, polished, grade, count)
+		local stack = mult == 1 and (count // Needle.BUNDLE) * Needle.BUNDLE or count
+		if (mult == 1 and stack >= LineMath.CRATE_AT * Needle.BUNDLE) or (mult > 1 and count >= LineMath.CRATE_AT) then
+			Needle.setGrade(Needle.bundle(spot(), ownerId, id, polished, stack, mult), grade).Anchored = true
+			count -= stack
+		end
+		if mult == 1 then
+			while count >= Needle.BUNDLE do
+				Needle.setGrade(Needle.bundle(spot(), ownerId, id, polished), grade).Anchored = true
+				count -= Needle.BUNDLE
+			end
+		end
+		for _ = 1, count do
+			Needle.setGrade(Needle.make(spot(), ownerId, id, mult, polished), grade).Anchored = true
+		end
+	end
+
 	function bin.fill(ownerId, byKey)
 		local perRow, rows = 4, 24
 		local placed = 0
@@ -542,27 +600,10 @@ function Machines.needleBin(parent, frame)
 					stacked += 1
 					return floor * CFrame.new(at + Vector3.new((col - 1) * 0.7, 0.3 + layer * 0.6, (row - 1) * 0.7))
 				end
-				if mult == 1 then
-					while count >= Needle.BUNDLE do
-						Needle.setGrade(Needle.bundle(cornerSpot(), ownerId, id, polished), grade).Anchored = true
-						count -= Needle.BUNDLE
-					end
-				end
-				for _ = 1, count do
-					Needle.setGrade(Needle.make(cornerSpot(), ownerId, id, mult, polished), grade).Anchored = true
-				end
+				placeStack(cornerSpot, ownerId, id, mult, polished, grade, count)
 				continue
 			end
-			if mult == 1 then
-				while count >= Needle.BUNDLE do
-					Needle.setGrade(Needle.bundle(nextSpot(), ownerId, id, polished), grade).Anchored = true
-					count -= Needle.BUNDLE
-				end
-			end
-			for _ = 1, count do
-				local n = Needle.setGrade(Needle.make(nextSpot(), ownerId, id, mult, polished), grade)
-				n.Anchored = true
-			end
+			placeStack(nextSpot, ownerId, id, mult, polished, grade, count)
 		end
 		refresh()
 	end
@@ -598,6 +639,8 @@ end
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
 -- go in one at a time, the needles it finds fly to `bin` (a Machines.needleBin), and a clean bale comes out the far end.
 -- payTo (optional) maps the owner of incoming hay to who gets paid and owns the needles (a plot's crew pays the owner).
+local RATE_WINDOW = 120 -- seconds of work a sorter's sign averages over
+
 -- How each sorter tier reads from across a plot (CEO #27), part-built until every tier has its Blender mesh: a painted
 -- band along both sides, stars on the sign, and a silhouette of its own on the roof. The tier parts sit in the sorter
 -- model, so an imported mesh replaces them like the rest of the fallback.
@@ -704,9 +747,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	-- A chute on the left side points at the bin.
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
+	local isAlienTier = tier.hayPerMin == math.huge -- no rate on its sign: it sorts only while its beam is up
 	local look = dressTier(model, center, tier, height)
 	local title = tier.name:upper() .. " " .. string.rep("★", look.stars)
-	local label = sign(roof, title, Vector3.new(0, 6, 0))
+	local label = sign(roof, title, Vector3.new(0, 9, 0)) -- above the tallest roof silhouette, five lines tall
 
 	-- The oil can on the right side: click it to buy a can of oil, and the sorter works faster for a while.
 	local canModel = Instance.new("Model")
@@ -740,15 +784,45 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local zoneSize = Vector3.new(T - 0.8, 7, 3.2)
 	local out = center * CFrame.new(0, TOP + 1.45, -T + 2) * CFrame.Angles(0, math.pi / 2, 0)
 	local sorted = 0
+	local recent = {} -- { { t, bales, needles, dollars } } over the last RATE_WINDOW seconds, for the sign (CEO #28)
+	local lastHay = "meadow"
+	-- Bottleneck lamp state (CEO #29, rules in LineMath.lamp).
+	local sortingNow, lastSortEnd = false, os.clock()
+	local lastRefused, refusedNeed = nil, nil
+	local lampWhy = nil
 
+	-- The sign: tier, bales sorted, what the line did lately next to what this sorter makes kept full (the same
+	-- formula as tools/line_sim.py, at today's market price for the hay it last sorted).
 	local function refreshLabel()
-		label.Text = ("%s\n%d bales sorted, finds %d%%%s"):format(
+		local rateText = ""
+		if not isAlienTier then
+			local bpm, npm, perHour = LineRate.measured(recent, os.clock(), RATE_WINDOW)
+			local needleId = Needle.forHay(lastHay)
+			local full = LineRate.line(lastHay, tier.id, nil, oiled > 0, true, Market.multiplier(needleId))
+			rateText = ("\n%s bales/min, %s needles/min, $%s/hr\nkept full: $%s/hr"):format(
+				LineRate.short(bpm),
+				LineRate.short(npm),
+				LineRate.short(perHour),
+				LineRate.short(full.perHour)
+			)
+		end
+		label.Text = ("%s\n%d bales sorted, finds %d%%%s%s%s"):format(
 			title,
 			sorted,
 			math.round(tier.recovery * 100),
-			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or ""
+			rateText,
+			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or "",
+			lampWhy and ("\n" .. lampWhy:upper()) or ""
 		)
 		can.Color = oiled > 0 and C.go or C.darkMetal
+	end
+	if not isAlienTier then -- the collector's sign counts down its beam instead
+		task.spawn(function()
+			while model.Parent do
+				task.wait(5)
+				refreshLabel()
+			end
+		end)
 	end
 
 	oilClick.MouseClick:Connect(function(player)
@@ -769,6 +843,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end)
 
 	local function sort(hay, ownerId, hayType, recoveryMult)
+		sortingNow = true
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
@@ -782,6 +857,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		roof.CFrame = rest
 		dust.Rate = 0
 		model:SetAttribute("Running", false)
+		sortingNow, lastSortEnd = false, os.clock()
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
@@ -790,8 +866,12 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
-		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
+		local bales = hay / (Config.PiecesPerBale * Config.HayPerPiece)
+		LineStats.record(ownerId, "bales", bales)
 		LineStats.record(ownerId, "needles", found)
+		lastHay = hayType or "meadow"
+		local needlePrice = Needle.priceOf(Needle.forHay(lastHay), 1, false, Needle.gradeFor(tier.id))
+		table.insert(recent, { os.clock(), bales, found, hay * Economy.HAY_PRICE + found * needlePrice })
 		sorted += 1
 		model:SetAttribute("Sorted", sorted)
 		refreshLabel()
@@ -807,6 +887,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end
 	local toldAt = {}
 	local function refuse(ownerId, need)
+		lastRefused, refusedNeed = os.clock(), string.gsub(need.machine, "_", " ")
 		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 		if owner and os.clock() - (toldAt[ownerId] or -math.huge) > 15 then
 			toldAt[ownerId] = os.clock()
@@ -858,6 +939,60 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			end)
 		end)
 	end
+
+	-- The bottleneck lamp on the upstream corner: green sorting, amber starved, red backed up, jammed or refusing.
+	local LAMP = { green = C.go, amber = Color3.fromRGB(230, 170, 60), red = Color3.fromRGB(200, 70, 55) }
+	local lampAt = center * CFrame.new(-T / 2 + 0.4, TOP + height + 1, T - 0.4)
+	part(model, "LampPost", Vector3.new(0.3, 1.2, 0.3), lampAt * CFrame.new(0, 0.6, 0), C.darkMetal, Enum.Material.Metal)
+	local lamp = part(model, "BottleneckLamp", Vector3.new(0.9, 0.9, 0.9), lampAt * CFrame.new(0, 1.5, 0), LAMP.amber, Enum.Material.Neon)
+	lamp.Shape = Enum.PartType.Ball
+	lamp.CanCollide = false
+	local lampLight = Instance.new("PointLight")
+	lampLight.Range = 6
+	lampLight.Brightness = 1
+	lampLight.Color = LAMP.amber
+	lampLight.Parent = lamp
+	-- Two cells upstream of the flap: where a queue of bales stands when this sorter can't keep up.
+	local queueBox = center * CFrame.new(0, TOP + 2, T * 2)
+	local queueSize = Vector3.new(T - 0.4, 4, T * 2)
+	task.spawn(function()
+		local queueSince = nil
+		while model.Parent do
+			task.wait(0.5)
+			local queued, jam = 0, false
+			for _, p in Workspace:GetPartBoundsInBox(queueBox, queueSize) do
+				local b = Bales.fromPart(p)
+				if b and p == b.body and not b.gone and not b.sorted then
+					queued += 1
+					jam = jam or Jams.isJammed(p)
+				end
+			end
+			local now = os.clock()
+			if queued >= 2 then
+				queueSince = queueSince or now
+			else
+				queueSince = nil
+			end
+			local color, why = LineMath.lamp({
+				sorting = sortingNow,
+				idleSeconds = now - lastSortEnd,
+				queued = queued,
+				queuedSeconds = queueSince and now - queueSince or 0,
+				jammed = jam,
+				refusedSeconds = lastRefused and now - lastRefused,
+				need = refusedNeed,
+				beamDown = isAlien and now >= beamUntil,
+			})
+			lamp.Color, lampLight.Color = LAMP[color], LAMP[color]
+			model:SetAttribute("Lamp", color)
+			if why ~= lampWhy then
+				lampWhy = why
+				if not (isAlien and now < beamUntil) then
+					refreshLabel()
+				end
+			end
+		end
+	end)
 
 	task.spawn(function()
 		while model.Parent do

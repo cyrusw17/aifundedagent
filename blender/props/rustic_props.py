@@ -180,9 +180,9 @@ def wheelbarrow(f):
 
 
 def wheelbarrow_loaded(f):
-    """Rigged wheelbarrow for carrying (art spec): the wheelbarrow turned to face forward (wheel at the
-    front, Roblox -Z), the wheel and hub as one Wheel_L1 mesh, and a loose-hay HayFill heap the game
-    raises as it fills. Bales ride loose in game, so none are baked in."""
+    """Rigged wheelbarrow for carrying (art spec): the wheelbarrow scaled to the game's 5 x 3.6 tray and
+    turned to face forward (wheel at the front, Roblox -Z), the wheel and hub as one Wheel_L1 mesh, and
+    a loose-hay HayFill heap the game raises as it fills. Bales ride loose in game, so none are baked in."""
     from mathutils import Matrix
     parts = wheelbarrow(f)
     wheel = parts[-2:]
@@ -190,7 +190,10 @@ def wheelbarrow_loaded(f):
     rig.tag(wheel, "Wheel_L1")
     rig.tag([hay], "HayFill")
     parts.append(hay)
-    turn = Matrix.Rotation(math.pi / 2, 4, "Z")
+    # Scale to the game's tray (Wheelbarrow.luau: 5 long x 3.6 wide inside); x and z scale together so
+    # the wheel stays round.
+    k = 5.0 / 3.4
+    turn = Matrix.Rotation(math.pi / 2, 4, "Z") @ Matrix.Diagonal((k, 3.6 / 2.7, k, 1))
     for o in parts:
         o.data.transform(o.matrix_world)
         o.matrix_world = Matrix.Identity(4)

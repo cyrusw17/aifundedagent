@@ -18,11 +18,11 @@ return {
 		garden_rake = 5.0,
 		pitchfork = 5.3,
 		steel_fork = 5.2,
-		hay_hook = 1.3,
+		hay_hook = 1.27,
 		hand_sieve = 5.9,
 		silver_sieve_net = 3.7,
 		magnet_wand = 3.9,
-		needle_tweezers = 2.3,
+		needle_tweezers = 2.35,
 		needle_tray = 3.0,
 		sorter_boost_oil = 1.6,
 		barrel_auger = 4.6,
@@ -33,11 +33,11 @@ return {
 		fence_post_set = 12.6,
 		road_tile = 6.0,
 		-- Gloves: one right glove each, fingers +Y, back of hand -Z (GloveLooks.luau fits them to the hand)
-		work_gloves = 1.9,
+		work_gloves = 1.87,
 		leather_gloves = 2.28,
-		reinforced_gloves = 1.9,
+		reinforced_gloves = 1.77,
 		iron_gauntlets = 2.1,
-		starlight_gloves = 1.9,
+		starlight_gloves = 1.87,
 		-- Vehicles and trailers
 		rusty_pickup = 27.5, -- the first truck (Vehicles.luau stretches it over the part-built truck)
 		farm_flatbed = 24.4,
@@ -118,7 +118,7 @@ return {
 		reeds_clump = 3,
 		rock_a = 4.53,
 		rock_b = 3.15,
-		rock_c = 1.5,
+		rock_c = 1.55,
 		dune_mound = 28.9,
 		firefly = 0.3,
 		-- Landmarks and hub buildings
@@ -129,19 +129,24 @@ return {
 		spindle_landmark = 120,
 		region_sign = 6,
 		road_sign = 6,
-		field_bale_chute = 14.0,
+		field_bale_chute = 15.95,
 		-- Items and collectibles
-		wheelbarrow_loaded = 5.5,
+		wheelbarrow_loaded = 8.14,
 		needle_bundle = 1.29, -- the NeedleBundle part in Needle.luau is 1.3 x 0.55 x 0.55
-		needle_display_wall = 12,
-		old_boot = 1.4,
-		horseshoe = 1,
+		needle_display_wall = 7.83,
+		old_boot = 1.51,
+		horseshoe = 0.88,
 		lost_ring = 0.6,
 		fossil = 1.4,
-		old_radio = 1.6,
+		old_radio = 1.75,
 		scarecrow = 7,
-		golden_shovel = 2.7,
-		rusty_key = 0.9, -- a find (Config/Finds.luau)
+		golden_shovel = 2.65,
+		rusty_key = 0.93, -- a find (Config/Finds.luau)
+		-- Quest relics (Config/Quests reward ids): single meshes, no rig
+		drowned_compass = 0.99,
+		straw_crown = 1.45,
+		corn_moon_charm = 1.05,
+		lucky_thimble = 0.5,
 		rarity_needle = 1.2, -- the one needle mesh every rarity tier shares (same length as the game's needle)
 		-- Robux truck skins: same size as the cash truck each one repaints
 		homestead_classic = 27.5,
@@ -237,7 +242,7 @@ return {
 		snow_cabin = 22.4,
 		straw_labyrinth_gate = 36.9,
 		swamp_stilt_house = 33.2,
-		the_spindle = 62.4,
+		the_spindle = 119.9,
 		thimble_lighthouse = 43.2,
 		volcano_forge = 30.7,
 		zeppelin_dock = 47.2,

@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Kit = require(Shared:WaitForChild("UI"):WaitForChild("Kit"))
+local Hud = require(Shared:WaitForChild("UI"):WaitForChild("Hud"))
 local WorldRegions = require(Shared:WaitForChild("WorldRegions"))
 local Factory = require(Shared:WaitForChild("Config"):WaitForChild("Factory"))
 local C, F = Kit.Theme.Colors, Kit.Theme.Fonts
@@ -20,16 +21,15 @@ local WIDTH, HEIGHT = 440, 30
 local SPAN = 160 -- degrees of heading across the strip
 local TICKS = { [0] = "N", [45] = "NE", [90] = "E", [135] = "SE", [180] = "S", [225] = "SW", [270] = "W", [315] = "NW" }
 
-local gui = Kit.screen("Compass", 2)
 local strip = Instance.new("Frame")
 strip.Name = "Strip"
 strip.AnchorPoint = Vector2.new(0.5, 0)
-strip.Position = UDim2.new(0.5, 0, 0, 4)
+strip.LayoutOrder = Hud.TopOrder.Compass -- first in the top-center stack (UI/Hud.luau)
 strip.Size = UDim2.fromOffset(WIDTH, HEIGHT)
 strip.BackgroundColor3 = C.Wood
 strip.BackgroundTransparency = 0.15
 strip.ClipsDescendants = true
-strip.Parent = gui
+strip.Parent = Hud.top()
 Kit.corner(strip, 8)
 Kit.stroke(strip, C.Ink, 1.5)
 
@@ -46,7 +46,7 @@ center.Parent = strip
 local regionLabel = Instance.new("TextLabel")
 regionLabel.Name = "Region"
 regionLabel.AnchorPoint = Vector2.new(0.5, 0)
-regionLabel.Position = UDim2.new(0.5, 0, 0, HEIGHT + 6)
+regionLabel.LayoutOrder = Hud.TopOrder.Region
 regionLabel.Size = UDim2.fromOffset(WIDTH, 16)
 regionLabel.BackgroundTransparency = 1
 regionLabel.Font = F.Bold
@@ -54,7 +54,7 @@ regionLabel.TextSize = 13
 regionLabel.TextColor3 = C.Cream
 regionLabel.TextStrokeTransparency = 0.4
 regionLabel.Text = ""
-regionLabel.Parent = gui
+regionLabel.Parent = Hud.top()
 
 -- Heading marks every 15 degrees: letters at the eight points, small ticks between.
 local marks = {}

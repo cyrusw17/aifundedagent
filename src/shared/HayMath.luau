@@ -78,4 +78,40 @@ function HayMath.tossSpeed(power: number, game: any, gravity: number): number
 	return math.sqrt(range * gravity) / math.sqrt(2)
 end
 
+-- Splits a bale's strands into clumps of perClump (the last one smaller when it does not divide), so every strand
+-- is spilled exactly once.
+function HayMath.clumps(strands: number, perClump: number): { number }
+	perClump = math.max(1, math.floor(perClump))
+	local out = {}
+	local left = strands
+	while left > 0 do
+		local n = math.min(perClump, left)
+		table.insert(out, n)
+		left -= n
+	end
+	return out
+end
+
+-- What one shovel scoop takes from the pieces in reach, nearest first. pieces: { { strands = n, pile = bool } }.
+-- A raked pile goes in whole (as far as room allows) and ignores the scoop size; strands and clumps count against
+-- the scoop size (scoop) as well as the room left in your arms (room), and a clump bigger than what is left is
+-- split. Returns how many strands to take from each piece (0 = leave it).
+function HayMath.scoopPlan(pieces: { any }, room: number, scoop: number): { number }
+	local takes = {}
+	for i, piece in pieces do
+		local n = piece.strands
+		local take
+		if piece.pile then
+			take = math.min(n, room)
+		else
+			take = math.min(n, room, scoop)
+			scoop -= math.max(take, 0)
+		end
+		take = math.max(take, 0)
+		room -= take
+		takes[i] = take
+	end
+	return takes
+end
+
 return HayMath
