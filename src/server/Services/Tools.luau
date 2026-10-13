@@ -16,6 +16,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
+local Finds = require(script.Parent.Finds)
 
 local Tools = {}
 
@@ -157,6 +158,7 @@ end
 function Tools.init()
 	Feedback.init()
 	Gloves.init()
+	Finds.init()
 	-- The glove stand goes beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")
