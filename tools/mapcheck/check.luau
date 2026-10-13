@@ -248,6 +248,29 @@ end
 if decks ~= #Map.Ferry.Routes then deckLifeOk = false print("WARN ferry decks with a promenade", decks) end
 print("ferry deck life", decks, deckLifeOk and "ok" or "WRONG")
 
+-- The hay wagon: a dry route at road height, no hops, and the loop comes round in a sensible time.
+local HayWagon = require({ __path = "Services.HayWagon" })
+local wagonOk = #HayWagon.legs == 4 and HayWagon.model ~= nil and #HayWagon.seats == 6
+local wet, hop = 0, 0
+for _, leg in HayWagon.legs do
+	for i, p in leg.samples do
+		local h, water = WorldShapeE.column(p.X, p.Z)
+		if water and water > p.Y + 0.5 and not WorldShapeE.inMeadow(p.X, p.Z) then wet += 1 end
+		local nextP = leg.samples[i + 1]
+		if nextP and math.abs(nextP.Y - p.Y) > 1.5 then hop += 1 end
+	end
+end
+if wet > 0 or hop > 0 then wagonOk = false print("WARN hay wagon route: wet samples", wet, "hops", hop) end
+local seconds, startLeg = 0, HayWagon.state.leg
+local lapped = false
+for _ = 1, 20000 do
+	HayWagon.step(0.25)
+	seconds += 0.25
+	if HayWagon.state.leg == startLeg and seconds > 60 and HayWagon.state.wait > 0 then lapped = true break end
+end
+if not lapped then wagonOk = false print("WARN hay wagon never finished its loop") end
+print(("hay wagon loop %.1f min, %s"):format(seconds / 60, wagonOk and "ok" or "WRONG"))
+
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0
 for _, d in workspace:GetDescendants() do
