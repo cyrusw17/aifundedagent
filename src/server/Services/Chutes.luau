@@ -50,9 +50,10 @@ local function part(parent, name, size, cframe, color, material, collide)
 end
 
 -- The bed (truck or trailer) whose cargo box is under this chute, nearest the middle of the lane.
-local function bedUnder(chute)
+-- `only` limits the search to one model (the SelfTest's truck, which no player owns).
+local function bedUnder(chute, only)
 	local best, bestD
-	for model in Vehicles.all() do
+	for model in if only then { [only] = true } else Vehicles.all() do
 		local chassis = model.PrimaryPart
 		local offset, size = model:GetAttribute("CargoOffset"), model:GetAttribute("CargoSize")
 		if chassis and offset and size then
@@ -121,7 +122,7 @@ local function tell(player, text)
 end
 
 -- Pulls the lever for player (nil in self-tests: the bales then have no owner). Returns how many bales will drop.
-function Chutes.pull(chute, player)
+function Chutes.pull(chute, player, only)
 	if chute.busy then
 		return 0
 	end
@@ -129,7 +130,7 @@ function Chutes.pull(chute, player)
 		tell(player, "The chute is empty. It refills a bale every few seconds.")
 		return 0
 	end
-	local bed = bedUnder(chute)
+	local bed = bedUnder(chute, only)
 	if not bed then
 		tell(player, "Park a truck or trailer bed under the chute, then pull the lever.")
 		return 0
@@ -403,5 +404,12 @@ function Chutes.build(worldFolder)
 		end
 	end)
 end
+
+-- SelfTest hook: pull into a truck that isn't in Vehicles.all() (test trucks have no real owner).
+Chutes.test = {
+	pullInto = function(chute, model)
+		return Chutes.pull(chute, nil, model)
+	end,
+}
 
 return Chutes
