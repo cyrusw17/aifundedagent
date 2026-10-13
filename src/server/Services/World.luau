@@ -17,6 +17,7 @@ local Bank = require(script.Parent.Bank)
 local Market = require(script.Parent.Market)
 local Orders = require(script.Parent.Orders)
 local WorldMap = require(script.Parent.WorldMap)
+local Quests = require(script.Parent.Quests)
 
 local World = {}
 
@@ -151,6 +152,8 @@ function World.build()
 
 	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
 	WorldMap.build(folder)
+	-- Quests, rituals and the places they send you, plus the day and night cycle.
+	Quests.build(folder)
 end
 
 return World

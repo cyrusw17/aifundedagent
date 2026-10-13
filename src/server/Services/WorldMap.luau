@@ -108,6 +108,8 @@ end
 local function makeBeacon(entry, parent)
 	local model = Instance.new("Model")
 	model.Name = "RichFieldBeacon"
+	-- Always sent to every client, even with StreamingEnabled, so the beam shows from across the map.
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 	local beam = Instance.new("Part")
 	beam.Name = "Beam"
 	beam.Shape = Enum.PartType.Cylinder

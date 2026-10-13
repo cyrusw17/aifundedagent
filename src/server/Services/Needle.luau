@@ -24,6 +24,7 @@ local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
 local Market = require(script.Parent.Market)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+local Events = require(script.Parent.Events)
 
 local Needle = {}
 
@@ -270,11 +271,12 @@ local function glint(n, amount)
 	Debris:AddItem(e, 1)
 end
 
-local function pickUp(player, n)
+-- anyReach: from wherever it lies (the Thread Rake). quiet: the caller tells the player. Returns true if picked up.
+local function pickUp(player, n, anyReach, quiet)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root or not n.Parent or (n.Position - root.Position).Magnitude > PICKUP_REACH + 2 then
-		return
+	if not root or not n.Parent or (not anyReach and (n.Position - root.Position).Magnitude > PICKUP_REACH + 2) then
+		return false
 	end
 	local id = n:GetAttribute("NeedleId") or Needle.default.id
 	local mult = n:GetAttribute("Mutation") or 1
@@ -289,7 +291,21 @@ local function pickUp(player, n)
 	local name = (polished and "polished " or "") .. Needle.info(id).name:lower()
 	local what = count > 1 and ("a bundle of %d %s needles"):format(count, name)
 		or ("a %s%s needle"):format(mult > 1 and ("x%d MUTATED "):format(mult) or "", name)
-	Data.toast(player, ("Picked up %s ($%d). Any sell pad buys it."):format(what, value))
+	if not quiet then
+		Data.toast(player, ("Picked up %s ($%d). Any sell pad buys it."):format(what, value))
+	end
+	Events.fire(player, "needle_found", count, { needleId = id })
+	return true
+end
+
+-- Puts a loose needle straight into a player's pocket (the Thread Rake, a quest reward). Quiet. True if it worked.
+function Needle.collect(player, n)
+	return pickUp(player, n, true, true)
+end
+
+-- Quests' name for takeFromPocket: takes count plain needles of one type for an offering, or none and false.
+function Needle.take(player, id, count)
+	return Needle.takeFromPocket(player, id, count)
 end
 
 -- Polishes a needle part (or bundle): worth Prices.PolishBonus more, and it shines.

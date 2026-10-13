@@ -17,6 +17,7 @@ local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
+local Events = require(script.Parent.Events)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
 local Wheelbarrow = require(script.Parent.Wheelbarrow)
@@ -195,6 +196,7 @@ local function useRake(player, root, aim)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
 		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		Events.fire(player, "raked", 1, { center = center })
 		Feedback.play("Rake", center)
 	end)
 end

@@ -17,7 +17,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
 local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
+local Prices = require(Shared.Config.Prices)
 local Vehicles = require(script.Parent.Vehicles)
+local Bank = require(script.Parent.Bank)
+local Data = require(script.Parent.Data)
 local WorldShape = require(script.Parent.WorldShape)
 
 local Ferry = {}
@@ -220,8 +223,68 @@ local function onDeck(shuttle, model)
 	return math.abs(spot.X) < shuttle.def.width / 2 and math.abs(spot.Z) < shuttle.def.length / 2 and spot.Y > -2 and spot.Y < LASH_HEIGHT
 end
 
+-- Fares -------------------------------------------------------------------------------------------------------
+
+local function tell(player, text)
+	if player and Data.get(player) then
+		Data.toast(player, text)
+	end
+end
+
+-- The trailer hitched to a truck, if its owner has one on.
+local function trailerOf(truck)
+	local id = truck:GetAttribute("TruckId")
+	for model in Vehicles.all() do
+		if model ~= truck and model:GetAttribute("HitchedTo") == id and model:GetAttribute("OwnerId") == truck:GetAttribute("OwnerId") then
+			return model
+		end
+	end
+	return nil
+end
+
+-- Rolls an unpaid truck (and its trailer) back onto the pier at this stop, off the deck, keeping its heading.
+local function sendBack(model, stop)
+	local chassis = model.PrimaryPart
+	if not chassis then
+		return
+	end
+	local from = chassis.Position
+	local to = stop.edge + stop.inland * 20
+	local move = CFrame.new(Vector3.new(to.X - from.X, 0.5, to.Z - from.Z))
+	local trailer = trailerOf(model)
+	model:PivotTo(move * model:GetPivot())
+	if trailer then
+		trailer:PivotTo(move * trailer:GetPivot())
+	end
+end
+
+-- Every truck on the deck pays its fare once per crossing (trailers ride free with their truck). A truck whose
+-- owner can't pay is rolled back onto the pier with the reason.
+local function collectFares(shuttle, stop)
+	local fare = shuttle.def.fare or 0
+	for model, owner in Vehicles.all() do
+		if shuttle.paid[model] or not model:GetAttribute("TruckId") or model:GetAttribute("OnFerry") or not onDeck(shuttle, model) then
+			continue
+		end
+		local ok, message = Bank.charge(owner, fare, shuttle.def.name .. " fare")
+		if ok then
+			shuttle.paid[model] = true
+			if fare > 0 then
+				tell(owner, ("%s: fare $%d paid. Stay on board, the gates close at departure."):format(shuttle.def.name, fare))
+			end
+		else
+			tell(owner, ("The %s fare is $%d. %s"):format(shuttle.def.name, fare, message or ""))
+			sendBack(model, stop)
+		end
+	end
+end
+
 local function lash(shuttle)
 	for model in Vehicles.all() do
+		-- Only paid trucks sail (collectFares rolled the others back); trailers ride with them.
+		if model:GetAttribute("TruckId") and not shuttle.paid[model] then
+			continue
+		end
 		if not model:GetAttribute("OnFerry") and onDeck(shuttle, model) then
 			local weld = Instance.new("WeldConstraint")
 			weld.Name = "FerryLash"
@@ -248,6 +311,7 @@ local function unlash(shuttle)
 		end
 	end
 	shuttle.lashed = {}
+	shuttle.paid = {}
 	pcall(function()
 		shuttle.root:SetNetworkOwner(nil)
 	end)
@@ -305,14 +369,16 @@ local function run(shuttle)
 		-- Boarding.
 		setGates(shuttle, false)
 		for t = shuttle.def.dock, 1, -1 do
-			local text = ("%s\nBoarding at %s for %s\nLeaves in %ds"):format(shuttle.def.name:upper(), here.name, there.name, t)
+			local text = ("%s\nBoarding at %s for %s\nFare $%d a truck, trailer free\nLeaves in %ds"):format(shuttle.def.name:upper(), here.name, there.name, shuttle.def.fare or 0, t)
 			if t <= shuttle.def.warn then
 				text ..= "\nAll aboard!"
 			end
 			setBoards(shuttle, text)
+			collectFares(shuttle, here)
 			task.wait(1)
 		end
-		-- Lash everything down, close the gates, go.
+		-- Last fares, then lash everything down, close the gates, go.
+		collectFares(shuttle, here)
 		setGates(shuttle, true)
 		lash(shuttle)
 		travel(shuttle, here.cframe, there.cframe)
@@ -357,6 +423,7 @@ local function startShuttle(def, stops, parent, labels, aprons)
 		labels = labels,
 		aprons = aprons,
 		lashed = {},
+		paid = {},
 	}
 	table.insert(labels, boardLabel(root, Vector3.new(0, def.zeppelin and 50 or 16, 0), 320))
 	table.insert(shuttles, shuttle)
@@ -400,7 +467,11 @@ function Ferry.build(worldFolder)
 			speed = F.Speed,
 			dock = F.Dock,
 			warn = F.Warn,
-		}, { { name = route.a.name, cframe = stopA }, { name = route.b.name, cframe = stopB } }, folder, labels, aprons)
+			fare = Prices.Travel.ferry,
+		}, {
+			{ name = route.a.name, cframe = stopA, edge = Vector3.new(a2.X, deckTop, a2.Y), inland = -dir },
+			{ name = route.b.name, cframe = stopB, edge = Vector3.new(b2.X, deckTop, b2.Y), inland = dir },
+		}, folder, labels, aprons)
 	end
 
 	-- The zeppelin: it lands on the Homestead field, and docks beside a platform at the edge of Sky Island.
@@ -439,7 +510,11 @@ function Ferry.build(worldFolder)
 		speed = Z.Speed,
 		dock = Z.Dock,
 		warn = 6,
-	}, { { name = Z.a.name, cframe = stopA }, { name = Z.b.name, cframe = stopB } }, folder, labels, {})
+		fare = Prices.Travel.zeppelin,
+	}, {
+		{ name = Z.a.name, cframe = stopA, edge = a - flat * (Z.Length / 2 + 4), inland = -flat },
+		{ name = Z.b.name, cframe = stopB, edge = platformStart, inland = flat },
+	}, folder, labels, {})
 	-- Small ramps at the field, since the gondola's deck sits a step above the grass.
 	for _, side in { -1, 1 } do
 		local edge = stopA * CFrame.new(0, 0, side * (Z.Length / 2 + 2.5))
