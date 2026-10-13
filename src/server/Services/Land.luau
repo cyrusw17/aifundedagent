@@ -125,6 +125,7 @@ local function publish(plot)
 	end
 	info:SetAttribute("Crew", table.concat(crew, ","))
 	info:SetAttribute("Likes", plot.likes or 0)
+	info:SetAttribute("LockedRows", plot.locked or 0)
 	plot.likePrompt.Enabled = plot.ownerId ~= nil
 	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
@@ -431,10 +432,18 @@ local function destroyItem(plot, item)
 end
 
 -- Whether a piece fits: every cell on the plot and free.
+-- A tile row counted from the back fence (0) toward the lane, the same on both sides of the lane.
+local function rowFromBack(plot, z)
+	return if plot.def.open == "S" then z else plot.tiles.Z - 1 - z
+end
+
 local function fits(plot, def, gx, gz, dir)
 	for _, cell in cellsFor(def, gx, gz, dir) do
 		local x, z = cell[1], cell[2]
 		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or plot.taken[key(x, z)] then
+			return false
+		end
+		if rowFromBack(plot, z) < (plot.locked or 0) then
 			return false
 		end
 	end
@@ -458,6 +467,7 @@ local function saveItems(player, plot)
 	end
 	s.land.items = items
 	s.land.plot = plot.index
+	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
 	s.land.needles = plot.bin.contents(player.UserId)
 	local crew = {}
 	for userId in plot.crew do
@@ -508,6 +518,24 @@ local function clearPlot(plot)
 	plot.taken = {}
 end
 
+-- Locked rows at the back of the plot: rough ground with a sign until the owner buys them.
+local function drawLocks(plot)
+	for _, p in plot.lockParts or {} do
+		p:Destroy()
+	end
+	plot.lockParts = {}
+	for r = 0, (plot.locked or 0) - 1 do
+		local z = if plot.def.open == "S" then r else plot.tiles.Z - 1 - r
+		local at = plot.corner + Vector3.new(plot.size.X / 2, 0.25, z * T + T / 2)
+		local p = part(plot.model, "LockedRow", Vector3.new(plot.size.X, 0.3, T), CFrame.new(at), Rustic.Mud, Enum.Material.Grass)
+		p.CanCollide = false
+		table.insert(plot.lockParts, p)
+		if r == 0 then
+			sign(p, ("LOCKED ROWS\nBUILD > EXPAND, $%d a row"):format(LandConfig.ExpansionPrice), Vector3.new(0, 4, 0))
+		end
+	end
+end
+
 local function release(plot)
 	if plot.owner then
 		plotOf[plot.owner] = nil
@@ -517,6 +545,8 @@ local function release(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
 	plot.crew = {}
+	plot.locked = 0
+	drawLocks(plot)
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -536,6 +566,10 @@ local function claim(plot, player, saved)
 	player:SetAttribute("LandPlot", plot.index)
 	plot.leftOut = {}
 	plot.crew = {}
+	-- Saves from before expansions existed get the whole plot.
+	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
+	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
+	drawLocks(plot)
 	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
 		if typeof(userId) == "number" and userId ~= player.UserId then
 			plot.crew[userId] = true
@@ -599,7 +633,7 @@ local function onBuy(player, index)
 	if not paid then
 		return false, why
 	end
-	s.land = { owned = true, plot = index, items = {} }
+	s.land = { owned = true, plot = index, items = {}, expansions = 0 }
 	claim(plot, player, s.land)
 	Data.sync(player)
 	task.spawn(Data.save, player)
@@ -671,6 +705,28 @@ end
 -- World -------------------------------------------------------------------------------------------------------------
 
 -- A low wooden fence along one edge, from a to b on the ground.
+-- Buys the next locked row at the back of the owner's plot.
+local function onExpand(player)
+	local plot = plotOf[player]
+	local s = Data.get(player)
+	if not plot or not s or not s.land then
+		return false, "Buy a plot first."
+	end
+	if (plot.locked or 0) <= 0 then
+		return false, "Your plot is already full size."
+	end
+	local paid, why = Bank.charge(player, LandConfig.ExpansionPrice, "Land: expansion")
+	if not paid then
+		return false, why
+	end
+	plot.locked -= 1
+	drawLocks(plot)
+	saveItems(player, plot)
+	publish(plot)
+	Data.sync(player)
+	return true, ("Your plot grew by a row of %d tiles."):format(plot.tiles.X)
+end
+
 -- Adds (on = true) or removes a player from the owner's farm crew.
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
@@ -808,6 +864,8 @@ local function buildPlot(parent, index, def)
 		likePrompt = likePrompt,
 		likes = 0,
 		owner = nil,
+		locked = 0,
+		lockParts = {},
 		ownerId = nil,
 		ownerName = nil,
 		grid = Conveyors.newGrid(model, corner),
@@ -1009,7 +1067,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1037,6 +1095,7 @@ function Land.build(worldFolder)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
 	remotes.Crew.OnServerInvoke = guard(onCrew)
 	remotes.Visit.OnServerInvoke = guard(onVisit)
+	remotes.Expand.OnServerInvoke = guard(onExpand)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
 		local plot = plotOf[owner]
