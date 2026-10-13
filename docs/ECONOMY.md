@@ -484,6 +484,25 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
 
+Map's twelve hidden spots, one per region and each found from an Old Sign clue, also pay through `Prices.Secrets`
+(`hidden_<region>`). Map's placeholder was $4,000 each, which was a pickup's worth for the four Meadow spots a new player
+can walk to in the first ten minutes. They're scaled to the region instead, at about 5 minutes of income at the stage
+you reach it, and stay smaller than the four big secrets:
+
+| Region | Hidden spot | Reward |
+|---|---|---|
+| Meadow Shore, Mirror Lake Valley, Homestead, Spindle | Driftwood Oak, Willow, Founders' Cairn, Echo Cairn | $500 each |
+| Pine Forest | Hollow Pine | $1,500 |
+| Desert | Prospector's Shed | $2,500 |
+| Snow Peak | Buried Ski Shed | $4,000 |
+| Thimble Keys | Castaway's Chest | $5,000 |
+| Swamp | Sunken Bog Chest | $6,000 |
+| Volcano | Ash Cairn | $10,000 |
+| Bobbin Rock | Spool Shed | $12,000 |
+| Haunted Grove | Whispering Oak | $15,000 |
+
+All twelve together come to $58,000. Like every one-time reward, they count as earnings but not as `sold`.
+
 ## Wet hay
 
 The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
