@@ -12,6 +12,7 @@ local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
 local Trade = require(script.Parent.Trade)
+local Leaderboards = require(script.Parent.Leaderboards)
 local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
@@ -145,6 +146,7 @@ function World.build()
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
 	Dealer.build(folder)
 	Trade.build(folder) -- the Trading Post between the dealer's lot and base camp
+	Leaderboards.build(folder) -- top sellers and rarest needle, east of the spawn
 	MeadowDecor.build(folder)
 
 	-- The land office and the buildable plots south of the main road.

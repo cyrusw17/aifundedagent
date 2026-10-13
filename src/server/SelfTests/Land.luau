@@ -283,6 +283,39 @@ return function(SelfTest)
 			t.check("Land.test exposes its rate limits", false)
 		end
 
+		-- Silo fill for the HUD: SiloFullIn comes from the total fill of every silo and barn on the active farm.
+		if L.siloTotals and L.siloFullIn then
+			local fakePlot = { list = { { id = "silo", stored = 7 }, { id = "hay_barn", stored = 40 }, { id = "belt" } } }
+			local fill, cap = L.siloTotals(fakePlot)
+			local siloCap = L.pieces.silo.capacity or require(game:GetService("ReplicatedStorage").Shared.Config.Land).SiloCapacity
+			t.check("silo fill sums every silo and barn", fill == 47, ("got %s"):format(tostring(fill)))
+			t.check("silo cap sums their capacities", cap == siloCap + 150, ("got %s"):format(tostring(cap)))
+			t.check("no farm means no silo capacity", select(2, L.siloTotals(nil)) == 0)
+			local filling = { { at = 0, fill = 10, cap = 60 }, { at = 20, fill = 20, cap = 60 } }
+			t.check("filling at 0.5 bales/s with 40 left is full in 80 s", L.siloFullIn(filling, 20) == 80)
+			t.check("no estimate from under 10 s of history", L.siloFullIn({ { at = 0, fill = 1, cap = 60 }, { at = 5, fill = 9, cap = 60 } }, 5) == nil)
+			t.check("an emptying silo has no countdown", L.siloFullIn({ { at = 0, fill = 30, cap = 60 }, { at = 30, fill = 20, cap = 60 } }, 30) == nil)
+			t.check("no silo has no countdown", L.siloFullIn({ { at = 0, fill = 0, cap = 0 }, { at = 30, fill = 0, cap = 0 } }, 30) == nil)
+			t.check("a full silo still filling reads 0", L.siloFullIn({ { at = 0, fill = 50, cap = 60 }, { at = 30, fill = 60, cap = 60 } }, 30) == 0)
+		end
+
+		-- Leaderboards: rarest needle is the most valuable type found, and the board merges stored and live scores.
+		local okBoards, Boards = pcall(require, Services.Leaderboards)
+		local B = okBoards and Boards and Boards.test
+		if B then
+			local top = B.byValue[#B.byValue]
+			t.check("no needles found ranks 0", B.rarestRank({ codex = {} }) == 0)
+			t.check("the rarest needle is the most valuable found", B.rarestRank({ codex = { needles = { steel = true, [top.id] = true } } }) == #B.byValue)
+			t.check("unknown needle ids are ignored", B.rarestRank({ codex = { needles = { nonsense = true } } }) == 0)
+			local list = B.merge({ [1] = 500, [2] = 900 }, { [1] = 1200, [3] = 0 }, 10)
+			t.check("the board takes a player's higher score once", #list == 2 and list[1].userId == 1 and list[1].score == 1200)
+			t.check("players with no score stay off the board", list[2].userId == 2)
+			t.check("the board stops at its row count", #B.merge({ [1] = 1, [2] = 2, [3] = 3 }, {}, 2) == 2)
+			t.check("money reads with commas", B.commas(1234567) == "1,234,567" and B.commas(999) == "999")
+		else
+			t.check("Leaderboards.test exists", false)
+		end
+
 		-- Plots: six, all the same size and price, all with a bin and a mailbox.
 		local count, sizes, prices = 0, {}, {}
 		for _, plot in L.plots do
