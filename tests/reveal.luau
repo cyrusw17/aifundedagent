@@ -27,6 +27,26 @@ check("Wet lifts a Legendary one step, not past a mutation", wetLegend.step == 3
 check("nothing given is plain", Reveal.of(nil, nil, nil, WET).step == 0)
 check("the camera nudge stays small", mutated.nudge <= 0.35, mutated.nudge)
 
+-- The clip: Epic and up or any mutation; chat: Legendary and up or a real mutation.
+check("plain is no clip", not plain.clip and not plain.chat)
+check("Epic clips but doesn't chat", epic.clip and not epic.chat)
+check("Legendary clips and chats", legend.clip and legend.chat)
+check("a mutation clips and chats", mutated.clip and mutated.chat)
+check("Wet clips but doesn't chat", wet.clip and not wet.chat)
+
+-- Cooldowns: one cinematic per CLIP_GAP per finder (a real mutation always), one chat line per CHAT_GAP.
+local c, ch = Reveal.allow(legend, 100, nil, nil)
+check("the first Legendary gets both", c and ch)
+c, ch = Reveal.allow(legend, 105, 100, 100)
+check("a second Legendary 5 s later gets neither", not c and not ch)
+c, ch = Reveal.allow(mutated, 105, 100, 100)
+check("a mutation 5 s later still gets its cinematic, not chat", c and not ch)
+c, ch = Reveal.allow(epic, 100 + Reveal.CLIP_GAP, 100, nil)
+check("after the gap the cinematic is back", c and not ch)
+c, ch = Reveal.allow(plain, 1000, nil, nil)
+check("plain never gets either", not c and not ch)
+check("the push-in is about 1.5 s", Reveal.CLIP_SECONDS >= 1.2 and Reveal.CLIP_SECONDS <= 2)
+
 if failed > 0 then
 	print(("reveal: %d failed"):format(failed))
 	error("reveal checks failed")

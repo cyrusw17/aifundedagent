@@ -560,6 +560,49 @@ function Needle.make(cframe, ownerId, needleId, mult, polished)
 	return n
 end
 
+-- The clip-worthy moment (Shared/Reveal .clip): the finder's camera pushes in on the needle in slow motion with a
+-- rarity card (Reveal.client.luau, skippable), and Legendary or mutated finds get a line in server chat. Cooldowns
+-- keep a busy line from taking over the camera or chat. Nothing here is bought or rolled for money.
+local revealRemote
+local lastClip = {} -- UserId -> os.clock() of their last cinematic
+local lastChat = nil
+Players.PlayerRemoving:Connect(function(player)
+	lastClip[player.UserId] = nil
+end)
+local function clipMoment(n, ownerId, needleId, mult, reveal, rarity, shine)
+	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+	if not owner or not reveal.clip then
+		return false
+	end
+	if not revealRemote then
+		revealRemote = Instance.new("RemoteEvent")
+		revealRemote.Name = "NeedleReveal"
+		revealRemote.Parent = ReplicatedStorage
+	end
+	local now = os.clock()
+	local cinematic, chat = Reveal.allow(reveal, now, lastClip[ownerId], lastChat)
+	if cinematic then
+		lastClip[ownerId] = now
+	end
+	local kind = mult == WET.mult and "WET" or mult > 1 and ("x%d MUTATED"):format(mult) or (rarity and rarity.name:upper()) or "RARE"
+	local name = Needle.info(needleId).name
+	revealRemote:FireClient(owner, "clip", {
+		part = n,
+		at = n.Position,
+		title = ("%s %s NEEDLE"):format(kind, name:upper()),
+		finder = owner.DisplayName,
+		value = Needle.value(n),
+		color = shine,
+		cinematic = cinematic,
+		seconds = Reveal.CLIP_SECONDS,
+	})
+	if chat then
+		lastChat = now
+		revealRemote:FireAllClients("chat", ("[Needlewood] %s found a %s %s needle worth $%d!"):format(owner.DisplayName, kind:lower(), name:lower(), Needle.value(n)))
+	end
+	return cinematic
+end
+
 local function announce(ownerId, needleId, mult)
 	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 	local text = ("%s found a x%d MUTATED %s needle worth $%d!"):format(
@@ -611,6 +654,7 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 		sound(n, FANFARE, 1)
 		announce(ownerId, needleId, mult)
 	end
+	local cinematic = clipMoment(n, ownerId, needleId, mult, reveal, rarity, shine)
 
 	near = near and mult == 1
 	local own, ownMaterial = n.Color, n.Material
@@ -634,7 +678,8 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	end
 
 	task.spawn(function()
-		local hover = mult > 1 and 1.5 or near and 0.9 or reveal.glint and 0.8 or 0.35
+		-- it hangs for the whole camera push-in when the finder gets one
+		local hover = (mult > 1 or cinematic) and Reveal.CLIP_SECONDS or near and 0.9 or reveal.glint and 0.8 or 0.35
 		local lift = from + Vector3.new(0, 1.5, 0)
 		local started = os.clock()
 		while n.Parent and os.clock() - started < hover do
