@@ -389,6 +389,22 @@ Note for Map: Thimble Keys and Bobbin Rock use the hay types `keys` and `bobbin`
 `Prices.NeedlesPerBale`, `Config/Gloves.HayTypes` or `Config/Needles`, so they fall back to Meadow hay with steel
 needles. That's fine for launch, but they need their own rows if they are meant to be their own tier.
 
+## Golden bales
+
+The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
+needles. On average that adds (3 − 1) / 150 = 1.3% to needle income, which is too small to change any stage's
+earnings or the timeline, so the odds and the multiplier stay as built. What matters is the moment:
+
+| Hay | Plain bale, sorted | Golden bale, sorted | Golden bale sold raw at the public shop |
+|---|---|---|---|
+| Meadow (2 needles) | $245 | $645 | $51 |
+| Desert (4) | $605 | $1,725 | $57 |
+| Volcano (8) | $2,445 | $7,245 | $69 |
+
+A golden bale only pays off if you sort it or break it by hand (hand-found needles pay full value), never if you sell
+it raw. That's the right lesson for a new player: the first golden bale shows them what sorting is worth. On a rich
+field the two boosts stack (2x × 3x = 6x), which is still a single bale.
+
 ## The trading post
 
 Land's trading post settles every trade through `Bank.settleTrade(a, b, terms)`. It takes the cash each side offers,
@@ -411,6 +427,7 @@ side can't pay, nothing moves and the post cancels the trade. Trading is free wh
 | Gloves | `Gloves` | `Config/Gloves` |
 | Trade fee | `Trade` | `Services/Bank` (settleTrade) |
 | Region events | `RegionEvents` | `Services/RegionEvents` |
+| Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
 | Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |

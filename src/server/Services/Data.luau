@@ -277,6 +277,7 @@ local function stateFrom(saved)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -293,6 +294,8 @@ local function stateFrom(saved)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 		-- settings: { effects, uiSize, shadows, labels } (Settings.luau checks each value)
 		settings = typeof(saved.settings) == "table" and saved.settings or {},
+		-- codex: { needles = { [id] = true }, hay = { [id] = true } } for the collection book (Codex.luau)
+		codex = typeof(saved.codex) == "table" and saved.codex or {},
 		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 		tradeLocks = tradeLocksFrom(saved.tradeLocks), -- mythic needles received in a trade can't be traded on for a day
@@ -316,12 +319,14 @@ local function toSave(state)
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
+		secrets = state.secrets,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,
 		bank = state.bank,
 		tutorial = state.tutorial,
 		settings = state.settings,
+		codex = state.codex,
 		quests = state.quests,
 		tradeLocks = state.tradeLocks,
 	}
@@ -359,6 +364,7 @@ function Data.sync(player)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
+	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
 	local held = 0
 	for _, count in state.pocket do
 		held += count

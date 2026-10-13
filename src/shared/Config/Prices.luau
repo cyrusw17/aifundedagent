@@ -165,6 +165,7 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	loading_dock = 2000, -- the public shop's dock, on your own land: the haul ends at your farm
 	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
 	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
 	-- sorter, Volcano at the magnet drum).
@@ -234,6 +235,14 @@ Prices.Travel = {
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
 }
 
+-- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
+-- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
+-- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
+Prices.GoldenBale = {
+	oneIn = 150,
+	needles = 3,
+}
+
 -- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
 -- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
 -- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
@@ -249,6 +258,14 @@ Prices.RegionEvents = {
 	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
 	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
 	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
+}
+
+-- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward.
+Prices.Secrets = {
+	ember_cache = 3000, -- in the volcano's crater, past the heat (tier 4 gloves)
+	captains_lantern = 2500, -- on Ghost Isle, at the end of the night-only Ghost Road
+	geode_heart = 2000, -- behind the crystals on the Crystal Cave's far wall
+	lost_kite = 3000, -- on a ledge under Sky Island's west rim (a zeppelin fare away)
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

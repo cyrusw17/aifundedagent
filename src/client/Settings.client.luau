@@ -144,6 +144,7 @@ local CONTROLS = {
 	{ "M", "Map" },
 	{ "B", "Shop" },
 	{ "K", "Collection book" },
+	{ "Q", "Quest log" },
 	{ "Esc", "Close a page" },
 	{ "Build mode", "R turn, X remove, Z undo, M move, C copy, V paste" },
 }
