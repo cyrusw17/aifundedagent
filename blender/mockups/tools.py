@@ -18,17 +18,15 @@ from mock import rgb  # noqa: E402
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
-WOOD = mock.mat("wood", rgb(139, 90, 43), 0.7)
+WOOD = mock.mat("wood", rgb(*mock.WOOD_TONES[1]), 0.7)
 STEEL = mock.mat("steel", rgb(150, 158, 166), 0.3, 0.9)
-HOOP = mock.mat("hoop", rgb(70, 70, 76), 0.4, 0.8)
 SKIN = mock.mat("skin", rgb(234, 184, 146), 0.6)
 SLEEVE = mock.mat("sleeve", rgb(52, 118, 196), 0.7)
 FLOOR = mock.mat("floor", rgb(106, 166, 90), 1.0)
 PLINTH = mock.mat("plinth", rgb(225, 215, 195), 0.8)
 INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
 SUB = mock.mat("sub", rgb(90, 80, 70), 0.9)
-HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(
-    [(232, 201, 90), (220, 184, 70), (244, 218, 120), (205, 170, 60)])]
+HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(mock.HAY_PALETTE["mids"])]
 rng = random.Random(4)
 
 mock.box("floor", (80, 1, 40), (0, 0, -0.5), FLOOR)
@@ -56,8 +54,8 @@ def titles(x, name, lines):
 # Bare hands: two blocky arms gripping a whole hay barrel.
 X = -10
 plinth(X)
-mock.tub("barrel", (X, 0, 0.6), 1.9, 2.4, WOOD, HOOP)
-mock.hay_heap("barrelhay", (X, 0, 3.0), 2.1, 1.6, HAY, tufts=35, seed=2, straws=25)
+mock.tub("barrel", (X, 0, 0.6), 1.9, 2.4, seed=3)
+mock.hay_heap("barrelhay", (X, 0, 3.0), 2.0, 1.8, seed=2)
 for side in (-1, 1):
     arm = mock.box("arm", (1, 2, 1), (X + side * 2.6, -0.2, 3.2), SLEEVE, rot=(0, side * 0.35, 0))
     hand = mock.box("hand", (1, 0.9, 1), (X + side * 2.25, -0.2, 2.0), SKIN, rot=(0, side * 0.35, 0))

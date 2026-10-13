@@ -88,41 +88,119 @@ def label(text, loc, size, material, rot=(0, 0, 0), align="CENTER", bold=True):
     return o
 
 
-def hay_heap(name, center, radius, height, colors, tufts=60, seed=1, straws=40):
-    """Lumpy hay mound: a squashed blob plus tufts and loose straws on top."""
+# House palette (sRGB 0-255), shared with blender/props/hay_barrel.py. See style/STYLE.md.
+HAY_PALETTE = {
+    "root": (199, 158, 69),
+    "mids": [(245, 214, 107), (235, 196, 87), (252, 227, 133), (224, 184, 79)],
+    "tip": (255, 242, 179),
+}
+WOOD_TONES = [(140, 87, 46), (153, 97, 51), (128, 77, 41)]
+WOOD_INSIDE = (77, 46, 26)
+IRON = (61, 61, 69)
+
+
+def palette(mids, root=None, tip=None):
+    """Hay palette from a few mid shades: darker roots, lighter tips."""
+    root = root or tuple(int(c * 0.78) for c in mids[0])
+    tip = tip or tuple(int(c + (255 - c) * 0.45) for c in mids[-1])
+    return {"root": root, "mids": list(mids), "tip": tip}
+
+
+_vcol = None
+
+
+def vcol_mat():
+    """Matte material that takes its color from the mesh's 'Col' color attribute."""
+    global _vcol
+    if _vcol:
+        return _vcol
+    m = bpy.data.materials.new("vertex_color")
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    bsdf.inputs["Roughness"].default_value = 0.9
+    attr = nt.nodes.new("ShaderNodeVertexColor")
+    attr.layer_name = "Col"
+    nt.links.new(attr.outputs["Color"], bsdf.inputs["Base Color"])
+    _vcol = m
+    return m
+
+
+def spikes(name, items):
+    """One mesh of straw spikes. items: (base, direction, length, radius, root_rgb, tip_rgb, twist)."""
+    import bmesh
+    from mathutils import Vector
+    bm = bmesh.new()
+    col = bm.loops.layers.float_color.new("Col")
+    for base, direction, length, radius, root, tip, twist in items:
+        d = Vector(direction).normalized()
+        side = d.orthogonal().normalized()
+        side.rotate(__import__("mathutils").Quaternion(d, twist))
+        other = d.cross(side)
+        b = Vector(base)
+        ring = [bm.verts.new(b + (side * math.cos(a) + other * math.sin(a) * 0.45) * radius)
+                for a in (0, math.tau / 3, 2 * math.tau / 3)]
+        apex = bm.verts.new(b + d * length)
+        rc, tc = (*rgb(*root), 1.0), (*rgb(*tip), 1.0)
+        for i in range(3):
+            f = bm.faces.new((ring[i], ring[(i + 1) % 3], apex))
+            for loop in f.loops:
+                loop[col] = tc if loop.vert is apex else rc
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    o = bpy.data.objects.new(name, mesh)
+    o.data.materials.append(vcol_mat())
+    bpy.context.collection.objects.link(o)
+    return o
+
+
+def hay_heap(name, center, radius, height, pal=None, tufts=160, seed=1, emit=0.0):
+    """Spiky low-poly hay mound in the barrel's style: a dark-rooted core covered in
+    straw spikes that run from a darker root to a light tip."""
     import random
     rng = random.Random(seed)
-    objs = []
+    pal = pal or HAY_PALETTE
     cx, cy, cz = center
-    objs.append(sphere(name + "_core", radius, (cx, cy, cz), colors[0], scale=(1, 1, height / radius), subdiv=3))
+    core = sphere(name + "_core", radius * 0.92, (cx, cy, cz),
+                  mat(name + "_root", rgb(*pal["root"]), 0.95, emit=emit),
+                  scale=(1, 1, height / radius * 0.92), subdiv=2)
+    items = []
     for i in range(tufts):
+        # Point on the upper part of the mound, pointing outward and a bit up.
         a = rng.uniform(0, math.tau)
-        d = math.sqrt(rng.random()) * radius * 0.95
-        h = height * (1 - (d / radius) ** 2) ** 0.5
-        r = rng.uniform(0.18, 0.32) * radius
-        objs.append(sphere(f"{name}_tuft{i}", r,
-                           (cx + math.cos(a) * d, cy + math.sin(a) * d, cz + h * rng.uniform(0.75, 1.0)),
-                           colors[i % len(colors)], scale=(1, rng.uniform(0.6, 1), rng.uniform(0.5, 0.8)),
-                           subdiv=1))
-    for i in range(straws):
-        a = rng.uniform(0, math.tau)
-        d = math.sqrt(rng.random()) * radius
-        h = height * (1 - min(d / radius, 1) ** 2) ** 0.5
-        length = rng.uniform(0.35, 0.7) * radius
-        o = cylinder(f"{name}_straw{i}", radius * 0.025, length,
-                     (cx + math.cos(a) * d, cy + math.sin(a) * d, cz + h * 0.9),
-                     colors[(i + 1) % len(colors)], verts=5,
-                     rot=(rng.uniform(0.6, 1.4), 0, a))
-        objs.append(o)
-    return objs
+        el = math.asin(rng.uniform(-0.15, 1.0))
+        nx, ny, nz = math.cos(el) * math.cos(a), math.cos(el) * math.sin(a), math.sin(el)
+        base = (cx + nx * radius * 0.8, cy + ny * radius * 0.8, cz + nz * height * 0.8)
+        direction = (nx + rng.uniform(-0.35, 0.35), ny + rng.uniform(-0.35, 0.35),
+                     nz * (height / radius) + rng.uniform(0.0, 0.5))
+        mid = pal["mids"][i % len(pal["mids"])]
+        tip = tuple(int((m + t) / 2) for m, t in zip(mid, pal["tip"])) if i % 3 else pal["tip"]
+        root = tuple(int((m + r) / 2) for m, r in zip(mid, pal["root"]))
+        items.append((base, direction, rng.uniform(0.35, 0.6) * radius, rng.uniform(0.09, 0.16) * radius,
+                      root, tip, rng.uniform(0, math.tau)))
+    return [core, spikes(name + "_straw", items)]
 
 
-def tub(name, center, radius, height, wood, hoop):
-    """Short wooden tub with two metal hoops, like the game's hay barrel."""
+def tub(name, center, radius, height, staves=14, seed=0):
+    """Wooden stave tub with two chunky iron bands, like the game's hay barrel."""
+    import random
+    rng = random.Random(seed)
     cx, cy, cz = center
-    objs = [cylinder(name + "_body", radius, height, (cx, cy, cz + height / 2), wood, verts=16)]
-    for h in (0.2, 0.8):
-        objs.append(cylinder(name + "_hoop", radius * 1.04, height * 0.1, (cx, cy, cz + height * h), hoop, verts=16))
+    objs = []
+    width = math.tau * radius / staves * 0.94
+    for i in range(staves):
+        a = i * math.tau / staves
+        tone = WOOD_TONES[rng.randrange(len(WOOD_TONES))]
+        o = box(f"{name}_stave{i}", (width, height * rng.uniform(0.98, 1.03), radius * 0.14),
+                (cx + math.cos(a) * radius, cy + math.sin(a) * radius, cz + height / 2),
+                mat("wood" + str(tone), rgb(*tone), 0.85), rot=(0, 0, a + math.pi / 2))
+        objs.append(o)
+    objs.append(cylinder(name + "_inside", radius * 0.95, height * 0.96, (cx, cy, cz + height / 2),
+                         mat("wood_inside", rgb(*WOOD_INSIDE), 0.9), verts=16))
+    iron = mat("iron", rgb(*IRON), 0.45, 0.85)
+    for h in (0.18, 0.82):
+        objs.append(cylinder(name + "_band", radius * 1.15, height * 0.12, (cx, cy, cz + height * h), iron, verts=16))
     return objs
 
 

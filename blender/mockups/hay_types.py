@@ -20,7 +20,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 
 # name, needle, sorted value, hay colors, needle color, needle glow, extra
 HAY_TYPES = [
-    ("Meadow", "Steel", 100, [(232, 201, 90), (220, 184, 70), (244, 218, 120)], (170, 175, 182), 0, None),
+    ("Meadow", "Steel", 100, None, (170, 175, 182), 0, None),
     ("Pine Forest", "Pine", 110, [(196, 186, 92), (170, 160, 78), (120, 140, 70)], (46, 100, 52), 0, "pinecone"),
     ("Desert", "Sand", 140, [(236, 214, 160), (222, 196, 136), (246, 230, 186)], (214, 170, 96), 0, None),
     ("Snow Peak", "Ice", 160, [(226, 214, 168), (210, 200, 160), (245, 248, 252)], (150, 210, 245), 1.5, "snow"),
@@ -32,8 +32,6 @@ HAY_TYPES = [
     ("Star Hay", "Cosmic", 5000, [(48, 40, 110), (70, 50, 140), (30, 28, 80)], (255, 230, 140), 6.0, "stars"),
 ]
 
-WOOD = mock.mat("wood", rgb(139, 90, 43), 0.8)
-HOOP = mock.mat("hoop", rgb(70, 70, 76), 0.4, 0.8)
 FLOOR = mock.mat("floor", rgb(214, 206, 188), 1.0)
 TILE = mock.mat("tile", rgb(238, 232, 218), 0.9)
 INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
@@ -55,11 +53,11 @@ for idx, (name, needle_name, value, cols, ncol, glow, extra) in enumerate(HAY_TY
     cx = (col - 2) * SPACING_X
     cy = row * SPACING_Y
     rng = random.Random(idx + 11)
-    hay = [mock.mat(f"{name}{i}", rgb(*c), 0.9, emit=(0.4 if extra == "stars" else 0.0)) for i, c in enumerate(cols)]
+    pal = mock.HAY_PALETTE if cols is None else mock.palette(cols)
 
     mock.box("tile", (7.6, 0.2, 8.6), (cx, cy - 0.6, 0.1), TILE)
-    mock.tub(name + "_tub", (cx, cy, 0.2), 1.9, 2.2, WOOD, HOOP)
-    mock.hay_heap(name, (cx, cy, 2.4), 2.15, 1.7, hay, tufts=40, seed=idx, straws=30)
+    mock.tub(name + "_tub", (cx, cy, 0.2), 1.9, 2.2, seed=idx)
+    mock.hay_heap(name, (cx, cy, 2.4), 2.05, 1.8, pal, seed=idx, emit=(0.4 if extra == "stars" else 0.0))
     for k in range(3):
         a = rng.uniform(-2.2, -0.9)
         needle(cx + math.cos(a) * 1.4, cy + math.sin(a) * 1.1, 3.3 + rng.uniform(-0.2, 0.4), ncol, glow, rng)

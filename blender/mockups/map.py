@@ -27,12 +27,11 @@ PLANKS = mock.mat("planks", rgb(150, 110, 70), 0.9)
 SHOP_FLOOR = mock.mat("shop_floor", rgb(200, 180, 140), 0.9)
 WALL = mock.mat("wall", rgb(244, 239, 224), 0.7)
 ROOF = mock.mat("roof", rgb(192, 57, 43), 0.8)
-COUNTER = mock.mat("counter", rgb(139, 90, 43), 0.8)
+COUNTER = mock.mat("counter", rgb(*mock.WOOD_TONES[1]), 0.8)
 SELL = mock.mat("sell", rgb(240, 173, 46), 0.4, emit=0.15)
-WOOD = mock.mat("wood", rgb(139, 90, 43), 0.8)
+WOOD = mock.mat("wood", rgb(*mock.WOOD_TONES[0]), 0.8)
 HOOP = mock.mat("hoop", rgb(70, 70, 76), 0.4, 0.8)
-HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(
-    [(232, 201, 90), (220, 184, 70), (244, 218, 120), (205, 170, 60)])]
+HAY = [mock.mat(f"hay{i}", rgb(*c), 0.9) for i, c in enumerate(mock.HAY_PALETTE["mids"])]
 INK = mock.mat("ink", rgb(40, 34, 28), 0.9)
 WHITE = mock.mat("white", rgb(255, 255, 255), 0.9)
 ARROW = mock.mat("arrow", rgb(60, 110, 200), 0.6)
@@ -65,15 +64,15 @@ inner = mock.cylinder("spawn_ring_in", 2.1, 1.1, rbx(0, 14, 0.5), SPAWN, verts=3
 # Three hay barrels in a row at z = -18.
 for i in range(3):
     x = -18 + i * 7
-    mock.tub(f"barrel{i}", rbx(x, -18, 0), 2.0, 2.4, WOOD, HOOP)
-    mock.hay_heap(f"barrelhay{i}", rbx(x, -18, 2.4), 2.3, 1.8, HAY, tufts=30, seed=i, straws=0)
+    mock.tub(f"barrel{i}", rbx(x, -18, 0), 2.0, 2.4, seed=i)
+    mock.hay_heap(f"barrelhay{i}", rbx(x, -18, 2.4), 2.2, 1.9, seed=i)
 
 # Barrel drop-off (14 x 10 at 0, -4) with plank lines and one set-down barrel.
 mock.box("dropoff", (14, 0.2, 10), rbx(0, -4, 0.1), PLANKS)
 for k in range(6):
     mock.box("plankline", (14, 0.22, 0.12), rbx(0, -8.3 + k * 1.7, 0.11), WOOD)
-mock.tub("dropbarrel", rbx(3.5, -5.5, 0.2), 2.0, 2.4, WOOD, HOOP)
-mock.hay_heap("drophay", rbx(3.5, -5.5, 2.6), 2.3, 1.6, HAY, tufts=25, seed=9, straws=0)
+mock.tub("dropbarrel", rbx(3.5, -5.5, 0.2), 2.0, 2.4, seed=5)
+mock.hay_heap("drophay", rbx(3.5, -5.5, 2.6), 2.2, 1.7, seed=9)
 for i in range(18):  # loose hay pieces from a smashed barrel
     x, z = rng.uniform(-6, 0), rng.uniform(-8, 0)
     o = mock.box(f"piece{i}", (rng.uniform(0.9, 1.5), 0.3, 0.3), rbx(x, z, 0.35), HAY[i % 4])

@@ -65,7 +65,7 @@ per-mesh triangle limit (the hay barrel is ~3.6k triangles total).
 
 ## Mockups
 
-`mockups/` renders preview sheets (no exports) in studs, using the layout
+`mockups/` follows the house style in `docs/STYLE.md` and renders preview sheets (no exports) in studs, using the layout
 and part sizes from the game code:
 
 ```
