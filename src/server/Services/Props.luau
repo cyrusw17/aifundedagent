@@ -6,6 +6,7 @@
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Props)
 
@@ -231,17 +232,31 @@ end
 
 -- Welds a placed prop onto anchor so it moves with it. The prop is only a look: it never collides, is never hit by
 -- clicks (those go to the anchor) and weighs nothing.
-function Props.weldTo(model, anchor)
+-- fallback is the part-built look the mesh replaces (a bale body, a Tool). When given, the mesh starts hidden and the
+-- fallback stays visible; each client swaps them once the mesh has actually loaded (PropMeshes.client.luau), so a
+-- freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
+function Props.weldTo(model, anchor, fallback)
 	for _, part in partsOf(model) do
 		part.Anchored = false
 		part.CanCollide = false
 		part.CanQuery = false
 		part.CanTouch = false
 		part.Massless = true
+		if fallback then
+			part:SetAttribute("MeshTransparency", part.Transparency)
+			part.Transparency = 1
+		end
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = anchor
 		weld.Part1 = part
 		weld.Parent = part
+	end
+	if fallback then
+		local link = Instance.new("ObjectValue")
+		link.Name = "Fallback"
+		link.Value = fallback
+		link.Parent = model
+		CollectionService:AddTag(model, "PropMesh")
 	end
 	model.Parent = anchor
 end
