@@ -1327,6 +1327,13 @@ class("Player", "Instance", {
 		LoadCharacterAsync = function(o)
 			H.spawnCharacter(o)
 		end,
+		-- StreamingEnabled is on: the server asks the client to stream an area in before moving a player there.
+		-- Nothing streams here, so it only checks the argument and yields like the real call.
+		RequestStreamAroundAsync = function(o, position, timeout)
+			self(o, "RequestStreamAroundAsync")
+			assert(typeof(position) == "Vector3", "RequestStreamAroundAsync: position must be a Vector3")
+			task.wait()
+		end,
 		GetRankInGroup = function(o, groupId)
 			task.wait(0.05)
 			return 0
