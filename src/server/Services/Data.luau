@@ -106,6 +106,18 @@ end
 -- Session locks. In Studio every session has the same empty JobId, so a Studio test never locks itself out.
 local JOB = game.JobId
 local LOCK_TTL = math.max(Config.AutosaveSeconds * 3, 180) -- a lock no server refreshed for this long is stale
+-- Lets go of a slot this server locked but never loaded (the player left mid-load, or the copy couldn't be used),
+-- so a rejoin isn't refused until the lock goes stale. Only our own lock is cleared.
+local function releaseLock(player, slot)
+	task.spawn(update, slotKey(player, slot), function(current)
+		if typeof(current) == "table" and typeof(current._lock) == "table" and current._lock.job == JOB then
+			current._lock = nil
+			return current
+		end
+		return nil
+	end)
+end
+
 local function heldElsewhere(saved)
 	local lock = typeof(saved) == "table" and saved._lock
 	return typeof(lock) == "table" and lock.job ~= JOB and typeof(lock.at) == "number" and os.time() - lock.at < LOCK_TTL
@@ -522,6 +534,7 @@ function Data.choose(player, slot, plot)
 			saved = migrate(saved)
 			if not saved then
 				choosing[player] = nil
+				releaseLock(player, slot)
 				return false, "That save is from a newer version of the game. Rejoin to get the update."
 			end
 			-- The copy that loaded is a known good one: keep it as the backup.
@@ -542,6 +555,9 @@ function Data.choose(player, slot, plot)
 	end
 	if not player.Parent then
 		choosing[player] = nil
+		if not offline[player] then
+			releaseLock(player, slot)
+		end
 		return false, nil
 	end
 	local state = stateFrom(saved)
