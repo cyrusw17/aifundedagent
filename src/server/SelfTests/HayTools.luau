@@ -26,6 +26,8 @@ local Wheelbarrow = require(Services.Wheelbarrow)
 local Tools = require(Services.Tools)
 local Weather = require(Services.Weather)
 local Feedback = require(Services.Feedback)
+local ToolSkins = require(Services.ToolSkins)
+local SkinConfig = require(Shared.Config.ToolSkins)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
@@ -278,6 +280,38 @@ local function noPlayerChecks(t)
 	end
 	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
 
+	-- Earned tool skins: a page unlocks only when complete, and a skin recolors the tool and comes off cleanly.
+	local commonFinds = {}
+	for _, id in SkinConfig.CommonFinds do
+		commonFinds[id] = 1
+	end
+	t.check("no skin for an empty book", not ToolSkins.pageDone({ finds = {}, codex = {} }, "finds_common"))
+	t.check("the common finds page completes the Driftwood Rake", ToolSkins.pageDone({ finds = commonFinds }, "finds_common"))
+	t.check("...but not the whole finds page", not ToolSkins.pageDone({ finds = commonFinds }, "finds"))
+	local allHay = {}
+	for id in GloveConfig.HayTypes do
+		allHay[id] = true
+	end
+	t.check("every hay type broken completes the hay page", ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	allHay.meadow = nil
+	t.check("one missing hay type leaves it open", not ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	local tool = Instance.new("Tool")
+	tool.Name = "Shovel"
+	local blade = Instance.new("Part")
+	blade.Name = "Blade"
+	blade.Color = Color3.fromRGB(100, 100, 100)
+	blade.Material = Enum.Material.Metal
+	blade.Parent = tool
+	t.cleanup(tool)
+	ToolSkins.dress(tool, "golden_shovel")
+	t.check("a skin recolors the tool", blade.Color ~= Color3.fromRGB(100, 100, 100) and tool:GetAttribute("Skin") == "golden_shovel")
+	t.check("...and the golden one glints", tool:FindFirstChild("SkinGlint", true) ~= nil)
+	ToolSkins.dress(tool, nil)
+	t.check("taking it off puts the tool's own look back", blade.Color == Color3.fromRGB(100, 100, 100) and blade.Material == Enum.Material.Metal and tool:FindFirstChild("SkinGlint", true) == nil)
+	for _, def in SkinConfig.Skins do
+		t.check(("%s is cosmetic only (no stats)"):format(def.name), def.speed == nil and def.scoopBonus == nil and def.reach == nil)
+	end
+
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
 	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.
 	local base = Hay.stats()
@@ -529,6 +563,33 @@ local function edgeCases(t, player, state, root, stand)
 	t.wait(0.8)
 	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
+
+	-- A finder's reward pays once per kind for good: trading the find away and finding another pays nothing more.
+	local keepFinds, keepPaid = table.clone(state.finds or {}), table.clone(state.findsPaid or {})
+	state.finds = state.finds or {}
+	state.findsPaid = state.findsPaid or {}
+	state.finds.boot, state.findsPaid.boot = nil, nil
+	local reward = Finds.info("boot").reward
+	local cash0 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	local paidFirst = Bank.wallet(state) - cash0
+	t.equal("the first boot marks its reward paid", state.findsPaid.boot, 1)
+	-- A bank loan can take its share of any earning, so the wallet rises by the reward or a little less.
+	t.check("the first boot pays its finder's reward", paidFirst > 0 and paidFirst <= reward, ("+$%d of $%d"):format(paidFirst, reward))
+	state.finds.boot = nil -- traded away (Trade.luau takes it off the shelf)
+	local cash1 = Bank.wallet(state)
+	Finds.keepForTest(player, "boot")
+	t.equal("finding another after trading it away pays nothing", Bank.wallet(state) - cash1, 0)
+	t.equal("...and the reward stays marked paid", state.findsPaid.boot, 1)
+	t.equal("...though it is kept", state.finds.boot, 1)
+	-- The test's reward is not real money: put the wallet back where it was.
+	if Config.InfiniteMoney then
+		state.savedCash = cash0
+	else
+		state.cash = cash0
+	end
+	Data.sync(player)
+	state.finds, state.findsPaid = keepFinds, keepPaid
 
 	-- Crew hand-off: a bale thrown by a teammate that flies close to bare hands is caught; a stranger's is not.
 	local catchSpot = t.place()

@@ -24,6 +24,7 @@ local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
 local Wheelbarrow = require(script.Parent.Wheelbarrow)
 local Vehicles = require(script.Parent.Vehicles)
+local ToolSkins = require(script.Parent.ToolSkins)
 
 local Tools = {}
 
@@ -371,6 +372,7 @@ function Tools.init()
 	Gloves.init()
 	Finds.init()
 	Wheelbarrow.init(currentAim)
+	ToolSkins.init()
 	-- Crew hand-offs (Bales): until Land says exactly who shares a farm, a teammate is anyone allowed to drive the
 	-- other's truck, either way round (a farm's owner and its crew).
 	if not Bales.isTeammate then
