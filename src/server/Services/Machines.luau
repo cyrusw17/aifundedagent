@@ -22,7 +22,9 @@ local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
+local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Tutorial = require(script.Parent.Tutorial)
 local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
@@ -80,22 +82,9 @@ function Machines.part(parent, name, size, cframe, color, material)
 end
 local part = Machines.part
 
-function Machines.sign(parent, text, offset)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(260, 60)
-	gui.StudsOffset = offset
-	gui.MaxDistance = 120
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
-	return label
+-- A floating label (shared WorldLabel helper). kind is "status" unless given ("sign" for place names).
+function Machines.sign(parent, text, offset, kind)
+	return WorldLabel.billboard(parent, text, { offset = offset, kind = kind or "status" })
 end
 local sign = Machines.sign
 
@@ -107,6 +96,8 @@ function Machines.pay(ownerId, amount, text, note)
 		return
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
+	Tutorial.mark(owner, "sold")
+	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
 	Feedback.sale(owner, amount)
 end

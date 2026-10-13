@@ -181,6 +181,8 @@ local function stateFrom(saved)
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... }, needles = { [id] = count } }
 		-- once a plot is bought. needles are the ones in the plot's bin.
 		land = nil,
+		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
+		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -336,6 +338,7 @@ function Data.save(player)
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
+		tutorial = state.tutorial,
 	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}

@@ -12,6 +12,7 @@ local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
 local Land = require(script.Parent.Land)
+local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
 
 local World = {}
@@ -30,22 +31,9 @@ local function newPart(parent, name, size, cframe, color, material)
 	return part
 end
 
-local function addSign(parent, text, offset)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(240, 50)
-	gui.StudsOffset = offset
-	gui.MaxDistance = 90
-	gui.Parent = parent
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
+-- Floating text goes through the shared WorldLabel helper so every sign reads the same.
+local function addSign(parent, text, offset, kind)
+	return WorldLabel.billboard(parent, text, { offset = offset, kind = kind or "status" })
 end
 
 function World.build()
@@ -109,7 +97,7 @@ function World.build()
 		Color3.fromRGB(92, 74, 54),
 		Enum.Material.Wood
 	)
-	addSign(counter, "HAY SHOP", Vector3.new(0, 6, 0))
+	addSign(counter, "HAY SHOP", Vector3.new(0, 6, 0), "sign")
 
 	-- Sell pad in front of the counter. Walk onto it with hay, or set a bale down on it.
 	local pad = newPart(

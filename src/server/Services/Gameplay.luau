@@ -18,6 +18,7 @@ local Feedback = require(script.Parent.Feedback)
 -- The shared needle (from the conveyor work) when present: needles clicked up into a pocket sell here too.
 local NeedleModule = script.Parent:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
+local Tutorial = require(script.Parent.Tutorial)
 
 local Gameplay = {}
 
@@ -52,6 +53,8 @@ local function sellHay(player)
 	value += pocketValue
 	Bank.earn(player, value, "Hay shop")
 	Feedback.sale(player, value)
+	Tutorial.mark(player, "sold")
+	Tutorial.earned(player, value)
 
 	local parts = {}
 	if hay > 0 then
@@ -77,6 +80,8 @@ local function sellBale(b)
 	if state then
 		Bank.earn(owner, value, "Hay shop")
 		Feedback.sale(owner, value)
+		Tutorial.mark(owner, "sold")
+		Tutorial.earned(owner, value)
 		Data.toast(owner, ("+$%d · a bale"):format(value))
 	end
 end
