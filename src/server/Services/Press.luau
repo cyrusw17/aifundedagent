@@ -39,33 +39,34 @@ local BLOCK = Vector3.new(2, 2, 2)
 local PRESS_SECONDS = 2.5
 local PICKUP_REACH = 12
 
-local thatch = {} -- player -> units carried
-
+-- Thatch carried lives in the save slot (Data state.thatch), so it saves and loads with the slot.
 local function publish(player)
-	player:SetAttribute("Thatch", thatch[player] or 0)
+	player:SetAttribute("Thatch", Press.thatch(player))
 end
 
 function Press.thatch(player)
-	return thatch[player] or 0
+	local state = Data.get(player)
+	return state and state.thatch or 0
 end
 
 function Press.give(player, units)
-	thatch[player] = (thatch[player] or 0) + units
+	local state = Data.get(player)
+	if not state then
+		return
+	end
+	state.thatch = (state.thatch or 0) + units
 	publish(player)
 end
 
 function Press.spend(player, units)
-	if (thatch[player] or 0) < units then
+	local state = Data.get(player)
+	if not state or (state.thatch or 0) < units then
 		return false
 	end
-	thatch[player] -= units
+	state.thatch -= units
 	publish(player)
 	return true
 end
-
-Players.PlayerRemoving:Connect(function(player)
-	thatch[player] = nil
-end)
 
 local function spawnBlock(cframe, ownerId, units)
 	local block = part(Workspace, "ThatchBlock", BLOCK, cframe, THATCH, Enum.Material.Fabric)
@@ -89,6 +90,9 @@ local function spawnBlock(cframe, ownerId, units)
 	click.MaxActivationDistance = PICKUP_REACH
 	click.MouseClick:Connect(function(player)
 		if not block.Parent then
+			return
+		end
+		if not Data.get(player) then
 			return
 		end
 		Press.give(player, units)

@@ -28,6 +28,8 @@ local Tutorial = require(script.Parent.Tutorial)
 local Vehicles = require(script.Parent.Vehicles)
 local Likes = require(script.Parent.Likes)
 local Needle = require(script.Parent.Needle)
+local Press = require(script.Parent.Press)
+local Display = require(script.Parent.Display)
 
 local Land = {}
 
@@ -297,6 +299,12 @@ local function buildBlueprint(plot, item, def)
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = body
+	local thatchPrompt = prompt:Clone()
+	thatchPrompt.Name = "ThatchPrompt"
+	thatchPrompt.ActionText = "Fill with thatch"
+	thatchPrompt.KeyboardKeyCode = Enum.KeyCode.F
+	thatchPrompt.UIOffset = Vector2.new(0, 60)
+	thatchPrompt.Parent = body
 
 	local function refresh()
 		item.stored = math.clamp(item.stored or 0, 0, needed())
@@ -309,15 +317,18 @@ local function buildBlueprint(plot, item, def)
 			body.CanCollide = true
 			label.Text = ""
 			prompt.Enabled = false
+			thatchPrompt.Enabled = false
 		elseif item.fill then
 			body.Transparency = 0.45 - 0.3 * item.stored / needed()
 			label.Text = item.fill == "hay" and ("%d / %d bales"):format(item.stored, def.bales)
 				or ("%d / %d needles"):format(item.stored, def.needles)
 			prompt.Enabled = item.fill == "needle"
+			thatchPrompt.Enabled = item.fill == "hay"
 		else
 			body.Transparency = 0.5
-			label.Text = ("BLUEPRINT\n%d bales or %d needles"):format(def.bales, def.needles)
+			label.Text = ("BLUEPRINT\n%d bales, %d thatch or %d needles"):format(def.bales, def.thatch, def.needles)
 			prompt.Enabled = true
+			thatchPrompt.Enabled = true
 		end
 		return done
 	end
@@ -342,6 +353,30 @@ local function buildBlueprint(plot, item, def)
 		plot.dirty = true
 		if refresh() then
 			Data.toast(player, ("Built an iron %s."):format(def.shape))
+		end
+	end)
+
+	-- Thatch from a hay press finishes the hay fill: the share of the bales still missing, in thatch.
+	thatchPrompt.Triggered:Connect(function(player)
+		if plot.owner ~= player and not plot.crew[player.UserId] then
+			Data.toast(player, "Only the farm's owner and crew can fill its blueprints.")
+			return
+		end
+		if item.fill == "needle" then
+			Data.toast(player, "This one is being filled with needles.")
+			return
+		end
+		local missing = def.bales - (item.stored or 0)
+		local cost = math.max(1, math.ceil(def.thatch * missing / def.bales))
+		if not Press.spend(player, cost) then
+			Data.toast(player, ("This needs %d thatch. You carry %d. Press sorted bales at a hay press."):format(cost, Press.thatch(player)))
+			return
+		end
+		item.fill = "hay"
+		item.stored = def.bales
+		plot.dirty = true
+		if refresh() then
+			Data.toast(player, ("Built a thatch %s."):format(def.shape))
 		end
 	end)
 
@@ -388,10 +423,11 @@ end
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
-local function spawnItem(plot, def, gx, gz, dir, stored, fill)
+-- stored, fill and display come back from a save: a silo's bales, a blueprint's fill, a display's needles.
+local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
-	if def.kind == "belt" or def.kind == "separator" then
+	if def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir)
@@ -400,6 +436,15 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill)
 	end
 	if def.kind == "separator" then
 		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
+	elseif def.kind == "press" then
+		table.insert(item.instances, Press.build(plot.items, frame))
+	elseif def.kind == "splitter" then
+		table.insert(item.instances, Machines.splitter(plot.grid, gx, gz, dir, def.rule))
+	elseif def.kind == "display" then
+		item.wall = Display.wall(plot.items, frame, function()
+			return plot.ownerId
+		end, typeof(display) == "table" and display or nil)
+		table.insert(item.instances, item.wall.model)
 	elseif def.kind == "buyer" then
 		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER", payeeFor(plot)))
 	elseif def.kind == "silo" then
@@ -437,10 +482,12 @@ local function rowFromBack(plot, z)
 	return if plot.def.open == "S" then z else plot.tiles.Z - 1 - z
 end
 
-local function fits(plot, def, gx, gz, dir)
+-- ignore (optional) is an item whose own cells count as free, for moving it.
+local function fits(plot, def, gx, gz, dir, ignore)
 	for _, cell in cellsFor(def, gx, gz, dir) do
 		local x, z = cell[1], cell[2]
-		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or plot.taken[key(x, z)] then
+		local taken = plot.taken[key(x, z)]
+		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or (taken and taken ~= ignore) then
 			return false
 		end
 		if rowFromBack(plot, z) < (plot.locked or 0) then
@@ -459,7 +506,7 @@ local function saveItems(player, plot)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
-		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill })
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill, display = item.wall and item.wall.contents() or nil })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -541,6 +588,13 @@ local function release(plot)
 		plotOf[plot.owner] = nil
 		plot.owner:SetAttribute("LandPlot", 0)
 	end
+	-- The owner's displayed needles are in their save; emptying the pegs first keeps them from going back to the pocket
+	-- as well.
+	for _, item in plot.list do
+		if item.wall then
+			item.wall.clear()
+		end
+	end
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
@@ -580,7 +634,7 @@ local function claim(plot, player, saved)
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
 			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
 			if fits(plot, def, gx, gz, dir) then
-				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil)
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil, s.display)
 			else
 				table.insert(plot.leftOut, s)
 			end
@@ -588,7 +642,11 @@ local function claim(plot, player, saved)
 	end
 	refreshRails(plot)
 	publish(plot)
+	-- saveItems copies the bin into the save, and the bin is still empty here: keep the saved needles for
+	-- restoreNeedles, which runs right after this.
+	local keepNeedles = saved.needles
 	saveItems(player, plot)
+	saved.needles = keepNeedles
 end
 
 -- The saved plot if it is free, otherwise the smallest free plot at least as big, otherwise any free plot.
@@ -643,6 +701,8 @@ end
 
 -- Building ----------------------------------------------------------------------------------------------------------
 
+local remember -- defined below with the undo history
+
 local function ownPlot(player)
 	local plot = plotOf[player]
 	if not plot or plot.ownerId ~= player.UserId then
@@ -653,6 +713,18 @@ local function ownPlot(player)
 	end
 	lastAction[player] = os.clock()
 	return plot
+end
+
+-- Undo history: the last few build actions per player, newest last.
+local HISTORY = 30
+local history = {} -- player -> { entry, ... }
+remember = function(player, entry)
+	local list = history[player] or {}
+	table.insert(list, entry)
+	if #list > HISTORY then
+		table.remove(list, 1)
+	end
+	history[player] = list
 end
 
 local function onPlace(player, id, gx, gz, dir)
@@ -677,6 +749,7 @@ local function onPlace(player, id, gx, gz, dir)
 	saveItems(player, plot)
 	Data.sync(player)
 	Tutorial.placed(player, def.id)
+	remember(player, { kind = "place", anchors = { { id = def.id, gx = gx, gz = gz, price = def.price } } })
 	return true, ("Built a %s for $%d."):format(def.name:lower(), def.price)
 end
 
@@ -693,13 +766,188 @@ local function onRemove(player, gx, gz)
 		return false, "Nothing built there."
 	end
 	local def = pieces[item.id]
+	local was = { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored, fill = item.fill }
 	destroyItem(plot, item)
 	refreshRails(plot)
 	publish(plot)
 	saveItems(player, plot)
 	local refund = math.floor(def.price * LandConfig.RefundShare)
 	Bank.give(player, refund, "Removed a " .. def.name:lower())
+	remember(player, { kind = "remove", was = was, refund = refund })
 	return true, ("Removed the %s. Got $%d back."):format(def.name:lower(), refund)
+end
+
+local function afterEdit(player, plot)
+	refreshRails(plot)
+	publish(plot)
+	saveItems(player, plot)
+	Data.sync(player)
+end
+
+-- The piece covering a tile: { id, gx, gz, dir } of its anchor, so the client can pick it up to move it.
+local function onPick(player, gx, gz)
+	local plot = plotOf[player]
+	local item = plot and isCell(gx) and isCell(gz) and plot.taken[key(gx, gz)]
+	if not item then
+		return false, "Nothing built there."
+	end
+	return true, { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir }
+end
+
+-- Moves the piece anchored at (fromX, fromZ) to (gx, gz) facing dir, for free. A silo keeps its bales and a blueprint
+-- what is in it.
+local function onMove(player, fromX, fromZ, gx, gz, dir)
+	local plot, why = ownPlot(player)
+	if not plot then
+		return false, why
+	end
+	if not isCell(fromX) or not isCell(fromZ) or not isCell(gx) or not isCell(gz) or typeof(dir) ~= "string" or not Conveyors.Dirs[dir] then
+		return false, nil
+	end
+	local item = plot.taken[key(fromX, fromZ)]
+	if not item or item.gx ~= fromX or item.gz ~= fromZ then
+		return false, "That piece isn't there any more."
+	end
+	local def = pieces[item.id]
+	if not fits(plot, def, gx, gz, dir, item) then
+		return false, "That spot is taken or off your land."
+	end
+	local stored, fill, oldDir = item.stored, item.fill, item.dir
+	local display = item.wall and item.wall.contents() or nil
+	if item.wall then
+		item.wall.clear() -- the needles move with it instead of going back to the pocket
+	end
+	destroyItem(plot, item)
+	spawnItem(plot, def, gx, gz, dir, stored, fill, display)
+	afterEdit(player, plot)
+	remember(player, { kind = "move", id = def.id, from = { gx = fromX, gz = fromZ, dir = oldDir }, to = { gx = gx, gz = gz, dir = dir } })
+	return true, ("Moved the %s."):format(def.name:lower())
+end
+
+-- Copies the pieces anchored inside a rectangle of tiles, as offsets from its north-west corner.
+local function onCopy(player, x1, z1, x2, z2)
+	local plot = plotOf[player]
+	if not plot or not (isCell(x1) and isCell(z1) and isCell(x2) and isCell(z2)) then
+		return false, nil
+	end
+	local minX, maxX, minZ, maxZ = math.min(x1, x2), math.max(x1, x2), math.min(z1, z2), math.max(z1, z2)
+	local list, total = {}, 0
+	for _, item in plot.list do
+		if item.gx >= minX and item.gx <= maxX and item.gz >= minZ and item.gz <= maxZ then
+			table.insert(list, { id = item.id, dx = item.gx - minX, dz = item.gz - minZ, dir = item.dir })
+			total += pieces[item.id].price
+		end
+	end
+	if #list == 0 then
+		return false, "Nothing built in that area."
+	end
+	return true, list, total
+end
+
+-- Builds a copied set of pieces with its north-west corner at (gx, gz), paying for all of them at once.
+local MAX_PASTE = 60
+local function onPaste(player, list, gx, gz)
+	local plot, why = ownPlot(player)
+	if not plot then
+		return false, why
+	end
+	if typeof(list) ~= "table" or #list == 0 or #list > MAX_PASTE or not isCell(gx) or not isCell(gz) then
+		return false, "Nothing to paste."
+	end
+	local claimed, total, todo = {}, 0, {}
+	for _, entry in list do
+		local def = typeof(entry) == "table" and typeof(entry.id) == "string" and pieces[entry.id]
+		if not def or not isCell(entry.dx) or not isCell(entry.dz) or typeof(entry.dir) ~= "string" or not Conveyors.Dirs[entry.dir] then
+			return false, "Nothing to paste."
+		end
+		local ax, az = gx + entry.dx, gz + entry.dz
+		if not fits(plot, def, ax, az, entry.dir) then
+			return false, "Part of that doesn't fit there."
+		end
+		for _, cell in cellsFor(def, ax, az, entry.dir) do
+			local k = key(cell[1], cell[2])
+			if claimed[k] then
+				return false, "Part of that doesn't fit there."
+			end
+			claimed[k] = true
+		end
+		total += def.price
+		table.insert(todo, { def = def, gx = ax, gz = az, dir = entry.dir })
+	end
+	local paid, short = Bank.charge(player, total, ("Built %d pieces"):format(#todo))
+	if not paid then
+		return false, short
+	end
+	local anchors = {}
+	for _, t in todo do
+		spawnItem(plot, t.def, t.gx, t.gz, t.dir)
+		table.insert(anchors, { id = t.def.id, gx = t.gx, gz = t.gz, price = t.def.price })
+	end
+	afterEdit(player, plot)
+	remember(player, { kind = "place", anchors = anchors })
+	return true, ("Built %d pieces for $%d."):format(#todo, total)
+end
+
+-- Takes back the player's last build action: a placement is removed with its full price back, a removal is rebuilt
+-- for the refund it gave, and a move goes back.
+local function onUndo(player)
+	local plot, why = ownPlot(player)
+	if not plot then
+		return false, why
+	end
+	local list = history[player]
+	local entry = list and table.remove(list)
+	if not entry then
+		return false, "Nothing to undo."
+	end
+	if entry.kind == "place" then
+		local gone, back = 0, 0
+		for _, a in entry.anchors do
+			local item = plot.taken[key(a.gx, a.gz)]
+			if item and item.id == a.id and item.gx == a.gx and item.gz == a.gz then
+				destroyItem(plot, item)
+				gone += 1
+				back += a.price -- pieces removed since were already refunded, so only those still standing count
+			end
+		end
+		if gone == 0 then
+			return false, "Those pieces are already gone."
+		end
+		Bank.give(player, back, "Undo")
+		afterEdit(player, plot)
+		return true, ("Undid that. Got $%d back."):format(back)
+	elseif entry.kind == "remove" then
+		local was = entry.was
+		local def = pieces[was.id]
+		if not fits(plot, def, was.gx, was.gz, was.dir) then
+			return false, "Something else is built there now."
+		end
+		local paid, short = Bank.charge(player, entry.refund, "Undo")
+		if not paid then
+			table.insert(list, entry)
+			return false, short
+		end
+		spawnItem(plot, def, was.gx, was.gz, was.dir, was.stored, was.fill)
+		afterEdit(player, plot)
+		return true, ("Put the %s back."):format(def.name:lower())
+	elseif entry.kind == "move" then
+		local item = plot.taken[key(entry.to.gx, entry.to.gz)]
+		local def = pieces[entry.id]
+		if not item or item.id ~= entry.id or item.gx ~= entry.to.gx or item.gz ~= entry.to.gz
+			or not fits(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, item) then
+			return false, "Can't move it back now."
+		end
+		local stored, fill = item.stored, item.fill
+		local display = item.wall and item.wall.contents() or nil
+		if item.wall then
+			item.wall.clear()
+		end
+		destroyItem(plot, item)
+		spawnItem(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, stored, fill, display)
+		afterEdit(player, plot)
+		return true, ("Moved the %s back."):format(def.name:lower())
+	end
+	return false, "Nothing to undo."
 end
 
 -- World -------------------------------------------------------------------------------------------------------------
@@ -1067,7 +1315,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1082,12 +1330,12 @@ function Land.build(worldFolder)
 
 	local function guard(fn)
 		return function(player, ...)
-			local ok, result, message = pcall(fn, player, ...)
-			if not ok then
-				warn("[Needlewood] land error: " .. tostring(result))
+			local out = table.pack(pcall(fn, player, ...))
+			if not out[1] then
+				warn("[Needlewood] land error: " .. tostring(out[2]))
 				return false, "Something went wrong."
 			end
-			return result, message
+			return table.unpack(out, 2, out.n)
 		end
 	end
 	remotes.Buy.OnServerInvoke = guard(onBuy)
@@ -1096,6 +1344,11 @@ function Land.build(worldFolder)
 	remotes.Crew.OnServerInvoke = guard(onCrew)
 	remotes.Visit.OnServerInvoke = guard(onVisit)
 	remotes.Expand.OnServerInvoke = guard(onExpand)
+	remotes.Pick.OnServerInvoke = guard(onPick)
+	remotes.Move.OnServerInvoke = guard(onMove)
+	remotes.Copy.OnServerInvoke = guard(onCopy)
+	remotes.Paste.OnServerInvoke = guard(onPaste)
+	remotes.Undo.OnServerInvoke = guard(onUndo)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
 		local plot = plotOf[owner]
@@ -1128,6 +1381,7 @@ function Land.build(worldFolder)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastAction[player] = nil
+		history[player] = nil
 		local plot = plotOf[player]
 		if plot then
 			saveItems(player, plot)

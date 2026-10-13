@@ -172,6 +172,8 @@ local function stateFrom(saved)
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
+		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
+		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -235,6 +237,7 @@ function Data.sync(player)
 		held += count
 	end
 	player:SetAttribute("NeedlesHeld", held)
+	player:SetAttribute("Thatch", state.thatch or 0)
 end
 
 function Data.toast(player, text)
@@ -344,6 +347,8 @@ function Data.save(player)
 		trucks = state.trucks,
 		trailers = state.trailers,
 		pocket = state.pocket,
+		thatch = state.thatch,
+		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,

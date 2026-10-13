@@ -204,6 +204,19 @@ function Needle.takeBest(player)
 	return { id = id, mult = mult }
 end
 
+-- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
+-- false and takes none when they have too few.
+function Needle.takeFromPocket(player, needleId, count)
+	local pocket = pocketOf(player)
+	local have = pocket[needleId] or 0
+	if have < count then
+		return false
+	end
+	pocket[needleId] = have - count > 0 and have - count or nil
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
+end
+
 -- Puts a needle ({ id, mult }) into the player's pocket.
 function Needle.give(player, n)
 	local pocket = pocketOf(player)
