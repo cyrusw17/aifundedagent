@@ -272,6 +272,17 @@ Prices.Mutation = {
 	max = 25,
 }
 
+-- Pity (CEO "Addiction push" H3, src/shared/Pity.luau): after `bales` sorted bales in a row that found needles but no
+-- mutated one, the next such bale makes its first needle mutated at `mult` (the smallest mutation), so a dry run always
+-- ends. A roll under Mutation.oneIn's chance times `nearMiss` that just missed flickers gold ("so close").
+-- tests/pity.luau measures what it adds to needle income (not total): hand sieve 3.9%, Meadow conveyor 2.7%, Desert
+-- magnet drum 1.3%, Swamp optical 0.7%, Star optical 0.1%. It fails if any case reaches 5%.
+Prices.Pity = {
+	bales = 40,
+	mult = 3,
+	nearMiss = 3,
+}
+
 -- The Hay Market (Services/HayMarket.luau, CEO H6): a stall at base camp restocks every RestockSeconds with Slots
 -- rare bales, each a kind (Golden, Storm or Moon Hay) of one region's hay, StockPerSlot of each for the whole server.
 -- A player can buy PerPlayer bales per restock. needles multiplies the bale's hidden needles and mutation multiplies
@@ -296,6 +307,15 @@ Prices.HayMarket = {
 	-- Which region's hay a slot holds, by weight. Hay that needs a region machine (Snow, Swamp) is left out, so
 	-- any bale can go straight into a sorter.
 	HayTypes = { meadow = 6, pine = 4, desert = 3, keys = 2, volcano = 1, bobbin = 1 },
+}
+
+-- Wet needles (H7 weather, Weather.needleOdds): a needle sorted where it is raining is, 1 in oneIn, a "Wet" needle
+-- worth mult times (x2: under the smallest real mutation, so x2 always means Wet, in saves too). It doesn't end a
+-- pity run. PROPOSED by Conveyor, pending Economy. tests/pity.luau keeps storm + Wet + pity within 2x of the
+-- mutation value of today's rules (pity, no weather) even if it always rained: x1.2 to x1.5.
+Prices.WetMutation = {
+	oneIn = 100,
+	mult = 2,
 }
 
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times

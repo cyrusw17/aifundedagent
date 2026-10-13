@@ -26,6 +26,7 @@ MODULES = {
     "Shared.Config.Sorters": "shared/Config/Sorters.luau",
     "Shared.PieceGuide": "shared/PieceGuide.luau",
     "Shared.LineRate": "shared/LineRate.luau",
+    "Shared.Pity": "shared/Pity.luau",
 }
 
 

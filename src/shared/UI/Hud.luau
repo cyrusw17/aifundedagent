@@ -16,7 +16,7 @@ local Hud = {}
 Hud.Order = { Cash = 10, Bank = 20, Goal = 30, Buttons = 40, Extra = 50 }
 
 -- The top-center stack, top to bottom (Hud.top()). Hidden pieces take no room, so nothing up there overlaps.
-Hud.TopOrder = { Compass = 10, Region = 20, Announce = 30, RegionBanner = 40, Toast = 50, Guide = 60 }
+Hud.TopOrder = { Compass = 10, Region = 20, Countdown = 25, Announce = 30, RegionBanner = 40, Toast = 50, Guide = 60 }
 
 local column = nil
 local scale = nil

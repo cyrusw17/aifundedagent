@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Weather)
@@ -69,6 +70,13 @@ local function show(kindId)
 	emitter.Rate = fall.rate
 end
 
+local STORM_TINT = Color3.fromRGB(70, 78, 92)
+local flashIn = 5
+local flash = Instance.new("ColorCorrectionEffect")
+flash.Name = "Lightning"
+flash.Brightness = 0
+flash.Parent = Lighting
+
 local regionId = "meadow"
 local sinceCheck = 0
 
@@ -103,6 +111,27 @@ RunService.RenderStepped:Connect(function(dt)
 		goalTint = goalTint:Lerp(frontKind.tint, p * 0.7)
 		goalDensity = goalDensity + (frontKind.density - goalDensity) * p * 0.5
 		goalCloud = math.max(goalCloud, frontKind.cloud * (0.4 + 0.6 * p))
+	end
+	-- A thunderstorm (server-wide, Services/Weather.luau): the sky darkens through its warning minute, then storms
+	-- with lightning.
+	local stormPhase = ReplicatedStorage:GetAttribute("Storm")
+	if stormPhase then
+		local p = 1
+		if stormPhase == "coming" then
+			local left = (ReplicatedStorage:GetAttribute("StormAt") or 0) - workspace:GetServerTimeNow()
+			p = math.clamp(1 - left / Config.StormWarnSeconds, 0, 1) * 0.7
+		end
+		goalTint = goalTint:Lerp(STORM_TINT, p * 0.8)
+		goalDensity += 0.12 * p
+		goalCloud = math.max(goalCloud, 0.5 + 0.5 * p)
+		if stormPhase == "on" then
+			flashIn -= dt
+			if flashIn <= 0 then
+				flashIn = math.random(4, 12)
+				flash.Brightness = 0.6
+				TweenService:Create(flash, TweenInfo.new(0.35), { Brightness = 0 }):Play()
+			end
+		end
 	end
 	local k = math.min(1, dt * BLEND)
 	tint = tint:Lerp(goalTint, k)

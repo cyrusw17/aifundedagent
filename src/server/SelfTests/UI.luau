@@ -262,6 +262,17 @@ return function(SelfTest)
 		t.check("TruckSpots publishes without error", okT, if okT then nil else tostring(errT))
 
 		-- With a player in a loaded slot: settings and tutorial flags.
+		-- The HUD countdown strip (Countdown.client.luau) reads when the rich field moves on.
+		local richEnds = ReplicatedStorage:GetAttribute("RichFieldEnds")
+		if ReplicatedStorage:GetAttribute("RichField") == nil then
+			t.skip("countdown: rich field end time", "no rich field on this server yet")
+		else
+			t.check(
+				"countdown: the rich field publishes when it moves on",
+				typeof(richEnds) == "number" and richEnds > workspace:GetServerTimeNow()
+			)
+		end
+
 		local player = t.player(10)
 		local Data = require(Services.Data)
 		if not player or not Data.get(player) then

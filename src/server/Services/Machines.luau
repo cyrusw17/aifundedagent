@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
 local LineRate = require(Shared.LineRate)
+local Pity = require(Shared.Pity)
 local RateLimit = require(Shared.RateLimit)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
@@ -63,6 +64,12 @@ Machines.Colors = {
 local C = Machines.Colors
 
 local rng = Random.new()
+-- Pity (Prices.Pity): each owner's run of sorted bales that found needles but no mutated one, across all their
+-- sorters. Kept for the server session only; a rejoin starts the count again.
+local dryRun = {}
+Players.PlayerRemoving:Connect(function(player)
+	dryRun[player.UserId] = nil
+end)
 local alienUsedDay = {} -- UserId -> UTC day the Alien collector beam was last used (per server)
 
 local needle = Needles[1]
@@ -148,6 +155,12 @@ local function hayTypeOf(p)
 end
 local function needleChance(hayType)
 	return Prices.needleChance(hayType)
+end
+
+-- A bale's or strand's boost attribute (NeedleBoost, MutationBoost): a positive number, else 1.
+local function boostOf(inst, name)
+	local v = inst:GetAttribute(name)
+	return (typeof(v) == "number" and v > 0 and v == v) and v or 1
 end
 
 local function spawnSortedBale(cframe, ownerId, hay, hayType)
@@ -351,9 +364,20 @@ function Machines.needleBin(parent, frame)
 	local flying = {}
 	local generation = 0
 
-	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B).
-	function bin.add(from, ownerId, count, needleId, grade)
+	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B). The bale's needles roll
+	-- their mutations here, up front, so the pity rule can see them: with dry (the owner's run of bales without a
+	-- mutation, Pity.apply) it returns the new dry count. Without dry, no pity. boost multiplies the mutation chance
+	-- (a Hay Market bale's MutationBoost), on top of the weather where the needles come out (Needle.weatherAt).
+	function bin.add(from, ownerId, count, needleId, grade, dry, boost)
 		local gen = generation
+		local mults, nears = {}, {}
+		local odds, wet = Needle.weatherAt(from)
+		for i = 1, count do
+			mults[i], nears[i] = Needle.rollMutation((boost or 1) * odds, wet)
+		end
+		if dry then
+			dry = Pity.apply(dry, mults, Prices.Pity)
+		end
 		for i = 1, count do
 			local token = { ownerId = ownerId, id = needleId or Needle.default.id, grade = grade }
 			flying[token] = true
@@ -365,7 +389,7 @@ function Machines.needleBin(parent, frame)
 				local at = cornerFor(needleId or Needle.default.id)
 				local spread = at and 0.7 or 2
 				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
-				token.part = Needle.throw(from, to, ownerId, needleId, grade)
+				token.part = Needle.throw(from, to, ownerId, needleId, grade, mults[i], nears[i])
 				if token.part then
 					token.part:SetAttribute("Binned", true)
 				end
@@ -374,6 +398,7 @@ function Machines.needleBin(parent, frame)
 				end)
 			end)
 		end
+		return dry
 	end
 
 	-- Sells the player's needles in the bin, except types their price hold keeps back. Each sale lowers the market as
@@ -841,7 +866,9 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
-	local function sort(hay, ownerId, hayType, recoveryMult)
+	-- needleBoost: times the hidden needles (rich field, chute, region event, golden field: the bale's NeedleBoost,
+	-- as breaking it by hand gives). mutationBoost: times each found needle's mutation chance (Hay Market bales).
+	local function sort(hay, ownerId, hayType, recoveryMult, needleBoost, mutationBoost)
 		sortingNow = true
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
@@ -859,10 +886,13 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		sortingNow, lastSortEnd = false, os.clock()
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
-		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
+		local hidden = Economy.rollNeedles(rng, hay, math.min(needleChance(hayType) * (needleBoost or 1), 1))
 		local found = LineMath.found(rng, hidden, tier.recovery, recoveryMult)
 		if bin then
-			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
+			local dry = bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id), ownerId and (dryRun[ownerId] or 0), mutationBoost)
+			if ownerId then
+				dryRun[ownerId] = dry
+			end
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
 		local bales = hay / (Config.PiecesPerBale * Config.HayPerPiece)
@@ -1038,8 +1068,13 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if need then
 					refuse(bale.ownerId, need) -- not required, so it sorts, at need.penalty of the recovery
 				end
+				local needleBoost = boostOf(bale.body, "NeedleBoost")
+				if bale.body:GetAttribute("GoldenField") == true then
+					needleBoost *= Config.GoldenBaleNeedles
+				end
+				local mutationBoost = boostOf(bale.body, "MutationBoost")
 				Bales.consume(bale)
-				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1)
+				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1, needleBoost, mutationBoost)
 			elseif #loose > 0 then
 				-- One owner and one hay type per batch; anything else in the hopper goes next tick.
 				local firstOwner, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
@@ -1047,14 +1082,16 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
-				local taken = 0
+				local taken, boosted = 0, 0
 				for _, p in loose do
 					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
-						taken += Hay.strandsIn(p) -- a raked pile counts every strand in it
+						local strands = Hay.strandsIn(p) -- a raked pile counts every strand in it
+						taken += strands
+						boosted += strands * boostOf(p, "NeedleBoost") -- strands from a rich bale keep its boost
 						Hay.remove(p)
 					end
 				end
-				sort(taken * Config.HayPerPiece, ownerId, hayType)
+				sort(taken * Config.HayPerPiece, ownerId, hayType, 1, taken > 0 and boosted / taken or 1)
 			end
 		end
 	end)
