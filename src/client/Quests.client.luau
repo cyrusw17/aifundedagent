@@ -12,6 +12,7 @@ local UI = Shared:WaitForChild("UI")
 local Kit = require(UI:WaitForChild("Kit"))
 local Menus = require(UI:WaitForChild("Menus"))
 local Waypoint = require(UI:WaitForChild("Waypoint"))
+local Places = require(UI:WaitForChild("Places"))
 
 local remotes = ReplicatedStorage:WaitForChild("Quests")
 local getRemote = remotes:WaitForChild("Get")
@@ -95,18 +96,26 @@ local function refreshCard()
 	trackName.Text = name or "No quest right now"
 	trackStep.Text = player:GetAttribute("QuestTrackStep") or ""
 	trackStep.Visible = name ~= nil
-	goButton.Visible = player:GetAttribute("QuestTrackTarget") ~= nil
+	goButton.Visible = player:GetAttribute("QuestTrackTarget") ~= nil or player:GetAttribute("QuestTrackPlace") ~= nil
 	card.Visible = player:GetAttribute("SaveSlot") ~= nil
 end
-for _, attr in { "QuestTrackName", "QuestTrackStep", "QuestTrackTarget", "SaveSlot" } do
+for _, attr in { "QuestTrackName", "QuestTrackStep", "QuestTrackTarget", "QuestTrackPlace", "SaveSlot" } do
 	player:GetAttributeChangedSignal(attr):Connect(refreshCard)
 end
 refreshCard()
 
 goButton.Activated:Connect(function()
 	local target = player:GetAttribute("QuestTrackTarget")
+	local place = player:GetAttribute("QuestTrackPlace")
 	if typeof(target) == "Vector3" then
 		Waypoint.set(target, player:GetAttribute("QuestTrackTargetName") or "Quest")
+	elseif typeof(place) == "string" then
+		local position = Places.get(place)
+		if position then
+			Waypoint.set(position, Places.name(place))
+		else
+			toast("Not sure where that is yet.")
+		end
 	end
 end)
 
@@ -206,7 +215,10 @@ local function questEntry(q, order)
 				if step.when then
 					text ..= "  ·  " .. step.when
 				end
-				line(f, text, T.Body, step.current and C.Ink or C.InkSoft, step.current and F.Bold or F.Body, 3 + i)
+				line(f, text, T.Body, step.current and C.Ink or C.InkSoft, step.current and F.Bold or F.Body, 3 + i * 2)
+				if step.hint then
+					line(f, "Hint: " .. step.hint, T.Small + 1, C.InkSoft, F.Body, 4 + i * 2)
+				end
 			end
 		end
 	end
@@ -221,6 +233,10 @@ local function questEntry(q, order)
 			act("track", q.id)
 		end)
 		local target = q.targets and q.targets[1]
+		if not target and q.place then
+			local position = Places.get(q.place)
+			target = position and { position = position, name = Places.name(q.place) }
+		end
 		if target then
 			local go = Kit.button(row, "Show the way", "go", UDim2.fromOffset(120, 28))
 			go.TextSize = T.Small + 1

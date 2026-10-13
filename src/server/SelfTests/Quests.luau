@@ -60,6 +60,17 @@ return function(SelfTest)
 			table.concat(bad, "; ")
 		)
 
+		-- Steps that send you to a building say which one (so GO works), and every find step has a hint.
+		local noWay = {}
+		for _, def in QuestConfig.List do
+			for i, step in def.steps do
+				if (step.kind == "own" and not step.place) or (step.kind == "find" and not step.hint) then
+					table.insert(noWay, ("%s step %d"):format(def.id, i))
+				end
+			end
+		end
+		t.check("ownership steps have a place and find steps a hint", #noWay == 0, table.concat(noWay, ", "))
+
 		-- Quest-only land pieces are exactly the ids a quest unlocks, and cost nothing.
 		local unlocks = {}
 		for _, def in QuestConfig.List do

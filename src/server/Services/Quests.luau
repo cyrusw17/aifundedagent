@@ -1671,6 +1671,7 @@ local function snapshot(player)
 				n = n,
 				count = count,
 				when = step.when and QuestConfig.WhenText[step.when] or nil,
+				hint = isCurrent and step.hint or nil,
 			})
 		end
 		local needs = {}
@@ -1691,6 +1692,7 @@ local function snapshot(player)
 			steps = steps,
 			reward = rewardText(def.reward or {}),
 			targets = entry and targetsOf(q, def.id) or {},
+			place = entry and def.steps[entry.step] and def.steps[entry.step].place or nil,
 		})
 	end
 
@@ -1811,6 +1813,8 @@ publish = function(player)
 	local target = best and targetsOf(q, best)[1]
 	player:SetAttribute("QuestTrackTarget", target and target.position or nil)
 	player:SetAttribute("QuestTrackTargetName", target and target.name or nil)
+	-- A step that sends you to a building (the dealer, your plot): the client finds it with UI Places.
+	player:SetAttribute("QuestTrackPlace", not target and step and step.place or nil)
 	if changedRemote then
 		changedRemote:FireClient(player)
 	end
