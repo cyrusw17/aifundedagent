@@ -149,7 +149,11 @@ local function refresh()
 	else
 		hintLabel.Text = tool and HINTS[tool.Name] and HINTS[tool.Name]:format(verb())
 			or "Hands: press Pick up on a bale"
-		loadLabel.Text = ("Hay %d / %d · %s"):format(hay, cap, player:GetAttribute("GloveName") or "Bare hands")
+		loadLabel.Text = ("Hay %d / %d · %s"):format(
+			hay,
+			cap,
+			player:GetAttribute("ShovelName") or player:GetAttribute("GloveName") or "Old Shovel"
+		)
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
 end
@@ -199,7 +203,7 @@ workspace.DescendantAdded:Connect(function(d)
 	end
 end)
 
-for _, name in { "Cash", "LoadHay", "LoadCap", "LoadCapBonus", "Carrying", "GloveName" } do
+for _, name in { "Cash", "LoadHay", "LoadCap", "LoadCapBonus", "Carrying", "GloveName", "ShovelName" } do
 	player:GetAttributeChangedSignal(name):Connect(refresh)
 end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)

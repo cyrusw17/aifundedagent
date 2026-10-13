@@ -47,22 +47,42 @@ local function nearestTagged(tag, filter)
 	return best and best.Position or nil
 end
 
+-- The nearest field hay pile (Hay.luau: parts named "HayPile" with Field = true in the "LooseHay" folder).
+local looseFolder = nil
+local function nearestPile()
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	looseFolder = looseFolder and looseFolder.Parent and looseFolder or workspace:FindFirstChild("LooseHay", true)
+	if not (root and looseFolder) then
+		return nil
+	end
+	local best, bestDistance = nil, math.huge
+	for _, pile in looseFolder:GetChildren() do
+		if pile.Name == "HayPile" and pile:IsA("BasePart") and pile:GetAttribute("Field") then
+			local d = (pile.Position - root.Position).Magnitude
+			if d < bestDistance then
+				best, bestDistance = pile, d
+			end
+		end
+	end
+	return best and best.Position or nil
+end
+
 -- Each step: title, text, done() -> bool, target() -> position or nil, label for the pin.
 local STEPS = {
 	{
-		title = "Lift a bale",
-		text = "Walk up to a hay bale and press F to pick it up.",
+		title = "Scoop a hay pile",
+		text = "Take out your shovel (press 1) and click a hay pile in the field to scoop it up.",
 		done = function()
-			return player:GetAttribute("Carrying") == true
+			return (player:GetAttribute("LoadHay") or 0) > 0 or player:GetAttribute("Carrying") == true
 		end,
 		target = function()
-			return nearestTagged("HayBale")
+			return nearestPile() or nearestTagged("HayBale")
 		end,
-		label = "Hay bale",
+		label = "Hay pile",
 	},
 	{
 		title = "Sell it",
-		text = "Carry it to the glowing SELL HERE pad at the Hay Shop and set it down (click or G).",
+		text = "Take your hay to the glowing SELL HERE pad at the Hay Shop and sell it there.",
 		done = function()
 			return flag("sold")
 		end,

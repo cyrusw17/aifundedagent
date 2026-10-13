@@ -47,11 +47,15 @@ Catalog.Robux = {
 		name = "Truck paint pack",
 		blurb = "Six Rustic paint jobs for any truck you own. Looks only.",
 	},
-	{ id = "glove_skins", name = "Glove skins", blurb = "Stitched patterns for your gloves. Same stats as before." },
+	{
+		id = "glove_skins",
+		name = "Shovel skins",
+		blurb = "Painted handles and blades for your shovel. Same stats as before.",
+	},
 	{ id = "farm_sign", name = "Carved farm sign", blurb = "Your name on a carved board at your plot's gate." },
 }
 
-Catalog.Tabs = { "Trucks", "Gloves", "Land", "Build", "Trailers", "Robux" }
+Catalog.Tabs = { "Trucks", "Shovels", "Land", "Build", "Trailers", "Robux" }
 
 -- One shop row: { id, name, blurb, price, robux, state, place }
 -- state: "owned" | "wearing" | "buy" | "soon" | "taken" | "needland"
@@ -70,7 +74,7 @@ function Catalog.items(tab)
 				place = "dealer",
 			})
 		end
-	elseif tab == "Gloves" then
+	elseif tab == "Shovels" then
 		local owned = listAttr("GlovesOwned")
 		local wearing = attr("GloveId")
 		for _, def in Gloves.Tiers do
@@ -157,8 +161,8 @@ function Catalog.items(tab)
 	return rows
 end
 
--- The goal bar's ladder, in the order ECONOMY.md plans the first hours: Work Gloves, Wheelbarrow, Pickup (on a loan),
--- Wagon, Plot and a hand sieve, Shaker table, Leather Gloves, Flatbed (on a loan), Conveyor sorter, then the higher
+-- The goal bar's ladder, in the order ECONOMY.md plans the first hours: Garden Shovel, Wheelbarrow, Pickup (on a loan),
+-- Wagon, Plot and a hand sieve, Shaker table, Steel Shovel, Flatbed (on a loan), Conveyor sorter, then the higher
 -- glove tiers. The first one you don't have yet is the goal. Prices come from Config/Prices.
 local function hasGlove(id)
 	return function()
@@ -171,7 +175,7 @@ local function built(id)
 	end
 end
 local LADDER = {
-	{ name = "Work Gloves", price = Prices.Gloves.work, place = "gloves", have = hasGlove("work") },
+	{ name = "a Garden Shovel", price = Prices.Gloves.work, place = "gloves", have = hasGlove("work") },
 	{
 		name = "a Wheelbarrow",
 		price = Prices.Wheelbarrow,
@@ -207,7 +211,7 @@ local LADDER = {
 	},
 	{ name = "a Hand Sieve", price = Prices.Pieces.hand_sieve, place = "plot", have = built("hand_sieve") },
 	{ name = "a Shaker Table", price = Prices.Pieces.shaker_table, place = "plot", have = built("shaker_table") },
-	{ name = "Leather Gloves", price = Prices.Gloves.leather, place = "gloves", have = hasGlove("leather") },
+	{ name = "a Steel Shovel", price = Prices.Gloves.leather, place = "gloves", have = hasGlove("leather") },
 	{
 		name = "the Farm Flatbed",
 		price = Prices.Trucks.farm_flatbed,
@@ -223,9 +227,9 @@ local LADDER = {
 		place = "plot",
 		have = built("conveyor_sorter"),
 	},
-	{ name = "Reinforced Gloves", price = Prices.Gloves.reinforced, place = "gloves", have = hasGlove("reinforced") },
-	{ name = "Iron Gauntlets", price = Prices.Gloves.iron, place = "gloves", have = hasGlove("iron") },
-	{ name = "Starlight Gloves", price = Prices.Gloves.starlight, place = "gloves", have = hasGlove("starlight") },
+	{ name = "a Reinforced Shovel", price = Prices.Gloves.reinforced, place = "gloves", have = hasGlove("reinforced") },
+	{ name = "an Iron Spade", price = Prices.Gloves.iron, place = "gloves", have = hasGlove("iron") },
+	{ name = "a Starlight Shovel", price = Prices.Gloves.starlight, place = "gloves", have = hasGlove("starlight") },
 }
 Catalog.Ladder = LADDER
 

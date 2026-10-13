@@ -221,7 +221,7 @@ do
 			color = Color3.fromRGB(rgb[1], rgb[2], rgb[3]),
 			material = Enum.Material.Fabric,
 			lines = function(found)
-				local tier = def.tier > 0 and ("Glove tier %d"):format(def.tier) or "Any gloves"
+				local tier = def.tier > 0 and ("Shovel tier %d"):format(def.tier) or "Any shovel"
 				if found then
 					return ("%s · %s"):format(def.map, tier), ("%.1fx heavier than meadow"):format(def.weight)
 				end

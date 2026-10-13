@@ -94,7 +94,7 @@ Places.List = {
 			return named("HayShop")
 		end,
 	},
-	{ id = "gloves", name = "Glove stand", fallback = Vector3.new(12.5, 0, -6), find = glovePrompt },
+	{ id = "gloves", name = "Shovel rack", fallback = Vector3.new(12.5, 0, -6), find = glovePrompt },
 	{
 		id = "sellshop",
 		name = "HAY SELL SHOP",

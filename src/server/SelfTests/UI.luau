@@ -61,7 +61,7 @@ return function(SelfTest)
 			local A = who.attrs
 			local walk = {
 				{
-					"Work Gloves",
+					"a Garden Shovel",
 					Prices.Gloves.work,
 					function()
 						A.GlovesOwned = "bare,work"
@@ -110,7 +110,7 @@ return function(SelfTest)
 					end,
 				},
 				{
-					"Leather Gloves",
+					"a Steel Shovel",
 					Prices.Gloves.leather,
 					function()
 						A.GlovesOwned = "bare,work,leather"
@@ -131,21 +131,21 @@ return function(SelfTest)
 					end,
 				},
 				{
-					"Reinforced Gloves",
+					"a Reinforced Shovel",
 					Prices.Gloves.reinforced,
 					function()
 						A.GlovesOwned = "bare,work,leather,reinforced"
 					end,
 				},
 				{
-					"Iron Gauntlets",
+					"an Iron Spade",
 					Prices.Gloves.iron,
 					function()
 						A.GlovesOwned = "bare,work,leather,reinforced,iron"
 					end,
 				},
 				{
-					"Starlight Gloves",
+					"a Starlight Shovel",
 					Prices.Gloves.starlight,
 					function()
 						A.GlovesOwned = "bare,work,leather,reinforced,iron,starlight"
@@ -164,7 +164,7 @@ return function(SelfTest)
 			local function priceFor(tab, id, state)
 				if tab == "Trucks" then
 					return Prices.Trucks[id]
-				elseif tab == "Gloves" then
+				elseif tab == "Shovels" then
 					return Prices.Gloves[id]
 				elseif tab == "Land" then
 					-- With one farm, every plot but your own shows the second-farm price.
