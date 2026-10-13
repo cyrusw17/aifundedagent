@@ -11,6 +11,7 @@ local Props = require(script.Parent.Props)
 local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
+local Trade = require(script.Parent.Trade)
 local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
@@ -143,6 +144,7 @@ function World.build()
 
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
 	Dealer.build(folder)
+	Trade.build(folder) -- the Trading Post between the dealer's lot and base camp
 	MeadowDecor.build(folder)
 
 	-- The land office and the buildable plots south of the main road.
