@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local Trucks = require(Config:WaitForChild("Trucks"))
+local Trailers = require(Config:WaitForChild("Trailers"))
 local Game = require(Config:WaitForChild("Game"))
 local remotes = ReplicatedStorage:WaitForChild("DealerRemotes")
 local buyRemote = remotes:WaitForChild("Buy")
@@ -75,8 +76,19 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 local buttons = {} -- truck id -> button
 local busy = false
 
-local function owns(id)
-	local ownedList = player:GetAttribute("OwnedTrucks") or ""
+-- Everything on sale: the trucks, then the trailers. Trailers are always available.
+local items = {}
+for _, def in Trucks do
+	table.insert(items, { id = def.id, name = def.name, price = def.price, blurb = def.blurb, available = def.available, owned = "OwnedTrucks", get = "GET MY TRUCK" })
+end
+for _, def in Trailers do
+	local blurb = ("Trailer: %d bales a layer. Parks on the lot; back up to it and press H."):format(def.along * def.across)
+	table.insert(items, { id = def.id, name = def.name, price = def.price, blurb = blurb, available = true, owned = "OwnedTrailers", get = "GET MY TRAILER" })
+end
+
+local function owns(def)
+	local ownedList = player:GetAttribute(def.owned) or ""
+	local id = def.id
 	for owned in string.gmatch(ownedList, "[^,]+") do
 		if owned == id then
 			return true
@@ -88,14 +100,14 @@ end
 local function refresh()
 	local cash = player:GetAttribute("Cash") or 0
 	cashLabel.Text = ("Your cash: $%d"):format(cash)
-	for _, def in Trucks do
+	for _, def in items do
 		local button = buttons[def.id]
 		if not def.available then
 			button.Text = "COMING SOON"
 			button.BackgroundColor3 = MUTED
 			button.AutoButtonColor = false
-		elseif owns(def.id) then
-			button.Text = "GET MY TRUCK"
+		elseif owns(def) then
+			button.Text = def.get
 			button.BackgroundColor3 = GREEN
 			button.AutoButtonColor = true
 		elseif cash >= def.price then
@@ -110,7 +122,7 @@ local function refresh()
 	end
 end
 
-for i, def in Trucks do
+for i, def in items do
 	local card = Instance.new("Frame")
 	card.LayoutOrder = i
 	card.Size = UDim2.new(1, -8, 0, 92)
@@ -169,6 +181,7 @@ end
 
 player:GetAttributeChangedSignal("Cash"):Connect(refresh)
 player:GetAttributeChangedSignal("OwnedTrucks"):Connect(refresh)
+player:GetAttributeChangedSignal("OwnedTrailers"):Connect(refresh)
 refresh()
 
 -- The panel shows while you stand at the counter (on Hank's rug).

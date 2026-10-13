@@ -76,6 +76,16 @@ return function(SelfTest)
 		local need = chassis.AssemblyMass * workspace.Gravity * 1.2
 		t.check("drive force lifts the truck's own weight with room to spare", chassis.Drive.MaxForce >= need, ("%.0f, want >= %.0f"):format(chassis.Drive.MaxForce, need))
 
+		-- Every truck with a bale bed holds 9 bales a layer (3 along x 3 across).
+		for _, id in { "rusty_pickup", "farm_flatbed" } do
+			local m = Vehicles.build(Vehicles.get(id), t.place(), workspace)
+			t.cleanup(m)
+			local size = m:GetAttribute("CargoSize")
+			local slots = size and math.floor((size.X + 0.3) / 3.2) * math.floor((size.Z + 0.3) / 4.6) or 0
+			t.equal(id .. " bed holds 9 bales a layer", slots, 9)
+			m:Destroy()
+		end
+
 		-- Hitch and unhitch ------------------------------------------------------------------------------------
 		local trailerDef = Vehicles.getTrailer("small_trailer")
 		local trailer = Vehicles.buildTrailer(trailerDef, chassis.CFrame * CFrame.new(0, -chassis.Position.Y + t.center.Position.Y, 30), workspace)
