@@ -213,6 +213,24 @@ for _, d in workspace:GetDescendants() do
 end
 print("road polish", #RoadPolish.bridges, "bridge sides", inLane == 0 and polishOk and "ok" or "WRONG")
 
+-- Ferry deck life: each ferry (not the zeppelin) has its snack stand, bounty board and fishing spot.
+local deckLifeOk, decks = true, 0
+for _, d in workspace:GetDescendants() do
+	if d.Name == "Promenade" then
+		decks += 1
+		local m = d.Parent
+		for _, need in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+			local p = m:FindFirstChild(need)
+			if not p or not p:FindFirstChildOfClass("ProximityPrompt") then
+				deckLifeOk = false
+				print("WARN ferry deck missing", need, m.Name)
+			end
+		end
+	end
+end
+if decks ~= #Map.Ferry.Routes then deckLifeOk = false print("WARN ferry decks with a promenade", decks) end
+print("ferry deck life", decks, deckLifeOk and "ok" or "WRONG")
+
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0
 for _, d in workspace:GetDescendants() do

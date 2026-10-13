@@ -146,6 +146,15 @@ return function(SelfTest)
 			truck.Parent = workspace
 			t.cleanup(truck)
 			t.check(name .. ": a truck on the deck counts as on board", Ferry.onDeck(shuttle, truck))
+			if not shuttle.def.zeppelin then
+				local model = shuttle.root.Parent
+				local life = 0
+				for _, spotName in { "SnackSign", "FerryBountyBoard", "FishingSpot" } do
+					local spotPart = model:FindFirstChild(spotName)
+					life += (spotPart and spotPart:FindFirstChildOfClass("ProximityPrompt")) and 1 or 0
+				end
+				t.equal(name .. ": snack stand, bounty board and fishing spot on the promenade", life, 3)
+			end
 			local stop = shuttle.stops[1]
 			for _, s in shuttle.stops do
 				if (s.cframe.Position - shuttle.root.Position).Magnitude < (stop.cframe.Position - shuttle.root.Position).Magnitude then
