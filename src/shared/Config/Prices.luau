@@ -128,6 +128,7 @@ Prices.Plot = 2500
 -- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
 -- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
 Prices.PlotExpansion = 5000
+Prices.SecondPlot = 25000 -- a second farm per save, for players who outgrow one (placeholder for Econ: 10x a plot)
 Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.

@@ -27,6 +27,7 @@ local moveRemote = state:WaitForChild("Move")
 local copyRemote = state:WaitForChild("Copy")
 local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
+local switchRemote = state:WaitForChild("Switch")
 local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
@@ -136,9 +137,14 @@ local function refreshPanel()
 		elseif ownerId ~= 0 then
 			b.Text = ("VISIT %s  ♥%d"):format(string.upper(info:GetAttribute("OwnerName") or "?"), info:GetAttribute("Likes") or 0)
 			b.BackgroundColor3 = PICKED
-		elseif mine > 0 then
+		elseif mine > 0 and (player:GetAttribute("FarmCount") or 0) >= 2 then
 			b.Text = ("$%d"):format(price)
 			b.BackgroundColor3 = MUTED
+		elseif mine > 0 then
+			-- One farm owned: any free plot can become the second one, at the second-plot price.
+			local second = LandConfig.SecondPlotPrice
+			b.Text = cash >= second and ("BUY 2ND FARM $%d"):format(second) or ("2ND FARM: NEED $%d"):format(second - cash)
+			b.BackgroundColor3 = cash >= second and GREEN or MUTED
 		elseif cash >= price then
 			b.Text = ("BUY  $%d"):format(price)
 			b.BackgroundColor3 = GREEN
@@ -288,6 +294,9 @@ pasteButton.Size = UDim2.fromOffset(98, 34)
 local expandButton = button(actions, "EXPAND", GREEN)
 expandButton.Size = UDim2.fromOffset(130, 34)
 expandButton.Visible = false
+local switchButton = button(actions, "SWITCH FARM", GREEN)
+switchButton.Size = UDim2.fromOffset(120, 34)
+switchButton.Visible = false
 local themeButton = button(actions, "THEME", PICKED)
 themeButton.Size = UDim2.fromOffset(150, 34)
 local crewButton = button(actions, "CREW", PICKED)
@@ -873,6 +882,20 @@ end)
 
 player:GetAttributeChangedSignal("LandPlot"):Connect(function()
 	task.delay(0.2, refreshThemeButton)
+end)
+local function refreshSwitch()
+	switchButton.Visible = (player:GetAttribute("FarmCount") or 0) >= 2
+end
+player:GetAttributeChangedSignal("FarmCount"):Connect(function()
+	refreshSwitch()
+	refreshPanel()
+end)
+refreshSwitch()
+switchButton.Activated:Connect(function()
+	if busy then
+		return
+	end
+	report(call(switchRemote))
 end)
 refreshThemeButton()
 
