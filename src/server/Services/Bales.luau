@@ -314,7 +314,8 @@ function Bales.breakOpen(player, b)
 					center + offset,
 					Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)),
 					baleOwner,
-					"Needle"
+					"Needle",
+					hayType
 				)
 				Feedback.needle(needle, Hay.needleValue(needle))
 			end
