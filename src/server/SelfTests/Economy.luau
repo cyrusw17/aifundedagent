@@ -9,7 +9,14 @@ local Services = script.Parent.Parent.Services
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 
 -- Prices that are meant to be free.
-local FREE = { ["Prices.Gloves.bare"] = true, ["Prices.Travel.barge"] = true }
+-- Numbers that are meant to be zero: free gloves and barge, the first contract tier (starts at no sales) and B-grade
+-- needles (no bonus).
+local FREE = {
+	["Prices.Gloves.bare"] = true,
+	["Prices.Travel.barge"] = true,
+	["Prices.DailyContracts.Tiers.1.fromSold"] = true,
+	["Prices.NeedleGrades.B"] = true,
+}
 
 local function deepCopy(v)
 	if typeof(v) ~= "table" then

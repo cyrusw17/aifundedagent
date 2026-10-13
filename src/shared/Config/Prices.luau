@@ -480,4 +480,38 @@ function Prices.needleChance(hayType: string?): number
 	return perBale / Prices.HayPerBale
 end
 
+-- Pacing scale (CEO H18) --------------------------------------------------------------------------------------------
+
+-- One dial for how long the climb takes after the first hour. Every truck, trailer, glove and build piece priced at
+-- PacingFrom or more is multiplied by PacingScale and rounded to two significant figures; first-hour buys (under
+-- PacingFrom, and the Rusty Pickup) never change. 1 is the prices written above. tools/boost_sim.py picks the value
+-- that lands the Semi at Prices' target hours for a typical player with typical boosts, and tools/line_sim.py,
+-- pacing_sim.py and economy_model.py apply the same rule (line_sim.paced). Cyrus's 14 h vs 40 h question is
+-- separate: answering it changes the target, then this value.
+Prices.PacingScale = 1.2
+Prices.PacingFrom = 4000
+Prices.PacingKeep = { rusty_pickup = true }
+
+function Prices.paced(id: string, price: number): number
+	if Prices.PacingScale == 1 or price < Prices.PacingFrom or Prices.PacingKeep[id] then
+		return price
+	end
+	local x = price * Prices.PacingScale
+	local step = 10 ^ (math.floor(math.log10(x)) - 1)
+	return math.floor(x / step + 0.5) * step
+end
+
+-- The daily contract tiers are lifetime sales at each stage, so they stretch with it.
+for _, tier: any in Prices.DailyContracts.Tiers do
+	tier.fromSold = math.floor(tier.fromSold * Prices.PacingScale + 0.5)
+end
+
+for _, list: { [string]: any } in { Prices.Trucks, Prices.Trailers, Prices.Gloves, Prices.Pieces } :: { any } do
+	for id, price in list do
+		if typeof(price) == "number" then
+			list[id] = Prices.paced(id :: string, price)
+		end
+	end
+end
+
 return Prices

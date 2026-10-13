@@ -642,6 +642,7 @@ local function field(regionName, hayType, center, y, count, rng)
 			track(fresh)
 			if entry.rich and fresh then
 				fresh.body:SetAttribute("NeedleBoost", 2)
+				fresh.body:SetAttribute("RichBoost", true)
 			end
 		end
 	end

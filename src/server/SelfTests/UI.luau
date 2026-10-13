@@ -238,6 +238,9 @@ return function(SelfTest)
 			local outside = {}
 			for _, d in mine do
 				local at = d.at
+				if d.kind == "hidden" then
+					continue -- secret spots have no stamp
+				end
 				if
 					typeof(at) ~= "Vector2"
 					or at.X < Map.Bounds.min.X

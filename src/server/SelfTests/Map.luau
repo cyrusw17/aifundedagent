@@ -413,7 +413,8 @@ return function(SelfTest)
 				if b.body and b.body.Parent then
 					if entry.rich and b.body:GetAttribute("NeedleBoost") == 2 then
 						boosted += 1
-					elseif not entry.rich and b.body:GetAttribute("NeedleBoost") then
+					-- Other fields may keep a festival or region-event boost; only the rich field's must go.
+					elseif not entry.rich and (b.body:GetAttribute("RichBoost") or (b.body:GetAttribute("NeedleBoost") == 2 and not b.body:GetAttribute("RegionEvent"))) then
 						plain += 1
 					end
 				end
