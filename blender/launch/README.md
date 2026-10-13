@@ -28,3 +28,21 @@ python blender/launch/finish.py                        # titles, icon resize, fi
 - `shots.py`: one function per shot. Truck beds are filled with loose standard 4.6 x 2.6 x 3.2 bales
   on the 3.5 floor, same as the game.
 - `finish.py`: titles in white with a dark ink stroke (STYLE.md UI text), warm vignette.
+
+## Second batch (shots2.py, finish2.py)
+
+| File (renders/final/) | Use |
+|---|---|
+| `thumbnail_5_burst` .. `thumbnail_8_worldmap`, `thumbnail_9_regions` | More store thumbnails: bale burst, ferry and zeppelin, rich field, the isles diorama, 8-region collage |
+| `events/event_winter`, `event_harvest`, `event_halloween` | Swap in as the cover thumbnail during seasonal events |
+| `icon_A_bale`, `icon_B_truck`, `icon_C_farmer` | Three 512 icons for Roblox's free icon A/B test |
+| `store/truck_*.png` | Robux truck skins from GAME_PLAN_V8 Part C 10 (Homestead Classic, Timber Wolf 4x4, Midnight Express, Prairie Schooner, Founders' Semi) |
+| `store/pass_*.png` | Gamepasses (VIP, Auto-Dock, Big Silo, Paint Studio, Plot Themes, Truck Radio), server boosts (Hay Fever, Meteor Shower) and the Harvest Pass |
+
+```
+python blender/launch/shots2.py -- --preview --only "store_*"
+python blender/launch/finish2.py
+```
+
+Note: these scenes assume the vehicle .glbs as exported on 2026-10-13 (front toward Blender -Y). If the Blender
+thread's rig re-export flips vehicles to face the other way, turn them 180 degrees in `shots.rig` and the store shots.
