@@ -40,7 +40,7 @@ local STEEL = Color3.fromRGB(128, 117, 105)
 local TWINE = Color3.fromRGB(97, 84, 69) -- twine
 local CLEAN_HAY = Color3.fromRGB(219, 204, 153)
 local GREEN = Color3.fromRGB(150, 170, 100)
-local PAD = Color3.fromRGB(205, 150, 80)
+local PAD = Color3.fromRGB(180, 150, 110)
 
 local rng = Random.new()
 local folder = nil
