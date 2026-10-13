@@ -16,6 +16,7 @@ local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Needles = require(ReplicatedStorage.Shared.Config.Needles)
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
+local Feedback = require(script.Parent.Feedback)
 
 local Needle = {}
 
@@ -23,7 +24,6 @@ local SIZE = Vector3.new(1.2, 0.15, 0.15)
 local PICKUP_REACH = 10
 local MUTATION_CHANCE = 1 / 500
 local MUTATION_MIN, MUTATION_MAX = 3, 25
-local DING = "rbxasset://sounds/electronicpingshort.wav"
 local FANFARE = "rbxasset://sounds/victory.wav"
 
 -- Color per needle type, and whether it glows. Common types are plain metal; the rare maps glow.
@@ -144,7 +144,7 @@ local function pickUp(player, n)
 	n:Destroy()
 	Data.toast(
 		player,
-		("Picked up a %s%s needle ($%d). Sell it at a SELL NEEDLES pad."):format(
+		("Picked up a %s%s needle ($%d). Any sell pad buys it."):format(
 			mult > 1 and ("x%d MUTATED "):format(mult) or "",
 			Needle.info(id).name:lower(),
 			Needle.priceOf(id, mult)
@@ -263,7 +263,7 @@ function Needle.throw(from, to, ownerId, needleId)
 				n:SetNetworkOwner(nil)
 			end)
 			glint(n, 6)
-			sound(n, DING, 0.35)
+			Feedback.needle(n, Needle.value(n)) -- a ding pitched by what the needle is worth
 		end
 	end)
 	return n

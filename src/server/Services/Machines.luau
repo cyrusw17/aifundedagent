@@ -24,6 +24,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
+local Feedback = require(script.Parent.Feedback)
 
 local Machines = {}
 
@@ -102,6 +103,7 @@ function Machines.pay(ownerId, amount, text)
 	state.cash += amount
 	Data.sync(owner)
 	Data.toast(owner, text)
+	Feedback.sale(owner, amount)
 end
 
 -- A tycoon button: a round pad on the ground that fires once each time a player steps onto it.
