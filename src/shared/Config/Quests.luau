@@ -1143,7 +1143,7 @@ Quests.List = {
 				text = "Set the shards on the pedestal in the Loom Room",
 			},
 		},
-		reward = { relic = "master_needle", cash = 25000 },
+		reward = { relic = "master_needle", cash = 100000 }, -- about 15 minutes of Volcano-stage income: the biggest one-time payout (Econ)
 	},
 	{
 		id = "straw_labyrinth",
