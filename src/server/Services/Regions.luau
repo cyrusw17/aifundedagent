@@ -924,7 +924,7 @@ function LANDMARKS.spindle(folder)
 	local x, z = 155, -990
 	local base = spot(x, z, Vector2.new(1, 0))
 	local stone = Color3.fromRGB(150, 142, 160)
-	part(folder, "DoorFrame", Vector3.new(20, 26, 4), base * CFrame.new(0, 12, 2.5), stone, Enum.Material.Slate)
+	local frame = part(folder, "DoorFrame", Vector3.new(20, 26, 4), base * CFrame.new(0, 12, 2.5), stone, Enum.Material.Slate)
 	local door = part(folder, "SpindleDoor", Vector3.new(14, 20, 1), base * CFrame.new(0, 10, 0.2), Color3.fromRGB(96, 86, 120), Enum.Material.Slate)
 	for i = 0, 11 do
 		local a = i / 12 * math.pi * 2
@@ -934,6 +934,16 @@ function LANDMARKS.spindle(folder)
 		CollectionService:AddTag(socket, "ShardSocket")
 	end
 	CollectionService:AddTag(door, "SpindleDoor")
+	-- The Blender Spindle (Config/Props the_spindle), built round this door: its door (center 11 up, front -Z) on
+	-- this one and its twelve sockets on these. Only a look. The part door stays the door (SpindleDoor.client fades
+	-- it for a player with all twelve shards) and the part sockets stay the lights, so the mesh drops its own door.
+	local spindle = Props.make("the_spindle", base * CFrame.new(0, 10 - 11 + 59.9, 0.2 + 19.45 - 2.65))
+	if spindle then
+		for _, piece in Props.find(spindle, "Door") do
+			piece:Destroy()
+		end
+		Props.weldTo(spindle, frame, frame)
+	end
 	billboard(door, "THE SPINDLE\nTwelve shards open this door", Vector3.new(0, 14, 0), 160)
 
 	-- The Observatory on the Spindle's shoulder (meteor showers land here).

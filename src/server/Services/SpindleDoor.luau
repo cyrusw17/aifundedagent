@@ -13,6 +13,7 @@ local QuestConfig = require(ReplicatedStorage.Shared.Config.Quests)
 local WorldTerrain = require(script.Parent.WorldTerrain)
 local Data = require(script.Parent.Data)
 local WorldClock = require(script.Parent.WorldClock)
+local Props = require(script.Parent.Props)
 
 local SpindleDoor = {}
 
@@ -154,6 +155,13 @@ local function loomRoom(door)
 	end
 	local pedestal = part(folder, "MasterNeedlePedestal", Vector3.new(4, 4, 4), base * CFrame.new(0, 2, 2 + depth - 5), stone, Enum.Material.Marble)
 	CollectionService:AddTag(pedestal, "MasterNeedlePedestal")
+	-- The Blender pedestal (Config/Props loom_pedestal, 4 x 4 x 4 with its Cradle on top), when imported: a look on
+	-- the part, which stays the finale's spot.
+	local mesh = Props.make("loom_pedestal", pedestal.CFrame)
+	if mesh then
+		Props.restOn(mesh, pedestal.Position.Y - pedestal.Size.Y / 2)
+		Props.weldTo(mesh, pedestal, pedestal)
+	end
 end
 
 local started = false

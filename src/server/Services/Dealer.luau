@@ -19,6 +19,7 @@ local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
 local Vehicles = require(script.Parent.Vehicles)
+local Props = require(script.Parent.Props)
 local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
 
 local Dealer = {}
@@ -118,6 +119,35 @@ end
 --   garage    x -30..30, z 2..26    roller door at z 5..23, 13 tall
 --   lot       x 30..88,  z -66..34  coming-soon trucks in a row at z -44
 -- The walk from the front door to the counter runs straight west along z -5, clear of the display truck.
+-- The part shell the Blender building replaces (the floors, walls, glass, roof and shop sign).
+local SHELL = {}
+for _, name in {
+	"ShowroomFloor",
+	"GarageFloor",
+	"WestWall",
+	"NorthWall",
+	"SouthWall",
+	"FrontCorner",
+	"WindowSill",
+	"Window",
+	"WindowHeader",
+	"DoorPillar",
+	"DoorHeader",
+	"FrontPillar",
+	"GarageHeader",
+	"CornerPillar",
+	"DividerA",
+	"DividerHeader",
+	"DividerB",
+	"DividerSill",
+	"DividerTop",
+	"DividerC",
+	"Roof",
+	"ShopSign",
+} do
+	SHELL[name] = true
+end
+
 local function buildBuilding()
 	local b = Instance.new("Model")
 	b.Name = "HomesteadMotors"
@@ -202,6 +232,34 @@ local function buildBuilding()
 
 	for _, spot in { Vector3.new(-14, H - 0.6, -12), Vector3.new(14, H - 0.6, -12), Vector3.new(-10, H - 0.6, 14), Vector3.new(14, H - 0.6, 14) } do
 		lamp(b, spot)
+	end
+
+	-- The Blender building (Config/Props homestead_motors, hub.py), cut to this layout: garage door, shop door and
+	-- window line up with these. Its front faces -Z, turned here to face east. It is only a look: the part shell
+	-- stays solid (hidden on each client once the mesh has loaded), the part roller door keeps rolling, and the
+	-- inside divider's walls follow the mesh's one doorway in the middle.
+	local mesh = Props.make("homestead_motors", origin * CFrame.new(2.74, 14.3, 0), nil, CFrame.Angles(0, -math.pi / 2, 0))
+	if mesh then
+		for _, door in Props.find(mesh, "Door") do
+			door:Destroy()
+		end
+		Props.restOn(mesh, origin.Y - 0.3) -- its slab top level with these floors
+		local look, divider = {}, {}
+		for _, p in b:GetChildren() do
+			if p:IsA("BasePart") and SHELL[p.Name] then
+				table.insert(look, p)
+				if string.match(p.Name, "^Divider") or (p.Name == "Window" and p.Position.X < origin.X + 20) then
+					table.insert(divider, p)
+				end
+			end
+		end
+		Props.weldTo(mesh, b.Roof, look)
+		for _, p in divider do
+			p.CanCollide = false
+		end
+		for _, wall in { { -29.2, -2.5, 0, H }, { 2.5, 29.2, 0, H }, { -2.5, 2.5, 8.3, H } } do
+			block(b, "DividerWall", wall[1], wall[2], wall[3], wall[4], 1.6, 2.4, Rustic.PaintCream).Transparency = 1
+		end
 	end
 end
 

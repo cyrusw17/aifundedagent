@@ -26,6 +26,7 @@ local Gloves = require(script.Parent.Gloves)
 local Vehicles = require(script.Parent.Vehicles)
 local WorldShape = require(script.Parent.WorldShape)
 local Regions = require(script.Parent.Regions)
+local Props = require(script.Parent.Props)
 local MapConfig = require(Shared.Config.WorldMap)
 
 local Quests = {}
@@ -851,17 +852,32 @@ local function mazeDeadEnds(open, n, cell)
 	return list
 end
 
+-- Returns the posts and lanterns, the look a Blender arch replaces.
 local function entranceLanterns(m, cf, cell, half)
+	local parts = {}
 	for _, side in { -1, 1 } do
 		local base = cf * CFrame.new(side * (cell / 2 + 1.5), 0, half + 2)
-		part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood)
+		table.insert(parts, part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood))
 		local lantern =
 			part(m, "Lantern", Vector3.new(1, 1.3, 1), base * CFrame.new(0, 6.4, 0), Rustic.Metal, Enum.Material.Metal)
 		local glow = Instance.new("PointLight")
 		glow.Color = Color3.fromRGB(255, 200, 120)
 		glow.Range = 16
 		glow.Parent = lantern
+		table.insert(parts, lantern)
 	end
+	return parts
+end
+
+-- A Blender prop as the look of part(s) already placed (fallback), standing on cf's ground: only a look, welded to
+-- anchor; each client keeps the parts until the mesh has loaded. Nothing happens when it was not imported.
+local function dressWith(name, at, ground, anchor, fallback)
+	local mesh = Props.make(name, at)
+	if mesh then
+		Props.restOn(mesh, ground)
+		Props.weldTo(mesh, anchor, fallback)
+	end
+	return mesh
 end
 
 -- The Corn Night Maze (fixed seed). spot.keyCells gets the three farthest dead ends, where the corn keys go.
@@ -910,7 +926,9 @@ function LOOKS.labyrinth(m, cf, spot)
 	mazeWalls(cf, open, LAB_CELLS, LAB_CELL, LAB_WALL, LAB_HEIGHT, LAB_HEIGHT / 2, function(wcf, size)
 		part(m, "StrawWall", size, wcf, straw, Enum.Material.Fabric).CastShadow = false
 	end)
-	entranceLanterns(m, cf, LAB_CELL, half)
+	-- The Blender arch (Config/Props labyrinth_arch, its lanterns at x +-3.85) over the entrance, when imported.
+	local lanterns = entranceLanterns(m, cf, LAB_CELL, half)
+	dressWith("labyrinth_arch", cf * CFrame.new(0, 6.5, half + 1), cf.Y, lanterns[1], lanterns)
 	-- The start line in the entrance cell.
 	local startLine = part(
 		m,
@@ -936,8 +954,9 @@ function LOOKS.labyrinth(m, cf, spot)
 	local floor =
 		part(m, "Finish", Vector3.new(6, 0.2, 6), cf * CFrame.new(0, 0.1, 0), Rustic.HayLight, Enum.Material.Fabric)
 	floor.CanCollide = false
-	part(m, "BellPost", Vector3.new(0.5, 7, 0.5), cf * CFrame.new(0, 3.5, 0), Rustic.WoodDark, Enum.Material.Wood)
-	part(
+	local bellPost =
+		part(m, "BellPost", Vector3.new(0.5, 7, 0.5), cf * CFrame.new(0, 3.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+	local bell = part(
 		m,
 		"Bell",
 		Vector3.new(1.4, 1.4, 1.4),
@@ -946,6 +965,12 @@ function LOOKS.labyrinth(m, cf, spot)
 		Enum.Material.Metal,
 		Enum.PartType.Ball
 	)
+	-- The Blender bell post (Config/Props labyrinth_bell), turned so its bell hangs toward +Z like this one.
+	local mesh = Props.make("labyrinth_bell", cf * CFrame.new(0, 3.5, 0.66) * CFrame.Angles(0, math.pi, 0))
+	if mesh then
+		Props.restOn(mesh, cf.Y)
+		Props.weldTo(mesh, bellPost, { bellPost, bell })
+	end
 	return floor
 end
 

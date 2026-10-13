@@ -176,6 +176,12 @@ return function(SelfTest)
 			{ "ash_sifter", "Belt" },
 			{ "ash_sifter", "Drum" },
 			{ "ash_sifter", "Shaker" },
+			{ "homestead_motors", "Door" },
+			{ "the_spindle", "Socket12" },
+			{ "loom_pedestal", "Cradle" },
+			{ "labyrinth_arch", "Lantern_R" },
+			{ "labyrinth_bell", "Bell" },
+			{ "hay_wagon", "Wheel_R2" },
 		} do
 			if Props.has(want[1]) then
 				local model = Props.make(want[1], t.place())
