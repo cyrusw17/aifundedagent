@@ -286,6 +286,16 @@ return function(SelfTest)
 			t.skip("turnFor on a north plot round-trips", "no north-row plot")
 		end
 
+		-- Grid numbers from clients: whole and finite only.
+		local badCells = {}
+		for _, n in { math.huge, -math.huge, 0 / 0, 0.5, "3", 1e9 } do
+			if L.isCell(n) then
+				table.insert(badCells, tostring(n))
+			end
+		end
+		t.check("isCell rejects inf, nan, fractions, strings and huge numbers", #badCells == 0, table.concat(badCells, ", "))
+		t.check("isCell accepts a plain cell", L.isCell(3) and L.isCell(0))
+
 		local free = freePlots(L)
 		if #free < 2 then
 			t.skip("claim, save and load", ("needs 2 free plots, %d free"):format(#free))
@@ -386,6 +396,40 @@ return function(SelfTest)
 			L.release(a)
 			t.check("releasing the second farm keeps the first", L.plotOf[owner] == b)
 			t.equal("FarmCount is 1", owner:GetAttribute("FarmCount"), 1)
+
+			-- Remote guards (Conveyor audit 24/25).
+			local before = #b.list
+			local pasted, why = L.onPaste(owner, { { id = "belt", dx = math.huge, dz = 0, dir = "N" } }, 0, 0)
+			t.check("paste refuses an infinite offset", not pasted and #b.list == before, why)
+			local bought, buyWhy = L.onBuyRemote(owner, 1)
+			t.check("buying away from the Land Office is refused", not bought and tostring(buyWhy):find("Land Office") ~= nil, buyWhy)
+			local expanded = L.onExpandRemote(owner)
+			t.check("expanding away from the farm and the office is refused", not expanded)
+
+			-- Crew hand-offs: owner and crew of one farm are teammates, an outsider is not.
+			local mateA, mateB, outsider = fakeOwner(-525252), fakeOwner(-626262), fakeOwner(-727272)
+			b.crew[mateA.UserId], b.crew[mateB.UserId] = true, true
+			local isTeammate = (require(Services.Bales) :: any).isTeammate
+			if isTeammate then
+				t.check("two crew of the same farm are teammates", isTeammate(mateA, mateB))
+				t.check("the owner and their crew are teammates", isTeammate(owner, mateA))
+				t.check("an outsider is not a teammate", not isTeammate(owner, outsider))
+			else
+				t.skip("crew teammates", "Bales.isTeammate isn't set")
+			end
+			b.crew[mateA.UserId], b.crew[mateB.UserId] = nil, nil
+
+			-- Crew needs the invited player's yes.
+			local Players = game:GetService("Players")
+			local guest = Players:GetPlayers()[1]
+			if guest then
+				local asked = L.onCrew(owner, guest.UserId, true)
+				t.check("adding crew only sends an invite", asked and b.crew[guest.UserId] == nil and guest:GetAttribute("CrewInvite") ~= nil)
+				L.onCrewAnswer(guest, owner.UserId, false)
+				t.check("saying no leaves the crew unchanged", b.crew[guest.UserId] == nil and guest:GetAttribute("CrewInvite") == nil)
+			else
+				t.skip("crew invites need a yes", "needs a player in the server")
+			end
 		end)
 		-- Always hand the plots back.
 		for _, plot in { a, b } do
@@ -437,6 +481,16 @@ return function(SelfTest)
 			t.skip("place and undo", "no free cell on the player's farm")
 			return
 		end
+		-- Visiting can't carry hay across the map.
+		local state = Data.get(player)
+		if state then
+			local had = state.loadHay
+			state.loadHay = 1
+			local visited = L.onVisit(player, mine.index)
+			state.loadHay = had
+			t.check("visiting a farm is refused while carrying hay", not visited)
+		end
+
 		local before = #mine.list
 		local placed = L.onPlace(player, "belt", spot[1], spot[2], "N")
 		t.check("place builds a belt", placed and #mine.list == before + 1)

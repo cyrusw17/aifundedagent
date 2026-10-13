@@ -283,6 +283,18 @@ return function(SelfTest)
 		end
 		t.check("bridges are gentle enough for a trailer", #steep == 0, #steep > 0 and table.concat(steep, ", ") or nil)
 
+		-- The hay wagon --------------------------------------------------------------------------------------------
+		local HayWagon = require(Services.HayWagon)
+		t.check("the free hay wagon runs with six seats", HayWagon.model ~= nil and HayWagon.model.Parent ~= nil and #HayWagon.seats == 6)
+		if HayWagon.model then
+			local before = HayWagon.model:GetPivot().Position
+			local wagonWait = HayWagon.state.wait
+			HayWagon.state.wait = 0
+			HayWagon.step(1)
+			t.check("...and moves along its road", (HayWagon.model:GetPivot().Position - before).Magnitude > 1)
+			HayWagon.state.wait = wagonWait
+		end
+
 		-- The Spindle door ---------------------------------------------------------------------------------------
 		local SpindleDoor = require(Services.SpindleDoor)
 		local CollectionService = game:GetService("CollectionService")
