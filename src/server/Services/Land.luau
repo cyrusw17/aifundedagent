@@ -213,32 +213,62 @@ local function buildSilo(plot, item, def)
 	model.Name = "HaySilo"
 	model.Parent = plot.items
 
-	local height = 20
-	local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
-	body.Shape = Enum.PartType.Cylinder
-	local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
-	cap.Shape = Enum.PartType.Ball
-	part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
-	-- The chute comes out over the anchor lane at belt height.
+	local capacity = def.capacity or LandConfig.SiloCapacity
 	local laneX = -(def.size[1] - 1) * T / 2
-	part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
-	local label = sign(cap, "", Vector3.new(0, 4, 0))
-
-	local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
-	if mesh then
-		Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
-		for _, p in mesh:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.CanCollide = false
-			end
+	local label
+	if def.look == "barn" then
+		-- A red barn: plank walls, a pitched roof, white trim, and big doors at the front over the chute.
+		model.Name = "HayBarn"
+		local wallH = 10
+		local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
+		local pitch = math.rad(35)
+		local roofW = (w - 1) / 2 / math.cos(pitch) + 0.6
+		for _, side in { -1, 1 } do
+			part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
 		end
-		-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
-		Props.weldTo(mesh, body, { body, cap })
+		for _, x in { -(w - 1) / 2, (w - 1) / 2 } do
+			part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		end
+		part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(body, "", Vector3.new(0, wallH / 2 + (w - 1) / 4 + 3, 0))
+		local mesh = Props.make("barn", frame * CFrame.new(0, wallH / 2, 0), Vector3.new(w - 0.5, wallH + (w - 1) / 2, l - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y)
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			Props.weldTo(mesh, body, { body })
+		end
+	else
+		local height = 20
+		local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
+		body.Shape = Enum.PartType.Cylinder
+		local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
+		cap.Shape = Enum.PartType.Ball
+		part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
+		-- The chute comes out over the anchor lane at belt height.
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(cap, "", Vector3.new(0, 4, 0))
+
+		local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
+			Props.weldTo(mesh, body, { body, cap })
+		end
 	end
 
-	item.stored = math.clamp(item.stored or 0, 0, LandConfig.SiloCapacity)
+	item.stored = math.clamp(item.stored or 0, 0, capacity)
 	local function refresh()
-		label.Text = ("HAY SILO\n%d / %d bales"):format(item.stored, LandConfig.SiloCapacity)
+		label.Text = ("%s\n%d / %d bales"):format(def.name:upper(), item.stored, capacity)
 	end
 	refresh()
 
@@ -254,7 +284,7 @@ local function buildSilo(plot, item, def)
 			local changed = false
 			for _, p in Workspace:GetPartBoundsInBox(intake, intakeSize) do
 				local b = Bales.fromPart(p)
-				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < LandConfig.SiloCapacity then
+				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < capacity then
 					Bales.consume(b)
 					item.stored += 1
 					changed = true

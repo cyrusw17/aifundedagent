@@ -169,6 +169,7 @@ Prices.Pieces = {
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
 	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
 	decor_flowers = 200,
 	decor_bench = 350,
