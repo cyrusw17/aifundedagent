@@ -16,6 +16,7 @@ local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
 local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
+local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
@@ -65,7 +66,7 @@ local function buildBale(position, hayType)
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
 	-- Each region's hay has its own bale mesh (bale_pine, bale_star, ...); the meadow bale is hay_bale.
-	local regionalName = ("bale_%s"):format(hayType)
+	local regionalName = PropsConfig.BaleForHay[hayType] or ("bale_%s"):format(hayType)
 	local regional = hayType ~= "meadow" and Props.has(regionalName)
 	local mesh = Props.make(regional and regionalName or "hay_bale", body.CFrame, SIZE)
 	if mesh then
