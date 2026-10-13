@@ -38,6 +38,12 @@ return function(SelfTest)
 		local Blueprints = require(Services.Blueprints)
 		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
 		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
+		-- Every sorter tier has its own band color and star count (#27), so a line reads at a glance.
+		local bands, stars = {}, {}
+		for id, look in Machines.TierLooks do
+			t.check(id .. " has a look of its own", not bands[look.band:ToHex()] and not stars[look.stars])
+			bands[look.band:ToHex()], stars[look.stars] = true, true
+		end
 
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
