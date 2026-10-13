@@ -26,6 +26,8 @@ local Wheelbarrow = require(Services.Wheelbarrow)
 local Tools = require(Services.Tools)
 local Weather = require(Services.Weather)
 local Feedback = require(Services.Feedback)
+local ToolSkins = require(Services.ToolSkins)
+local SkinConfig = require(Shared.Config.ToolSkins)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
@@ -277,6 +279,38 @@ local function noPlayerChecks(t)
 		end
 	end
 	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
+
+	-- Earned tool skins: a page unlocks only when complete, and a skin recolors the tool and comes off cleanly.
+	local commonFinds = {}
+	for _, id in SkinConfig.CommonFinds do
+		commonFinds[id] = 1
+	end
+	t.check("no skin for an empty book", not ToolSkins.pageDone({ finds = {}, codex = {} }, "finds_common"))
+	t.check("the common finds page completes the Driftwood Rake", ToolSkins.pageDone({ finds = commonFinds }, "finds_common"))
+	t.check("...but not the whole finds page", not ToolSkins.pageDone({ finds = commonFinds }, "finds"))
+	local allHay = {}
+	for id in GloveConfig.HayTypes do
+		allHay[id] = true
+	end
+	t.check("every hay type broken completes the hay page", ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	allHay.meadow = nil
+	t.check("one missing hay type leaves it open", not ToolSkins.pageDone({ codex = { hay = allHay } }, "hay"))
+	local tool = Instance.new("Tool")
+	tool.Name = "Shovel"
+	local blade = Instance.new("Part")
+	blade.Name = "Blade"
+	blade.Color = Color3.fromRGB(100, 100, 100)
+	blade.Material = Enum.Material.Metal
+	blade.Parent = tool
+	t.cleanup(tool)
+	ToolSkins.dress(tool, "golden_shovel")
+	t.check("a skin recolors the tool", blade.Color ~= Color3.fromRGB(100, 100, 100) and tool:GetAttribute("Skin") == "golden_shovel")
+	t.check("...and the golden one glints", tool:FindFirstChild("SkinGlint", true) ~= nil)
+	ToolSkins.dress(tool, nil)
+	t.check("taking it off puts the tool's own look back", blade.Color == Color3.fromRGB(100, 100, 100) and blade.Material == Enum.Material.Metal and tool:FindFirstChild("SkinGlint", true) == nil)
+	for _, def in SkinConfig.Skins do
+		t.check(("%s is cosmetic only (no stats)"):format(def.name), def.speed == nil and def.scoopBonus == nil and def.reach == nil)
+	end
 
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
 	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.
