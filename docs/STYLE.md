@@ -70,6 +70,27 @@ Game-side colors (Roblox `Color3.fromRGB`) that match:
 New colors should be muted and warm: pull bright colors about 25 to 30% toward warm grey
 (`mock.rustic_palette()` does this). Glow is the only exception and is kept for rare items.
 
+## Regions
+
+Each region keeps the Rustic house look and swaps a few palettes, plus **one accent color** used on signs, trim,
+painted doors and UI highlights in that region, so regions read differently at a glance. Source of truth:
+`blender/mockups/regions.py` (sheet: `/mnt/project-files/mockups/region_style_sheet.png`).
+Each cell is light / mid / dark hex; the game-side RGB is the mid shade. A dash means the house palette.
+
+| Region | Ground | Hay | Bark | Leaves | Accent | Sky / fog | Props |
+|---|---|---|---|---|---|---|---|
+| Meadow | #808F61 #708052 #5C6B42 (112, 128, 82) | – | – | #5C7547 #4C663B #3B4F2E (76, 102, 59) | barn red: #9E4C3D #853D30 #5C2E24 (133, 61, 48) | #BDC7C2 | oak |
+| Pine Forest | #667552 #546342 #61523D (84, 99, 66) | #C2BD8A #9E9C66 #6B6B42 (158, 156, 102) | #574536 #423326 #241C14 (66, 51, 38) | #3D5C47 #304C3B #213629 (48, 76, 59) | pine teal: #4C7A70 #3D665E #294742 (61, 102, 94) | #9EB0AD | pine |
+| Desert Dunes | #D1BA8F #C2A87D #9E8561 (194, 168, 125) | #E6D9AD #D1BA85 #9E8759 (209, 186, 133) | #948775 #7A6E5E #52473D (122, 110, 94) | #80946B #6B8059 #4C5E42 (107, 128, 89) | terracotta: #BD704C #A86140 #75422E (168, 97, 64) | #E0D1B8 | cactus |
+| Snow Peak | #EBEDF0 #D6DBE0 #8F8F8F (214, 219, 224) | #E0DBC2 #BFB894 #8A8269 (191, 184, 148) | #5C524A #474038 #26211F (71, 64, 56) | #425C54 #364C47 #243633 (54, 76, 71) | ice blue: #8AADC7 #7096B2 #4C6B85 (112, 150, 178) | #D1DBE6 | snowpine |
+| Swamp | #666B4A #54593D #3D402E (84, 89, 61) | #A8A36E #85804F #575233 (133, 128, 79) | #4C473D #3B362E #1F1C1A (59, 54, 46) | #5C7042 #4A5C36 #334026 (74, 92, 54) | firefly green: #B2C25C #99AD47 #6B7A33 (153, 173, 71) | #99A38F | deadtree |
+
+- Props per region: Meadow blocky oaks; Pine Forest stacked-cone pines; Desert block cacti, bleached rocks, low dunes;
+  Snow Peak the same pines with white caps on each tier, stone patches; Swamp leaning dead trees, reeds, dark water and firefly glows.
+- Hay keeps one shape everywhere; only its colors change. These hays match the hay types sheet.
+- Use the accent sparingly: one sign, trim or highlight per building, never a whole wall.
+- Sky / fog is the `Atmosphere` and fog tint for that region in game.
+
 ## Materials
 
 - Blender: generated straw, bark, end grain, plank and metal textures from `lib/style.py`, matte
