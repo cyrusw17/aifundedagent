@@ -13,9 +13,9 @@ local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
+local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
-local Props = require(script.Parent.Props)
 
 local Bales = {}
 

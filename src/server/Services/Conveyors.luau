@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
+local Skins = require(script.Parent.Skins)
 
 local Conveyors = {}
 
@@ -113,6 +114,7 @@ end
 
 -- Adds rails once the whole line is laid. A side gets a rail unless a tile there feeds into this one.
 -- The back gets a rail unless something feeds in from behind. The front is left open so loads move on.
+-- Straight tiles (nothing feeding in from a side) also get the conveyor_straight mesh when it was imported.
 function Conveyors.finish(grid)
 	for _, tile in grid.tiles do
 		local top = Conveyors.cellCenter(grid, tile.gx, tile.gz) + Vector3.new(0, Factory.BeltTop, 0)
@@ -120,12 +122,19 @@ function Conveyors.finish(grid)
 		if not tile.openBack then
 			table.insert(sides, -tile.d)
 		end
-		for _, side in sides do
+		local straight = true
+		for i, side in sides do
 			local n = grid.tiles[key(tile.gx + math.round(side.X), tile.gz + math.round(side.Z))]
 			local feedsIn = n and (n.d + side).Magnitude < 0.01
 			if not feedsIn then
 				addRail(tile, side, top)
+			elseif i <= 2 then
+				straight = false
 			end
+		end
+		if straight then
+			-- The mesh's belt runs along its own X axis.
+			Skins.dress("conveyor_straight", tile.model.Frame, tile.model, Conveyors.frame(grid, tile.gx, tile.gz, tile.dir), CFrame.Angles(0, math.pi / 2, 0))
 		end
 	end
 end

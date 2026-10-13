@@ -64,3 +64,64 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
+
+-- The moving pieces of Blender machine meshes (Skins.luau): rollers, drums, reels and flywheels spin about their axle,
+-- shaker beds rattle. A piece inside a model with a "Running" attribute only moves while it is true.
+local SPIN_SPEED = 6 -- radians per second
+local SHAKE = 0.12 -- studs
+
+local moving = {} -- part -> { rest = CFrame, axis = Vector3, kind = string, machine = Instance? }
+
+-- A cylinder's axle is the side whose length differs most from the other two.
+local function axle(size)
+	local x, y, z = size.X, size.Y, size.Z
+	local dx = math.abs(x - y) + math.abs(x - z)
+	local dy = math.abs(y - x) + math.abs(y - z)
+	local dz = math.abs(z - x) + math.abs(z - y)
+	if dx >= dy and dx >= dz then
+		return Vector3.xAxis
+	end
+	return dy >= dz and Vector3.yAxis or Vector3.zAxis
+end
+
+local function addMoving(part)
+	if moving[part] or not part:IsA("BasePart") then
+		return
+	end
+	local machine = part.Parent
+	while machine and machine:GetAttribute("Running") == nil and machine ~= workspace do
+		machine = machine.Parent
+	end
+	moving[part] = {
+		rest = part.CFrame,
+		axis = axle(part.Size),
+		kind = part:GetAttribute("Motion") or "Spin",
+		machine = machine ~= workspace and machine or nil,
+	}
+end
+
+CollectionService:GetInstanceAddedSignal("PropMotion"):Connect(addMoving)
+CollectionService:GetInstanceRemovedSignal("PropMotion"):Connect(function(part)
+	moving[part] = nil
+end)
+for _, part in CollectionService:GetTagged("PropMotion") do
+	addMoving(part)
+end
+
+local spun = 0
+RunService.RenderStepped:Connect(function(dt)
+	spun += dt * SPIN_SPEED
+	for part, m in moving do
+		if not part.Parent then
+			moving[part] = nil
+			continue
+		end
+		if m.machine and not m.machine:GetAttribute("Running") then
+			part.CFrame = m.rest
+		elseif m.kind == "Shake" then
+			part.CFrame = m.rest * CFrame.new(math.sin(spun * 5) * SHAKE, 0, math.cos(spun * 3.7) * SHAKE * 0.5)
+		else
+			part.CFrame = m.rest * CFrame.fromAxisAngle(m.axis, spun)
+		end
+	end
+end)

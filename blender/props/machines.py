@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 sys.path.insert(0, HERE)
 import hay_bale  # noqa: E402
 import style  # noqa: E402
+from rig import tag  # noqa: E402
 from style import box, cap_uv, cyl  # noqa: E402,F401
 
 STUD = 0.28
@@ -247,6 +248,7 @@ def belt_run(f, x0, x1, y=0.0, z=BELT_Z, rails=(True, True), legs=True, cleat_h=
         x = x0 + (i + 0.5) * L / n
         parts.append(bx(f, (0.22, BELT_W - 0.3, cleat_h), (x, y, z + cleat_h / 2 - 0.02), "metal", along="y",
                         rnd=False))
+    tag(parts, "Belt", f"{x0}:{y}:{z}")
     for side, rail in zip((-1, 1), rails):
         sy = y + side * (BELT_W / 2 + RAIL_T / 2)
         parts.append(bx(f, (L, RAIL_T, FRAME_D), (cx, sy, z - FRAME_D / 2), "handle", along="x"))
@@ -257,7 +259,7 @@ def belt_run(f, x0, x1, y=0.0, z=BELT_Z, rails=(True, True), legs=True, cleat_h=
                 parts.append(cy(f, 0.18, 0.12, (x, sy + side * 0.2, z - 0.4), "metal", axis="y", verts=8))
     if rollers:
         for x in (x0 + 0.45, x1 - 0.45):
-            parts.append(cy(f, 0.32, BELT_W, (x, y, z - 0.4), "metal", axis="y", verts=10))
+            parts += tag([cy(f, 0.32, BELT_W, (x, y, z - 0.4), "metal", axis="y", verts=10)], "Roller", f"{x}:{y}:{z}")
     if legs:
         parts += leg_pair_set(f, [x0 + 0.6, x1 - 0.6] if L <= 7 else [x0 + 0.6, cx, x1 - 0.6], y, z - FRAME_D)
     return parts
@@ -470,6 +472,7 @@ def shaker_table(f):
     parts.append(bx(f, (0.25, d, 0.8), (w / 2, 0, z + 0.1), "handle", along="y"))
     parts.append(bx(f, (0.3, d + 0.2, 0.3), (-w / 2 + 0.2, 0, z - 0.4), "handle", along="y"))
     parts.append(bx(f, (0.3, d + 0.2, 0.3), (w / 2 - 0.2, 0, z - 0.4), "handle", along="y"))
+    tag(parts, "Shaker")
     # Legs with leaf-spring stacks.
     for x in (-w / 2 + 0.6, w / 2 - 0.6):
         for y in (-d / 2 + 0.3, d / 2 - 0.3):
@@ -490,11 +493,11 @@ def shaker_table(f):
         parts.append(bx(f, (0.4, 0.3, 2.6), (wx, y, 1.3), "handle", along="z"))
     parts.append(bx(f, (1.2, 1.6, 0.2), (wx, -0.8, 0.1), "handle", along="x"))
     parts.append(cy(f, 0.12, 1.6, (wx, -0.8, 2.4), "metal", axis="y", verts=8))
-    parts += handwheel(f, (wx, -1.7, 2.4), 1.0, "y")
+    parts += tag(handwheel(f, (wx, -1.7, 2.4), 1.0, "y"), "Crank")
     parts.append(obox(f, (wx + 0.3, -1.85, 2.4), (wx + 0.3, -2.4, 2.4), 0.16, 0.16, "handle"))
     parts.append(obox(f, (wx, -1.55, 2.9), (w / 2 + 0.1, -1.55, z - 0.3), 0.22, 0.22, "handle"))
     # Hay being shaken.
-    parts += hay_lump(f, (-0.8, 0.2), (2.8, 2.6, 0.9), z)
+    parts += tag(hay_lump(f, (-0.8, 0.2), (2.8, 2.6, 0.9), z), "Shaker")
     return parts
 
 
@@ -565,6 +568,7 @@ def magnet_drum(f):
     needles cling to the drum and fall into a chute. 1 x 2 tiles."""
     parts = belt_run(f, -TILE, 0.0)
     dc, r, L = (2.6, 0.0, 4.6), 2.4, 4.8
+    drum = len(parts)
     parts.append(cy(f, r, L, dc, "paint_blue", axis="y", verts=16))
     for y in (-L / 2 + 0.2, L / 2 - 0.2):
         parts.append(cy(f, r + 0.15, 0.4, (dc[0], y, dc[2]), "metal", axis="y", verts=16, rnd=False))
@@ -573,13 +577,15 @@ def magnet_drum(f):
         x, z = dc[0] + (r + 0.02) * math.cos(a), dc[2] + (r + 0.02) * math.sin(a)
         parts.append(bx(f, (0.3, L - 0.6, 0.15), (x, 0, z), "metal", along="y", rot=(0, -a + math.pi / 2, 0),
                         rnd=False))
+    tag(parts[drum:], "Drum")
     for side in (-1, 1):
-        parts.append(cy(f, r * 0.9, 0.25, (dc[0], side * (L / 2 + 0.1), dc[2]), "paint_red", axis="y", verts=16))
+        parts += tag([cy(f, r * 0.9, 0.25, (dc[0], side * (L / 2 + 0.1), dc[2]), "paint_red", axis="y", verts=16)],
+                     "Drum")
         for k in range(3):
             a = math.pi * k / 3
-            parts.append(obox(f, (dc[0] + r * 0.8 * math.cos(a), side * (L / 2 + 0.25), dc[2] + r * 0.8 * math.sin(a)),
+            parts += tag([obox(f, (dc[0] + r * 0.8 * math.cos(a), side * (L / 2 + 0.25), dc[2] + r * 0.8 * math.sin(a)),
                               (dc[0] - r * 0.8 * math.cos(a), side * (L / 2 + 0.25), dc[2] - r * 0.8 * math.sin(a)),
-                              0.25, 0.15, "metal", rnd=False))
+                              0.25, 0.15, "metal", rnd=False)], "Drum")
         parts.append(cy(f, 0.4, 1.0, (dc[0], side * (L / 2 + 0.5), dc[2]), "metal", axis="y", verts=8))
         y = side * (L / 2 + 0.7)
         # A-frame stands at both ends of the drum.
@@ -588,17 +594,19 @@ def magnet_drum(f):
         parts.append(bx(f, (3.8, 0.45, 0.35), (dc[0], y, 1.0), "metal", along="x"))
         parts.append(bx(f, (1.0, 0.6, 0.9), (dc[0], y, dc[2]), "metal", along="z"))
     # Gear wheel and motor box on the back end.
+    gear = len(parts)
     parts.append(cy(f, 1.3, 0.3, (dc[0], L / 2 + 1.25, dc[2]), "metal", axis="y", verts=16))
     for k in range(12):
         a = 2 * math.pi * k / 12
         parts.append(bx(f, (0.3, 0.3, 0.3), (dc[0] + 1.4 * math.cos(a), L / 2 + 1.25, dc[2] + 1.4 * math.sin(a)),
                         "metal", rot=(0, -a, 0), rnd=False))
+    tag(parts[gear:], "Drum")
     parts.append(bx(f, (1.6, 1.4, 1.6), (dc[0] - 2.2, 2.3, 0.8), "paint_green", along="x"))
     parts.append(obox(f, (dc[0] - 2.2, 2.3, 1.6), (dc[0], L / 2 + 1.25, dc[2]), 0.2, 0.2, "metal"))
     # Needles stuck to the drum.
     for k, a in enumerate((1.0, 1.4, 1.9, 2.5)):
         x, z = dc[0] + (r + 0.15) * math.cos(-a), dc[2] + (r + 0.15) * math.sin(-a)
-        parts.append(bx(f, (0.08, 0.7, 0.08), (x, -1.4 + k * 0.9, z), "metal", along="y", rnd=False))
+        parts += tag([bx(f, (0.08, 0.7, 0.08), (x, -1.4 + k * 0.9, z), "metal", along="y", rnd=False)], "Drum")
     # Under the drum: needle chute to the front into a bin.
     parts += trough(f, (dc[0] - 0.6, 1.6, 1.0), (dc[0] - 0.6, -3.2, 0.4), 1.4, 0.4, "metal")
     parts.append(frustum(f, (dc[0] - 0.6, -3.9), 0.0, (1.6, 1.3), 1.1, (1.9, 1.6), "handle", wall=0.15))
@@ -791,6 +799,7 @@ def hay_baler(f):
     # Pickup head on the -y side, ahead of the wheels.
     py0, py1 = -3.8, -0.3
     pm = (py0 + py1) / 2
+    reel = len(parts)
     parts.append(cy(f, 0.55, py1 - py0, (3.9, pm, 0.95), "metal", axis="y", verts=10))
     for k in range(7):
         y = py0 + 0.3 + k * (py1 - py0 - 0.6) / 6
@@ -798,6 +807,7 @@ def hay_baler(f):
             ca, sa = math.cos(a), math.sin(a)
             parts.append(obox(f, (3.9 + 0.45 * ca, y, 0.95 + 0.45 * sa), (3.9 + 1.0 * ca, y, 0.95 + 1.0 * sa),
                               0.12, 0.12, "metal", rnd=False))
+    tag(parts[reel:], "Reel")
     # Auger trough over the reel carries the hay sideways into the chamber.
     parts.append(bx(f, (2.2, py1 - py0, 0.25), (3.1, pm, 2.15), "paint_red", along="y"))
     parts.append(bx(f, (0.25, py1 - py0, 1.3), (2.1, pm, 2.7), "paint_red", along="y"))
@@ -808,7 +818,7 @@ def hay_baler(f):
         parts.append(extrude(f, [(2.0, 0.4), (4.9, 0.4), (4.9, 1.4), (3.6, 3.2), (2.0, 3.2)], "xz",
                              side - 0.1, side + 0.1, "paint_red", along="x"))
     # Flywheel at the front of the chamber.
-    parts += handwheel(f, (5.4, cy0 + 1.1, cz + 1.6), 1.4, "y", kind="metal", spokes=3)
+    parts += tag(handwheel(f, (5.4, cy0 + 1.1, cz + 1.6), 1.4, "y", kind="metal", spokes=3), "Flywheel")
     parts.append(cy(f, 0.25, 1.4, (5.4, cy0 + 0.4, cz + 1.6), "metal", axis="y", verts=8))
     parts.append(bx(f, (1.0, 0.6, 1.0), (5.4, cy0, cz + 1.6), "metal"))
     # Tongue and hitch.
