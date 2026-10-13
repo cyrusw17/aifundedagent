@@ -6,6 +6,8 @@
 -- spill on rough driving. Speed changes are kept smooth so a careful driver keeps the load.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 
@@ -36,7 +38,8 @@ hint.BackgroundTransparency = 0.1
 hint.Font = F.Bold
 hint.TextSize = 15
 hint.TextColor3 = Theme.Colors.Cream
-hint.Text = "W/S drive   A/D steer   Space get out"
+local DRIVE_HINT = "W/S drive   A/D steer   Space get out   T tow"
+hint.Text = DRIVE_HINT
 hint.Visible = false
 Kit.corner(hint, 8)
 Kit.stroke(hint, Theme.Colors.Ink, 1.5)
@@ -141,6 +144,7 @@ local function start(seat)
 		up = Vector3.yAxis,
 	}
 	active = state
+	hint.Text = DRIVE_HINT
 	hint.Visible = true
 
 	state.connection = RunService.Heartbeat:Connect(function(dt)
@@ -243,3 +247,36 @@ end)
 if player.Character then
 	task.spawn(watch, player.Character)
 end
+
+-- T twice while driving: the tow truck sets your truck (and a hitched trailer) down on the dealer lot. For a truck
+-- stuck in a ditch or on a rock; a truck on its roof gets a "Flip upright" button beside it instead.
+local towAskedAt = -math.huge
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not active or input.KeyCode ~= Enum.KeyCode.T then
+		return
+	end
+	if os.clock() - towAskedAt > 3 then
+		towAskedAt = os.clock()
+		hint.Text = "Press T again to tow to Homestead Motors"
+		task.delay(3, function()
+			if active and os.clock() - towAskedAt >= 3 then
+				hint.Text = DRIVE_HINT
+			end
+		end)
+		return
+	end
+	towAskedAt = -math.huge
+	local remote = ReplicatedStorage:FindFirstChild("TruckRecover")
+	if not remote then
+		return
+	end
+	local ok, _, message = pcall(function()
+		return remote:InvokeServer("tow")
+	end)
+	hint.Text = ok and (message or "") or "Could not reach the tow truck."
+	task.delay(3, function()
+		if active then
+			hint.Text = DRIVE_HINT
+		end
+	end)
+end)

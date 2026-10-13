@@ -77,6 +77,7 @@ return {
 
 	-- The truck dealer. Its front (shop entrance and garage door) faces east toward base camp.
 	DealerCenter = Vector3.new(-150, 0, 6),
+	TowSpot = Vector3.new(-95, 0, -4), -- on the dealer lot, facing east: where a towed truck is set down
 
 	-- Land you can buy (built by the land shop thread). The office faces north toward the main road and spawn.
 	-- Plots are 72 x 72 and flat; a lane runs between the two rows and a road links them to the main road.
