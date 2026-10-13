@@ -1,6 +1,7 @@
 --!nonstrict
--- Loose hay pieces. A broken bale leaves a pile of them. The shovel scoops pieces up, the rake drags them across
--- the ground, and pieces left on the sell pad sell. Every piece is a small real part.
+-- Loose hay. A broken bale spills into a pile of small straw strands with the odd needle hidden among them. The
+-- shovel scoops pieces up, the rake drags them across the ground, and pieces left on the sell pad sell. Every
+-- strand is a small real part, capped at MaxLoosePieces so the server stays light.
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -17,9 +18,11 @@ local overlap = OverlapParams.new()
 
 local COLORS = {
 	Color3.fromRGB(219, 204, 153),
+	Color3.fromRGB(205, 189, 136),
 	Color3.fromRGB(189, 168, 112),
 	Color3.fromRGB(168, 149, 95),
 	Color3.fromRGB(133, 115, 71),
+	Color3.fromRGB(150, 148, 96), -- the odd greener stalk
 }
 
 Hay.folder = nil
@@ -87,17 +90,48 @@ local function trim()
 	end
 end
 
-function Hay.spawnPiece(position, velocity, ownerId)
+-- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
+local function makeStraw()
 	local piece = Instance.new("Part")
-	piece.Name = "HayPiece"
-	piece.Size = Vector3.new(rng:NextNumber(0.9, 1.5), 0.3, 0.3)
-	piece.CFrame = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.3, 0.3))
+	piece.Name = "Straw"
+	piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), rng:NextNumber(0.1, 0.14), rng:NextNumber(0.1, 0.14))
 	piece.Color = COLORS[rng:NextInteger(1, #COLORS)]
 	piece.Material = Enum.Material.Fabric
+	piece.CustomPhysicalProperties = PhysicalProperties.new(0.3, 1.2, 0, 1, 1)
+	return piece
+end
+
+-- A needle hiding in the hay: a thin steel sliver that catches the light now and then, so a sharp eye can spot it.
+local function makeNeedle()
+	local piece = Instance.new("Part")
+	piece.Name = "Needle"
+	piece.Shape = Enum.PartType.Cylinder
+	piece.Size = Vector3.new(0.75, 0.09, 0.09)
+	piece.Color = Color3.fromRGB(196, 198, 202)
+	piece.Material = Enum.Material.Metal
+	piece.Reflectance = 0.35
+	piece.CustomPhysicalProperties = PhysicalProperties.new(2, 0.8, 0, 1, 1)
+	piece:SetAttribute("Needle", true)
+
+	local glint = Instance.new("ParticleEmitter")
+	glint.Rate = 1.2
+	glint.Lifetime = NumberRange.new(0.25, 0.4)
+	glint.Speed = NumberRange.new(0)
+	glint.LightEmission = 1
+	glint.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	glint.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	glint.Parent = piece
+	return piece
+end
+
+-- kind is "Needle" for a visible needle, otherwise a strand of straw.
+function Hay.spawnPiece(position, velocity, ownerId, kind)
+	local piece = kind == "Needle" and makeNeedle() or makeStraw()
+	piece.CFrame = CFrame.new(position)
+		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth
 	piece.CollisionGroup = Groups.Loose
-	piece.CustomPhysicalProperties = PhysicalProperties.new(0.4, 1, 0, 1, 1)
 	piece.AssemblyLinearVelocity = velocity
 	piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
 	piece:SetAttribute("OwnerId", ownerId)
@@ -106,6 +140,10 @@ function Hay.spawnPiece(position, velocity, ownerId)
 	piece.Parent = Hay.folder
 	trim()
 	return piece
+end
+
+function Hay.isNeedle(part)
+	return part:GetAttribute("Needle") == true
 end
 
 -- Pieces within radius of position, nearest first, at most max of them.
