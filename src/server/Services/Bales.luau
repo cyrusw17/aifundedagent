@@ -18,8 +18,8 @@ local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
-local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
+local Events = require(script.Parent.Events)
 
 local Bales = {}
 

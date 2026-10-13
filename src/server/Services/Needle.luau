@@ -22,9 +22,9 @@ local Data = require(script.Parent.Data)
 local Announce = require(script.Parent.Announce)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
-local Events = require(script.Parent.Events)
 local Market = require(script.Parent.Market)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+local Events = require(script.Parent.Events)
 
 local Needle = {}
 

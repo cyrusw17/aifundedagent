@@ -204,7 +204,14 @@ local function layRoads()
 			end
 		end
 		for _, s in samples do
-			s.h = math.max(baseHeight(s.x, s.z), SEA + 2.5)
+			-- Ports, plazas and the highway ends are flat zones: the road arrives at their height, so a truck rolls
+			-- straight onto a pier or the highway deck with no step.
+			s.h = math.max(WorldShape.applyFlats(s.x, s.z, baseHeight(s.x, s.z)), SEA + 2.5)
+			for _, zone in Map.Flat do
+				if rectDistance(s.x, s.z, zone.min, zone.max) <= 0 then
+					s.pin = zone.height
+				end
+			end
 			-- Meadow's own roads arrive flat at height 0 at its edge.
 			if meadowDistance(s.x, s.z) < 1 then
 				s.pin = 0
@@ -346,6 +353,7 @@ local function applyFlats(x, z, h)
 	end
 	return h, zoneMaterial
 end
+WorldShape.applyFlats = applyFlats
 
 local function bowl(x, z, h, def)
 	local d = math.sqrt((x - def.center.X) ^ 2 + (z - def.center.Y) ^ 2)
