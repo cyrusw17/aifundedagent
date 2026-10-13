@@ -217,6 +217,11 @@ function Weather.start()
 			task.wait(5)
 			local now = os.clock()
 			for id in Config.Regions do
+				-- A forced spell (an event) just ended: roll fresh weather now, not a whole spell later.
+				if forcedUntil[id] and now >= forcedUntil[id] then
+					forcedUntil[id], forcedKind[id] = nil, nil
+					nextRoll[id] = now
+				end
 				local busy = (front and front.phase == "on" and front.region == id) or now < (forcedUntil[id] or 0)
 				if now >= nextRoll[id] and not busy then
 					Weather.set(id, everyday(id))
