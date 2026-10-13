@@ -204,6 +204,11 @@ function WorldMap.build(worldFolder)
 		end
 	end
 
+	-- Moves the rich field on now (the rotation below does this every few minutes; self-tests call it directly).
+	function WorldMap.rotateRich()
+		pickRich(folder)
+	end
+
 	task.spawn(function()
 		while folder.Parent do
 			pickRich(folder)
