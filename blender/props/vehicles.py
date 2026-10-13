@@ -95,13 +95,57 @@ def place(objs, loc, rz=0.0):
     return objs
 
 
-def tire(f, x, y, r, w, hub="metal", verts=12):
-    """Rubber tire with a hub, axle along x, sitting on the ground."""
-    parts = [C(f, "tire", r, w, (x, y, r), axis="x", verts=verts)]
+def tire(f, x, y, r, w, hub="metal", verts=20):
+    """Rubber tire with a stepped sidewall, a dished rim, a hub cap and five lug nuts; axle along x,
+    sitting on the ground. Mid detail (2026-10-13): 16 sides instead of 12."""
     side = 1 if x >= 0 else -1
-    parts.append(C(f, hub, r * 0.55, w + 0.1, (x + side * 0.02, y, r), axis="x", verts=10, rounded=False))
-    parts.append(C(f, "metal", r * 0.2, w + 0.3, (x + side * 0.05, y, r), axis="x", verts=6, rounded=False))
+    parts = [C(f, "tire", r - 0.06, w, (x, y, r), axis="x", verts=verts)]
+    parts.append(C(f, "tire", r * 0.84, w + 0.08, (x, y, r), axis="x", verts=verts, rounded=False))  # sidewall step
+    for i in range(16):                                                                        # tread blocks
+        a = 2 * PI * i / 16
+        parts.append(B(f, "tire", (w * 0.8, 2 * PI * r / 16 * 0.55, 0.12), (x, y + (r - 0.04) * math.cos(a),
+                       r + (r - 0.04) * math.sin(a)), along="x", rot=(a - PI / 2, 0, 0), rounded=False))
+    parts.append(C(f, hub, r * 0.6, w + 0.14, (x + side * 0.02, y, r), axis="x", verts=verts, rounded=False))
+    parts.append(C(f, hub, r * 0.46, w + 0.2, (x + side * 0.03, y, r), axis="x", verts=verts, rounded=False))
+    parts.append(C(f, "metal", r * 0.2, w + 0.34, (x + side * 0.05, y, r), axis="x", verts=8, rounded=False))
+    for i in range(5):
+        a = 2 * PI * i / 5 + PI / 2
+        parts.append(C(f, "metal", 0.07, w + 0.28, (x + side * 0.04, y + r * 0.33 * math.cos(a), r + r * 0.33 * math.sin(a)),
+                       axis="x", verts=6, rounded=False))
     return tag(parts, "wheel", wheel_uid(x, y))
+
+
+def fender_arch(f, kind, x, y, r, w, a0=0.25, a1=PI - 0.25, n=6, t=0.3):
+    """A rounded fender: n short boxes following an arc of radius r over a wheel at (x, y), axle along x."""
+    parts = []
+    for i in range(n):
+        a = a0 + (a1 - a0) * (i + 0.5) / n
+        seg = 2 * r * math.sin((a1 - a0) / n / 2) + 0.08
+        parts.append(B(f, kind, (w, seg, t), (x, y + r * math.cos(a), r * math.sin(a)), along="y",
+                       rot=(a - PI / 2, 0, 0), rounded=False))
+    return parts
+
+
+def cab_door(f, paint, x, half_w, y0, y1, z0, z1, zw, flip=True, upper_w=None):
+    """A hinged cab door on side x (+1 / -1): a 0.25-thick panel with a window frame cut through, a crease
+    line and a handle (one material), plus its window glass as a separate mesh in the same plane, so it
+    shares the door's front hinge line. Builders face -y and the exporter turns the truck 180 degrees, so
+    the builder's +x door ends up on the driver's left: Door_L / Glass_L at -X in the .glb."""
+    sx = x * (half_w + 0.02)
+    su = x * ((upper_w or half_w) + 0.02)                                     # window frame (narrower greenhouse)
+    d = []
+    d.append(B(f, paint, (0.25, y1 - y0, zw - z0), (sx, (y0 + y1) / 2, (z0 + zw) / 2), along="y", rounded=False))
+    for yy in (y0 + 0.11, y1 - 0.11):                                                         # window posts
+        d.append(B(f, paint, (0.25, 0.22, z1 - zw), (su, yy, (zw + z1) / 2), along="z", rounded=False))
+    d.append(B(f, paint, (0.25, y1 - y0, 0.2), (su, (y0 + y1) / 2, z1 - 0.1), along="y", rounded=False))
+    d.append(B(f, paint, (0.06, y1 - y0 - 0.3, 0.08), (sx + x * 0.15, (y0 + y1) / 2, z0 + (zw - z0) * 0.3),
+               along="y", rounded=False))                                                      # crease line
+    d.append(B(f, paint, (0.12, 0.5, 0.12), (sx + x * 0.17, y1 - 0.5, zw - 0.35), along="y", rounded=False))  # handle
+    d.append(B(f, paint, (0.08, 0.2, 0.2), (sx + x * 0.15, y1 - 0.75, zw - 0.35), rounded=False))
+    left = x > 0 if flip else x < 0
+    glass = B(f, "glass", (0.06, y1 - y0, z1 - zw - 0.2), (su, (y0 + y1) / 2, (zw + z1 - 0.2) / 2), along="y",
+              rounded=False)
+    return tag(d, "Door_L" if left else "Door_R") + tag([glass], "Glass_L" if left else "Glass_R")
 
 
 def ring(r_out, r_in, width, n=14):
@@ -246,30 +290,81 @@ def truck(f, paint, k=1.0, wide=1.0, wheel_r=1.3, hood_d=3.4, rear_len=7.0, rear
     for x in (-1, 1):
         parts.append(B(f, "metal", (0.5, total - 0.4, 0.6), (x * W * 0.28, 0.1, fz - 0.3), along="y"))
     parts.append(B(f, trim, (W + 0.4, 0.6, 0.8), (0, yF - 0.25, fz + 0.15)))
-    # Hood with grille and headlights.
+    # Hood with a center seam, a framed slatted grille, bezeled headlights and turn signals.
     parts.append(B(f, paint, (HW, HD, HH), (0, yF + HD / 2, fz + HH / 2), along="y"))
+    parts.append(B(f, paint, (0.18, HD - 0.3, 0.1), (0, yF + HD / 2 + 0.1, fz + HH + 0.04), along="y", rounded=False))
     parts.append(B(f, "tire", (HW * 0.62, 0.2, HH * 0.72), (0, yF - 0.05, fz + HH * 0.5)))
-    for i in range(4):
-        z = fz + HH * (0.24 + 0.17 * i)
-        parts.append(B(f, trim, (HW * 0.64, 0.25, 0.14), (0, yF - 0.1, z), rounded=False))
+    gw, gh = HW * 0.66, HH * 0.78
+    for x in (-1, 1):                                                                          # grille surround
+        parts.append(B(f, trim, (0.2, 0.3, gh), (x * gw / 2, yF - 0.12, fz + HH * 0.5), along="z", rounded=False))
+    for z in (fz + HH * 0.5 - gh / 2, fz + HH * 0.5 + gh / 2):
+        parts.append(B(f, trim, (gw + 0.2, 0.3, 0.2), (0, yF - 0.12, z), rounded=False))
+    for i in range(6):
+        z = fz + HH * (0.2 + 0.12 * i)
+        parts.append(B(f, trim, (gw - 0.2, 0.22, 0.1), (0, yF - 0.1, z), rounded=False))
     for x in (-1, 1):
-        parts.append(C(f, trim, 0.48 * k, 0.3, (x * HW * 0.4, yF - 0.05, fz + HH * 0.58), axis="y", verts=10))
-        parts.append(C(f, "glow" if glow else lens, 0.36 * k, 0.3, (x * HW * 0.4, yF - 0.12, fz + HH * 0.58),
-                       axis="y", verts=10))
-    # Cab.
-    parts.append(B(f, paint, (W, CD, CH), (0, (yc0 + yc1) / 2, fz + CH / 2), along="y"))
-    parts.append(B(f, paint, (W - 0.3, CD - 0.4, 0.3), (0, (yc0 + yc1) / 2, fz + CH + 0.1), along="y"))
+        parts.append(C(f, trim, 0.5 * k, 0.32, (x * HW * 0.4, yF - 0.05, fz + HH * 0.58), axis="y", verts=16))
+        parts.append(C(f, "glow" if glow else lens, 0.38 * k, 0.34, (x * HW * 0.4, yF - 0.12, fz + HH * 0.58),
+                       axis="y", verts=16))
+        parts.append(B(f, "paint_yellow", (0.5, 0.15, 0.22), (x * HW * 0.4, yF - 0.08, fz + HH * 0.2), rounded=False))
+    # Cab: an open shell (floor, roof, back, firewall, side panels around the door openings) so an open
+    # door shows the bench seat, dash and steering wheel; framed windscreen; hinged doors (Door_L/R) with
+    # their windows (Glass_L/R) riding along.
+    yc = (yc0 + yc1) / 2
+    top = fz + CH
     zw = fz + CH * 0.73
-    parts.append(B(f, "glass", (W - 0.9, 0.12, CH * 0.36), (0, yc0 - 0.04, zw)))
+    zwb = zw - CH * 0.19                                                                         # windscreen bottom
+    dy0, dy1 = yc0 + 0.35, yc1 - 0.45
+    dz0, dz1, dzw = fz + 0.45, fz + CH * 0.92, fz + CH * 0.55
+    parts.append(B(f, paint, (W, CD, 0.35), (0, yc, fz + 0.175), along="y", rounded=False))      # floor
+    parts.append(B(f, paint, (W, CD, 0.4), (0, yc, top - 0.2), along="y"))                       # roof
+    parts.append(B(f, paint, (W - 0.3, CD - 0.4, 0.3), (0, yc, top + 0.1), along="y"))
+    parts.append(B(f, paint, (W, 0.35, CH), (0, yc1 - 0.175, fz + CH / 2), rounded=False))      # back wall
+    parts.append(B(f, paint, (W, 0.35, zwb - fz), (0, yc0 + 0.175, (fz + zwb) / 2), rounded=False))  # firewall
     for x in (-1, 1):
-        parts.append(B(f, "glass", (0.12, CD * 0.5, CH * 0.32), (x * (W / 2 + 0.04), yc0 + CD * 0.36, zw), along="y"))
-        # Door seam, handle, step and mirror.
-        parts.append(B(f, trim, (0.1, 0.12, CH * 0.55), (x * (W / 2 + 0.03), yc1 - CD * 0.18, fz + CH * 0.42),
-                       along="z", rounded=False))
-        parts.append(B(f, trim, (0.14, 0.5, 0.14), (x * (W / 2 + 0.06), yc1 - CD * 0.32, fz + CH * 0.5), along="y"))
-        parts.append(B(f, "metal", (0.7, CD * 0.7, 0.2), (x * (W / 2 + 0.3), (yc0 + yc1) / 2, fz - 0.15), along="y"))
+        xs = x * (W / 2 - 0.15)
+        parts.append(B(f, paint, (0.3, dy0 - yc0, CH), (xs, (yc0 + dy0) / 2, fz + CH / 2), along="z", rounded=False))
+        parts.append(B(f, paint, (0.3, yc1 - dy1, CH), (xs, (dy1 + yc1) / 2, fz + CH / 2), along="z", rounded=False))
+        parts.append(B(f, paint, (0.3, dy1 - dy0, dz0 - fz), (xs, (dy0 + dy1) / 2, (fz + dz0) / 2), along="y",
+                       rounded=False))                                                           # door sill
+        parts.append(B(f, paint, (0.3, dy1 - dy0, top - dz1), (xs, (dy0 + dy1) / 2, (dz1 + top) / 2), along="y",
+                       rounded=False))
+        parts.append(B(f, trim, (0.12, CD - 0.2, 0.12), (x * (W / 2 - 0.1), yc, top + 0.02), along="y",
+                       rounded=False))                                                           # drip rail
+        parts.append(B(f, paint, (0.06, 0.08, CH - 0.4), (x * (W / 2 + 0.01), dy1 + 0.2, fz + CH / 2), along="z",
+                       rounded=False))                                                           # panel seam
+    parts.append(B(f, "glass", (W - 0.9, 0.12, CH * 0.36), (0, yc0 - 0.04, zw)))
+    for x in (-1, 1):                                                                            # A pillars
+        parts.append(B(f, paint, (0.3, 0.2, CH * 0.42), (x * (W / 2 - 0.3), yc0 - 0.08, zw), along="z", rounded=False))
+    for z in (zwb, zw + CH * 0.19):
+        parts.append(B(f, paint, (W - 0.6, 0.2, 0.16), (0, yc0 - 0.08, z), rounded=False))
+    # Interior: bench seat, dash, steering wheel on the driver's side (builder +x, -X after the flip).
+    parts.append(B(f, "tire", (W - 1.0, 1.3, 0.7), (0, yc1 - 1.1, fz + 1.05), rounded=False))
+    parts.append(B(f, "tire", (W - 1.0, 0.4, 1.5), (0, yc1 - 0.6, fz + 1.9), rounded=False))
+    parts.append(B(f, "tire", (W - 0.8, 0.8, 0.45), (0, yc0 + 0.75, zwb - 0.2), rounded=False))
+    swx, swy, swz = W * 0.22, yc0 + 1.35, zwb - 0.1
+    parts.append(C(f, "tire", 0.55 * k, 0.12, (swx, swy, swz), axis="y", verts=12, rounded=False))
+    parts.append(beam(f, "metal", (swx, swy, swz), (swx, yc0 + 0.5, zwb - 0.6), 0.14))
+    for x in (-1, 1):
+        parts += cab_door(f, paint, x, W / 2, dy0, dy1, dz0, dz1, dzw)
+        # Running board with step plates, mirror arm and mirror.
+        parts.append(B(f, "metal", (0.7, CD * 0.7, 0.2), (x * (W / 2 + 0.3), yc, fz - 0.15), along="y"))
+        for zz in (fz - 0.05, fz - 0.25):
+            parts.append(B(f, "metal", (0.66, CD * 0.68, 0.04), (x * (W / 2 + 0.3), yc, zz), along="y", rounded=False))
         parts.append(B(f, "metal", (0.9, 0.12, 0.12), (x * (W / 2 + 0.45), yc0 + 0.3, fz + CH * 0.7)))
+        parts.append(B(f, "metal", (0.12, 0.12, 0.5), (x * (W / 2 + 0.85), yc0 + 0.3, fz + CH * 0.55), rounded=False))
         parts.append(B(f, "metal", (0.18, 0.45, 1.0 * k), (x * (W / 2 + 0.9), yc0 + 0.3, fz + CH * 0.7), along="z"))
+        parts.append(B(f, "glass", (0.04, 0.38, 0.9 * k), (x * (W / 2 + 0.81), yc0 + 0.3, fz + CH * 0.7), along="z",
+                       rounded=False))
+        parts.append(B(f, "paint_yellow", (0.1, 0.3, 0.16), (x * (W / 2 + 0.02), yc0 + 0.2, top - 0.25),
+                       rounded=False))                                                           # running light
+    # Fuel tank under the passenger door, and bolts on the bumper.
+    if not tanks:
+        parts.append(C(f, "metal", 0.55, CD * 0.55, (-(W / 2 - 0.2), yc, fz - 0.3), axis="y", verts=12))
+        for dy in (-CD * 0.18, CD * 0.18):
+            parts.append(C(f, "tire", 0.58, 0.1, (-(W / 2 - 0.2), yc + dy, fz - 0.3), axis="y", verts=12, rounded=False))
+    for x in (-0.38, -0.13, 0.13, 0.38):
+        parts.append(C(f, "metal", 0.09, 0.1, (x * (W + 0.4), yF - 0.57, fz + 0.15), axis="y", verts=6, rounded=False))
     if sleeper:
         ys = yc1 + sleeper / 2
         parts.append(B(f, paint, (W, sleeper, CH * 0.96), (0, ys, fz + CH * 0.48), along="y"))
@@ -283,8 +378,8 @@ def truck(f, paint, k=1.0, wide=1.0, wheel_r=1.3, hood_d=3.4, rear_len=7.0, rear
     wx = W / 2 - 0.15
     for x in (-1, 1):
         parts += tire(f, x * wx, yfw, wheel_r, tw, hub="glow" if glow else "metal")
-        parts.append(B(f, paint, (tw + 0.5, wheel_r * 2.5, 0.35), (x * wx, yfw, 2 * wheel_r + 0.25), along="y"))
-        parts.append(B(f, paint, (tw + 0.5, 0.35, 0.9), (x * wx, yfw - wheel_r * 1.2, 2 * wheel_r - 0.2), along="z"))
+        parts += place(fender_arch(f, paint, 0, 0, wheel_r + 0.45, tw + 0.5, a0=0.15, a1=PI - 0.15, n=7),
+                       (x * wx, yfw, wheel_r))
     # Rear wheels.
     rear_axles = rear_axles or [yR - wheel_r * 1.8]
     for y in rear_axles:
