@@ -153,7 +153,7 @@ local function timers()
 	return list
 end
 
--- "Only $240 to Leather Gloves" when the next buy is close (its down payment, for a truck on a loan).
+-- "Only $240 to a Steel Shovel" when the next buy is close (its down payment, for a truck on a loan).
 local function nearGoal()
 	if GameConfig.InfiniteMoney or player:GetAttribute("SaveSlot") == nil then
 		return nil

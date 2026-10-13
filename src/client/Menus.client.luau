@@ -1036,7 +1036,7 @@ local function renderShop()
 
 		local look = STATE_TEXT[row.state] or STATE_TEXT.soon
 		local text = look[1]
-		if tab == "Gloves" and row.state == "owned" then
+		if tab == "Shovels" and row.state == "owned" then
 			text, look = "WEAR IT", { "WEAR IT", "wood" }
 		end
 		local button = Kit.button(card, text, look[2], UDim2.fromOffset(140, 30))
@@ -1044,7 +1044,7 @@ local function renderShop()
 		button.Position = UDim2.new(1, -10, 1, -8)
 		button.TextSize = T.Small
 		local clickable = row.place ~= nil
-			and (row.state == "buy" or row.state == "needland" or (tab == "Gloves" and row.state == "owned"))
+			and (row.state == "buy" or row.state == "needland" or (tab == "Shovels" and row.state == "owned"))
 		button.AutoButtonColor = clickable
 		button.Activated:Connect(function()
 			if not clickable then
