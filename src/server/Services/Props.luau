@@ -13,9 +13,14 @@ local Props = {}
 
 local templates = nil -- normalized name -> imported model
 
--- hay_bale, HayBale and "Hay Bale" all name the same prop.
+-- hay_bale, HayBale, "Hay Bale" and HayBale_Node all name the same prop. Studio's importer wraps each file in a
+-- <Name>_Node model and splits a mesh with two materials into <Name> and <Name>2, so a trailing "node" or number
+-- is dropped too.
 local function normalize(name)
-	return string.lower((string.gsub(name, "[^%w]", "")))
+	local key = string.lower((string.gsub(name, "[^%w]", "")))
+	key = string.gsub(key, "node$", "")
+	key = string.gsub(key, "%d+$", "")
+	return key
 end
 
 local known = {}
@@ -36,37 +41,56 @@ local function partsOf(instance)
 	return parts
 end
 
-local function scan()
-	templates = {}
-	local folder = ServerStorage:FindFirstChild(Config.Folder)
-	local function add(container)
-		for _, child in container:GetChildren() do
-			local name = known[normalize(child.Name)]
-			if name and not templates[name] and #partsOf(child) > 0 then
-				templates[name] = child
+-- The whole prop an imported instance belongs to: the outermost model up the tree that is still named after
+-- the same prop (HayBale_Node holding HayBale and HayBale2), or the instance itself.
+local function propRoot(instance, key, stop)
+	local root = instance
+	local parent = instance.Parent
+	while parent and parent ~= stop and normalize(parent.Name) == key do
+		root = parent
+		parent = parent.Parent
+	end
+	return root
+end
+
+-- Finds the imported props anywhere under container, however the importer nested them (for example
+-- Workspace.Scene.HayBale_Node.HayBale). skip is a folder to leave out.
+local function collect(container, skip, found)
+	for _, d in container:GetDescendants() do
+		local name = known[normalize(d.Name)]
+		if name and not found[name] and not (skip and d:IsDescendantOf(skip)) then
+			local root = propRoot(d, normalize(d.Name), container)
+			if #partsOf(root) > 0 then
+				found[name] = root
 			end
 		end
 	end
+end
+
+local function scan()
+	templates = {}
+	local folder = ServerStorage:FindFirstChild(Config.Folder)
 	if folder then
-		add(folder)
+		collect(folder, nil, templates)
 	end
 	local shared = ReplicatedStorage:FindFirstChild(Config.Folder)
 	if shared then
-		add(shared)
+		collect(shared, nil, templates)
 	end
 
 	-- A fresh import lands in the Workspace. Count it too, and take it out of the world so it is not left lying
-	-- at the origin.
-	for _, child in Workspace:GetChildren() do
-		local name = known[normalize(child.Name)]
-		if name and not templates[name] and #partsOf(child) > 0 then
+	-- at the origin. The game's own world folder is left alone.
+	local inWorld = {}
+	collect(Workspace, Workspace:FindFirstChild("Needlewood"), inWorld)
+	for name, root in inWorld do
+		if not templates[name] then
 			if not folder then
 				folder = Instance.new("Folder")
 				folder.Name = Config.Folder
 				folder.Parent = ServerStorage
 			end
-			child.Parent = folder
-			templates[name] = child
+			root.Parent = folder
+			templates[name] = root
 		end
 	end
 
