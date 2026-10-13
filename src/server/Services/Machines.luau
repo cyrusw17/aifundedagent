@@ -37,8 +37,8 @@ require(script.Parent.Jams) -- watches belts for stuck bales (Jams.luau)
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
-local Market = require(script.Parent.Market)
 local Events = require(script.Parent.Events)
+local Market = require(script.Parent.Market)
 
 local Machines = {}
 
@@ -646,12 +646,9 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					local take = nil
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
-						local seller = ownerId
 						take = function()
+							Events.fire(ownerId, "bale_sold", 1, { hayType = hayType })
 							Bales.consume(b)
-							if seller then
-								Events.fire(seller, "bale_sold", 1, { hayType = hayType })
-							end
 						end
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
