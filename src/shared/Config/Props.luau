@@ -74,6 +74,10 @@ return {
 		needle_polisher = 5.4,
 		alloy_mixer = 10.5,
 		alien_collector = 12.4,
+		-- Region treat machines (Treat.luau): two belt cells long, belt along X, belt top 3.5
+		thawing_shed = 14.1,
+		drying_rack = 12.0,
+		ash_sifter = 13.1,
 		starbeam_collector = 22.0, -- one 6x6 tile, as tall as the part-built tower in Starbeam.luau
 		-- Buildings and storage
 		bale_rack = 18.3,
@@ -128,7 +132,7 @@ return {
 		field_bale_chute = 14.0,
 		-- Items and collectibles
 		wheelbarrow_loaded = 5.5,
-		needle_bundle = 3,
+		needle_bundle = 1.29, -- the NeedleBundle part in Needle.luau is 1.3 x 0.55 x 0.55
 		needle_display_wall = 12,
 		old_boot = 1.4,
 		horseshoe = 1,

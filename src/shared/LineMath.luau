@@ -59,6 +59,54 @@ function LineMath.sortSeconds(hayPerMin: number, hay: number): number
 	return math.max(hay / hayPerMin * 60, 0.5)
 end
 
+-- How many of `hidden` needles a sorter finds: each one is found with chance recovery x recoveryMult. rng is anything
+-- with NextNumber() (a Roblox Random, or a seeded stand-in in tests).
+function LineMath.found(rng: any, hidden: number, recovery: number, recoveryMult: number?): number
+	local chance = recovery * (recoveryMult or 1)
+	local n = 0
+	for _ = 1, hidden do
+		if rng:NextNumber() < chance then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- Sorter oil: bales already oiled plus one more can, or nil when that would go over the cap.
+function LineMath.oilAdd(oiled: number, perCan: number, maxBales: number): number?
+	if oiled + perCan > maxBales then
+		return nil
+	end
+	return oiled + perCan
+end
+
+-- Seconds for one bale with oil: faster by speedup while any oiled bales are left. Returns seconds and oiled bales left.
+function LineMath.oiledSeconds(seconds: number, oiled: number, speedup: number): (number, number)
+	if oiled > 0 then
+		return seconds / (1 + speedup), oiled - 1
+	end
+	return seconds, oiled
+end
+
+-- What a sorter does with a whole bale of hayType given its treatments table (Config/Factory Treatments) and whether
+-- the bale carries the treatment's mark: "sort" with a recovery multiplier, or "refuse" (it rides on unsorted).
+function LineMath.treatment(hayType: string, treatments: { [string]: any }, marked: boolean): (string, number)
+	local t = treatments[hayType]
+	if not t or marked then
+		return "sort", 1
+	end
+	if t.required then
+		return "refuse", 0
+	end
+	return "sort", t.penalty or 1
+end
+
+-- The grade a sorter tier gives (sorterGrade: Prices.SorterGrade) and that grade's sale bonus (grades: NeedleGrades).
+function LineMath.grade(tierId: string, sorterGrade: { [string]: string }, grades: { [string]: number }): (string, number)
+	local g = sorterGrade[tierId] or "B"
+	return g, grades[g] or 0
+end
+
 -- How a pile of plain needles packs: whole bundles of `size` and the loose rest.
 function LineMath.bundles(count: number, size: number): (number, number)
 	return count // size, count % size
