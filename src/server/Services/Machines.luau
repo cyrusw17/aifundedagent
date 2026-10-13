@@ -23,6 +23,7 @@ local Data = require(script.Parent.Data)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
+local Skins = require(script.Parent.Skins)
 
 local Machines = {}
 
@@ -229,6 +230,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 	local model = Instance.new("Model")
 	model.Name = "NeedleSorter"
 	model:SetAttribute("Tier", tier.id)
+	model:SetAttribute("Running", false) -- the machine mesh's moving pieces turn only while this is true
 	model.Parent = parent
 
 	local height = 7
@@ -244,6 +246,10 @@ function Machines.sorter(parent, frame, tierId, bin)
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
 	local label = sign(roof, tier.name:upper(), Vector3.new(0, 4, 0))
+	-- The tier's Blender machine, when it was imported (the hand sieve is a hand tool, not a machine).
+	if tier.id ~= "hand_sieve" then
+		Skins.dress(tier.id, roof, model, center)
+	end
 
 	local dust = Instance.new("ParticleEmitter")
 	dust.Rate = 0
@@ -260,6 +266,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 	local sorted = 0
 
 	local function sort(hay, ownerId)
+		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
 		local started = os.clock()
@@ -269,6 +276,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 		end
 		roof.CFrame = rest
 		dust.Rate = 0
+		model:SetAttribute("Running", false)
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
 		local hidden = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
