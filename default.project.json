@@ -30,6 +30,11 @@
           "GrassLength": 0.1
         }
       }
+    },
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/first"
+      }
     }
   }
 }
