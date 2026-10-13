@@ -21,7 +21,7 @@ local Vehicles = require(script.Parent.Vehicles)
 local Dealer = {}
 
 local DOOR_SECONDS = 1.6 -- roller door going up
-local DRIVE_SECONDS = 4.4 -- garage to the lot
+local DRIVE_SECONDS = 5 -- garage to the lot
 local COUNTER_REACH = 16
 local STUDIO_CASH = 6000
 
@@ -36,10 +36,10 @@ local delivering = {} -- player -> true while their truck is being brought out
 local cutsceneRemote = nil
 
 -- Local spots (studs from the dealer's center; +X is the front).
-local GARAGE_START = Vector3.new(-6, 0.15, 10.5)
-local LOT_STOP = Vector3.new(41, 0.15, 10.5)
-local CAMERA_SPOT = Vector3.new(47, 9, 31)
-local DOOR_SPOT = Vector3.new(20, 5, 11)
+local GARAGE_START = Vector3.new(-10, 0.15, 14)
+local LOT_STOP = Vector3.new(50, 0.15, 14)
+local CAMERA_SPOT = Vector3.new(66, 12, 46)
+local DOOR_SPOT = Vector3.new(30, 6, 14)
 
 local function world(v)
 	return origin * v
@@ -137,88 +137,94 @@ local function clerk(parent, position)
 	model.Parent = parent
 end
 
+-- Layout, in studs from the dealer's center (+X is the front, facing base camp):
+--   showroom  x -30..30, z -26..2   front door at z -9..-1, the display truck along the north wall
+--   garage    x -30..30, z 2..26    roller door at z 5..23, 13 tall
+--   lot       x 30..88,  z -66..34  coming-soon trucks in a row at z -44
+-- The walk from the front door to the counter runs straight west along z -5, clear of the display truck.
 local function buildBuilding()
 	local b = Instance.new("Model")
 	b.Name = "HomesteadMotors"
 	b.Parent = folder
 	local wall, trim = Rustic.PaintRed, Rustic.PaintCream
 	local planks = Enum.Material.WoodPlanks
+	local H = 18 -- wall height
 
 	-- Floors: wood in the showroom, concrete in the garage, and a concrete lot out front.
-	block(b, "ShowroomFloor", -20, 20, -1, 0.1, -18, 4, Rustic.Wood, planks)
-	block(b, "GarageFloor", -20, 20, -1, 0.1, 4, 18, Rustic.Stone, Enum.Material.Concrete)
-	block(b, "Lot", 20, 52, -1, 0.06, -42, 24, Rustic.StoneDark, Enum.Material.Concrete)
+	block(b, "ShowroomFloor", -30, 30, -1, 0.1, -26, 2, Rustic.Wood, planks)
+	block(b, "GarageFloor", -30, 30, -1, 0.1, 2, 26, Rustic.Stone, Enum.Material.Concrete)
+	block(b, "Lot", 30, 88, -1, 0.06, -66, 34, Rustic.StoneDark, Enum.Material.Concrete)
 
-	-- Outer walls. The east (front) wall has the shop door, a big window and the garage door.
-	block(b, "WestWall", -20, -19, 0, 14, -18, 18, wall, planks)
-	block(b, "NorthWall", -20, 20, 0, 14, -18, -17, wall, planks)
-	block(b, "SouthWall", -20, 20, 0, 14, 17, 18, wall, planks)
-	block(b, "FrontWall", 19, 20, 0, 14, -18, -12, wall, planks)
-	block(b, "DoorHeader", 19, 20, 10, 14, -12, -4, trim, planks)
-	block(b, "WindowSill", 19, 20, 0, 3, -4, 2, wall, planks)
-	glassBlock(b, 19.3, 19.7, 3, 11, -4, 2)
-	block(b, "WindowHeader", 19, 20, 11, 14, -4, 2, wall, planks)
-	block(b, "FrontPillar", 19, 20, 0, 14, 2, 5, trim, planks)
-	block(b, "GarageHeader", 19, 20, 10, 14, 5, 17, trim, planks)
-	block(b, "CornerPillar", 19, 20, 0, 14, 17, 18, trim, planks)
+	-- Outer walls. The east (front) wall has a big window, the shop door and the garage door.
+	block(b, "WestWall", -30, -29, 0, H, -26, 26, wall, planks)
+	block(b, "NorthWall", -30, 30, 0, H, -26, -25, wall, planks)
+	block(b, "SouthWall", -30, 30, 0, H, 25, 26, wall, planks)
+	block(b, "FrontCorner", 29, 30, 0, H, -26, -24, trim, planks)
+	block(b, "WindowSill", 29, 30, 0, 3, -24, -11, wall, planks)
+	glassBlock(b, 29.3, 29.7, 3, 13, -24, -11)
+	block(b, "WindowHeader", 29, 30, 13, H, -24, -11, wall, planks)
+	block(b, "DoorPillar", 29, 30, 0, H, -11, -9, trim, planks)
+	block(b, "DoorHeader", 29, 30, 12, H, -9, -1, trim, planks)
+	block(b, "FrontPillar", 29, 30, 0, H, -1, 5, wall, planks)
+	block(b, "GarageHeader", 29, 30, 13, H, 5, 23, trim, planks)
+	block(b, "CornerPillar", 29, 30, 0, H, 23, 26, trim, planks)
 
 	-- Inside wall between the showroom and the garage, with a doorway and a window to see the trucks.
-	block(b, "DividerA", -19, -18, 0, 14, 3.5, 4.5, wall, planks)
-	block(b, "DividerHeader", -18, -12, 9, 14, 3.5, 4.5, wall, planks)
-	block(b, "DividerB", -12, 0, 0, 14, 3.5, 4.5, wall, planks)
-	block(b, "DividerSill", 0, 12, 0, 3, 3.5, 4.5, wall, planks)
-	glassBlock(b, 0, 12, 3, 9, 3.8, 4.2)
-	block(b, "DividerTop", 0, 12, 9, 14, 3.5, 4.5, wall, planks)
-	block(b, "DividerC", 12, 19, 0, 14, 3.5, 4.5, wall, planks)
+	block(b, "DividerA", -29, -28, 0, H, 1.5, 2.5, wall, planks)
+	block(b, "DividerHeader", -28, -20, 10, H, 1.5, 2.5, wall, planks)
+	block(b, "DividerB", -20, -4, 0, H, 1.5, 2.5, wall, planks)
+	block(b, "DividerSill", -4, 16, 0, 3, 1.5, 2.5, wall, planks)
+	glassBlock(b, -4, 16, 3, 11, 1.8, 2.2)
+	block(b, "DividerTop", -4, 16, 11, H, 1.5, 2.5, wall, planks)
+	block(b, "DividerC", 16, 29, 0, H, 1.5, 2.5, wall, planks)
 
-	-- Rusty tin roof and the false front with the shop name.
-	block(b, "Roof", -21, 21, 14, 14.8, -19, 19, Rustic.Rust, Enum.Material.CorrodedMetal)
+	-- Weathered tin roof and the false front with the shop name.
+	block(b, "Roof", -31, 31, H, H + 0.8, -27, 27, Rustic.Metal, Enum.Material.Metal)
 	board(
 		b,
 		"ShopSign",
-		Vector3.new(22, 5, 0.6),
-		origin * CFrame.new(20.4, 17, -7) * CFrame.Angles(0, -math.pi / 2, 0),
+		Vector3.new(30, 6, 0.6),
+		origin * CFrame.new(30.4, H + 3.4, -12) * CFrame.Angles(0, -math.pi / 2, 0),
 		"HOMESTEAD MOTORS",
 		{ Enum.NormalId.Front }
 	)
-	board(b, "GarageSign", Vector3.new(10, 2.4, 0.3), origin * CFrame.new(20.2, 12, 11) * CFrame.Angles(0, -math.pi / 2, 0), "GARAGE")
-	board(b, "OpenSign", Vector3.new(6, 1.6, 0.3), origin * CFrame.new(20.2, 11.2, -8) * CFrame.Angles(0, -math.pi / 2, 0), "COME IN, WE'RE OPEN")
+	board(b, "GarageSign", Vector3.new(14, 3, 0.3), origin * CFrame.new(30.2, 15.5, 14) * CFrame.Angles(0, -math.pi / 2, 0), "GARAGE")
+	board(b, "OpenSign", Vector3.new(7, 1.8, 0.3), origin * CFrame.new(30.2, 13.6, -5) * CFrame.Angles(0, -math.pi / 2, 0), "COME IN, WE'RE OPEN")
 
 	-- Roller door. Its closed size and spot are kept so it can roll back down.
-	garageDoor = block(b, "GarageDoor", 19.3, 19.7, 0.1, 10, 5, 17, Rustic.Metal, Enum.Material.CorrodedMetal)
+	garageDoor = block(b, "GarageDoor", 29.3, 29.7, 0.1, 13, 5, 23, Rustic.Metal, Enum.Material.Metal)
 	doorClosed = { size = garageDoor.Size, cframe = garageDoor.CFrame }
 
-	-- Showroom: the sales counter, Hank, a rug to stand on, the display truck on its platform, a price board.
-	block(b, "Counter", -15, -13, 0, 3.6, -14, -2, Rustic.WoodDark, planks)
-	block(b, "CounterTop", -15.3, -12.7, 3.6, 4, -14.3, -1.7, trim, planks)
-	clerk(b, Vector3.new(-17, 0.1, -8))
-	counter = block(b, "SalesRug", -12, -6, 0.1, 0.2, -12, -4, Rustic.PaintRedDark, Enum.Material.Fabric)
+	-- Showroom: the sales counter by the west wall with Hank behind it, a rug to stand on in front.
+	block(b, "Counter", -24, -21, 0, 3.6, -13, 1, Rustic.WoodDark, planks)
+	block(b, "CounterTop", -24.3, -20.7, 3.6, 4, -13.3, 1.3, trim, planks)
+	clerk(b, Vector3.new(-26.5, 0.1, -5))
+	counter = block(b, "SalesRug", -20, -12, 0.1, 0.2, -9, -1, Rustic.PaintRedDark, Enum.Material.Fabric)
 	counter.CanCollide = false
 	CollectionService:AddTag(counter, "DealerCounter")
-	board(b, "SalesSign", Vector3.new(8, 2, 0.3), origin * CFrame.new(-14, 9, -8) * CFrame.Angles(0, -math.pi / 2, 0), "TRUCK SALES", {
+	board(b, "SalesSign", Vector3.new(10, 2.4, 0.3), origin * CFrame.new(-22.5, 10, -5) * CFrame.Angles(0, -math.pi / 2, 0), "TRUCK SALES", {
 		Enum.NormalId.Front,
 		Enum.NormalId.Back,
 	})
 
+	-- The display truck on a low stage along the north wall, nose to the front window, with prices above it.
 	local lines = {}
 	for _, def in Trucks do
 		table.insert(lines, ("%s  $%s%s"):format(def.name, tostring(def.price), def.available and "" or "  (soon)"))
 	end
-	board(b, "PriceBoard", Vector3.new(16, 8, 0.3), origin * CFrame.new(0, 7, -16.7), "TRUCKS\n" .. table.concat(lines, "\n"), {
+	board(b, "PriceBoard", Vector3.new(22, 5.5, 0.3), origin * CFrame.new(4, 13.6, -24.7), "TRUCKS\n" .. table.concat(lines, "\n"), {
 		Enum.NormalId.Back,
 	})
+	block(b, "Stage", -10, 24, 0, 0.5, -25, -11, Rustic.StoneDark, Enum.Material.Concrete)
+	Vehicles.build(Vehicles.get("rusty_pickup"), origin * CFrame.new(7, 0.5, -18) * CFrame.Angles(0, -math.pi / 2, 0), b)
 
-	local platform = part(b, "Platform", Vector3.new(0.4, 17, 17), origin * CFrame.new(6, 0.3, -7) * CFrame.Angles(0, 0, math.pi / 2), Rustic.StoneDark, Enum.Material.Concrete, Enum.PartType.Cylinder)
-	platform.CanCollide = true
-	Vehicles.build(Vehicles.get("rusty_pickup"), origin * CFrame.new(6, 0.5, -7) * CFrame.Angles(0, math.rad(-35), 0), b)
-
-	-- Garage: a workbench and a stack of tires.
-	block(b, "Workbench", -18, -6, 0, 3, 15, 17, Rustic.WoodDark, planks)
+	-- Garage: a workbench along the back and a stack of tires in the corner.
+	block(b, "Workbench", -28, -12, 0, 3, 23, 25, Rustic.WoodDark, planks)
 	for i = 0, 2 do
-		part(b, "Tire", Vector3.new(0.9, 2.8, 2.8), origin * CFrame.new(-17.4, 0.55 + i * 0.95, 11) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Tire, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		part(b, "Tire", Vector3.new(0.9, 2.8, 2.8), origin * CFrame.new(-27, 0.55 + i * 0.95, 5) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Tire, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
 	end
 
-	for _, spot in { Vector3.new(-8, 13.4, -10), Vector3.new(8, 13.4, -10), Vector3.new(-6, 13.4, 11), Vector3.new(8, 13.4, 11) } do
+	for _, spot in { Vector3.new(-14, H - 0.6, -12), Vector3.new(14, H - 0.6, -12), Vector3.new(-10, H - 0.6, 14), Vector3.new(14, H - 0.6, 14) } do
 		lamp(b, spot)
 	end
 end
@@ -228,20 +234,20 @@ local function buildLot()
 	local lot = Instance.new("Folder")
 	lot.Name = "Lot"
 	lot.Parent = folder
-	local x = 23
+	local x = 38
 	for _, def in Trucks do
 		if not def.available then
-			local pivot = origin * CFrame.new(x, 0.06, -28) * CFrame.Angles(0, math.pi, 0) -- noses face south
+			local pivot = origin * CFrame.new(x, 0.06, -44) * CFrame.Angles(0, math.pi, 0) -- noses face south
 			Vehicles.build(def, pivot, lot)
 			board(
 				lot,
 				"PriceTag",
-				Vector3.new(6.5, 2.6, 0.3),
-				origin * CFrame.new(x, 1.6, -28 + def.length / 2 + 2.5),
+				Vector3.new(9, 3.2, 0.3),
+				origin * CFrame.new(x, 1.9, -44 + def.length / 2 + 3),
 				("%s\n$%s  COMING SOON"):format(def.name:upper(), tostring(def.price)),
 				{ Enum.NormalId.Front, Enum.NormalId.Back }
 			)
-			x += 8.5
+			x += 14
 		end
 	end
 end

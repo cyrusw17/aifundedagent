@@ -5,6 +5,10 @@ return {
 	NeedleChancePerHay = 0.2, -- meadow bales hide about 20 needles per 100 hay
 	AutosaveSeconds = 60,
 
+	-- TESTING: every player has endless cash, so shops can be tried without grinding. Real balances are kept and
+	-- saved as normal underneath; set this to false before launch.
+	InfiniteMoney = true,
+
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,
 	PiecesPerBale = 60,

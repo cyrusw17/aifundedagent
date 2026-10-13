@@ -72,15 +72,20 @@ terrain took and how many bales were scattered.
 - **Hay bales** are scattered over the whole meadow in small groups (`MeadowDecor.luau`), but never within about 22
   studs of a building, on a road, in the pond or on the edge hills. They are the same bales as at camp: pick up,
   stack, shovel, and they grow back. Density is `BaleChance` in `src/shared/Config/Meadow.luau`.
-- **Truck dealer (Homestead Motors)** is west of the spawn: follow the road and the sign. Walk in the front door and
-  stand on the red rug at Hank's counter; a panel opens on the right. The Rusty Pickup costs $6,000. In Studio the
-  panel has a "Studio: +$6,000" button for testing (it does nothing in a live game).
+- **Money for testing:** `InfiniteMoney = true` in `src/shared/Config/Game.luau` gives every player $1,000,000,000
+  that never runs out. Saves keep the real balance underneath. Set it to false before launch.
+- **Truck dealer (Homestead Motors)** is west of the spawn at the end of the main road. Walk in the front door,
+  straight ahead to the red rug at Hank's counter; a panel opens on the right. The display pickup stands to your
+  right on its stage, out of the way. The Rusty Pickup costs $6,000.
+- **Land:** the land office (south of the main road, just past the spawn) and six 72 x 72 plots behind it are kept
+  flat and clear in `Config/Meadow.luau` (`LandOffice`, `Plots`); the land shop is built by its own thread.
 - **Buying** puts you in the driver's seat in the garage. The camera watches the roller door go up and follows your
   truck out onto the lot, then hands control back. Owners press GET MY TRUCK at the counter to have it brought round
   again (one truck per player). The other trucks wait on the lot as COMING SOON.
-- **Driving:** W/S gas and reverse, A/D steer, Space to get out. Only the owner can drive it.
-- **Hauling:** carry bales to the truck and set them down in the bed (face the truck, press G). Two bales fit across
-  the bed per layer. They ride loose, not welded: drive gently and they stay, take a hill or a turn too hard and they
+- **Driving:** W/S gas and reverse, A/D steer, Space to get out. Getting out puts you on the ground beside the
+  driver's door; press E (or tap Drive) there to get back in. Only the owner can drive it.
+- **Hauling:** carry bales to the truck and set them down in the bed (face the truck, press G). The pickup's bed is
+  14.6 x 10.2 inside and holds 9 bales a layer (3 along, 3 across). They ride loose, not welded: drive gently and they stay, take a hill or a turn too hard and they
   slide or fall out. Bales in a truck bed do not despawn. Park on the SELL pad to sell what is in the bed.
 
 ### Baking the terrain (optional, faster loads)
@@ -95,4 +100,4 @@ require(game.ServerScriptService.Server.Services.MeadowTerrain).generate()
 then save the place. Play sees the baked version and leaves it alone. After `Version` in `Config/Meadow.luau` changes,
 Play rebuilds it again until you re-bake.
 
-StreamingEnabled is on (set in `default.project.json`), so far-off trees and bales load as you get close.
+StreamingEnabled is off (set in `default.project.json`). With it on, each scattered bale's mesh streamed in apart from its body, so bales showed up wrong. The meadow is small enough to load whole. If streaming comes back as the map grows, wrap each bale's body and mesh in a Model with `ModelStreamingMode = Atomic` first.

@@ -21,34 +21,34 @@ local Vehicles = {}
 -- Body sizes in studs. Trucks with a bale bed override them (see SHAPES) so the bed matches the canonical spec in
 -- BUILD_REGISTRY.md and the Blender mesh drops straight over the parts.
 local DEFAULT_SHAPE = {
-	wheel = 1.75, -- wheel radius
-	track = 2.6, -- wheel center distance from the middle, sideways
+	wheel = 1.7, -- wheel radius; the wheel top stays under the 3.5 bed floor
+	track = 4.4, -- wheel center distance from the middle, sideways
 	deck = 3.1, -- chassis top
-	cabW = 5.6,
-	cabH = 5.4,
-	cabD = 4.8,
-	hood = 3.6,
-	bedW = 6.2, -- outside width of a truck bed
+	cabW = 9.2,
+	cabH = 7.0,
+	cabD = 6.4,
+	hood = 5.4,
+	bedW = 10.9, -- outside width of a truck bed (10.2 inside)
 	bedFloor = 3.5, -- top of the bed floor, level with the conveyor dock belt
-	bedWall = 1.6,
+	bedWall = 2.8,
 }
 local SHAPES = {
-	-- Rusty Pickup, matching blender/props/vehicles.py rusty_pickup: bed 10 long x 7 wide inside, 2.6 walls, floor
-	-- top 3.5. Bales lie lengthwise, two along and two across (2 x 4.6 = 9.2 long, 2 x 3.2 = 6.4 wide).
+	-- Rusty Pickup: bed 14.6 long x 10.2 wide inside, 3.2 walls, floor top 3.5 (BUILD_REGISTRY.md). Bales lie
+	-- lengthwise, three along and three across (3 x 4.6 = 13.8 long, 3 x 3.2 = 9.6 wide), 9 to a layer.
 	rusty_pickup = {
-		wheel = 1.3,
-		track = 3.0,
-		deck = 2.0,
-		cabW = 6.4,
-		cabH = 4.5,
-		cabD = 4.4,
-		hood = 3.4,
-		bedW = 7.7,
+		wheel = 1.65,
+		track = 4.3,
+		deck = 2.6,
+		cabW = 9.0,
+		cabH = 6.6,
+		cabD = 6.2,
+		hood = 5.0,
+		bedW = 10.9,
 		bedFloor = 3.5,
-		bedWall = 2.6,
-		bedLen = 10.7, -- outside length: 10 inside plus the front wall and tailgate
+		bedWall = 3.2,
+		bedLen = 15.3, -- outside length: 14.6 inside plus the front wall and tailgate
 		bedGap = 0.4, -- between the cab and the bed
-		meshSize = Vector3.new(7.72, 6.5, 19.7), -- the .glb's box in studs
+		meshSize = Vector3.new(10.9, 9.2, 27.5), -- the box the Blender mesh is stretched over
 	},
 }
 
@@ -116,13 +116,13 @@ function Vehicles.build(def, pivot, parent)
 	end
 
 	-- Chassis: the root of the vehicle. Invisible underneath, so terrain bumps never snag it.
-	local chassis = box("Chassis", Vector3.new(4.2, 0.8, L - 2), 0, DECK - 0.4, 0, Rustic.Rust, Enum.Material.CorrodedMetal, false)
+	local chassis = box("Chassis", Vector3.new(BED_W * 0.5, 0.8, L - 2), 0, DECK - 0.4, 0, Rustic.Metal, Enum.Material.Metal, false)
 	model.PrimaryPart = chassis
 
 	-- Wheels double as the rollers the truck rides on.
-	local axles = { front + 2.8, L / 2 - 2.6 }
+	local axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 2 }
 	if def.style == "hauler" then
-		axles = { front + 2.8, L / 2 - 5.4, L / 2 - 2.4 }
+		axles = { front + HOOD * 0.55, L / 2 - WHEEL_RADIUS * 4.2, L / 2 - WHEEL_RADIUS * 1.6 }
 	end
 	local wheels = {}
 	for _, z in axles do
@@ -137,18 +137,22 @@ function Vehicles.build(def, pivot, parent)
 			)
 			wheel.CustomPhysicalProperties = ROLLER
 			table.insert(wheels, wheel)
-			add("Hub", Vector3.new(0.95, 1.1, 1.1), CFrame.new(side * (TRACK + 0.02), WHEEL_RADIUS, z), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder, false)
-			box("Fender", Vector3.new(1.2, 0.4, WHEEL_RADIUS * 2 + 0.8), side * TRACK, DECK + 0.7, z, paint, Enum.Material.Metal)
+			add("Hub", Vector3.new(0.95, WHEEL_RADIUS * 0.8, WHEEL_RADIUS * 0.8), CFrame.new(side * (TRACK + 0.02), WHEEL_RADIUS, z), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder, false)
+			-- Rear wheels on a bed truck sit under the bed floor, so only the front ones get a fender.
+			if z < 0 or (def.style ~= "pickup" and def.style ~= "hauler") then
+				box("Fender", Vector3.new(1.2, 0.4, WHEEL_RADIUS * 2 + 0.8), side * TRACK, WHEEL_RADIUS * 2 + 0.3, z, paint, Enum.Material.Metal)
+			end
 		end
 	end
 
 	-- Hood, grille, lights, bumper
-	box("Hood", Vector3.new(5.2, 1.8, HOOD), 0, DECK + 0.9, front + HOOD / 2, paint, Enum.Material.Metal)
-	box("Grille", Vector3.new(4.2, 1.3, 0.2), 0, DECK + 0.8, front - 0.05, Rustic.Metal, Enum.Material.DiamondPlate)
+	local hoodW, hoodH = CAB_W - 0.8, CAB_H * 0.38
+	box("Hood", Vector3.new(hoodW, hoodH, HOOD), 0, DECK + hoodH / 2, front + HOOD / 2, paint, Enum.Material.Metal)
+	box("Grille", Vector3.new(hoodW - 1.8, hoodH - 0.5, 0.2), 0, DECK + hoodH / 2, front - 0.05, Rustic.Metal, Enum.Material.DiamondPlate)
 	for _, side in { -1, 1 } do
-		box("Headlight", Vector3.new(0.9, 0.7, 0.2), side * 1.9, DECK + 1.25, front - 0.08, Rustic.PaintCream, Enum.Material.Neon, false)
+		box("Headlight", Vector3.new(1.1, 0.9, 0.2), side * (hoodW / 2 - 0.7), DECK + hoodH * 0.65, front - 0.08, Rustic.PaintCream, Enum.Material.Neon, false)
 	end
-	box("FrontBumper", Vector3.new(5.8, 0.6, 0.5), 0, DECK - 0.3, front - 0.2, Rustic.Rust, Enum.Material.CorrodedMetal)
+	box("FrontBumper", Vector3.new(CAB_W + 0.4, 0.7, 0.5), 0, DECK - 0.3, front - 0.2, Rustic.Metal, Enum.Material.Metal)
 
 	-- The cab is hollow so you can see the driver through the glass.
 	local cabFront = front + HOOD
@@ -157,24 +161,22 @@ function Vehicles.build(def, pivot, parent)
 	box("CabFloor", Vector3.new(CAB_W, 0.3, CAB_D), 0, DECK + 0.15, cabZ, Rustic.Metal, Enum.Material.Metal)
 	box("Roof", Vector3.new(CAB_W + 0.2, 0.4, CAB_D + 0.2), 0, cabTop - 0.2, cabZ, paint, Enum.Material.Metal)
 	box("BackWall", Vector3.new(CAB_W, CAB_H - 0.4, 0.3), 0, DECK + (CAB_H - 0.4) / 2, cabFront + CAB_D - 0.15, paint, Enum.Material.Metal)
-	box("Dash", Vector3.new(CAB_W, 1.6, 0.3), 0, DECK + 0.8, cabFront + 0.15, paint, Enum.Material.Metal)
-	glass("Windshield", Vector3.new(CAB_W - 0.4, CAB_H - 2.0, 0.15), 0, DECK + 1.6 + (CAB_H - 2.0) / 2, cabFront + 0.2)
+	local doorH = CAB_H * 0.4
+	box("Dash", Vector3.new(CAB_W, doorH - 0.4, 0.3), 0, DECK + (doorH - 0.4) / 2, cabFront + 0.15, paint, Enum.Material.Metal)
+	glass("Windshield", Vector3.new(CAB_W - 0.4, CAB_H - doorH - 0.4, 0.15), 0, DECK + doorH + (CAB_H - doorH - 0.4) / 2 - 0.2, cabFront + 0.2)
 	for _, side in { -1, 1 } do
 		local x = side * (CAB_W / 2 - 0.15)
-		box("Door", Vector3.new(0.3, 2.0, CAB_D), x, DECK + 1.0, cabZ, paint, Enum.Material.Metal)
-		glass("SideWindow", Vector3.new(0.15, CAB_H - 2.4, CAB_D - 1), x, DECK + 2.0 + (CAB_H - 2.4) / 2, cabZ)
+		box("Door", Vector3.new(0.3, doorH, CAB_D), x, DECK + doorH / 2, cabZ, paint, Enum.Material.Metal)
+		glass("SideWindow", Vector3.new(0.15, CAB_H - doorH - 0.4, CAB_D - 1), x, DECK + doorH + (CAB_H - doorH - 0.4) / 2, cabZ)
 		for _, z in { cabFront + 0.2, cabFront + CAB_D - 0.2 } do
-			box("Pillar", Vector3.new(0.3, CAB_H - 2.4, 0.4), x, DECK + 2.0 + (CAB_H - 2.4) / 2, z, paint, Enum.Material.Metal)
-		end
-		if def.id == "rusty_pickup" then
-			box("RustPatch", Vector3.new(0.34, 0.8, 1.3), x, DECK + 0.6, cabZ + side * 0.8, Rustic.Rust, Enum.Material.CorrodedMetal, false)
+			box("Pillar", Vector3.new(0.3, CAB_H - doorH - 0.4, 0.4), x, DECK + doorH + (CAB_H - doorH - 0.4) / 2, z, paint, Enum.Material.Metal)
 		end
 	end
-	box("Bench", Vector3.new(CAB_W - 0.8, 0.6, 1.6), 0, DECK + 0.3, cabFront + CAB_D - 1.1, Rustic.Cloth, Enum.Material.Fabric, false)
+	box("Bench", Vector3.new(CAB_W - 0.8, 0.6, 2.0), 0, DECK + 0.3, cabFront + CAB_D - 1.3, Rustic.Cloth, Enum.Material.Fabric, false)
 	add(
 		"SteeringWheel",
-		Vector3.new(0.2, 1.4, 1.4),
-		CFrame.new(-1.2, DECK + 1.9, cabFront + 0.9) * CFrame.Angles(math.rad(-30), math.pi / 2, 0),
+		Vector3.new(0.2, 1.6, 1.6),
+		CFrame.new(-CAB_W * 0.22, DECK + doorH + 0.2, cabFront + 1.3) * CFrame.Angles(math.rad(-30), math.pi / 2, 0),
 		Rustic.BarkDark,
 		Enum.Material.SmoothPlastic,
 		Enum.PartType.Cylinder,
@@ -198,7 +200,7 @@ function Vehicles.build(def, pivot, parent)
 		floor.CustomPhysicalProperties = BED_GRIP
 		if floorTop - 0.4 > DECK then
 			for _, side in { -1, 1 } do
-				box("BedRiser", Vector3.new(0.5, floorTop - 0.4 - DECK, backLength - 0.6), side * BED_W * 0.28, (floorTop - 0.4 + DECK) / 2, backZ, Rustic.Rust, Enum.Material.CorrodedMetal)
+				box("BedRiser", Vector3.new(0.5, floorTop - 0.4 - DECK, backLength - 0.6), side * BED_W * 0.28, (floorTop - 0.4 + DECK) / 2, backZ, Rustic.Metal, Enum.Material.Metal)
 			end
 		end
 		for _, side in { -1, 1 } do
@@ -228,24 +230,25 @@ function Vehicles.build(def, pivot, parent)
 		model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + 3 - (DECK - 0.4), backZ))
 		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.7, 6, backLength - 0.7))
 	elseif def.style == "flatbed" then
-		box("Flatbed", Vector3.new(6, 0.5, backLength), 0, DECK + 0.25, backZ, Rustic.Wood, Enum.Material.WoodPlanks)
+		local floorTop = math.max(S.bedFloor, DECK + 0.5)
+		box("Flatbed", Vector3.new(BED_W, 0.5, backLength), 0, floorTop - 0.25, backZ, Rustic.Wood, Enum.Material.WoodPlanks)
 		for _, side in { -1, 1 } do
-			for _, z in { backStart + 0.4, L / 2 - 0.4 } do
-				box("Stake", Vector3.new(0.4, 2.2, 0.4), side * 2.8, DECK + 1.6, z, Rustic.WoodDark, Enum.Material.Wood)
+			for _, z in { backStart + 0.4, backZ, L / 2 - 0.4 } do
+				box("Stake", Vector3.new(0.4, 2.8, 0.4), side * (BED_W / 2 - 0.2), floorTop + 1.4, z, Rustic.WoodDark, Enum.Material.Wood)
 			end
 		end
 	elseif def.style == "box" then
-		box("CargoBox", Vector3.new(6, 6.2, backLength - 0.2), 0, DECK + 3.3, backZ + 0.1, Rustic.PaintCream, Enum.Material.Metal)
-		box("BoxStripe", Vector3.new(6.05, 0.8, backLength - 0.2), 0, DECK + 2.0, backZ + 0.1, paint, Enum.Material.Metal, false)
+		box("CargoBox", Vector3.new(BED_W, 8.6, backLength - 0.2), 0, DECK + 4.5, backZ + 0.1, Rustic.PaintCream, Enum.Material.Metal)
+		box("BoxStripe", Vector3.new(BED_W + 0.05, 1, backLength - 0.2), 0, DECK + 2.4, backZ + 0.1, paint, Enum.Material.Metal, false)
 	elseif def.style == "semi" then
-		box("FifthWheel", Vector3.new(3, 0.4, 3), 0, DECK + 0.2, backZ + 1, Rustic.Metal, Enum.Material.DiamondPlate)
+		box("FifthWheel", Vector3.new(4, 0.4, 4), 0, DECK + 0.2, backZ + 1, Rustic.Metal, Enum.Material.DiamondPlate)
 		for _, side in { -1, 1 } do
-			add("Stack", Vector3.new(5, 0.6, 0.6), CFrame.new(side * 2.2, DECK + 4.5, backStart + 0.5) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder)
+			add("Stack", Vector3.new(7, 0.7, 0.7), CFrame.new(side * (CAB_W / 2 - 0.6), DECK + 6, backStart + 0.5) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder)
 		end
 	end
-	box("RearBumper", Vector3.new(5.8, 0.5, 0.4), 0, DECK - 0.2, L / 2 + 0.1, Rustic.Rust, Enum.Material.CorrodedMetal)
+	box("RearBumper", Vector3.new(BED_W - 0.4, 0.6, 0.4), 0, DECK - 0.2, L / 2 + 0.1, Rustic.Metal, Enum.Material.Metal)
 	for _, side in { -1, 1 } do
-		box("Taillight", Vector3.new(0.6, 0.4, 0.1), side * 2.4, DECK + 0.8, L / 2 + 0.02, Color3.fromRGB(120, 40, 30), Enum.Material.Neon, false)
+		box("Taillight", Vector3.new(0.8, 0.5, 0.1), side * (BED_W / 2 - 0.7), DECK + 0.8, L / 2 + 0.02, Color3.fromRGB(120, 40, 30), Enum.Material.Neon, false)
 	end
 
 	-- The Blender mesh, when imported, takes over the look. The parts stay for collisions.
@@ -262,6 +265,7 @@ function Vehicles.build(def, pivot, parent)
 
 	model:SetAttribute("Wheels", #wheels)
 	model:SetAttribute("Length", L)
+	model:SetAttribute("Track", TRACK)
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- streams in whole, never missing a wheel
 	model.Parent = parent
 	return model
@@ -285,14 +289,41 @@ function Vehicles.makeDrivable(model, owner)
 	seat.Name = "DriverSeat"
 	seat.Size = Vector3.new(2, 0.5, 1.8)
 	-- On top of the bench, driver's side. The chassis center is DECK - 0.4 above the ground.
-	seat.CFrame = chassis.CFrame * CFrame.new(-1.2, DECK + 0.6 - (DECK - 0.4), cabFront + S.cabD - 1.1)
+	local seatX, seatZ = -S.cabW * 0.22, cabFront + S.cabD - 1.3
+	seat.CFrame = chassis.CFrame * CFrame.new(seatX, DECK + 0.6 - (DECK - 0.4), seatZ)
 	seat.Color = Rustic.Cloth
 	seat.Material = Enum.Material.Fabric
 	seat.HeadsUpDisplay = false
 	seat.MaxSpeed = 0 -- the client controller does the driving
 	seat.Torque = 0
 	seat:SetAttribute("Truck", true)
+	-- Where you stand after getting out: on the ground beside the driver's door (from the chassis center). The
+	-- cab has a roof, so a plain jump out would bump it and land you straight back in the seat.
+	seat:SetAttribute("ExitOffset", CFrame.new(-(S.cabW / 2 + 2.5), 3.2 - (DECK - 0.4), seatZ))
 	seat.Parent = model
+
+	-- The cab is closed, so you get in with a button by the driver's door.
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DrivePrompt"
+	prompt.ActionText = "Drive"
+	prompt.ObjectText = owner.Name .. "'s truck"
+	prompt.HoldDuration = 0
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Enabled = false -- the drive-out scene puts the owner in the seat; it turns on once they get out
+	prompt.Parent = seat
+	prompt.Triggered:Connect(function(player)
+		if player ~= owner or seat.Occupant or seat.Disabled then
+			return
+		end
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health > 0 and not humanoid.SeatPart then
+			seat:Sit(humanoid)
+		end
+	end)
 
 	for _, p in model:GetDescendants() do
 		if p:IsA("BasePart") and p ~= chassis then
@@ -321,7 +352,7 @@ function Vehicles.makeDrivable(model, owner)
 	drive.PrimaryTangentAxis = Vector3.xAxis
 	drive.SecondaryTangentAxis = Vector3.zAxis
 	drive.PlaneVelocity = Vector2.zero
-	drive.MaxForce = 9000
+	drive.MaxForce = 30000 -- enough to pull a full bed; a heavy load still speeds up slower
 	drive.Parent = chassis
 
 	local steer = Instance.new("AlignOrientation")
@@ -347,11 +378,20 @@ function Vehicles.makeDrivable(model, owner)
 					weld:Destroy()
 				end
 			end
+			prompt.Enabled = false
 		else
-			-- The driver got out: park where it stands.
+			-- The driver got out: park where it stands. The seat rests a moment so the character, now standing
+			-- beside the door (Truck.client.luau), is not pulled straight back in.
 			steer.CFrame = CFrame.Angles(0, yawOf(chassis.CFrame), 0)
 			drive.PlaneVelocity = Vector2.new(0, 0.001)
 			drive.PlaneVelocity = Vector2.zero
+			seat.Disabled = true
+			task.delay(1.5, function()
+				if seat.Parent then
+					seat.Disabled = false
+					prompt.Enabled = seat.Occupant == nil
+				end
+			end)
 		end
 	end)
 	return seat
