@@ -22,7 +22,7 @@ end
 -- True once every mesh in the model has downloaded. Textures may still be on their way; that only looks plain.
 local function meshesReady(parts)
 	local ids = {}
-	local failed = false
+	local failed = nil
 	local meshes = {}
 	for _, part in parts do
 		if part:IsA("MeshPart") and part.MeshId ~= "" then
@@ -34,11 +34,24 @@ local function meshesReady(parts)
 		ContentProvider:PreloadAsync(meshes, function(contentId, status)
 			-- PreloadAsync returns once everything was tried; a mesh that reports anything but success is not ready.
 			if ids[contentId] and status ~= Enum.AssetFetchStatus.Success then
-				failed = true
+				failed = `{contentId} {status.Name}`
 			end
 		end)
 	end)
-	return ran and not failed
+	if not ran then
+		return false, "preload errored"
+	end
+	return failed == nil, failed
+end
+
+-- One line per prop name in the Output the first time it is shown or given up on, so a Studio log says which
+-- meshes really appeared in game.
+local reported = {}
+local function report(model, message)
+	if not reported[model.Name] then
+		reported[model.Name] = true
+		print(`[Needlewood] {model.Name} mesh {message}`)
+	end
 end
 
 -- The box around the mesh parts, in world axes: its center and longest side.
@@ -99,21 +112,21 @@ local function hide(part)
 end
 
 local function swap(model, parts)
-	local link = model:FindFirstChild("Fallback")
-	local root = link and link.Value
 	for _, part in parts do
 		part.Transparency = part:GetAttribute("MeshTransparency") or 0
 	end
-	if not root then
-		return
-	end
-	local list = { root }
-	for _, d in root:GetDescendants() do
-		table.insert(list, d)
-	end
-	for _, part in list do
-		if part:IsA("BasePart") and not part:IsDescendantOf(model) then
-			hide(part)
+	for _, link in model:GetChildren() do
+		local root = link.Name == "Fallback" and link:IsA("ObjectValue") and link.Value
+		if root then
+			local list = { root }
+			for _, d in root:GetDescendants() do
+				table.insert(list, d)
+			end
+			for _, part in list do
+				if part:IsA("BasePart") and not part:IsDescendantOf(model) then
+					hide(part)
+				end
+			end
 		end
 	end
 end
@@ -122,17 +135,27 @@ local function watch(model)
 	task.spawn(function()
 		-- The fallback link and the mesh parts replicate with the model, but give them a moment to arrive.
 		model:WaitForChild("Fallback", 5)
+		local why = "has no mesh parts"
 		for _ = 1, MAX_TRIES do
 			if not model.Parent then
 				return
 			end
 			local parts = meshPartsOf(model)
-			if #parts > 0 and meshesReady(parts) and inPlace(model, parts) then
-				swap(model, parts)
-				return
+			if #parts > 0 then
+				local ready, status = meshesReady(parts)
+				if not ready then
+					why = `did not load ({status})`
+				elseif not inPlace(model, parts) then
+					why = "loaded but was out of place"
+				else
+					swap(model, parts)
+					report(model, `shown ({#parts} parts)`)
+					return
+				end
 			end
 			task.wait(RETRY_SECONDS)
 		end
+		report(model, `kept hidden: {why}; showing the part look`)
 	end)
 end
 
