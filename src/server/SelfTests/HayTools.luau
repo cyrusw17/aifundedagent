@@ -28,6 +28,7 @@ local Weather = require(Services.Weather)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
@@ -202,6 +203,60 @@ local function noPlayerChecks(t)
 	local after = meanDistance()
 	t.check("rake gathers strands toward the player", after < before * 0.8, ("%.1f -> %.1f studs"):format(before, after))
 	for _, p in pieces do
+		if p.Parent then
+			Hay.remove(p)
+		end
+	end
+
+	-- Raking onto a belt: the strands go up onto the belt (it stands well off the ground), ride it, and no pile forms.
+	local beltAt = t.place()
+	local belt = Instance.new("Part")
+	belt.Name = "Belt"
+	belt.Anchored = true
+	belt.Size = Vector3.new(30, 1, 3)
+	belt.CFrame = beltAt * CFrame.new(8, 3, 0)
+	belt.AssemblyLinearVelocity = Vector3.new(6, 0, 0)
+	CollectionService:AddTag(belt, "ConveyorBelt")
+	belt.Parent = workspace
+	t.cleanup(belt)
+	local loose = {}
+	for i = 1, 16 do
+		local angle = i / 16 * math.pi * 2
+		table.insert(loose, Hay.spawnPiece(beltAt.Position + Vector3.new(math.cos(angle) * 2.5, 0.5, 6 + math.sin(angle) * 2.5), Vector3.zero, 0))
+	end
+	t.wait(0.6)
+	local found, beltSpot = Hay.beltNear(beltAt.Position + Vector3.new(0, 1, 1.5), Config.RakeBeltReach)
+	t.check("a belt in reach is found", found == belt)
+	local sent = found and Hay.rakeOntoBelt(beltAt.Position + Vector3.new(0, 0, 6), belt, beltSpot, Config.RakeRadius, 0) or 0
+	t.equal("the rake flicks every strand toward the belt", sent, #loose)
+	t.wait(0.9)
+	local onBelt, startX = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			onBelt += 1
+			startX += p.Position.X
+		end
+	end
+	t.check("raked strands land on the belt", onBelt >= #loose * 0.75, ("%d of %d"):format(onBelt, #loose))
+	t.wait(1)
+	local endX, still = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			still += 1
+			endX += p.Position.X
+		end
+	end
+	t.check("...and ride it along", still > 0 and onBelt > 0 and endX / still - startX / onBelt > 2, ("%.1f studs"):format(still > 0 and onBelt > 0 and endX / still - startX / onBelt or 0))
+	local pileMade = false
+	for _, p in Hay.near(belt.Position, 20, nil) do
+		if Hay.isPile(p) then
+			pileMade = true
+		end
+	end
+	t.check("raking onto a belt makes no pile", not pileMade)
+	for _, p in loose do
 		if p.Parent then
 			Hay.remove(p)
 		end

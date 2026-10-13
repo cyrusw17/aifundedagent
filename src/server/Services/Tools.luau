@@ -341,7 +341,21 @@ local function useRake(player, root, aim)
 		local flat = Vector3.new(center.X - root.Position.X, 0, center.Z - root.Position.Z)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
-		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		-- A stroke that ends at a conveyor belt (or a click on the belt itself) flicks the hay up onto it, so raking
+		-- feeds the line. Otherwise the hay is pulled into a row in front of you.
+		local belt, landAt
+		if aim and aim.part and CollectionService:HasTag(aim.part, "ConveyorBelt") then
+			belt, landAt = Hay.beltNear(aim.position, 1)
+		end
+		if not belt then
+			belt, landAt = Hay.beltNear(gatherAt - Vector3.new(0, 1, 0), Config.RakeBeltReach)
+		end
+		if belt then
+			Hay.rakeOntoBelt(center, belt, landAt, Config.RakeRadius, player.UserId)
+			Events.fire(player, "raked_onto_belt", 1, { center = center })
+		else
+			Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		end
 		Events.fire(player, "raked", 1, { center = center })
 		Feedback.play("Rake", center)
 	end)

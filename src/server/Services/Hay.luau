@@ -3,6 +3,7 @@
 -- shovel scoops pieces up, the rake drags them across the ground, and pieces left on the sell pad sell. Every
 -- strand is a small real part, capped at MaxLoosePieces so the server stays light.
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -387,6 +388,67 @@ local function packPile(at, ownerId)
 			pieces[pile] = os.clock()
 		end
 	end
+end
+
+-- The conveyor belt nearest position within radius, and the spot on its top surface closest to position (kept off
+-- the rails), or nil when there is none.
+function Hay.beltNear(position, radius)
+	local best, bestSpot, bestDistance = nil, nil, math.huge
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { Hay.folder }
+	for _, part in workspace:GetPartBoundsInRadius(position, radius, params) do
+		if CollectionService:HasTag(part, "ConveyorBelt") then
+			local localPos = part.CFrame:PointToObjectSpace(position)
+			local half = part.Size / 2
+			local spot = part.CFrame
+				* Vector3.new(
+					math.clamp(localPos.X, -half.X + 0.4, half.X - 0.4),
+					half.Y + 0.3,
+					math.clamp(localPos.Z, -half.Z + 0.4, half.Z - 0.4)
+				)
+			local distance = (spot - position).Magnitude
+			if distance < bestDistance then
+				best, bestSpot, bestDistance = part, spot, distance
+			end
+		end
+	end
+	return best, bestSpot
+end
+
+-- Raking hay onto a belt: the strands around center are flicked up in a short arc onto the belt's top near landAt,
+-- where the belt carries them into the line (a baler packs them, a sorter sorts them). Belts stand well off the
+-- ground, so hay is lifted onto them rather than dragged. Raked piles stay where they are (shovel them instead).
+-- Returns how many went up.
+function Hay.rakeOntoBelt(center, belt, landAt, radius, ownerId)
+	local list = Hay.near(center, radius, nil)
+	local flight = 0.5
+	local gravity = Vector3.new(0, -workspace.Gravity, 0)
+	local along = belt.CFrame:VectorToWorldSpace(Vector3.new(1, 0, 0))
+	local across = belt.CFrame:VectorToWorldSpace(Vector3.new(0, 0, 1))
+	local half = belt.Size / 2
+	local sent = 0
+	for i, piece in list do
+		if not Hay.isPile(piece) and piece.Parent then
+			if not needleSet[piece] then
+				piece:SetAttribute("OwnerId", ownerId)
+			end
+			pieces[piece] = os.clock()
+			-- Spread along the belt a little so the hay lands as a row, not a heap.
+			local target = landAt + along * rng:NextNumber(-1, 1) * math.min(half.X - 0.4, 1.5)
+				+ across * rng:NextNumber(-1, 1) * math.min(half.Z - 0.4, 1.5)
+			local from = piece.Position
+			local velocity = (target - from - 0.5 * gravity * flight * flight) / flight
+			task.delay((i - 1) * 0.01, function()
+				if piece.Parent then
+					piece.AssemblyLinearVelocity = velocity
+					piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-6, 6), rng:NextNumber(-6, 6), rng:NextNumber(-6, 6))
+				end
+			end)
+			sent += 1
+		end
+	end
+	return sent
 end
 
 function Hay.rake(center, gatherAt, radius, ownerId)

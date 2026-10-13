@@ -44,6 +44,7 @@ return {
 	-- takes in one scoop (it ignores the per-scoop size; only your carry room limits it).
 	PileMin = 40,
 	PileRadius = 3,
+	RakeBeltReach = 5, -- a rake stroke ending this close to a conveyor belt flicks the hay up onto it
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
 	RakeMaxSpeed = 16,
 	RakeCooldownSeconds = 0.75,
