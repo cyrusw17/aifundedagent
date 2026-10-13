@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "lib"))
 sys.path.insert(0, HERE)
 from rig import tag, wheel_uid  # noqa: E402
 from style import box  # noqa: E402
-from vehicles import (B, BEDS, C, FLOOR, PI, STUD, WALL_T, bed_len, beam, bed_support, cargo_bed, flat,  # noqa: E402
+from vehicles import (B, BEDS, C, cab_door, FLOOR, PI, STUD, WALL_T, bed_len, beam, bed_support, cargo_bed, flat,  # noqa: E402
                       mesh_obj, mud_flaps, place, plank_lines, ring, s, taillights, tire, truck_with_bed)
 
 
@@ -83,6 +83,46 @@ def wheel(f, x, y, r, w, hub="metal", tread=False):
                 Matrix.Translation(Vector(s(0, 0, r - 0.1)))
             extra.append(f.apply(f.shape(xform(o, M), round_edges=False), "tire"))
     return parts + tag(extra, "wheel", wheel_uid(x, y))
+
+
+def open_cab(f, paint, W, yc0, yc1, fz, zb, ztop, dy0, dy1, dz0, dz1, uw=None, yf=None, yb=None, k=1.4):
+    """Hollow cab shell for the special fronts so the hinged doors (Door_L/R, Glass_L/R) open onto a
+    bench seat, dash and steering wheel. Lower body is W wide up to the belt line zb; the greenhouse
+    (half width uw, front plane yf, back plane yb) runs zb..ztop. The caller adds glass and roof."""
+    uw = uw or W / 2
+    yf = yc0 if yf is None else yf
+    yb = yc1 if yb is None else yb
+    yc = (yc0 + yc1) / 2
+    p = [B(f, paint, (W, yc1 - yc0, 0.35), (0, yc, fz + 0.175), along="y", rounded=False),          # floor
+         B(f, paint, (W, 0.35, zb - fz), (0, yc0 + 0.175, (fz + zb) / 2), rounded=False),            # firewall
+         B(f, paint, (W, 0.35, zb - fz), (0, yc1 - 0.175, (fz + zb) / 2), rounded=False),            # back, lower
+         B(f, paint, (2 * uw, 0.3, ztop - zb), (0, yb - 0.15, (zb + ztop) / 2), rounded=False)]      # back, upper
+    if yf - yc0 > 0.1:
+        p.append(B(f, paint, (W, yf - yc0 + 0.1, 0.25), (0, (yc0 + yf) / 2, zb - 0.1), rounded=False))  # cowl
+    if yc1 - yb > 0.1:
+        p.append(B(f, paint, (W, yc1 - yb + 0.1, 0.25), (0, (yb + yc1) / 2, zb - 0.1), rounded=False))
+    for x in (-1, 1):
+        xs, xu = x * (W / 2 - 0.15), x * (uw - 0.15)
+        p.append(B(f, paint, (0.3, dy0 - yc0, zb - fz), (xs, (yc0 + dy0) / 2, (fz + zb) / 2), along="z", rounded=False))
+        p.append(B(f, paint, (0.3, yc1 - dy1, zb - fz), (xs, (dy1 + yc1) / 2, (fz + zb) / 2), along="z", rounded=False))
+        p.append(B(f, paint, (0.3, dy1 - dy0, dz0 - fz), (xs, (dy0 + dy1) / 2, (fz + dz0) / 2), along="y",
+                   rounded=False))                                                               # door sill
+        p.append(B(f, paint, (0.3, max(dy0 - yf, 0.3), ztop - zb), (xu, (yf + max(dy0, yf + 0.3)) / 2,
+                   (zb + ztop) / 2), along="z", rounded=False))                                  # A pillar
+        p.append(B(f, paint, (0.3, max(yb - dy1, 0.3), ztop - zb), (xu, (min(dy1, yb - 0.3) + yb) / 2,
+                   (zb + ztop) / 2), along="z", rounded=False))                                  # B pillar
+        if ztop - dz1 > 0.05:
+            p.append(B(f, paint, (0.3, dy1 - dy0, ztop - dz1), (xu, (dy0 + dy1) / 2, (dz1 + ztop) / 2), along="y",
+                       rounded=False))                                                           # header
+        p += cab_door(f, paint, x, W / 2, dy0, dy1, dz0, dz1, zb, upper_w=uw)
+    # Bench seat, dash and a steering wheel on the driver's side (builder +x).
+    p.append(B(f, "tire", (W - 1.0, 1.3, 0.7), (0, yc1 - 1.1, fz + 1.05), rounded=False))
+    p.append(B(f, "tire", (2 * uw - 1.0, 0.4, 1.5), (0, yc1 - 0.6, fz + 1.9), rounded=False))
+    p.append(B(f, "tire", (W - 0.8, 0.8, 0.45), (0, yc0 + 0.75, zb - 0.2), rounded=False))
+    swx, swy, swz = W * 0.22, yc0 + 1.35, zb - 0.1
+    p.append(C(f, "tire", 0.55 * k, 0.12, (swx, swy, swz), axis="y", verts=12, rounded=False))
+    p.append(beam(f, "metal", (swx, swy, swz), (swx, yc0 + 0.5, zb - 0.6), 0.14))
+    return p
 
 
 # ---------------------------------------------------------------- truck fronts
@@ -138,8 +178,9 @@ def classic_front(f, paint, k=1.5, wide=0.95, wheel_r=1.5, hood_d=3.0, rear_len=
     ycab = (yc0 + yc1) / 2
     GW, GD = W - 0.4, CD - 0.6
     yg = ycab + 0.15
-    parts.append(B(f, paint, (W, CD, CH * 0.55), (0, ycab, fz + CH * 0.275), along="y"))
-    parts.append(B(f, paint, (GW, GD, CH * 0.33), (0, yg, fz + CH * 0.715), along="y"))
+    g0, g1 = yg - GD / 2, yg + GD / 2
+    parts += open_cab(f, paint, W, yc0, yc1, fz, fz + CH * 0.55, fz + CH * 0.88, g0 + 0.05, g1 - 0.35, fz + 0.45,
+                      fz + CH * 0.85, uw=GW / 2, yf=g0, yb=g1, k=k)
     parts.append(half_ell(f, roof or paint, GW / 2, 0.55 * k, GD, (0, yg, fz + CH * 0.88), axis="y"))
     zw = fz + CH * 0.72
     yw = yg - GD / 2 - 0.04
@@ -147,14 +188,6 @@ def classic_front(f, paint, k=1.5, wide=0.95, wheel_r=1.5, hood_d=3.0, rear_len=
     parts.append(B(f, trim, (0.16, 0.16, CH * 0.26), (0, yw - 0.03, zw), along="z", rounded=False))
     parts.append(B(f, "glass", (GW * 0.45, 0.12, CH * 0.18), (0, yg + GD / 2 + 0.04, zw), rounded=False))
     for x in (-1, 1):
-        parts.append(B(f, "glass", (0.12, GD * 0.62, CH * 0.24), (x * (GW / 2 + 0.04), yg - GD * 0.1, zw),
-                       along="y", rounded=False))
-        parts.append(B(f, trim, (0.08, CD, 0.15), (x * (W / 2 + 0.03), ycab, fz + CH * 0.5), along="y",
-                       rounded=False))
-        parts.append(B(f, "metal", (0.1, 0.12, CH * 0.5), (x * (W / 2 + 0.03), yc1 - CD * 0.15, fz + CH * 0.28),
-                       along="z", rounded=False))
-        parts.append(B(f, trim, (0.14, 0.5, 0.14), (x * (W / 2 + 0.06), yc1 - CD * 0.3, fz + CH * 0.45),
-                       along="y", rounded=False))
         parts.append(B(f, trim, (0.7, 0.12, 0.12), (x * (W / 2 + 0.35), yc0 + 0.3, fz + CH * 0.6), rounded=False))
         parts.append(C(f, trim, 0.3, 0.12, (x * (W / 2 + 0.75), yc0 + 0.3, fz + CH * 0.62), axis="y", verts=8,
                        rounded=False))
@@ -207,18 +240,14 @@ def lifted_front(f, paint, k=1.4, wide=1.0, wheel_r=1.55, tw=1.35, fz=3.2, hood_
         parts.append(B(f, trim, (1.0, 0.25, 0.8), (x * HW * 0.39, yF - 0.08, fz + HH * 0.55), rounded=False))
         parts.append(B(f, lens, (0.75, 0.25, 0.55), (x * HW * 0.39, yF - 0.13, fz + HH * 0.55), rounded=False))
     # Cab.
-    parts.append(B(f, paint, (W, CD, CH), (0, ycab, fz + CH / 2), along="y"))
+    parts += open_cab(f, paint, W, yc0, yc1, fz, fz + CH * 0.55, fz + CH - 0.4, yc0 + 0.35, yc1 - 0.45, fz + 0.45,
+                      fz + CH * 0.92, k=k)
+    parts.append(B(f, paint, (W, CD, 0.4), (0, ycab, fz + CH - 0.2), along="y"))                 # roof
     parts.append(B(f, paint, (W - 0.3, CD - 0.4, 0.3), (0, ycab, fz + CH + 0.1), along="y"))
     zw = fz + CH * 0.73
     parts.append(B(f, "glass", (W - 0.9, 0.12, CH * 0.34), (0, yc0 - 0.04, zw), rounded=False))
     parts.append(B(f, "glass", (W * 0.62, 0.12, CH * 0.26), (0, yc1 + 0.04, zw), rounded=False))
     for x in (-1, 1):
-        parts.append(B(f, "glass", (0.12, CD * 0.5, CH * 0.3), (x * (W / 2 + 0.04), yc0 + CD * 0.36, zw),
-                       along="y", rounded=False))
-        parts.append(B(f, "metal", (0.1, 0.12, CH * 0.55), (x * (W / 2 + 0.03), yc1 - CD * 0.18, fz + CH * 0.42),
-                       along="z", rounded=False))
-        parts.append(B(f, "metal", (0.14, 0.5, 0.14), (x * (W / 2 + 0.06), yc1 - CD * 0.32, fz + CH * 0.5),
-                       along="y", rounded=False))
         parts.append(B(f, "metal", (0.9, 0.12, 0.12), (x * (W / 2 + 0.45), yc0 + 0.3, fz + CH * 0.7),
                        rounded=False))
         parts.append(B(f, "metal", (0.18, 0.45, 1.0), (x * (W / 2 + 0.9), yc0 + 0.3, fz + CH * 0.7), along="z",

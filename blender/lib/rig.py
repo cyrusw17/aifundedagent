@@ -10,6 +10,7 @@ pieces are separate, named MeshParts the game can turn or slide:
     Tailgate               origin on its hinge (the bottom edge)
     Ramp, Lever, Head      origin at the bottom center too; Gate at the top center; Door on its left
                            (hinge) edge; ArmL/ArmR at the shoulder (inner end)
+    Door_L, Door_R         truck cab doors; origin on the front (hinge) edge, L = -X like the wheels
     Coupler                trailer hitch coupler; origin at the hitch point
     Belt, Roller, Drum ... conveyor and machine parts that move
 
@@ -27,7 +28,8 @@ STUD = 0.28
 # before the flip. bottom = bottom center; top = top center; door = vertical hinge on the builder-left
 # edge; shoulder = the inner end (nearest the body's center line).
 PIVOTS = {"Tailgate": "bottom", "Ramp": "bottom", "Lever": "bottom", "Head": "bottom",
-          "Gate": "top", "Door": "door", "ArmL": "shoulder", "ArmR": "shoulder"}
+          "Gate": "top", "Door": "door", "ArmL": "shoulder", "ArmR": "shoulder",
+          "Door_L": "front", "Door_R": "front", "Glass_L": "front", "Glass_R": "front"}  # truck doors hinge on their front vertical edge
 
 
 def tag(objs, name, uid=""):
@@ -208,6 +210,8 @@ def assemble(parts, name, join, flip=False):
             p = Vector((c.x, c.y, hi.z))
         elif pivot == "door":
             p = Vector((hi.x if flip else lo.x, c.y, c.z))
+        elif pivot == "front":
+            p = Vector((c.x, hi.y if flip else lo.y, lo.z))
         elif pivot == "shoulder":
             p = Vector((lo.x if abs(lo.x) < abs(hi.x) else hi.x, c.y, c.z))
         o = join(g, child_name)
