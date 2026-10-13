@@ -34,6 +34,10 @@ small bevels, muted straw, bark and plank textures, weathered grey iron, dull tw
   Every map uses the same bale and only swaps the hay colors, the twine on rarer maps, and a small extra.
   The map hays are a proposal; only Meadow hay is in the game.
 
+## Tools
+
+- The only held tools are the shovel and the rake. Upgrades are five glove tiers, made in leather (see palette).
+
 ## Palette
 
 Each texture uses three shades (light, mid, dark). sRGB hex from `RUSTIC` in `lib/style.py`:
@@ -46,6 +50,7 @@ Each texture uses three shades (light, mid, dark). sRGB hex from `RUSTIC` in `li
 | handle (planks) | #998061 | #80694C | #5C4A36 | tool handles, planks, buildings |
 | metal (grey iron) | #949491 | #7A7A78 | #666159 (wear) | blades, tines; light wear spots, no orange rust |
 | twine | #736652 | #615442 | #473D2E | bale bands |
+| leather | #8F6645 | #755236 | #523826 | glove tiers |
 
 Game-side colors (Roblox `Color3.fromRGB`) that match:
 
