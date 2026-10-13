@@ -19,6 +19,7 @@ local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
+local Wheelbarrow = require(script.Parent.Wheelbarrow)
 
 local Tools = {}
 
@@ -202,12 +203,14 @@ function Tools.init()
 	Feedback.init()
 	Gloves.init()
 	Finds.init()
-	-- The glove stand goes beside the sell pad once the world has built it.
+	Wheelbarrow.init(currentAim)
+	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")
 		local pad = world and world:WaitForChild("SellPad", 10)
 		if pad then
 			Gloves.buildStand(world, CFrame.new(pad.Position.X - pad.Size.X / 2 - 3.5, 0, pad.Position.Z))
+			Wheelbarrow.buildStand(world, CFrame.new(pad.Position.X - pad.Size.X / 2 - 3.5, 0, pad.Position.Z + 9))
 		end
 	end)
 

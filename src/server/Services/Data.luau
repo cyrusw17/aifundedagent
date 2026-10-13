@@ -171,6 +171,7 @@ local function stateFrom(saved)
 		carryBale = nil,
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
+		gear = stringList(saved.gear), -- other things bought once and kept, like "wheelbarrow"
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
@@ -346,6 +347,7 @@ function Data.save(player)
 		cash = cash,
 		trucks = state.trucks,
 		trailers = state.trailers,
+		gear = state.gear,
 		pocket = state.pocket,
 		thatch = state.thatch,
 		finds = state.finds,

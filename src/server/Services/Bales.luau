@@ -367,29 +367,8 @@ function Bales.pickup(player, b)
 	Data.sync(player)
 end
 
--- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
-function Bales.drop(player)
-	local state = Data.get(player)
-	local b = state and state.carryBale
-	if not b or b.gone then
-		return
-	end
-	local root = Avatar.getRoot(player)
-	state.carryBale = nil
-	Data.sync(player)
-
-	if b.carryWeld then
-		b.carryWeld:Destroy()
-		b.carryWeld = nil
-	end
-	b.carriedBy = nil
-
-	if not root or not root.Parent then
-		Bales.consume(b)
-		return
-	end
-
-	-- Set it down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
+-- Sets a bale down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
+local function setDown(b, root)
 	local look = root.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
@@ -414,8 +393,81 @@ function Bales.drop(player)
 		b.body:SetNetworkOwnershipAuto()
 	end)
 
+end
+
+-- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
+function Bales.drop(player)
+	local state = Data.get(player)
+	local b = state and state.carryBale
+	if not b or b.gone then
+		return
+	end
+	local root = Avatar.getRoot(player)
+	state.carryBale = nil
+	Data.sync(player)
+
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+
+	if not root or not root.Parent then
+		Bales.consume(b)
+		return
+	end
+
+	setDown(b, root)
 	Feedback.play("BaleSetDown", b.body)
 	Avatar.clearCarry(player)
+	startDespawnTimer(b)
+end
+
+-- Loads a bale into something the player moves (a wheelbarrow): welded to anchor at offset, out of play until
+-- released. Returns true if it was loaded.
+function Bales.stow(player, b, anchor, offset)
+	if b.gone or b.carriedBy or b.breaking then
+		return false
+	end
+	b.carriedBy = player
+	b.ownerId = player.UserId
+	b.dropToken += 1
+	b.prompt.Enabled = false
+	b.body.Anchored = false
+	b.body.CanCollide = false
+	b.body.CanQuery = false -- so bales set down from the same barrow stack on the ground, not on this one
+	b.body.Massless = true
+	b.body.CFrame = anchor.CFrame * offset
+	local weld = Instance.new("Weld")
+	weld.Name = "CarryWeld"
+	weld.Part0 = anchor
+	weld.Part1 = b.body
+	weld.C0 = offset
+	weld.Parent = b.body
+	b.carryWeld = weld
+	scheduleRegrow(b)
+	Feedback.play("BaleLift", b.body)
+	return true
+end
+
+-- Takes a stowed bale out and sets it down in front of the player (or gets rid of it if the player is gone).
+function Bales.release(b, root)
+	if b.gone then
+		return
+	end
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+	b.prompt.Enabled = true
+	if not root or not root.Parent then
+		Bales.consume(b)
+		return
+	end
+	setDown(b, root)
+	b.body.CanQuery = true
+	Feedback.play("BaleSetDown", b.body)
 	startDespawnTimer(b)
 end
 

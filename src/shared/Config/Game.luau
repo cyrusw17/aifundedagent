@@ -28,6 +28,9 @@ return {
 	ScoopCooldownSeconds = 0.85,
 	-- Scoop combo: scoops landing within ComboWindowSeconds of each other chain. From ComboStart scoops on, each
 	-- scoop takes ComboBonusPieces more strands per link past the start, up to ComboMaxBonus.
+	-- Wheelbarrow: how many bales it holds, and the share of their weight you feel while pushing it.
+	WheelbarrowBales = 3,
+	WheelbarrowLoadFactor = 0.3,
 	ComboWindowSeconds = 1.6,
 	ComboStart = 3,
 	ComboBonusPieces = 2,

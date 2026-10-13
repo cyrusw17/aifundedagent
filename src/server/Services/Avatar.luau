@@ -348,6 +348,12 @@ function Avatar.refreshSpeed(player)
 		end
 		weight = state.loadWeight or state.loadHay
 		tier = state.loadTier or 0
+		-- Bales in a wheelbarrow weigh a fraction of their weight: the wheel takes most of it.
+		for _, bale in state.barrow or {} do
+			local baleWeight, baleTier = Gloves.baleWeight(bale.body)
+			weight += baleWeight * Config.WheelbarrowLoadFactor
+			tier = math.max(tier, baleTier)
+		end
 		if state.carryBale and state.carryBale.body then
 			local baleWeight, baleTier = Gloves.baleWeight(state.carryBale.body)
 			weight += baleWeight
