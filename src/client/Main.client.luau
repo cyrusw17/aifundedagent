@@ -81,7 +81,49 @@ local function equippedTool()
 	return character and character:FindFirstChildOfClass("Tool")
 end
 
--- Clicking: put a carried barrel down, or use the tool in hand where you clicked. The server decides the result.
+-- What is under a screen point (mouse or tap), ignoring your own character.
+local function aimAt(x, y)
+	local ray = workspace.CurrentCamera:ScreenPointToRay(x, y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+	return workspace:Raycast(ray.Origin, ray.Direction * 300, params)
+end
+
+local function barrelFrom(part)
+	if CollectionService:HasTag(part, "HayBarrel") then
+		return part
+	end
+	local parent = part.Parent
+	if parent and parent:IsA("BasePart") and CollectionService:HasTag(parent, "HayBarrel") then
+		return parent
+	end
+	return nil
+end
+
+-- A tool in hand uses its own Activated signal. Roblox marks clicks as game-processed while a tool is
+-- equipped, so InputBegan alone never sees them. The server decides what the click does.
+local mouse = player:GetMouse()
+local hookedTools = setmetatable({}, { __mode = "k" })
+
+local function useTool()
+	if player:GetAttribute("Carrying") then
+		return
+	end
+	local hit = aimAt(mouse.X, mouse.Y)
+	if hit then
+		useRemote:FireServer(hit.Position, hit.Instance)
+	end
+end
+
+local function hookTool(child)
+	if child:IsA("Tool") and not hookedTools[child] then
+		hookedTools[child] = true
+		child.Activated:Connect(useTool)
+	end
+end
+
+-- Bare hands: click a barrel to lift it. While carrying, click anywhere (or press G) to set it down.
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then
 		return
@@ -94,21 +136,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 		return
 	end
-	if not pressed or not equippedTool() then
+	if not pressed or equippedTool() then
 		return
 	end
-	local camera = workspace.CurrentCamera
-	local ray = camera:ViewportPointToRay(input.Position.X, input.Position.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { player.Character }
-	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
-	if hit then
-		useRemote:FireServer(hit.Position, hit.Instance)
+	local hit = aimAt(input.Position.X, input.Position.Y)
+	local barrel = hit and barrelFrom(hit.Instance)
+	if barrel then
+		pickupRemote:FireServer(barrel)
 	end
 end)
 
--- The small pick-up button above the nearest barrel. It shows only with bare hands, because only bare hands lift a barrel.
+-- The small pick-up button above the nearest barrel. Lifting takes both hands, so the server puts away any tool first.
 local pickGui = Instance.new("BillboardGui")
 pickGui.Name = "PickUpButton"
 pickGui.Size = UDim2.fromOffset(104, 34)
@@ -146,7 +184,7 @@ RunService.Heartbeat:Connect(function()
 	nearBarrel = nil
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root and not player:GetAttribute("Carrying") and not equippedTool() then
+	if root and not player:GetAttribute("Carrying") then
 		local best = 12
 		for _, barrel in CollectionService:GetTagged("HayBarrel") do
 			local distance = (barrel.Position - root.Position).Magnitude
@@ -205,7 +243,13 @@ player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 
 -- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
 local function watchCharacter(character)
-	character.ChildAdded:Connect(refresh)
+	for _, child in character:GetChildren() do
+		hookTool(child)
+	end
+	character.ChildAdded:Connect(function(child)
+		hookTool(child)
+		refresh()
+	end)
 	character.ChildRemoved:Connect(refresh)
 	refresh()
 end
