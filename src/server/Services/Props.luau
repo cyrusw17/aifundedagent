@@ -236,12 +236,12 @@ function Props.make(name, cframe, fit, turn)
 		local stretch = Vector3.new(alongAxis(cf.RightVector, scale), alongAxis(cf.UpVector, scale), alongAxis(cf.LookVector, scale))
 		if wheels[part] then
 			-- A stretched prop still gets round wheels: both sides across the axle (the wheel's thinnest side) scale alike.
-			local size = part.Size
+			local own = part.Size
 			local round
-			if size.X <= size.Y and size.X <= size.Z then
+			if own.X <= own.Y and own.X <= own.Z then
 				round = (stretch.Y + stretch.Z) / 2
 				stretch = Vector3.new(stretch.X, round, round)
-			elseif size.Y <= size.Z then
+			elseif own.Y <= own.Z then
 				round = (stretch.X + stretch.Z) / 2
 				stretch = Vector3.new(round, stretch.Y, round)
 			else

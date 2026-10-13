@@ -57,8 +57,8 @@ return {
 		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
 		-- Quest-only: free to build once the alien ritual is done (Config/Quests.luau), never sold.
 		-- quest is the reward id (Quests.has) that unlocks the piece.
-		{ id = "alien_collector", kind = "separator", name = "Alien collector", price = 0, quest = "alien_collector", size = { 1, 2 }, blurb = "Finds every needle at once. Earned from the alien ritual." },
-		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = "alien_collector", size = { 1, 1 }, blurb = "Beams a bale of Star hay onto its belt every few minutes. Earned from the alien ritual." },
+		{ id = "alien_collector", kind = "separator", name = "Alien Collector", price = 0, quest = "alien_collector", size = { 1, 2 }, blurb = "Sorts every needle at once while its beam is up, once a day. Earned from the alien offering." },
+		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = "starbeam_collector", size = { 1, 1 }, blurb = "Pulls a bale of Star hay down onto its belt every few minutes. Earned from the alien offering." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },

@@ -1,8 +1,9 @@
 --!nonstrict
 -- The wheelbarrow: bought once at its stand by the sell pad (Prices.Wheelbarrow), then kept in the save slot's gear
 -- and handed out as a tool. With it out, a barrow rolls in front of you. Click a bale to load it (up to
--- Config.WheelbarrowBales, stacked), click anywhere else to set the load down in front of you. A loaded barrow slows
--- you a little (Config.WheelbarrowLoadFactor of the bales' weight). Putting the barrow away sets its load down.
+-- Config.WheelbarrowBales, stacked), click a truck or trailer to tip the load into its bed, or anywhere else to set it
+-- down in front of you. A loaded barrow slows you a little (Config.WheelbarrowLoadFactor of the bales' weight).
+-- Putting the barrow away sets its load down.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -85,6 +86,43 @@ local function slot(n)
 	return TRAY * CFrame.new(0, 0.125 + BALE_SIZE.Y * (n - 0.5) + 0.05, 0)
 end
 
+-- The cargo box of the truck or trailer a part belongs to (Vehicles sets CargoOffset/CargoSize on the model), as
+-- its center CFrame and size, or nil.
+local function cargoOf(part)
+	local node = part
+	while node and node ~= workspace do
+		if node:IsA("Model") and node:GetAttribute("CargoOffset") and node.PrimaryPart then
+			return node.PrimaryPart.CFrame * node:GetAttribute("CargoOffset"), node:GetAttribute("CargoSize")
+		end
+		node = node.Parent
+	end
+	return nil
+end
+
+-- Tips the whole load into a truck bed in one go: the bales drop in side by side, loose, and settle with physics.
+local function tipInto(player, box, size)
+	local state = Data.get(player)
+	local load = state and state.barrow
+	if not load or #load == 0 then
+		return 0
+	end
+	state.barrow = {}
+	-- Lay them flat across the bed from the back of the box, wrapping to a second row (and up a layer) as needed.
+	local across = math.max(1, math.floor(size.X / (BALE_SIZE.Z + 0.2)))
+	local rows = math.max(1, math.floor(size.Z / (BALE_SIZE.X + 0.2)))
+	local floorY = -size.Y / 2 + BALE_SIZE.Y / 2 + 0.3
+	for i, b in load do
+		local n = i - 1
+		local col, row, layer = n % across, math.floor(n / across) % rows, math.floor(n / (across * rows))
+		local x = -size.X / 2 + (BALE_SIZE.Z + 0.2) * (col + 0.5)
+		local z = size.Z / 2 - (BALE_SIZE.X + 0.2) * (row + 0.5)
+		local y = floorY + layer * (BALE_SIZE.Y + 0.1)
+		Bales.releaseAt(b, box * CFrame.new(x, y, z) * CFrame.Angles(0, math.pi / 2, 0))
+	end
+	Avatar.refreshSpeed(player)
+	return #load
+end
+
 local function unloadAll(player)
 	local state = Data.get(player)
 	local load = state and state.barrow
@@ -124,6 +162,15 @@ local function use(player)
 		end
 		return
 	end
+	-- Clicking a truck or trailer close by tips the load straight into its bed.
+	if #state.barrow > 0 and aim and aim.part then
+		local box, size = cargoOf(aim.part)
+		if box and (box.Position - root.Position).Magnitude <= Config.ToolReach + size.Magnitude / 2 then
+			tipInto(player, box, size)
+			Data.toast(player, "Tipped the load into the bed.")
+			return
+		end
+	end
 	if unloadAll(player) == 0 then
 		Data.toast(player, "Click a bale to load it into the barrow.")
 	end
@@ -134,7 +181,7 @@ local function makeTool(player)
 	tool.Name = TOOL_NAME
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "Click a bale to load it (3 max). Click the ground to set the load down."
+	tool.ToolTip = "Click a bale to load it (3 max). Click a truck bed to tip the load in, or the ground to set it down."
 	tool.Equipped:Connect(function()
 		local root = Avatar.getRoot(player)
 		if root and not barrows[player] then
