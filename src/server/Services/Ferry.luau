@@ -536,4 +536,8 @@ function Ferry.all()
 	return shuttles
 end
 
+-- For the self-tests (SelfTests/Map.luau): is a vehicle on this shuttle's deck, and roll one back to a stop's pier.
+Ferry.onDeck = onDeck
+Ferry.sendBack = sendBack
+
 return Ferry
