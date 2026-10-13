@@ -153,7 +153,8 @@ function Bales.isAtDropOff(b)
 	return math.abs(spot.X) <= dropOff.Size.X / 2 and math.abs(spot.Z) <= dropOff.Size.Z / 2 and spot.Y < 8
 end
 
--- Bales left out in the world disappear after a while. Bales on the drop-off pad are kept.
+-- Bales left out in the world disappear after a while. Bales on the drop-off pad, in a truck, or in a neat stack of
+-- Config.StackMin or more are kept.
 local function startDespawnTimer(b)
 	b.dropToken += 1
 	local token = b.dropToken
@@ -161,7 +162,7 @@ local function startDespawnTimer(b)
 		if b.gone or b.carriedBy or b.home or b.dropToken ~= token then
 			return
 		end
-		if Bales.isAtDropOff(b) or b.body:GetAttribute("InTruck") then
+		if Bales.isAtDropOff(b) or b.body:GetAttribute("InTruck") or b.inStack then
 			task.delay(Config.DroppedBaleSeconds, check) -- still stored or riding in a truck, look again later
 			return
 		end
@@ -583,8 +584,101 @@ function Bales.spawn(position, home, fadeIn, hayType)
 	return b
 end
 
+-- The "Stack N" label over the top of a neat stack.
+local function stackLabel(top, n)
+	local gui = top.body:FindFirstChild("StackLabel")
+	if not gui then
+		gui = Instance.new("BillboardGui")
+		gui.Name = "StackLabel"
+		gui.Size = UDim2.fromOffset(90, 28)
+		gui.StudsOffset = Vector3.new(0, SIZE.Y / 2 + 1.2, 0)
+		gui.MaxDistance = 50
+		local text = Instance.new("TextLabel")
+		text.Name = "Text"
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextScaled = true
+		text.TextColor3 = Color3.fromRGB(240, 214, 140)
+		text.TextStrokeTransparency = 0.4
+		text.Parent = gui
+		gui.Parent = top.body
+	end
+	gui.Text.Text = ("Stack %d"):format(n)
+end
+
+-- Finds neat stacks: bales resting one on another, square on top within a stud or so. Every bale in a stack of
+-- Config.StackMin or more is marked inStack (kept, see startDespawnTimer) and the top one shows the count.
+local function scanStacks()
+	local list = {}
+	for _, b in byBody do
+		if not b.gone and not b.carriedBy and not b.breaking and b.body.Parent then
+			b.wasInStack, b.inStack = b.inStack, false
+			table.insert(list, b)
+		end
+	end
+	table.sort(list, function(a, c)
+		return a.body.Position.Y < c.body.Position.Y
+	end)
+	local columns = {}
+	for _, b in list do
+		local p = b.body.Position
+		local placed = false
+		for _, column in columns do
+			local top = column[#column].body.Position
+			local flat = Vector3.new(p.X - top.X, 0, p.Z - top.Z).Magnitude
+			if flat < 1.4 and math.abs(p.Y - top.Y - SIZE.Y) < 0.6 then
+				table.insert(column, b)
+				placed = true
+				break
+			end
+		end
+		if not placed then
+			table.insert(columns, { b })
+		end
+	end
+	for _, column in columns do
+		local neat = #column >= Config.StackMin
+		for _, b in column do
+			b.inStack = neat
+		end
+		if neat then
+			stackLabel(column[#column], #column)
+		end
+	end
+	for _, b in list do
+		local label = b.body:FindFirstChild("StackLabel")
+		local isTop = false
+		if b.inStack then
+			for _, column in columns do
+				if column[#column] == b then
+					isTop = true
+				end
+			end
+		end
+		if label and not isTop then
+			label:Destroy()
+		end
+		-- A bale that just left a stack starts its normal countdown again.
+		if b.wasInStack and not b.inStack and not b.home then
+			startDespawnTimer(b)
+		end
+		b.wasInStack = nil
+	end
+end
+
 function Bales.init(worldFolder)
 	folder = worldFolder
+
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			local ok, err = pcall(scanStacks)
+			if not ok then
+				warn("[Needlewood] bale stacks: " .. tostring(err))
+			end
+		end
+	end)
 
 	local function watch(player)
 		local function onCharacter(character)

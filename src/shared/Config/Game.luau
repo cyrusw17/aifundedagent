@@ -50,6 +50,7 @@ return {
 	-- Carrying a whole bale
 	CarryWalkSpeed = 8,
 	StackReach = 9, -- a bale set down lands on top of a stack up to this high in front of you
+	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long
 
 	-- Scoop animation tuning (degrees of right-arm swing and seconds). Easy to adjust from playtests.
