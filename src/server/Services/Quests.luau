@@ -1863,6 +1863,7 @@ function Quests.usePrompt(player, spotId)
 	if spot.def.item then
 		Data.toast(player, "Not yours to take yet.")
 	end
+	return false
 end
 
 -- Quest trucks -------------------------------------------------------------------------------------------------------

@@ -247,7 +247,7 @@ local function useShovel(player, root, aim)
 		return
 	end
 	-- A parked wheelbarrow clicked: tip the whole load in; a bale's worth presses into a bale (Wheelbarrow.pourIn).
-	local barrowPart = aim and aim.part and Wheelbarrow.ownerOf(aim.part) and aim.part
+	local barrowPart = if aim and aim.part and Wheelbarrow.ownerOf(aim.part) then aim.part else nil
 	if barrowPart and (barrowPart.Position - root.Position).Magnitude <= Config.ToolReach + 3 then
 		if state.loadHay < Config.HayPerPiece then
 			Data.toast(player, "Scoop hay from a pile first, then click the barrow to tip it in.")
