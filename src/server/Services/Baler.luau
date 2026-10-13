@@ -115,10 +115,11 @@ function Baler.build(parent, frame)
 					local hayType = p:GetAttribute("HayType") or "meadow"
 					local sorted = p:GetAttribute("Sorted") == true
 					local key = ("%s|%s|%s"):format(tostring(ownerId), hayType, sorted and "1" or "0")
+					local strands = Hay.strandsIn(p) -- a raked pile counts every strand in it
 					Hay.remove(p)
 					took = true
-					chamber[key] = (chamber[key] or 0) + 1
-					if chamber[key] >= Config.PiecesPerBale then
+					chamber[key] = (chamber[key] or 0) + strands
+					while chamber[key] >= Config.PiecesPerBale do
 						chamber[key] -= Config.PiecesPerBale
 						table.insert(queue, { ownerId = ownerId ~= 0 and ownerId or nil, hayType = hayType, sorted = sorted })
 					end
