@@ -18,6 +18,7 @@ local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
+local Land = require(script.Parent.Land)
 
 local Leaderboards = {}
 
@@ -281,11 +282,24 @@ local function buildBoard(parent, def, center)
 		rows[i] = line(i, 0.085, "", false)
 	end
 	WorldLabel.billboard(panel, def.title, { offset = Vector3.new(0, H / 2 + 2.2, 0), kind = "sign" })
-	return rows
+	return rows, panel
+end
+
+local shown = {} -- board id -> the list on the board now
+
+-- JOIN FARM: the best-placed player on this board, other than `player`, with a farm on this server.
+local function joinTarget(list, player, hasFarm)
+	for _, entry in list do
+		if entry.userId ~= player.UserId and hasFarm(entry.userId) then
+			return entry
+		end
+	end
+	return nil
 end
 
 local function redraw(def, rows)
 	local list = merge(stored[def.id], live[def.id], ROWS)
+	shown[def.id] = list
 	for i = 1, ROWS do
 		local entry = list[i]
 		if entry then
@@ -306,8 +320,30 @@ function Leaderboards.build(worldFolder)
 	for i, def in BOARDS do
 		-- Side by side along Z, 8.5 studs apart: posts and all, the pair spans z 0.4 to 16.6 at x 25.5 to 26.5.
 		local center = Leaderboards.SITE + Vector3.new(0, 0, (i - 1.5) * 8.5)
-		boards[def.id] = buildBoard(folder, def, center)
-		redraw(def, boards[def.id])
+		local rows, panel = buildBoard(folder, def, center)
+		boards[def.id] = rows
+		redraw(def, rows)
+
+		-- JOIN FARM (CEO H12): visit the farm of the best-placed player on this board who is on this server.
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "JoinFarm"
+		prompt.ActionText = "Join farm"
+		prompt.ObjectText = def.title
+		prompt.HoldDuration = 0.3
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = panel
+		prompt.Triggered:Connect(function(player)
+			local target = joinTarget(shown[def.id] or {}, player, Land.hasFarm)
+			if not target then
+				Data.toast(player, "Nobody on this board has a farm on this server right now.")
+				return
+			end
+			local _, message = Land.joinFarm(player, target.userId)
+			if message then
+				Data.toast(player, message)
+			end
+		end)
 	end
 
 	local lastWrite = {}
@@ -349,6 +385,7 @@ end
 Leaderboards.test = {
 	rarestRank = rarestRank,
 	merge = merge,
+	joinTarget = joinTarget,
 	commas = commas,
 	byValue = byValue,
 	boards = BOARDS,
