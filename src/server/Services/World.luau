@@ -7,6 +7,7 @@ local Hay = require(script.Parent.Hay)
 local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
 local BaseLine = require(script.Parent.BaseLine)
+local Props = require(script.Parent.Props)
 
 local World = {}
 
@@ -135,6 +136,8 @@ function World.build()
 
 	-- The starter base with its conveyor line, east of base camp.
 	BaseLine.build(folder)
+	-- The Rustic props that have no job yet (wheelbarrow, crate, logs, spare tools) dress up the camp.
+	Props.dressBaseCamp(folder)
 end
 
 return World
