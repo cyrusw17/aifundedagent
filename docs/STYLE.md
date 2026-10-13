@@ -13,7 +13,7 @@ The style lives in code, so code is the source of truth and this file describes 
 ## The style in one line
 
 **Lumber Tycoon 2 shapes with a weathered, rustic finish.** Simple blocks and cylinders,
-small bevels, muted straw, bark and plank textures, rusty metal, dull twine, slightly uneven surfaces.
+small bevels, muted straw, bark and plank textures, weathered grey iron, dull twine, slightly uneven surfaces.
 
 ## Shapes (LT2)
 
@@ -44,7 +44,7 @@ Each texture uses three shades (light, mid, dark). sRGB hex from `RUSTIC` in `li
 | bark | #615445 | #4C4033 | #29211A | logs, tree trunks, wheels |
 | wood (end grain) | #CCB28C | #B29973 | #856E52 | cut log ends |
 | handle (planks) | #998061 | #80694C | #5C4A36 | tool handles, planks, buildings |
-| metal (rusty) | #80756B | #6B5E54 | #664229 | blades, tines, rust patches |
+| metal (grey iron) | #949491 | #7A7A78 | #666159 (wear) | blades, tines; light wear spots, no orange rust |
 | twine | #736652 | #615442 | #473D2E | bale bands |
 
 Game-side colors (Roblox `Color3.fromRGB`) that match:
@@ -60,7 +60,7 @@ Game-side colors (Roblox `Color3.fromRGB`) that match:
 | Roof | 102, 66, 42 |
 | Counter, drop-off pad | 92, 74, 54 |
 | Sell pad | 219, 204, 153 |
-| Tool metal | 128, 117, 105 / 107, 94, 84 |
+| Tool metal | 148, 148, 145 / 122, 122, 120 |
 
 New colors should be muted and warm: pull bright colors about 25 to 30% toward warm grey
 (`mock.rustic_palette()` does this). Glow is the only exception and is kept for rare items.
@@ -68,9 +68,9 @@ New colors should be muted and warm: pull bright colors about 25 to 30% toward w
 ## Materials
 
 - Blender: generated straw, bark, end grain, plank and metal textures from `lib/style.py`, matte
-  (roughness about 0.9). Metal is half metallic with rust blotches. Twine is a flat color.
+  (roughness about 0.9). Metal is half metallic grey iron with light wear spots, no rust. Twine is a flat color.
 - Roblox: Fabric for bales and twine, WoodPlanks for planks and buildings, Wood for handles and logs,
-  Metal or CorrodedMetal for tools, Grass for ground. Neon only on rare-map extras.
+  Metal for tools, Grass for ground. Neon only on rare-map extras.
 - Glow means rarity. Common hay never glows; the top maps get embers, wisps or stars.
 
 ## Scale and budget
