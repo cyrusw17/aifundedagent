@@ -307,6 +307,112 @@ function Props.meshPart(name)
 	return p
 end
 
+-- Mutated needle looks (CEO H15), all on the one shared needle mesh: material, color, size and a single effect, so a
+-- mutation reads across a plot and a bin of hundreds stays cheap. Kinds: wet, golden, storm, rainbow, giant.
+local MUTATION_LOOKS = {
+	wet = { scale = 1, darken = 0.35, reflect = 0.35, drip = true },
+	golden = { scale = 1.3, color = Color3.fromRGB(240, 196, 64), material = Enum.Material.Foil, light = 6 },
+	storm = { scale = 1.3, color = Color3.fromRGB(150, 200, 255), material = Enum.Material.Neon, spark = Color3.fromRGB(190, 225, 255) },
+	rainbow = { scale = 1.45, color = Color3.fromRGB(255, 255, 255), material = Enum.Material.Neon, rainbow = true, light = 8 },
+	giant = { scale = 2.6, color = Color3.fromRGB(226, 180, 70), material = Enum.Material.Foil, light = 12 },
+}
+Props.MutationKinds = { "wet", "golden", "storm", "rainbow", "giant" }
+
+-- The kind for a mutation multiplier when the caller has none of its own: x2 is always Wet (Prices.WetMutation),
+-- then Golden, Storm, Rainbow and Giant up the x3..x25 range (Prices.Mutation).
+function Props.mutationKind(mult)
+	mult = mult or 1
+	if mult <= 1 then
+		return nil
+	elseif mult <= 2 then
+		return "wet"
+	elseif mult < 8 then
+		return "golden"
+	elseif mult < 15 then
+		return "storm"
+	elseif mult < 22 then
+		return "rainbow"
+	end
+	return "giant"
+end
+
+-- Dresses one needle part as a mutation kind (or back to plain with kind nil). Call it after the part has its normal
+-- look (Color, Material, Size): that look is kept on the part as the plain one, and every call starts from it.
+function Props.mutationLook(part, kind)
+	if part:GetAttribute("PlainSize") == nil then
+		part:SetAttribute("PlainSize", part.Size)
+		part:SetAttribute("PlainColor", part.Color)
+		part:SetAttribute("PlainMaterial", part.Material.Name)
+		part:SetAttribute("PlainReflectance", part.Reflectance)
+	end
+	for _, child in part:GetChildren() do
+		if child:GetAttribute("MutationEffect") then
+			child:Destroy()
+		end
+	end
+	part.Size = part:GetAttribute("PlainSize")
+	part.Color = part:GetAttribute("PlainColor")
+	part.Material = Enum.Material[part:GetAttribute("PlainMaterial")] or part.Material
+	part.Reflectance = part:GetAttribute("PlainReflectance")
+	part:SetAttribute("MutationLook", kind)
+	local look = kind and MUTATION_LOOKS[kind]
+	if not look then
+		return
+	end
+	local function effect(instance)
+		instance:SetAttribute("MutationEffect", true)
+		instance.Parent = part
+		return instance
+	end
+	part.Size *= look.scale
+	if look.color then
+		part.Color = look.color
+	end
+	if look.darken then
+		part.Color = part.Color:Lerp(Color3.fromRGB(40, 60, 80), look.darken)
+	end
+	if look.material then
+		part.Material = look.material
+	end
+	part.Reflectance = look.reflect or (look.material == Enum.Material.Foil and 0.2 or part.Reflectance)
+	if look.light then
+		local light = effect(Instance.new("PointLight"))
+		light.Color = part.Color
+		light.Range = look.light
+		light.Brightness = 1.5
+	end
+	if look.drip or look.spark or look.rainbow then
+		local e = effect(Instance.new("ParticleEmitter"))
+		e.LightEmission = look.drip and 0 or 1
+		e.Lifetime = NumberRange.new(look.drip and 0.6 or 0.25, look.drip and 0.9 or 0.5)
+		e.Rate = look.drip and 3 or look.spark and 6 or 5
+		e.Size = NumberSequence.new(look.drip and 0.12 or 0.2, 0)
+		if look.drip then
+			-- Water drips off a Wet needle.
+			e.Color = ColorSequence.new(Color3.fromRGB(120, 170, 220))
+			e.Acceleration = Vector3.new(0, -20, 0)
+			e.Speed = NumberRange.new(0)
+		elseif look.spark then
+			-- Storm: short pale-blue crackle all round.
+			e.Color = ColorSequence.new(look.spark)
+			e.Speed = NumberRange.new(2, 4)
+			e.SpreadAngle = Vector2.new(180, 180)
+		else
+			-- Rainbow: a slow halo running through the colors.
+			e.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+				ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 220, 80)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 230, 120)),
+				ColorSequenceKeypoint.new(0.75, Color3.fromRGB(90, 160, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+			})
+			e.Lifetime = NumberRange.new(0.8, 1.2)
+			e.Speed = NumberRange.new(0.6, 1.2)
+			e.SpreadAngle = Vector2.new(180, 180)
+		end
+	end
+end
+
 -- Moves a placed prop up or down so its lowest point rests at height y.
 function Props.restOn(model, y)
 	local parts = partsOf(model)
