@@ -1,6 +1,7 @@
 --!nonstrict
 -- The bank: a small wallet / bank line under the HUD, and the teller panel (Account, Loans, History) that opens at the
 -- Meadow Savings & Loan window. The server (Bank.luau) decides everything; this only shows it and sends requests.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -60,22 +61,30 @@ end
 
 -- HUD line under the main panel ----------------------------------------------------------------------------------------
 
+local Hud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Hud"))
 local chip = Instance.new("Frame")
-chip.Position = UDim2.fromOffset(14, 132)
+chip.LayoutOrder = Hud.Order.Bank -- in the HUD column under the cash card (UI/Hud.luau)
 chip.Size = UDim2.fromOffset(230, 26)
 chip.BackgroundColor3 = DARK
 chip.BackgroundTransparency = 0.25
 chip.Visible = false
-chip.Parent = gui
+chip.Parent = Hud.column()
 Instance.new("UICorner", chip).CornerRadius = UDim.new(0, 8)
 local chipText = label(chip, "", 13, MUTED)
 chipText.Position = UDim2.fromOffset(10, 0)
 chipText.Size = UDim2.new(1, -20, 1, 0)
 
-local flash = label(gui, "", 14, RED)
-flash.Position = UDim2.fromOffset(24, 160)
-flash.Size = UDim2.fromOffset(230, 20)
+-- Shows over the chip for a moment (inside it, so it never spills onto the goal bar below in the HUD column).
+local flash = label(chip, "", 13, RED)
+flash.Size = UDim2.fromScale(1, 1)
+flash.BackgroundColor3 = DARK
+flash.BackgroundTransparency = 1
+flash.ZIndex = 2
 flash.TextTransparency = 1
+Instance.new("UICorner", flash).CornerRadius = UDim.new(0, 8)
+local flashPad = Instance.new("UIPadding")
+flashPad.PaddingLeft = UDim.new(0, 10)
+flashPad.Parent = flash
 
 local function refreshChip()
 	local wallet = player:GetAttribute("Wallet")
@@ -99,7 +108,10 @@ refreshChip()
 player:GetAttributeChangedSignal("LoanPaidId"):Connect(function()
 	flash.Text = ("%s went to your loan"):format(money(player:GetAttribute("LoanPaid") or 0))
 	flash.TextTransparency = 0
-	TweenService:Create(flash, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
+	flash.BackgroundTransparency = 0
+	TweenService
+		:Create(flash, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, BackgroundTransparency = 1 })
+		:Play()
 end)
 
 -- Teller panel ------------------------------------------------------------------------------------------------------
@@ -419,9 +431,13 @@ task.spawn(function()
 		if panel.Visible then
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local bank = workspace:FindFirstChild("Bank", true)
-			local window = bank and bank:FindFirstChild("TellerWindow")
-			if root and window and (root.Position - window.Position).Magnitude > 22 then
+			local near = false
+			for _, window in CollectionService:GetTagged("BankTeller") do
+				if root and (root.Position - window.Position).Magnitude <= 22 then
+					near = true
+				end
+			end
+			if root and not near then
 				panel.Visible = false
 			end
 		end

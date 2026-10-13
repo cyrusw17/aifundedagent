@@ -74,6 +74,7 @@ return {
 		needle_polisher = 5.4,
 		alloy_mixer = 10.5,
 		alien_collector = 12.4,
+		starbeam_collector = 22, -- not modeled yet: the height of the part-built tower in Starbeam.luau until the .glb lands
 		-- Buildings and storage
 		bale_rack = 18.3,
 		barn = 41.9,
@@ -95,6 +96,56 @@ return {
 		sorter_shed = 25.1,
 		warehouse = 50.0,
 		workshop = 24.4,
+
+		-- Pre-registered from /mnt/project-files/art-review/MODEL_SPECS.md, so each swaps in as soon as it is imported.
+		-- The numbers are the spec's longest side (the middle of a range) until the .glb is exported and measured.
+		-- Region scatter
+		oak_tree_a = 17,
+		oak_tree_b = 17,
+		oak_tree_c = 17,
+		pine_tree_a = 22,
+		pine_tree_b = 22,
+		pine_tree_c = 22,
+		snowpine_tree_a = 22,
+		snowpine_tree_b = 22,
+		cactus_a = 8,
+		cactus_b = 8,
+		dead_tree_a = 15,
+		dead_tree_b = 15,
+		reeds_clump = 3,
+		rock_a = 6,
+		rock_b = 3.5,
+		rock_c = 1.5,
+		dune_mound = 30,
+		firefly = 0.3,
+		-- Landmarks and hub buildings
+		homestead_bank = 26,
+		bounty_board = 9,
+		trading_post = 24,
+		windmill = 30,
+		spindle_landmark = 120,
+		region_sign = 6,
+		road_sign = 6,
+		field_bale_chute = 16,
+		-- Items and collectibles
+		wheelbarrow_loaded = 5.5,
+		needle_bundle = 3,
+		needle_display_wall = 12,
+		old_boot = 1.4,
+		horseshoe = 1,
+		lost_ring = 0.4,
+		fossil = 1.4,
+		old_radio = 1.6,
+		scarecrow = 7,
+		golden_shovel = 2.7,
+		rusty_key = 0.8, -- a find (Config/Finds.luau); not in MODEL_SPECS yet
+		rarity_needle = 0.75, -- the one needle mesh every rarity tier shares (same length as the game's needle)
+		-- Robux truck skins: same size as the cash truck each one repaints
+		homestead_classic = 27.5,
+		timber_wolf_4x4 = 27.5,
+		midnight_express = 29.4,
+		prairie_schooner = 24.4,
+		founders_semi = 25.3,
 	},
 
 	-- Held tools: how far below the hand the end of the handle sits.

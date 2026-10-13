@@ -15,6 +15,7 @@ import bpy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mock  # noqa: E402
 from mock import rgb  # noqa: E402
+from regions import REGIONS  # noqa: E402
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -52,8 +53,12 @@ for idx, (name, needle_name, value, hay, twine, ncol, glow, extra) in enumerate(
     cx = (col - 2) * SPACING_X
     cy = row * SPACING_Y
     rng = random.Random(idx + 11)
+    region = {"Pine Forest": "pine", "Desert": "desert", "Snow Peak": "snow", "Swamp": "swamp"}.get(name)
     if hay is None:
         f = mock.rustic_finish()
+    elif region:  # region hays come from regions.py so both sheets agree
+        tw = mock.rustic_palette(twine, twine, tuple(int(c * 0.7) for c in twine), 0.2) if twine else None
+        f = mock.rustic_finish("hay_" + region, hay=REGIONS[region]["hay"], twine=tw)
     else:
         pal = mock.rustic_palette(*hay, weather=0.25)
         tw = mock.rustic_palette(twine, twine, tuple(int(c * 0.7) for c in twine), 0.2) if twine else None

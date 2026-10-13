@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
+local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
 local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
@@ -55,26 +56,13 @@ local function buildTool(name, tip, parts)
 end
 
 -- Gives a part-built tool the Rustic Blender prop's look when it was imported. The part tool stays as the fallback,
--- shown until the mesh has loaded on each client (see Props.weldTo). The prop is turned blade-up (it is modeled
--- blade-down) so the blade leads like the part tools, and it spans the same length as the part tool, from the end
--- of the handle to the tip of the blade, so the swap never shrinks what is in your hand.
+-- shown until the mesh has loaded on each client (see Props.weldTo). The prop keeps its true Blender size (a small
+-- shovel, as Cyrus asked) and is turned blade-up (it is modeled blade-down) so the blade leads like the part tools,
+-- with the end of its handle just below the hand.
 local function addMesh(tool, prop)
 	local handle = tool.Handle
-	local low, high = math.huge, -math.huge
-	for _, part in tool:GetDescendants() do
-		if part:IsA("BasePart") then
-			local y = handle.CFrame:ToObjectSpace(part.CFrame).Y
-			local half = part.Size.Y / 2
-			low = math.min(low, y - half)
-			high = math.max(high, y + half)
-		end
-	end
-	local length = high - low
-	if length <= 0 then
-		length = PropsConfig.Sizes[prop]
-		low = -PropsConfig.GripFromEnd
-	end
-	local center = CFrame.new(0, low + length / 2, 0)
+	local length = PropsConfig.Sizes[prop]
+	local center = CFrame.new(0, length / 2 - PropsConfig.GripFromEnd, 0)
 	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
 	if model then
 		Props.weldTo(model, handle, tool)
@@ -88,11 +76,13 @@ end
 local function buildShovel()
 	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
 	return addMesh(buildTool("Shovel", tip, {
-		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
+		-- A small hand spade matching the Blender basic_shovel at true size: blade tip at y 2.1, blade from 1.4 up.
+		-- Its reach comes from Config ShovelReach/ToolReach, not from its length.
+		{ "Shaft", Vector3.new(0.3, 0.6, 0.3), CFrame.new(0, 1.1, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
-			Vector3.new(1.2, 1.5, 0.12),
-			CFrame.new(0, 4.35, 0),
+			Vector3.new(0.6, 0.7, 0.12),
+			CFrame.new(0, 1.75, 0),
 			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
@@ -346,18 +336,31 @@ function Avatar.refreshSpeed(player)
 		end
 		weight = state.loadWeight or state.loadHay
 		tier = state.loadTier or 0
+		-- Bales in a wheelbarrow weigh a fraction of their weight: the wheel takes most of it.
+		for _, bale in state.barrow or {} do
+			local baleWeight, baleTier = Gloves.baleWeight(bale.body)
+			weight += baleWeight * Config.WheelbarrowLoadFactor
+			tier = math.max(tier, baleTier)
+		end
 		if state.carryBale and state.carryBale.body then
 			local baleWeight, baleTier = Gloves.baleWeight(state.carryBale.body)
 			weight += baleWeight
 			tier = math.max(tier, baleTier)
 		end
 	end
-	rig.humanoid.WalkSpeed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	rig.humanoid.WalkSpeed = speed
+	-- How hard the load is on you, 0 (easy) to 1 (crawling), for the client's camera bob and stagger.
+	local range = math.max(rig.defaultSpeed - GloveConfig.MinWalkSpeed, 1)
+	player:SetAttribute("Strain", math.clamp((rig.defaultSpeed - speed) / range, 0, 1))
+	player:SetAttribute("UnderGeared", weight > 0 and Gloves.shortBy(player, tier) > 0)
 end
 
 function Avatar.getRoot(player)
 	local rig = rigs[player]
-	return rig and rig.root
+	-- Right after a respawn the rig can still point at the old, removed character until setup catches up.
+	local root = rig and rig.root
+	return root and root.Parent and root or nil
 end
 
 function Avatar.start()

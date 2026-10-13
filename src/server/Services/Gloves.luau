@@ -20,6 +20,9 @@ local byId = {}
 for _, def in GloveConfig.Tiers do
 	byId[def.id] = def
 end
+for _, def in GloveConfig.QuestTiers do
+	byId[def.id] = def
+end
 
 local owned = {} -- player -> { [gloveId] = true }
 local worn = {} -- player -> gloveId
@@ -173,6 +176,9 @@ function Gloves.buyOrWear(player, id)
 		return
 	end
 	if not owned[player][id] then
+		if def.quest then
+			return -- quest gloves are earned (Gloves.grant), never bought
+		end
 		local paid = Bank.charge(player, def.price, def.name)
 		if not paid then
 			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, Bank.spendable(state)))
@@ -190,6 +196,23 @@ function Gloves.buyOrWear(player, id)
 	save(player)
 end
 
+-- Gives a player a pair for free (quest rewards). Waits for their save slot's gloves to load. Safe to call again.
+function Gloves.grant(player, id)
+	if not byId[id] then
+		return
+	end
+	local started = os.clock()
+	while not owned[player] and player.Parent and os.clock() - started < 30 do
+		task.wait(0.2)
+	end
+	if not owned[player] or owned[player][id] then
+		return
+	end
+	owned[player][id] = true
+	publish(player)
+	save(player)
+end
+
 -- True the first time a player ever breaks a bale, so that bale can promise them a needle. Kept with the gloves
 -- record so it survives leaving.
 function Gloves.firstBaleBreak(player)
@@ -199,6 +222,17 @@ function Gloves.firstBaleBreak(player)
 	brokeFirstBale[player] = true
 	task.spawn(save, player)
 	return true
+end
+
+-- For the self-test: read or set the first-bale flag, so a test can check the promised needle and then put the
+-- player's real flag back.
+function Gloves.firstBaleBroken(player)
+	return brokeFirstBale[player] == true
+end
+
+function Gloves.setFirstBaleBroken(player, value)
+	brokeFirstBale[player] = value == true or nil
+	save(player)
 end
 
 function Gloves.owns(player, id)

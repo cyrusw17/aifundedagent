@@ -15,8 +15,10 @@ local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
 local Market = require(script.Parent.Market)
+local Orders = require(script.Parent.Orders)
 local WorldMap = require(script.Parent.WorldMap)
 local Chutes = require(script.Parent.Chutes)
+local Quests = require(script.Parent.Quests)
 
 local World = {}
 
@@ -118,6 +120,9 @@ function World.build()
 	-- Today's needle prices on this server (Market.luau), on a board beside the sell pad.
 	Market.build(folder, Vector3.new(34, 0, -8))
 
+	-- NPC buyer orders and their delivery pad, on the west side of camp (Orders.luau).
+	Orders.build(folder, Vector3.new(-34, 0, 6))
+
 	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(
 		folder,
@@ -149,6 +154,8 @@ function World.build()
 	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
 	WorldMap.build(folder)
 	Chutes.build(folder) -- after the world map, so its hay fields get chutes
+	-- Quests, rituals and the places they send you, plus the day and night cycle.
+	Quests.build(folder)
 end
 
 return World

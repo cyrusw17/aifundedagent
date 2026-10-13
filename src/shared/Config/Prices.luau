@@ -61,6 +61,21 @@ Prices.FinderRewards = {
 	fossil = 4000, -- 1 in 2,000, doubled
 }
 
+-- NPC buyer orders (Services/Orders.luau). Three local buyers post an order each, new ones every RotateSeconds. Every
+-- unit delivered pays at once: its normal price times mult, up to the order's amount per player. Plain bales pay 1.5x
+-- the public shop ($71 a bale), sorted bales 2x their hay ($90, double what a hay buyer pays, since the sorting is
+-- done), and steel needles 1.25x list ($125). A full order is worth a few hundred to a thousand dollars over selling
+-- normally: a 5 to 10 minute bonus at the pickup stage, and a reason to haul somewhere other than your own line.
+Prices.Orders = {
+	RotateSeconds = 1200,
+	Buyers = { "Miller Joe", "Widow Hale", "Old Tobias", "Mabel at the feed store", "The Thatcher twins", "Pastor Reed" },
+	Kinds = {
+		bales = { amount = { 8, 16 }, mult = 1.5 },
+		sorted = { amount = { 10, 20 }, mult = 2 },
+		needles = { amount = { 6, 15 }, mult = 1.25 },
+	},
+}
+
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
 -- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
 -- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
@@ -94,6 +109,11 @@ Prices.Trailers = {
 	bale_rack_trailer = 200000,
 }
 
+-- The wheelbarrow carries 3 bales a push: about 4.7 bales a minute to the sell pad, double what you carry by hand.
+-- Doubling your income should cost about 10 minutes of hand hauling, so it lands about 12 minutes in, between Work
+-- Gloves and the pickup (docs/ECONOMY.md).
+Prices.Wheelbarrow = 1000
+
 -- Gloves (Config/Gloves Tiers, by id). Each pair costs about 30 minutes of what you earn just before you need it for
 -- the next region's heavier hay. Work Gloves are the first purchase, two or three minutes in.
 Prices.Gloves = {
@@ -113,6 +133,11 @@ Prices.Plot = 2500
 -- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
 -- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
 Prices.PlotExpansion = 5000
+-- A second farm per save. Hauling, not sorting, limits income at almost every stage, so a second plot buys room more
+-- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
+-- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
+Prices.SecondPlot = 60000
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -133,10 +158,23 @@ Prices.Pieces = {
 	blueprint_floor = 10,
 	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
 	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	raised_belt = 60, -- a belt on the upper level, so one line can cross another
+	ramp_up = 150,
+	ramp_down = 150,
 	splitter = 300,
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
+	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
+	needle_polisher = 12000,
+	alloy_mixer = 20000,
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
+	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
+	decor_flowers = 200,
+	decor_bench = 350,
+	decor_lantern = 500,
+	decor_scarecrow = 900,
 }
 Prices.RefundShare = 0.5
 
@@ -145,6 +183,11 @@ Prices.RefundShare = 0.5
 Prices.Starbeam = {
 	minutes = 10,
 }
+
+-- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
+-- PolishPerMinute needles a minute; the rest stay plain.
+Prices.PolishBonus = 0.25
+Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.
@@ -162,6 +205,54 @@ Prices.SorterBalesPerMinute = {
 	conveyor_sorter = 8,
 	magnet_drum = 16,
 	optical_sorter = 30,
+}
+
+-- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
+-- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
+-- Longstitch Highway, stay free.
+Prices.Travel = {
+	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
+	barge = 0, -- the Captain's Barge is earned by quest and free to use
+	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul.
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Thimble Keys: the sand bars dry out
+	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
+	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: fallen stars in the hay
+}
+
+-- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
+-- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+Prices.Robux = {
+	Trucks = {
+		homestead_classic = 399, -- skin of the Rusty Pickup tier
+		timber_wolf = 799, -- Farm Flatbed tier
+		midnight_express = 1199, -- Box Truck tier
+		prairie_schooner = 1799, -- Heavy Hauler tier
+		founders_semi = 2499, -- Semi tier, launch edition
+	},
+	Passes = {
+		vip = 249,
+		auto_dock = 299,
+		big_silo = 199,
+		paint_studio = 149,
+		plot_themes = 199,
+		truck_radio = 99,
+	},
+	HarvestPass = 499,
+	ServerBoost = 99,
+	PrivateServer = 100, -- a month
 }
 
 -- The bank -----------------------------------------------------------------------------------------------------------

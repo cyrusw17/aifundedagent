@@ -17,17 +17,32 @@ local Hay = {}
 
 local rng = Random.new()
 local pieces = {} -- piece part -> time it last moved or was made
-local count = 0
+local count = 0 -- loose straw strands (needles are counted apart, so they never crowd out new hay)
+local needleCount = 0
+local needleSet = {} -- piece -> true for the visible needles among the pieces
+
+-- Forgets a piece however it leaves the world. Returns true if it was still known.
+local function forget(piece)
+	if not pieces[piece] then
+		return false
+	end
+	pieces[piece] = nil
+	if needleSet[piece] then
+		needleSet[piece] = nil
+		needleCount -= 1
+	else
+		count -= 1
+	end
+	return true
+end
 local overlap = OverlapParams.new()
 
-local COLORS = {
-	Color3.fromRGB(219, 204, 153),
-	Color3.fromRGB(205, 189, 136),
-	Color3.fromRGB(189, 168, 112),
-	Color3.fromRGB(168, 149, 95),
-	Color3.fromRGB(133, 115, 71),
-	Color3.fromRGB(150, 148, 96), -- the odd greener stalk
-}
+local HayLooks = require(ReplicatedStorage.Shared.Config.HayLooks)
+
+-- The look for a hay type (Config/HayLooks), meadow when unknown.
+function Hay.look(hayType)
+	return HayLooks[hayType or "meadow"] or HayLooks.meadow
+end
 
 Hay.folder = nil
 
@@ -45,8 +60,11 @@ function Hay.init(parent)
 			task.wait(3)
 			local now = os.clock()
 			for piece, born in pieces do
-				-- Needles never fade: they stay physical until someone picks them up.
-				if now - born > Config.LooseHayLifetime and not Hay.isNeedle(piece) then
+				-- Needles stay much longer than straw, so there is time to find them, but not forever.
+				local life = if needleSet[piece] or piece:GetAttribute("Strands")
+					then Config.LooseNeedleLifetime
+					else Config.LooseHayLifetime
+				if now - born > life then
 					Hay.fadeOut(piece)
 				end
 			end
@@ -59,19 +77,14 @@ function Hay.isPiece(part)
 end
 
 function Hay.remove(piece)
-	if pieces[piece] then
-		pieces[piece] = nil
-		count -= 1
-	end
+	forget(piece)
 	piece:Destroy()
 end
 
 function Hay.fadeOut(piece)
-	if not pieces[piece] then
+	if not forget(piece) then
 		return
 	end
-	pieces[piece] = nil
-	count -= 1
 	piece.CanCollide = false
 	local tween = TweenService:Create(piece, TweenInfo.new(0.6), { Size = Vector3.new(0.05, 0.05, 0.05), Transparency = 1 })
 	tween:Play()
@@ -80,11 +93,14 @@ function Hay.fadeOut(piece)
 	end)
 end
 
-local function trim()
-	while count > Config.MaxLoosePieces do
+-- Past the caps the oldest strand (or, for needles, the oldest needle) goes, so the server never fills up.
+local function trimKind(isNeedle, over)
+	while over() do
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
-			if born < oldestTime and not Hay.isNeedle(piece) then
+			-- Piles are a player's raked work, so the cap never takes them.
+			local kindMatches = (needleSet[piece] == true) == isNeedle and not piece:GetAttribute("Strands")
+			if born < oldestTime and kindMatches then
 				oldest, oldestTime = piece, born
 			end
 		end
@@ -95,13 +111,26 @@ local function trim()
 	end
 end
 
+local function trim()
+	trimKind(false, function()
+		return count > Config.MaxLoosePieces
+	end)
+	trimKind(true, function()
+		return needleCount > Config.MaxLooseNeedles
+	end)
+end
+
 -- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
-local function makeStraw()
+-- A strand in its region's colors and shape.
+local function makeStraw(hayType)
+	local look = Hay.look(hayType)
+	local c = look.colors[rng:NextInteger(1, #look.colors)]
+	local thick = rng:NextNumber(look.thick[1], look.thick[2])
 	local piece = Instance.new("Part")
 	piece.Name = "Straw"
-	piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), rng:NextNumber(0.1, 0.14), rng:NextNumber(0.1, 0.14))
-	piece.Color = COLORS[rng:NextInteger(1, #COLORS)]
-	piece.Material = Enum.Material.Fabric
+	piece.Size = Vector3.new(rng:NextNumber(look.length[1], look.length[2]), thick, thick * rng:NextNumber(0.85, 1.15))
+	piece.Color = Color3.fromRGB(c[1], c[2], c[3])
+	piece.Material = look.material and Enum.Material[look.material] or Enum.Material.Fabric
 	piece.CustomPhysicalProperties = PhysicalProperties.new(0.3, 1.2, 0, 1, 1)
 	return piece
 end
@@ -144,11 +173,11 @@ local function makeNeedle(cframe, ownerId, hayType)
 	return piece
 end
 
--- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of straw.
+-- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of hayType's straw.
 function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
 	local cframe = CFrame.new(position)
 		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
-	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw()
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw(hayType)
 	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth
@@ -157,13 +186,15 @@ function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
 	piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
 	piece:SetAttribute("OwnerId", ownerId)
 	pieces[piece] = os.clock()
-	count += 1
+	if kind == "Needle" then
+		needleSet[piece] = true
+		needleCount += 1
+	else
+		count += 1
+	end
 	-- A needle can be clicked up and destroyed elsewhere, so forget a piece however it leaves.
 	piece.Destroying:Connect(function()
-		if pieces[piece] then
-			pieces[piece] = nil
-			count -= 1
-		end
+		forget(piece)
 	end)
 	piece.Parent = Hay.folder
 	-- The server simulates loose hay. Otherwise a nearby player's client owns each strand's physics and quietly
@@ -210,10 +241,7 @@ end
 -- The scooped pieces leave the world at once and arc into the player's chest.
 function Hay.flyToPlayer(root, list)
 	for i, piece in list do
-		if pieces[piece] then
-			pieces[piece] = nil
-			count -= 1
-		end
+		forget(piece)
 		piece.Anchored = true
 		piece.CanCollide = false
 		local from = piece.Position
@@ -240,10 +268,104 @@ end
 -- The rake gathers. For a short stroke every strand around the click slides along the ground toward a spot just in
 -- front of the player, so a scattered spill gets pulled into a neat row. Strands keep their own fall and tumble a
 -- little, but they are steered rather than flung, which suits small light straw.
+-- How many strands a loose piece stands for: 1, or a whole pile's worth.
+function Hay.strandsIn(piece)
+	return piece:GetAttribute("Strands") or 1
+end
+
+function Hay.isPile(piece)
+	return piece:GetAttribute("Strands") ~= nil
+end
+
+-- Sizes a pile's mound to how much hay is in it.
+local function shapePile(pile, n)
+	local width = math.min(1.6 + n * 0.035, 6)
+	local height = math.min(0.5 + n * 0.012, 2.2)
+	pile.Size = Vector3.new(width, height, width * 0.85)
+	pile:SetAttribute("Strands", n)
+end
+
+-- Takes n strands off a pile (for a scoop that has less room than the pile). The rest stays.
+function Hay.takeFromPile(pile, n)
+	local left = Hay.strandsIn(pile) - n
+	if left <= 0 then
+		Hay.remove(pile)
+	else
+		shapePile(pile, left)
+	end
+end
+
+-- Packs the loose strands raked around a spot into one pile, once there are PileMin of them (an existing pile there
+-- grows instead). Sorted hay only piles with sorted hay, so a pile is sorted or not as a whole.
+local function packPile(at, ownerId)
+	local groups = {}
+	for _, piece in Hay.near(at, Config.PileRadius, nil) do
+		if not needleSet[piece] then
+			local key = piece:GetAttribute("Sorted") and "sorted" or "raw"
+			groups[key] = groups[key] or { strands = 0, parts = {}, pile = nil }
+			local g = groups[key]
+			if Hay.isPile(piece) and not g.pile then
+				g.pile = piece
+			else
+				table.insert(g.parts, piece)
+			end
+			g.strands += Hay.strandsIn(piece)
+		end
+	end
+	for key, g in groups do
+		if g.strands >= Config.PileMin and (#g.parts > 0) then
+			local pile = g.pile
+			if not pile then
+				local first = g.parts[1]
+				local hayType = first:GetAttribute("HayType") or "meadow"
+				local look = Hay.look(hayType)
+				local c = look.colors[1]
+				pile = Instance.new("Part")
+				pile.Name = "HayPile"
+				pile.Color = Color3.fromRGB(c[1], c[2], c[3])
+				pile.Material = Enum.Material.Fabric
+				pile.CollisionGroup = Groups.Loose
+				pile.CustomPhysicalProperties = PhysicalProperties.new(0.6, 1.5, 0, 1, 1)
+				-- A rounded mound: a sphere mesh stretched to the part (a Ball part would have to stay round).
+				local mound = Instance.new("SpecialMesh")
+				mound.MeshType = Enum.MeshType.Sphere
+				mound.Parent = pile
+				pile:SetAttribute("HayType", hayType)
+				if key == "sorted" then
+					pile:SetAttribute("Sorted", true)
+				end
+				pile:SetAttribute("OwnerId", ownerId)
+				shapePile(pile, g.strands)
+				pile.CFrame = CFrame.new(at.X, at.Y + pile.Size.Y / 2, at.Z)
+				pieces[pile] = os.clock()
+				count += 1
+				pile.Destroying:Connect(function()
+					forget(pile)
+				end)
+				pile.Parent = Hay.folder
+				pcall(function()
+					pile:SetNetworkOwner(nil)
+				end)
+			end
+			for _, piece in g.parts do
+				Hay.remove(piece)
+			end
+			-- Grow it upward, so the bigger mound does not sink into the ground and pop out.
+			local oldHeight = pile.Size.Y
+			shapePile(pile, g.strands)
+			pile.CFrame += Vector3.new(0, (pile.Size.Y - oldHeight) / 2, 0)
+			pieces[pile] = os.clock()
+		end
+	end
+end
+
 function Hay.rake(center, gatherAt, radius, ownerId)
 	local list = Hay.near(center, radius, nil)
 	for _, piece in list do
-		piece:SetAttribute("OwnerId", ownerId)
+		-- Raked straw is paid to the raker; a visible needle stays with whoever's bale it came from.
+		if not needleSet[piece] then
+			piece:SetAttribute("OwnerId", ownerId)
+		end
 		pieces[piece] = os.clock()
 		-- Each strand stops a slightly different distance short of the gather spot, so they pile in a row, not a point.
 		piece:SetAttribute("RakeStop", rng:NextNumber(0.6, 2.2))
@@ -266,6 +388,9 @@ function Hay.rake(center, gatherAt, radius, ownerId)
 			end
 			RunService.Heartbeat:Wait()
 		end
+		-- Raking a big enough heap together packs it into one pile the shovel can take at once.
+		task.wait(0.25)
+		packPile(gatherAt - Vector3.new(0, 2.5, 0), ownerId)
 	end)
 	return #list
 end

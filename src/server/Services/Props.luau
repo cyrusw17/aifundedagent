@@ -207,6 +207,16 @@ function Props.make(name, cframe, fit, turn)
 		pre = CFrame.Angles(0, math.pi / 2, 0)
 		size = Vector3.new(size.Z, size.Y, size.X)
 	end
+	-- Vehicles face -Z: the coupler at the front, the tailgate at the back. A rig that comes out the other way round
+	-- is turned 180 degrees, so a trailer's tongue always points at the truck.
+	local function sideOf(prefix)
+		local found = Props.find(model, prefix)[1]
+		return found and (pre * CFrame.new(found.Position - center)).Position.Z
+	end
+	local coupler, tailgate = sideOf("Coupler"), sideOf("Tailgate")
+	if (coupler and coupler > 0) or (not coupler and tailgate and tailgate < 0) then
+		pre = CFrame.Angles(0, math.pi, 0) * pre
+	end
 	local scale
 	if typeof(fit) == "Vector3" then
 		scale = fit / size
@@ -216,10 +226,30 @@ function Props.make(name, cframe, fit, turn)
 	end
 	turn = turn or CFrame.identity
 
+	local wheels = {}
+	for _, part in Props.find(model, "Wheel_") do
+		wheels[part] = true
+	end
 	for _, part in parts do
 		local cf = pre * CFrame.new(part.Position - center) * part.CFrame.Rotation
 		local offset = cf.Position * scale
-		part.Size *= Vector3.new(alongAxis(cf.RightVector, scale), alongAxis(cf.UpVector, scale), alongAxis(cf.LookVector, scale))
+		local stretch = Vector3.new(alongAxis(cf.RightVector, scale), alongAxis(cf.UpVector, scale), alongAxis(cf.LookVector, scale))
+		if wheels[part] then
+			-- A stretched prop still gets round wheels: both sides across the axle (the wheel's thinnest side) scale alike.
+			local own = part.Size
+			local round
+			if own.X <= own.Y and own.X <= own.Z then
+				round = (stretch.Y + stretch.Z) / 2
+				stretch = Vector3.new(stretch.X, round, round)
+			elseif own.Y <= own.Z then
+				round = (stretch.X + stretch.Z) / 2
+				stretch = Vector3.new(round, stretch.Y, round)
+			else
+				round = (stretch.X + stretch.Y) / 2
+				stretch = Vector3.new(round, round, stretch.Z)
+			end
+		end
+		part.Size *= stretch
 		part.CFrame = cframe * turn * CFrame.new(offset) * cf.Rotation
 		part.Anchored = true
 	end
@@ -259,7 +289,8 @@ end
 -- clicks (those go to the anchor) and weighs nothing.
 -- fallback is the part-built look the mesh replaces (a bale body, a Tool, or a list of such parts). When given, the
 -- mesh starts hidden and the fallback stays visible; each client swaps them once the mesh has actually loaded
--- (PropMeshes.client.luau), so a freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
+-- (PropMeshes.client.luau), so a freshly imported mesh that Roblox is still processing never leaves an invisible
+-- bale or an empty hand.
 -- loose is a list of the prop's own parts (from Props.find) to leave unwelded, so the caller can join them with a
 -- hinge or Motor6D instead (spinning wheels, an opening tailgate). They are unanchored like the rest.
 function Props.weldTo(model, anchor, fallback, loose)

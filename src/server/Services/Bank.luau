@@ -12,6 +12,7 @@
 -- All of it is saved per save slot in Data (state.bank). With Config.InfiniteMoney on, shops are free and the HUD shows
 -- the test balance, but the wallet, bank balance, loans and history underneath are real and saved, so the bank can be
 -- tested with real numbers.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -451,6 +452,27 @@ local function sign(parent, text, offset)
 	return WorldLabel.billboard(parent, text, { offset = offset, kind = "sign" })
 end
 
+-- Makes any part a teller window: press E there to open the bank panel. Other buildings (a Homestead branch, an ATM)
+-- can call this with their own part; all tellers share the same accounts.
+function Bank.addTeller(window)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Bank"
+	prompt.ObjectText = "Teller"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = window
+	prompt.Triggered:Connect(function(player)
+		if openRemote then
+			openRemote:FireClient(player)
+		end
+	end)
+	CollectionService:AddTag(window, "BankTeller")
+	table.insert(tellers, window)
+	return prompt
+end
+
 -- A small stone-and-plank bank on the main road, east of the plot road, its open front facing north to the road.
 -- Bank.SITE matches the flat, clear rect "Bank" in Config/Meadow.
 Bank.SITE = Vector3.new(46, 0, 52)
@@ -492,20 +514,7 @@ function Bank.build(worldFolder)
 	local window = part(model, "TellerWindow", Vector3.new(4, 3, 0.2), at(0, 6.6, 1.4), Rustic.Glass, Enum.Material.Glass)
 	window.Transparency = 0.6
 	window.CanCollide = false
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Bank"
-	prompt.ObjectText = "Teller"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = window
-	prompt.Triggered:Connect(function(player)
-		if openRemote then
-			openRemote:FireClient(player)
-		end
-	end)
-	table.insert(tellers, window)
+	Bank.addTeller(window)
 
 	sign(roof, "MEADOW SAVINGS & LOAN\nSavings, truck loans, land loans", Vector3.new(0, 4, 0))
 	return model
@@ -559,6 +568,12 @@ function Bank.start()
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil
 	end)
+
+	-- Other bank buildings (the Homestead branch on the world map) tag their counter "BankCounter".
+	for _, counter in CollectionService:GetTagged("BankCounter") do
+		Bank.addTeller(counter)
+	end
+	CollectionService:GetInstanceAddedSignal("BankCounter"):Connect(Bank.addTeller)
 
 	task.spawn(function()
 		while true do

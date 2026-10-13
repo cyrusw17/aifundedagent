@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local UI = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI")
 local Kit = require(UI:WaitForChild("Kit"))
@@ -49,7 +50,7 @@ end
 local STEPS = {
 	{
 		title = "Lift a bale",
-		text = "Walk up to a hay bale and press Pick up (E).",
+		text = "Walk up to a hay bale and press F to pick it up.",
 		done = function()
 			return player:GetAttribute("Carrying") == true
 		end,
@@ -205,11 +206,48 @@ local function render()
 	end
 end
 
+-- The guide's own marker. The guide only moves or clears a marker it set, so one from the map, the shop or the goal
+-- bar stays until the player reaches it.
+local guideMark = nil
+local function ours()
+	local now = Waypoint.position()
+	return now == nil or (guideMark ~= nil and (now - guideMark).Magnitude < 0.5)
+end
+local function clearGuideMark()
+	if guideMark and ours() then
+		Waypoint.clear()
+	end
+	guideMark = nil
+end
+
+-- The card hides while a menu (map, shop...) is open, so it never covers one.
+local function showCard()
+	card.Visible = running and Menus.current() == nil
+end
+Menus.changed.Event:Connect(showCard)
+
+-- On short (phone) screens the card sits at the bottom, clear of the HUD column and the top of the menus.
+local function placeCard()
+	local camera = Workspace.CurrentCamera
+	local view = camera and camera.ViewportSize or Vector2.new(1024, 768)
+	if view.Y < 520 or view.X < 900 then
+		card.AnchorPoint = Vector2.new(0.5, 1)
+		card.Position = UDim2.new(0.5, 0, 1, -12)
+	else
+		card.AnchorPoint = Vector2.new(0.5, 0)
+		card.Position = UDim2.new(0.5, 0, 0, 100)
+	end
+end
+placeCard()
+if Workspace.CurrentCamera then
+	Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(placeCard)
+end
+
 local function stop(markDone)
 	running = false
 	runToken += 1
-	card.Visible = false
-	Waypoint.clear()
+	showCard()
+	clearGuideMark()
 	if markDone then
 		actionRemote:FireServer("done")
 	end
@@ -253,7 +291,7 @@ local function start(fromStep)
 	runToken += 1
 	local token = runToken
 	running = true
-	card.Visible = true
+	showCard()
 	enter(fromStep or 1)
 	-- Watch for the step to get done, and keep the arrow on its target.
 	task.spawn(function()
@@ -262,19 +300,27 @@ local function start(fromStep)
 			if step and not finishing then
 				if not stepStartedDone and step.done() then
 					titleLabel.Text = "✓ Nice!"
+					local at = index
 					local flash = TweenService:Create(card, TweenInfo.new(0.25), { BackgroundColor3 = C.Hay })
 					flash:Play()
 					task.wait(1.1)
 					card.BackgroundColor3 = C.Paper
-					if running and runToken == token then
+					-- Unless NEXT was pressed during the flash (that already moved on).
+					if running and runToken == token and index == at and not finishing then
 						advance()
 					end
 				else
 					local ok, where = pcall(step.target)
 					if ok and where and not stepStartedDone then
-						Waypoint.set(where, step.label, true)
+						if
+							ours()
+							and (Waypoint.position() == nil or guideMark == nil or (where - guideMark).Magnitude > 2)
+						then
+							Waypoint.set(where, step.label, true)
+							guideMark = where
+						end
 					else
-						Waypoint.clear()
+						clearGuideMark()
 					end
 				end
 			end

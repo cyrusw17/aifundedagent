@@ -40,6 +40,8 @@ return {
 			hills = { { 5, 90 } },
 			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
+			-- STYLE.md Regions: the accent for signs and trim, and the sky / fog tint.
+			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
 		{
 			id = "valley",
@@ -50,6 +52,7 @@ return {
 			hills = { { 16, 160 }, { 4, 50 } },
 			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
+			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
 		{
 			id = "homestead",
@@ -60,6 +63,7 @@ return {
 			hills = { { 12, 200 }, { 3, 60 } },
 			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
+			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
 		{
 			id = "spindle",
@@ -71,6 +75,7 @@ return {
 			peak = { center = Vector2.new(-90, -1010), radius = 250, height = 360, power = 1.35 },
 			materials = { top = "Limestone", alt = "Slate", cliff = "Slate", beach = "Sand" },
 			hayType = "meadow",
+			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
 		{
 			id = "pine",
@@ -81,6 +86,7 @@ return {
 			hills = { { 26, 190 }, { 6, 60 } },
 			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
 			hayType = "pine",
+			style = { accent = Color3.fromRGB(61, 102, 94), fog = Color3.fromRGB(158, 176, 173) },
 		},
 		{
 			id = "haunted",
@@ -91,6 +97,7 @@ return {
 			hills = { { 9, 110 }, { 3, 30 } },
 			materials = { top = "Mud", alt = "Slate", cliff = "Basalt", beach = "Mud" },
 			hayType = "haunted",
+			style = { accent = Color3.fromRGB(110, 96, 130), fog = Color3.fromRGB(140, 140, 150) },
 		},
 		{
 			id = "snow",
@@ -103,6 +110,7 @@ return {
 			snowLine = 70, -- everything above this is snow
 			materials = { top = "Snow", alt = "Glacier", cliff = "Slate", beach = "Snow" },
 			hayType = "snow",
+			style = { accent = Color3.fromRGB(112, 150, 178), fog = Color3.fromRGB(209, 219, 230) },
 		},
 		{
 			id = "volcano",
@@ -115,6 +123,7 @@ return {
 			lavaRivers = true,
 			materials = { top = "Basalt", alt = "Rock", cliff = "Basalt", beach = "Basalt" },
 			hayType = "volcano",
+			style = { accent = Color3.fromRGB(150, 70, 40), fog = Color3.fromRGB(150, 130, 120) },
 		},
 		{
 			id = "desert",
@@ -126,6 +135,7 @@ return {
 			dunes = { amplitude = 16, scale = 70 },
 			materials = { top = "Sand", alt = "Sandstone", cliff = "Sandstone", beach = "Sand" },
 			hayType = "desert",
+			style = { accent = Color3.fromRGB(168, 97, 64), fog = Color3.fromRGB(224, 209, 184) },
 		},
 		{
 			id = "swamp",
@@ -137,6 +147,7 @@ return {
 			pools = { level = -0.5, threshold = -0.18, scale = 55 }, -- low spots fill with bog water
 			materials = { top = "Mud", alt = "LeafyGrass", cliff = "Ground", beach = "Mud" },
 			hayType = "swamp",
+			style = { accent = Color3.fromRGB(153, 173, 71), fog = Color3.fromRGB(153, 163, 143) },
 		},
 		{
 			id = "keys",
@@ -148,6 +159,7 @@ return {
 			islets = true, -- broken up into keys by a channel noise
 			materials = { top = "LeafyGrass", alt = "Sand", cliff = "Sandstone", beach = "Salt" },
 			hayType = "keys",
+			style = { accent = Color3.fromRGB(64, 132, 140), fog = Color3.fromRGB(196, 214, 216) },
 		},
 		{
 			id = "bobbin",
@@ -159,6 +171,7 @@ return {
 			peak = { center = Vector2.new(2790, -1890), radius = 230, height = 170, power = 0.8 },
 			materials = { top = "Rock", alt = "Slate", cliff = "Slate", beach = "Slate" },
 			hayType = "bobbin",
+			style = { accent = Color3.fromRGB(120, 110, 150), fog = Color3.fromRGB(180, 180, 196) },
 		},
 	},
 
@@ -186,12 +199,12 @@ return {
 		{ name = "PineMill", min = Vector2.new(-1240, 160), max = Vector2.new(-1180, 220), height = 18, blend = 40 },
 		{ name = "Pyramid", min = Vector2.new(1440, -640), max = Vector2.new(1560, -520), height = 10, blend = 50 },
 		{ name = "Oasis", min = Vector2.new(1160, -330), max = Vector2.new(1240, -250), height = 6, blend = 40 },
-		{ name = "Quarry", min = Vector2.new(640, -1290), max = Vector2.new(740, -1200), height = 30, blend = 50 },
+		{ name = "Quarry", min = Vector2.new(690, -1350), max = Vector2.new(790, -1250), height = 30, blend = 50 },
 		{ name = "Wreck", min = Vector2.new(-1800, -900), max = Vector2.new(-1730, -820), height = -2, blend = 30 },
-		{ name = "SwampPort", min = Vector2.new(1640, 470), max = Vector2.new(1730, 570), height = 2, blend = 40 },
-		{ name = "AshDock", min = Vector2.new(1540, -1280), max = Vector2.new(1630, -1170), height = 2, blend = 40 },
-		{ name = "KeysHarbor", min = Vector2.new(2780, 20), max = Vector2.new(2880, 130), height = 2, blend = 40 },
-		{ name = "BobbinPier", min = Vector2.new(2510, -1840), max = Vector2.new(2570, -1760), height = 4, blend = 30 },
+		{ name = "SwampPort", min = Vector2.new(1640, 470), max = Vector2.new(1730, 570), height = 3, blend = 40 },
+		{ name = "AshDock", min = Vector2.new(1540, -1280), max = Vector2.new(1630, -1170), height = 3, blend = 40 },
+		{ name = "KeysHarbor", min = Vector2.new(2780, 20), max = Vector2.new(2880, 130), height = 3, blend = 40 },
+		{ name = "BobbinPier", min = Vector2.new(2510, -1840), max = Vector2.new(2570, -1760), height = 3, blend = 30 },
 		{ name = "Workshop", min = Vector2.new(2760, -1920), max = Vector2.new(2820, -1860), height = 182, blend = 40 },
 		{ name = "HighwayWest", min = Vector2.new(1800, -460), max = Vector2.new(1880, -380), height = 3, blend = 40 },
 		{ name = "HighwayEast", min = Vector2.new(2720, -330), max = Vector2.new(2800, -250), height = 3, blend = 40 },
@@ -212,7 +225,7 @@ return {
 			name = "North Road", -- Meadow's north exit, past Mirror Lake and the Spindle, into Homestead
 			points = {
 				Vector2.new(-30, -512), Vector2.new(-30, -620), Vector2.new(90, -760), Vector2.new(170, -900),
-				Vector2.new(190, -1080), Vector2.new(120, -1260), Vector2.new(0, -1330),
+				Vector2.new(190, -1080), Vector2.new(120, -1260), Vector2.new(0, -1330), Vector2.new(0, -1390),
 			},
 		},
 		{
@@ -233,21 +246,21 @@ return {
 			name = "Pine Road", -- Pine Forest north through Haunted Grove to Homestead
 			points = {
 				Vector2.new(-1150, 160), Vector2.new(-1200, -120), Vector2.new(-1180, -420), Vector2.new(-1120, -760),
-				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1440), Vector2.new(-230, -1480),
+				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1420), Vector2.new(-125, -1400),
 			},
 		},
 		{
 			name = "Wreck Lane",
-			points = { Vector2.new(-1180, -760), Vector2.new(-1500, -840), Vector2.new(-1730, -860) },
+			points = { Vector2.new(-1120, -760), Vector2.new(-1500, -840), Vector2.new(-1730, -860) },
 		},
 		{
 			name = "Snow Road",
-			points = { Vector2.new(-620, -1300), Vector2.new(-640, -1460), Vector2.new(-650, -1600) },
+			points = { Vector2.new(-620, -1300), Vector2.new(-640, -1460), Vector2.new(-650, -1595) },
 		},
 		{
 			name = "Volcano Road", -- Homestead east to the quarry, then round the volcano's foot to Ash Dock
 			points = {
-				Vector2.new(230, -1480), Vector2.new(460, -1420), Vector2.new(620, -1300), Vector2.new(690, -1245),
+				Vector2.new(130, -1445), Vector2.new(230, -1450), Vector2.new(460, -1420), Vector2.new(620, -1300), Vector2.new(690, -1245),
 				Vector2.new(760, -1120), Vector2.new(980, -1020), Vector2.new(1260, -1010), Vector2.new(1480, -1150),
 				Vector2.new(1585, -1225),
 			},
@@ -269,7 +282,7 @@ return {
 		},
 		{
 			name = "Zeppelin Lane",
-			points = { Vector2.new(200, -1560), Vector2.new(320, -1640), Vector2.new(320, -1680) },
+			points = { Vector2.new(120, -1545), Vector2.new(200, -1580), Vector2.new(320, -1640), Vector2.new(320, -1680) },
 		},
 		{
 			name = "Keys Road", -- off the highway, across Thimble Keys to the harbor

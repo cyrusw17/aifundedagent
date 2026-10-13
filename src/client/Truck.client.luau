@@ -168,6 +168,7 @@ local function start(seat)
 		if throttle ~= 0 then
 			rate = (state.speed ~= 0 and math.sign(target) ~= math.sign(state.speed)) and BRAKE or ACCEL
 		end
+		rate *= game:GetService("Lighting"):GetAttribute("WeatherGrip") or 1 -- wet or snowy roads (Weather.client)
 		if state.speed < target then
 			state.speed = math.min(state.speed + rate * dt, target)
 		else

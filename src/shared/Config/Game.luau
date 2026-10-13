@@ -17,6 +17,8 @@ return {
 	PiecesPerBale = 90, -- small straw strands spilled by one bale
 	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away
+	LooseNeedleLifetime = 600, -- a spilled needle or a raked pile nobody picks up stays this long
+	MaxLooseNeedles = 120, -- past this many lying around, the oldest needle goes
 	BaleRefillSeconds = 45, -- placeholder until we decide how bales refill
 
 	-- Tools
@@ -26,8 +28,21 @@ return {
 	ShovelPieces = 12, -- strands per scoop
 	ShovelRadius = 3, -- pieces this close to the clicked spot get scooped, nearest first
 	ScoopCooldownSeconds = 0.85,
+	-- Scoop combo: scoops landing within ComboWindowSeconds of each other chain. From ComboStart scoops on, each
+	-- scoop takes ComboBonusPieces more strands per link past the start, up to ComboMaxBonus.
+	-- Wheelbarrow: how many bales it holds, and the share of their weight you feel while pushing it.
+	WheelbarrowBales = 3,
+	WheelbarrowLoadFactor = 0.3,
+	ComboWindowSeconds = 1.6,
+	ComboStart = 3,
+	ComboBonusPieces = 2,
+	ComboMaxBonus = 10,
 	RakeRadius = 6, -- strands this close to the click get gathered
 	RakeGatherDistance = 2.5, -- the rake pulls hay to this far in front of you
+	-- Hay piles: raking at least PileMin strands together into one spot packs them into a single pile the shovel
+	-- takes in one scoop (it ignores the per-scoop size; only your carry room limits it).
+	PileMin = 40,
+	PileRadius = 3,
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
 	RakeMaxSpeed = 16,
 	RakeCooldownSeconds = 0.75,
@@ -35,6 +50,7 @@ return {
 	-- Carrying a whole bale
 	CarryWalkSpeed = 8,
 	StackReach = 9, -- a bale set down lands on top of a stack up to this high in front of you
+	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long
 
 	-- Scoop animation tuning (degrees of right-arm swing and seconds). Easy to adjust from playtests.

@@ -81,7 +81,7 @@ function Dock.buildFunnel(parent, dockPoint, out)
 		)
 		half.CustomPhysicalProperties = PhysicalProperties.new(0.7, 1.5, 0, 100, 1)
 		local inward = frame:VectorToWorldSpace(Vector3.new(-side, 0, 0))
-		half.AssemblyLinearVelocity = toward * Factory.BeltSpeed + inward * Factory.BeltSpeed * 0.5
+		half.AssemblyLinearVelocity = -out * Factory.BeltSpeed + inward * Factory.BeltSpeed * 0.5
 
 		-- Guide wall from the wide back edge to the belt's rail.
 		local from = frame * Vector3.new(side * ZONE_WIDTH / 2, 0, 0)

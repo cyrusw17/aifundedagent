@@ -27,6 +27,9 @@ local moveRemote = state:WaitForChild("Move")
 local copyRemote = state:WaitForChild("Copy")
 local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
+local switchRemote = state:WaitForChild("Switch")
+local nameRemote = state:WaitForChild("FarmName")
+local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -135,9 +138,14 @@ local function refreshPanel()
 		elseif ownerId ~= 0 then
 			b.Text = ("VISIT %s  ♥%d"):format(string.upper(info:GetAttribute("OwnerName") or "?"), info:GetAttribute("Likes") or 0)
 			b.BackgroundColor3 = PICKED
-		elseif mine > 0 then
+		elseif mine > 0 and (player:GetAttribute("FarmCount") or 0) >= 2 then
 			b.Text = ("$%d"):format(price)
 			b.BackgroundColor3 = MUTED
+		elseif mine > 0 then
+			-- One farm owned: any free plot can become the second one, at the second-plot price.
+			local second = LandConfig.SecondPlotPrice
+			b.Text = cash >= second and ("BUY 2ND FARM $%d"):format(second) or ("2ND FARM: NEED $%d"):format(second - cash)
+			b.BackgroundColor3 = cash >= second and GREEN or MUTED
 		elseif cash >= price then
 			b.Text = ("BUY  $%d"):format(price)
 			b.BackgroundColor3 = GREEN
@@ -287,10 +295,19 @@ pasteButton.Size = UDim2.fromOffset(98, 34)
 local expandButton = button(actions, "EXPAND", GREEN)
 expandButton.Size = UDim2.fromOffset(130, 34)
 expandButton.Visible = false
+local switchButton = button(actions, "SWITCH FARM", GREEN)
+switchButton.Size = UDim2.fromOffset(120, 34)
+switchButton.Visible = false
+local themeButton = button(actions, "THEME", PICKED)
+themeButton.Size = UDim2.fromOffset(150, 34)
+local nameButton = button(actions, "NAME", PICKED)
+nameButton.Size = UDim2.fromOffset(80, 34)
 local crewButton = button(actions, "CREW", PICKED)
 crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
 doneButton.Size = UDim2.fromOffset(80, 34)
+
+local namePanel -- the farm name box, made with the NAME button below
 
 -- Crew panel: everyone else on the server, each with ADD or REMOVE.
 local crewPanel = Instance.new("Frame")
@@ -478,7 +495,7 @@ for i, def in LandConfig.Pieces do
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK
-	b.Text = ("%s\n$%d"):format(def.name, def.price)
+	b.Text = def.quest and ("%s\nQuest reward"):format(def.name) or ("%s\n$%d"):format(def.name, def.price)
 	b.Parent = pieceRow
 	corner(b, 6)
 	pieceButtons[def.id] = b
@@ -505,6 +522,25 @@ local function cellsFor(def, gx, gz, dir)
 		for along = 0, def.size[2] - 1 do
 			table.insert(cells, { gx + fx * along + rx * across, gz + fz * along + rz * across })
 		end
+	end
+	return cells
+end
+
+-- The belt levels a piece takes, as on the server: a ramp both, a raised belt level 1, the rest the ground.
+local function levelsOf(def)
+	if def.kind == "ramp" then
+		return { 0, 1 }
+	end
+	return { def.level or 0 }
+end
+
+local function cellKey(x, z, level)
+	return level > 0 and ("%d,%d,%d"):format(x, z, level) or (x .. "," .. z)
+end
+
+local function withLevels(cells, levels)
+	for _, cell in cells do
+		cell[3] = levels
 	end
 	return cells
 end
@@ -588,9 +624,11 @@ local function updateGhost()
 	if tool == "move" and moving then
 		local def = pieceDefs[moving.id]
 		for _, cell in cellsFor(def, moving.gx, moving.gz, moving.dir) do
-			own[cell[1] .. "," .. cell[2]] = true
+			for _, level in levelsOf(def) do
+				own[cellKey(cell[1], cell[2], level)] = true
+			end
 		end
-		cells = cellsFor(def, gx, gz, dir)
+		cells = withLevels(cellsFor(def, gx, gz, dir), levelsOf(def))
 	elseif tool == "copy" then
 		local sx, sz = copyStart and copyStart.gx or gx, copyStart and copyStart.gz or gz
 		for x = math.min(sx, gx), math.max(sx, gx) do
@@ -602,7 +640,8 @@ local function updateGhost()
 	elseif tool == "paste" then
 		if clipboard then
 			for _, entry in clipboard.list do
-				for _, cell in cellsFor(pieceDefs[entry.id], gx + entry.dx, gz + entry.dz, entry.dir) do
+				local def = pieceDefs[entry.id]
+				for _, cell in withLevels(cellsFor(def, gx + entry.dx, gz + entry.dz, entry.dir), levelsOf(def)) do
 					table.insert(cells, cell)
 				end
 			end
@@ -613,17 +652,22 @@ local function updateGhost()
 		end
 		showArrow = false
 	elseif tool == "move" or removing then
-		cells = { { gx, gz } }
+		cells = { { gx, gz, { 0, 1 } } }
 		picking = true
 		showArrow = false
 	else
-		cells = cellsFor(selected, gx, gz, dir)
+		cells = withLevels(cellsFor(selected, gx, gz, dir), levelsOf(selected))
 		cost = selected.price
 	end
 	for _, cell in cells do
 		local x, z = cell[1], cell[2]
-		local k = x .. "," .. z
-		local free = not taken[k] or own[k]
+		local free = true
+		for _, level in cell[3] or {} do
+			local k = cellKey(x, z, level)
+			if taken[k] and not own[k] then
+				free = false
+			end
+		end
 		if not onPlot(x, z) or (picking and free) or (not picking and tool ~= "copy" and not free) then
 			valid = false
 		end
@@ -732,6 +776,126 @@ local function setTool(name)
 	describeSelection()
 end
 
+-- LAYOUTS: save the clipboard as a named layout (kept in the save slot), or load one back into the clipboard
+-- to PASTE on any plot (Services/Blueprints.luau).
+local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
+local presetButton = button(actions, "LAYOUTS", PICKED)
+presetButton.Size = UDim2.fromOffset(100, 34) -- "layouts", not "blueprints": those are the fill-in templates
+presetButton.Visible = blueprintRemotes ~= nil
+local presetPanel = Instance.new("Frame")
+presetPanel.AnchorPoint = Vector2.new(0.5, 1)
+presetPanel.Position = UDim2.new(0.5, 0, 1, -172)
+presetPanel.Size = UDim2.fromOffset(340, 300)
+presetPanel.BackgroundColor3 = PANEL
+presetPanel.Visible = false
+presetPanel.Parent = gui
+corner(presetPanel, 12)
+local presetStroke = Instance.new("UIStroke", presetPanel)
+presetStroke.Color = INK
+presetStroke.Thickness = 2
+text(presetPanel, "SAVED LAYOUTS", 16, 8, 20)
+local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a layout on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
+local nameBox = Instance.new("TextBox")
+nameBox.Position = UDim2.fromOffset(14, 62)
+nameBox.Size = UDim2.new(1, -118, 0, 30)
+nameBox.PlaceholderText = "Layout name"
+nameBox.Text = ""
+nameBox.ClearTextOnFocus = false
+nameBox.Font = F.Bold
+nameBox.TextSize = 14
+nameBox.TextColor3 = INK
+nameBox.BackgroundColor3 = CARD
+nameBox.Parent = presetPanel
+corner(nameBox, 6)
+local saveButton = button(presetPanel, "SAVE COPY", GREEN)
+saveButton.AnchorPoint = Vector2.new(1, 0)
+saveButton.Position = UDim2.new(1, -14, 0, 62)
+saveButton.Size = UDim2.fromOffset(92, 30)
+local presetList = Instance.new("ScrollingFrame")
+presetList.Position = UDim2.fromOffset(10, 100)
+presetList.Size = UDim2.new(1, -20, 1, -110)
+presetList.BackgroundTransparency = 1
+presetList.BorderSizePixel = 0
+presetList.ScrollBarThickness = 4
+presetList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+presetList.CanvasSize = UDim2.new()
+presetList.Parent = presetPanel
+local presetLayout = Instance.new("UIListLayout", presetList)
+presetLayout.Padding = UDim.new(0, 4)
+
+local function refreshPresets()
+	for _, child in presetList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local ok, saved = pcall(function()
+		return blueprintRemotes.List:InvokeServer()
+	end)
+	if not ok or typeof(saved) ~= "table" then
+		presetMessage.Text = "Couldn't reach the server."
+		return
+	end
+	for _, preset in saved do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -6, 0, 36)
+		row.BackgroundColor3 = CARD
+		row.Parent = presetList
+		corner(row, 6)
+		local label = text(row, ("%s  (%d pieces, $%d)"):format(preset.name, #preset.list, preset.total), 13, 8, 20)
+		label.Size = UDim2.new(1, -150, 0, 20)
+		local load = button(row, "LOAD", GREEN)
+		load.AnchorPoint = Vector2.new(1, 0.5)
+		load.Position = UDim2.new(1, -60, 0.5, 0)
+		load.Size = UDim2.fromOffset(70, 28)
+		load.Activated:Connect(function()
+			clipboard = { list = preset.list, total = preset.total }
+			presetPanel.Visible = false
+			tool = nil
+			setTool("paste")
+		end)
+		local del = button(row, "X", RED)
+		del.AnchorPoint = Vector2.new(1, 0.5)
+		del.Position = UDim2.new(1, -6, 0.5, 0)
+		del.Size = UDim2.fromOffset(44, 28)
+		del.Activated:Connect(function()
+			local done, _, message = pcall(function()
+				return blueprintRemotes.Delete:InvokeServer(preset.name)
+			end)
+			presetMessage.Text = done and (message or "") or "Couldn't reach the server."
+			task.defer(refreshPresets)
+		end)
+	end
+	if #saved == 0 then
+		presetMessage.Text = "No saved layouts yet. COPY an area of your line, name it, and SAVE."
+	end
+end
+
+if blueprintRemotes then
+	presetButton.Activated:Connect(function()
+		presetPanel.Visible = not presetPanel.Visible
+		if presetPanel.Visible then
+			refreshPresets()
+		end
+	end)
+	saveButton.Activated:Connect(function()
+		if not clipboard then
+			presetMessage.Text = "COPY an area of your line first."
+			return
+		end
+		local ok, _, message = pcall(function()
+			return blueprintRemotes.Save:InvokeServer(nameBox.Text, clipboard.list)
+		end)
+		presetMessage.Text = ok and (message or "") or "Couldn't reach the server."
+		refreshPresets()
+	end)
+	player:GetAttributeChangedSignal("Building"):Connect(function()
+		if not player:GetAttribute("Building") then
+			presetPanel.Visible = false
+		end
+	end)
+end
+
 local function undo()
 	if busy then
 		return
@@ -752,9 +916,14 @@ end
 
 local function setBuilding(on)
 	building = on
+	-- Local-only flag so other menus leave the build keys alone (M is "move" here, the map elsewhere).
+	player:SetAttribute("Building", on)
 	bar.Visible = on
 	if not on then
 		crewPanel.Visible = false
+		if namePanel then
+			namePanel.Visible = false
+		end
 	end
 	buildButton.Visible = not on and (player:GetAttribute("LandPlot") or 0) > 0
 	if on then
@@ -810,6 +979,126 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		setTool("paste")
 	end
 end)
+
+-- THEME cycles the free plot themes (fence, sign and lamps).
+local function currentTheme()
+	local info = myPlot()
+	local id = info and info:GetAttribute("Theme") or ""
+	for i, theme in LandConfig.Themes do
+		if theme.id == id then
+			return i
+		end
+	end
+	return 1
+end
+local function refreshThemeButton()
+	themeButton.Text = "THEME: " .. LandConfig.Themes[currentTheme()].name:upper()
+end
+themeButton.Activated:Connect(function()
+	if busy then
+		return
+	end
+	local nextTheme = LandConfig.Themes[currentTheme() % #LandConfig.Themes + 1]
+	busy = true
+	local ok, done, message = pcall(function()
+		return themeRemote:InvokeServer(nextTheme.id)
+	end)
+	busy = false
+	if ok and message then
+		setInfo(message, done and GREEN or RED)
+	end
+	task.delay(0.2, refreshThemeButton)
+end)
+
+player:GetAttributeChangedSignal("LandPlot"):Connect(function()
+	task.delay(0.2, refreshThemeButton)
+end)
+
+-- NAME: a small box above the action bar to name the farm. The server filters it before anyone sees it.
+namePanel = Instance.new("Frame")
+namePanel.AnchorPoint = Vector2.new(0.5, 1)
+namePanel.Position = UDim2.new(0.5, 0, 1, -172)
+namePanel.Size = UDim2.fromOffset(320, 112)
+namePanel.BackgroundColor3 = PANEL
+namePanel.Visible = false
+namePanel.Parent = gui
+corner(namePanel, 12)
+local nameStroke = Instance.new("UIStroke", namePanel)
+nameStroke.Color = INK
+nameStroke.Thickness = 2
+text(namePanel, "NAME YOUR FARM", 16, 8, 20)
+local farmNameBox = Instance.new("TextBox")
+farmNameBox.Position = UDim2.fromOffset(14, 36)
+farmNameBox.Size = UDim2.new(1, -28, 0, 30)
+farmNameBox.Font = F.Bold
+farmNameBox.TextSize = 15
+farmNameBox.TextColor3 = INK
+farmNameBox.BackgroundColor3 = CARD
+farmNameBox.PlaceholderText = "Up to 24 letters"
+farmNameBox.ClearTextOnFocus = false
+farmNameBox.Text = ""
+farmNameBox.Parent = namePanel
+corner(farmNameBox, 6)
+local nameSave = button(namePanel, "SAVE NAME", GREEN)
+nameSave.Position = UDim2.fromOffset(14, 72)
+nameSave.Size = UDim2.fromOffset(140, 30)
+local nameCancel = button(namePanel, "CANCEL", MUTED)
+nameCancel.Position = UDim2.new(1, -114, 0, 72)
+nameCancel.Size = UDim2.fromOffset(100, 30)
+
+local function submitName()
+	if busy then
+		return
+	end
+	local value = string.sub(farmNameBox.Text, 1, 60)
+	busy = true
+	local ok, done, message = pcall(function()
+		return nameRemote:InvokeServer(value)
+	end)
+	busy = false
+	if not ok then
+		setInfo("Couldn't reach the server. Try again.", RED)
+		return
+	end
+	if message then
+		setInfo(message, done and GREEN or RED)
+	end
+	if done then
+		namePanel.Visible = false
+	end
+end
+nameButton.Activated:Connect(function()
+	namePanel.Visible = not namePanel.Visible
+	if namePanel.Visible then
+		local info = myPlot()
+		farmNameBox.Text = info and info:GetAttribute("FarmName") or ""
+		farmNameBox:CaptureFocus()
+	end
+end)
+nameSave.Activated:Connect(submitName)
+nameCancel.Activated:Connect(function()
+	namePanel.Visible = false
+end)
+farmNameBox.FocusLost:Connect(function(enter)
+	if enter then
+		submitName()
+	end
+end)
+local function refreshSwitch()
+	switchButton.Visible = (player:GetAttribute("FarmCount") or 0) >= 2
+end
+player:GetAttributeChangedSignal("FarmCount"):Connect(function()
+	refreshSwitch()
+	refreshPanel()
+end)
+refreshSwitch()
+switchButton.Activated:Connect(function()
+	if busy then
+		return
+	end
+	report(call(switchRemote))
+end)
+refreshThemeButton()
 
 RunService.RenderStepped:Connect(updateGhost)
 

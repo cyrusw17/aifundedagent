@@ -58,6 +58,16 @@ def hand_rate(gloves):
     return 60 / t
 
 
+# Wheelbarrow (Hay tools thread): 3 bales a push, loaded by clicking (about 15 s to gather 3 from nearby groups),
+# pushed at 8.2 studs/s (Gloves slowdown on 30% of three bales' weight), walked back at 16, 3 s to set down.
+BARROW_BALES, BARROW_LOAD_SECONDS, BARROW_SPEED = 3, 15, 8.2
+
+
+def barrow_rate(dist=HAND_DIST):
+    t = BARROW_LOAD_SECONDS + dist / BARROW_SPEED + dist / 16 + 3
+    return BARROW_BALES * 60 / t
+
+
 def truck_rate(truck, region):
     bales = TRUCKS[truck]
     drive = REGIONS[region][2] * 60
@@ -100,6 +110,9 @@ if __name__ == "__main__":
     for g in LOADED_SPEED:
         rate = hand_rate(g)
         rows.append([f"By hand, {g} gloves", f"{rate:.1f}", money(rate * bale_value('Meadow', 0) * 60)])
+    for dist in (HAND_DIST, 250):
+        rate = barrow_rate(dist)
+        rows.append([f"Wheelbarrow, {dist} studs", f"{rate:.1f}", money(rate * bale_value('Meadow', 0) * 60)])
     for t in TRUCKS:
         rate = truck_rate(t, "Meadow")
         rows.append([t, f"{rate:.1f}", money(rate * bale_value('Meadow', 0) * 60)])
@@ -109,6 +122,7 @@ if __name__ == "__main__":
     stages = [
         ("1. Hands, bare", lambda: hand_rate("bare"), "Meadow", "none (public shop)"),
         ("2. Hands, Work Gloves", lambda: hand_rate("work"), "Meadow", "none (public shop)"),
+        ("2b. Wheelbarrow, public shop", lambda: barrow_rate(), "Meadow", "none (public shop)"),
         ("3. Pickup, public shop", lambda: truck_rate("Rusty Pickup + Wagon", "Meadow"), "Meadow", "none (public shop)"),
         ("4. Pickup, plot + Hand sieve", lambda: truck_rate("Rusty Pickup + Wagon", "Meadow"), "Meadow", "Hand sieve"),
         ("5. Pickup, Shaker table", lambda: truck_rate("Rusty Pickup + Wagon", "Meadow"), "Meadow", "Shaker table"),
@@ -136,25 +150,26 @@ if __name__ == "__main__":
     LOANS = {"truck": (0.20, 0.10, 0.25), "land": (0.20, 0.08, 0.20)}  # down payment, flat interest, repay share
     PLAN = [
         ("Work Gloves", 250, 1, None),
-        ("Rusty Pickup", 6000, 2, "truck"),
-        ("Wagon Trailer", 1500, 3, None),
-        ("Plot + Hand sieve + first line", 2500 + 500 + 8 * 25 + 400, 3, None),
-        ("Shaker table", 4000, 4, None),
-        ("Leather Gloves", 8000, 5, None),
-        ("Farm Flatbed", 25000, 5, "truck"),
-        ("Small Trailer", 8000, 6, None),
-        ("Conveyor sorter", 25000, 6, None),
-        ("Hay silo", 5000, 7, None),
-        ("Box Truck", 90000, 7, "truck"),
-        ("Reinforced Gloves", 45000, 8, None),
-        ("Medium Trailer", 30000, 8, None),
-        ("Magnet drum", 175000, 8, None),
-        ("Iron Gauntlets", 75000, 9, None),
-        ("Heavy Hauler", 350000, 9, "truck"),
-        ("Large Trailer", 120000, 10, None),
-        ("Optical sorter", 1100000, 10, None),
-        ("Starlight Gloves", 400000, 11, None),
-        ("Semi Rig", 1500000, 11, "truck"),
+        ("Wheelbarrow", 1000, 2, None),
+        ("Rusty Pickup", 6000, 3, "truck"),
+        ("Wagon Trailer", 1500, 4, None),
+        ("Plot + Hand sieve + first line", 2500 + 500 + 8 * 25 + 400, 4, None),
+        ("Shaker table", 4000, 5, None),
+        ("Leather Gloves", 8000, 6, None),
+        ("Farm Flatbed", 25000, 6, "truck"),
+        ("Small Trailer", 8000, 7, None),
+        ("Conveyor sorter", 25000, 7, None),
+        ("Hay silo", 5000, 8, None),
+        ("Box Truck", 90000, 8, "truck"),
+        ("Reinforced Gloves", 45000, 9, None),
+        ("Medium Trailer", 30000, 9, None),
+        ("Magnet drum", 175000, 9, None),
+        ("Iron Gauntlets", 75000, 10, None),
+        ("Heavy Hauler", 350000, 10, "truck"),
+        ("Large Trailer", 120000, 11, None),
+        ("Optical sorter", 1100000, 11, None),
+        ("Starlight Gloves", 400000, 12, None),
+        ("Semi Rig", 1500000, 12, "truck"),
     ]
     rates = {}
     for i, (name, supply, region, sorter) in enumerate(stages, start=1):

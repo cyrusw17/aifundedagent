@@ -62,13 +62,13 @@ function Starbeam.build(parent, frame, getOwnerId)
 	local function beamDown()
 		local ownerId = getOwnerId()
 		if not ownerId then
-			return false
+			return false, "waiting for its owner"
 		end
 		-- Wait for the belt under the tower to be clear, so bales don't stack up on a jammed line.
 		for _, p in Workspace:GetPartBoundsInBox(clearZone, Vector3.new(T - 1, 3, T - 1)) do
 			local b = Bales.fromPart(p)
 			if b and not b.gone then
-				return false
+				return false, "waiting for a clear belt"
 			end
 		end
 		model:SetAttribute("Running", true)
@@ -92,10 +92,11 @@ function Starbeam.build(parent, frame, getOwnerId)
 		while model.Parent do
 			local left = nextAt - os.clock()
 			if left <= 0 then
-				if beamDown() then
+				local ok, why = beamDown()
+				if ok then
 					nextAt = os.clock() + period
 				else
-					label.Text = "STARBEAM COLLECTOR\nwaiting for a clear belt"
+					label.Text = "STARBEAM COLLECTOR\n" .. why
 					task.wait(2)
 					continue
 				end

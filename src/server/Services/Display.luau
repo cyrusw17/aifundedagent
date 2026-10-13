@@ -31,11 +31,11 @@ local function plaque(parent, text)
 end
 
 local function describe(n)
-	local name = Needle.info(n.id).name
+	local name = (n.polished and "Polished " or "") .. Needle.info(n.id).name
 	if (n.mult or 1) > 1 then
-		return ("x%d MUTATED %s\n$%d"):format(n.mult, name:upper(), Needle.priceOf(n.id, n.mult))
+		return ("x%d MUTATED %s\n$%d"):format(n.mult, name:upper(), Needle.priceOf(n.id, n.mult, n.polished))
 	end
-	return ("%s needle\n$%d"):format(name, Needle.priceOf(n.id, n.mult))
+	return ("%s needle\n$%d"):format(name, Needle.priceOf(n.id, n.mult, n.polished))
 end
 
 function Display.wall(parent, frame, getOwnerId, saved)
@@ -78,6 +78,9 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		p.Shape = Enum.PartType.Cylinder
 		p.CanCollide = false
 		p.Color, p.Material = Needle.look(n.id, n.mult)
+		if n.polished then
+			p.Reflectance = 0.45
+		end
 		if p.Material == Enum.Material.Neon then
 			local light = Instance.new("PointLight")
 			light.Color = p.Color
@@ -97,7 +100,7 @@ function Display.wall(parent, frame, getOwnerId, saved)
 	for _, s in saved or {} do
 		local slot = typeof(s) == "table" and slots[s.slot]
 		if slot and typeof(s.id) == "string" then
-			show(slot, { id = s.id, mult = typeof(s.mult) == "number" and math.clamp(math.floor(s.mult), 1, 25) or 1 })
+			show(slot, { id = s.id, mult = typeof(s.mult) == "number" and math.clamp(math.floor(s.mult), 1, 25) or 1, polished = s.polished == true })
 		end
 	end
 
@@ -129,7 +132,7 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		local list = {}
 		for i, slot in slots do
 			if slot.needle then
-				table.insert(list, { slot = i, id = slot.needle.id, mult = slot.needle.mult })
+				table.insert(list, { slot = i, id = slot.needle.id, mult = slot.needle.mult, polished = slot.needle.polished })
 			end
 		end
 		return list

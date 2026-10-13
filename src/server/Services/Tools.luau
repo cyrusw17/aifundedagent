@@ -7,6 +7,8 @@
 -- Bare hands lift a whole bale with its Pick up button (see Bales.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -15,13 +17,16 @@ local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
+local Events = require(script.Parent.Events)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
+local Wheelbarrow = require(script.Parent.Wheelbarrow)
 
 local Tools = {}
 
 local rng = Random.new()
 local aims = {} -- player -> { position, part, time } from the latest click
+local combos = {} -- player -> { count, last } for the scoop combo
 
 local AIM_FRESH = 0.4 -- seconds an aim counts as belonging to the current click
 local AIM_WAIT = 0.15 -- how long a click waits for its aim to arrive
@@ -53,6 +58,45 @@ local function currentAim(player, root)
 		end
 		task.wait()
 	end
+end
+
+-- A little "+3 combo" that floats up over the player and fades.
+local function comboPop(root, count)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(140, 40)
+	gui.StudsOffset = Vector3.new(0, 3.5, 0)
+	gui.MaxDistance = 60
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = ("+%d combo"):format(count)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(240, 214, 140)
+	label.TextStrokeTransparency = 0.3
+	label.Parent = gui
+	gui.Parent = root
+	TweenService:Create(gui, TweenInfo.new(0.8), { StudsOffset = Vector3.new(0, 5.5, 0) }):Play()
+	TweenService:Create(label, TweenInfo.new(0.8), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(gui, 0.9)
+end
+
+-- Counts this scoop into the player's combo and returns the extra strands it earns.
+local function comboBonus(player, root)
+	local now = os.clock()
+	local combo = combos[player]
+	if combo and now - combo.last <= Config.ComboWindowSeconds then
+		combo.count += 1
+	else
+		combo = { count = 1 }
+		combos[player] = combo
+	end
+	combo.last = now
+	if combo.count < Config.ComboStart then
+		return 0
+	end
+	comboPop(root, combo.count)
+	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
 end
 
 local function useShovel(player, root, aim)
@@ -101,19 +145,47 @@ local function useShovel(player, root, aim)
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
 		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
 		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
-		local first = targetPieces(1)[1]
-		local hayTier = 0
-		if first then
-			hayTier = select(2, Gloves.pieceWeight(first))
+		-- The hay's tier comes from the first strand in reach, not a needle (needles carry no hay type).
+		local first
+		for _, piece in targetPieces(8) do
+			if not Hay.isNeedle(piece) then
+				first = piece
+				break
+			end
 		end
-		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier), room))
+		if not first then
+			return
+		end
+		local hayTier = select(2, Gloves.pieceWeight(first))
+		local bonus = comboBonus(player, root)
+		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier) + bonus, room))
 		if #list == 0 then
 			return
 		end
 		local strands, found, unsorted = 0, 0, 0
+		local roomLeft = room
 		for i = #list, 1, -1 do
 			local piece = list[i]
-			if Hay.isNeedle(piece) then
+			if Hay.isPile(piece) then
+				-- A raked pile goes in one scoop, as much of it as you have room for.
+				local take = math.min(Hay.strandsIn(piece), math.max(roomLeft, 0))
+				if take <= 0 then
+					table.remove(list, i)
+					continue
+				end
+				roomLeft -= take
+				strands += take
+				if not piece:GetAttribute("Sorted") then
+					unsorted += take
+				end
+				local weight, tier = Gloves.pieceWeight(piece)
+				state.loadWeight = (state.loadWeight or 0) + weight * take
+				state.loadTier = math.max(state.loadTier or 0, tier)
+				if take < Hay.strandsIn(piece) then
+					Hay.takeFromPile(piece, take)
+					table.remove(list, i) -- the rest of the pile stays on the ground
+				end
+			elseif Hay.isNeedle(piece) then
 				if Hay.sharedNeedles then
 					table.remove(list, i) -- a shared needle is picked up by clicking it, so the shovel leaves it
 				else
@@ -121,6 +193,7 @@ local function useShovel(player, root, aim)
 				end
 			else
 				strands += 1
+				roomLeft -= 1
 				if not piece:GetAttribute("Sorted") then
 					unsorted += 1 -- hay from a sorted bale has had its needles taken out already
 				end
@@ -151,6 +224,7 @@ local function useRake(player, root, aim)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
 		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		Events.fire(player, "raked", 1, { center = center })
 		Feedback.play("Rake", center)
 	end)
 end
@@ -159,12 +233,14 @@ function Tools.init()
 	Feedback.init()
 	Gloves.init()
 	Finds.init()
-	-- The glove stand goes beside the sell pad once the world has built it.
+	Wheelbarrow.init(currentAim)
+	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")
 		local pad = world and world:WaitForChild("SellPad", 10)
 		if pad then
 			Gloves.buildStand(world, CFrame.new(pad.Position.X - pad.Size.X / 2 - 3.5, 0, pad.Position.Z))
+			Wheelbarrow.buildStand(world, CFrame.new(pad.Position.X - pad.Size.X / 2 - 3.5, 0, pad.Position.Z + 9))
 		end
 	end)
 
@@ -179,6 +255,7 @@ function Tools.init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		aims[player] = nil
+		combos[player] = nil
 	end)
 
 	Avatar.onToolActivated = function(player, kind)

@@ -19,6 +19,7 @@ local Feedback = require(script.Parent.Feedback)
 local NeedleModule = script.Parent:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 local Tutorial = require(script.Parent.Tutorial)
+local Events = require(script.Parent.Events)
 
 local Gameplay = {}
 
@@ -44,6 +45,9 @@ local function sellHay(player)
 
 	local hay, needles = state.loadHay, state.loadNeedles
 	local value = hay > 0 and Economy.rawLoadValue(hay, needles) or 0
+	if hay > 0 then
+		Events.fire(player, "hay_sold", hay)
+	end
 	state.loadHay = 0
 	state.loadNeedles = 0
 
@@ -78,7 +82,11 @@ local function sellBale(b)
 	local needles = if b.sorted then 0 else Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 	local value = Economy.rawLoadValue(hay, needles)
 	local owner = b.ownerId and Players:GetPlayerByUserId(b.ownerId)
+	local hayType = b.body:GetAttribute("HayType")
 	Bales.consume(b)
+	if owner then
+		Events.fire(owner, "bale_sold", 1, { hayType = hayType })
+	end
 
 	local state = owner and Data.get(owner)
 	if state then
@@ -100,9 +108,10 @@ local function sellPieces(pieces)
 				+ math.floor(Hay.needleValue(piece) * Prices.HandFoundNeedleShare)
 			byOwner[ownerId] = byOwner[ownerId] or 0
 		else
-			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
+			local n = Hay.strandsIn(piece) -- a raked pile counts as all the strands in it
+			byOwner[ownerId] = (byOwner[ownerId] or 0) + n
 			if not piece:GetAttribute("Sorted") then
-				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + 1
+				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + n
 			end
 		end
 		Hay.remove(piece)
@@ -120,7 +129,33 @@ local function sellPieces(pieces)
 			Bank.earn(owner, value, "Hay shop")
 			Feedback.sale(owner, value)
 			Data.toast(owner, ("+$%d · %d loose hay"):format(value, hay))
+			Events.fire(owner, "hay_sold", hay)
 		end
+	end
+end
+
+-- One look at what is on the pad, selling it all.
+local function sweepPad(pad)
+	local box = pad.CFrame * CFrame.new(0, 3.5, 0)
+	local parts = Workspace:GetPartBoundsInBox(box, Vector3.new(pad.Size.X, 7, pad.Size.Z))
+	local doneBales, donePlayers, loose = {}, {}, {}
+	for _, part in parts do
+		if Hay.isPiece(part) then
+			table.insert(loose, part)
+		end
+		local bale = Bales.fromPart(part)
+		if bale and not doneBales[bale] then
+			doneBales[bale] = true
+			sellBale(bale)
+		end
+		local player = part.Parent and Players:GetPlayerFromCharacter(part.Parent)
+		if player and not donePlayers[player] then
+			donePlayers[player] = true
+			sellHay(player)
+		end
+	end
+	if #loose > 0 then
+		sellPieces(loose)
 	end
 end
 
@@ -128,26 +163,10 @@ function Gameplay.wireSellPad(pad)
 	task.spawn(function()
 		while pad.Parent do
 			task.wait(0.25)
-			local box = pad.CFrame * CFrame.new(0, 3.5, 0)
-			local parts = Workspace:GetPartBoundsInBox(box, Vector3.new(pad.Size.X, 7, pad.Size.Z))
-			local doneBales, donePlayers, loose = {}, {}, {}
-			for _, part in parts do
-				if Hay.isPiece(part) then
-					table.insert(loose, part)
-				end
-				local bale = Bales.fromPart(part)
-				if bale and not doneBales[bale] then
-					doneBales[bale] = true
-					sellBale(bale)
-				end
-				local player = part.Parent and Players:GetPlayerFromCharacter(part.Parent)
-				if player and not donePlayers[player] then
-					donePlayers[player] = true
-					sellHay(player)
-				end
-			end
-			if #loose > 0 then
-				sellPieces(loose)
+			-- One bad sale must not stop the pad for the rest of the server's life.
+			local ok, err = pcall(sweepPad, pad)
+			if not ok then
+				warn("[Needlewood] sell pad: " .. tostring(err))
 			end
 		end
 	end)
