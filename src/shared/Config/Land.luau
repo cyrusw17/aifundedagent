@@ -40,6 +40,11 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
+		-- needles from your pocket at it for iron. bales / needles is how much it takes.
+		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, blurb = "Fill with 1 bale (thatch) or 4 needles (iron)." },
+		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, blurb = "A wall along the back of the tile. Fill with 3 bales or 12 needles." },
+		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, blurb = "Fill with 2 bales or 8 needles." },
 	},
 
 	SiloCapacity = 60, -- bales

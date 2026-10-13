@@ -100,6 +100,10 @@ Prices.Pieces = {
 	conveyor_sorter = 25000,
 	magnet_drum = 175000,
 	optical_sorter = 1100000,
+	-- Blueprints are cheap templates; what you fill them with (bales or needles) is the real cost.
+	blueprint_post = 10,
+	blueprint_wall = 10,
+	blueprint_floor = 10,
 }
 Prices.RefundShare = 0.5
 
