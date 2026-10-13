@@ -99,3 +99,35 @@ def export(objs, args):
     for p in written:
         print(f"[{args.name}] wrote {p}")
     return written
+
+
+def vertex_color_material(name, roughness=0.9, metallic=0.0):
+    """Material whose base color comes from the mesh's "Col" color attribute.
+
+    Exports to glTF as COLOR_0, which Roblox's 3D importer reads as vertex color.
+    """
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    attr = nodes.new("ShaderNodeVertexColor")
+    attr.layer_name = "Col"
+    mat.node_tree.links.new(attr.outputs["Color"], bsdf.inputs["Base Color"])
+    return mat
+
+
+def paint(obj, color_fn):
+    """Fill obj's "Col" attribute: color_fn(poly, vertex_co) -> sRGB (r, g, b) per face corner."""
+    mesh = obj.data
+    attr = mesh.color_attributes.get("Col") or mesh.color_attributes.new("Col", "BYTE_COLOR", "CORNER")
+    for poly in mesh.polygons:
+        for li in poly.loop_indices:
+            co = mesh.vertices[mesh.loops[li].vertex_index].co
+            attr.data[li].color_srgb = (*color_fn(poly, co), 1.0)
+
+
+def flat(obj):
+    for p in obj.data.polygons:
+        p.use_smooth = False
