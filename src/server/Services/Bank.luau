@@ -25,6 +25,7 @@ local LandConfig = require(Shared.Config.Land)
 local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Props = require(script.Parent.Props)
 
 local Bank = {}
 
@@ -655,17 +656,23 @@ function Bank.build(worldFolder)
 		return CFrame.new(center + Vector3.new(x, y, z))
 	end
 	local W, D, H = 24, 16, 11
-	part(model, "Steps", Vector3.new(W + 2, 0.6, D + 4), at(0, 0.3, -1), Rustic.StoneDark, Enum.Material.Cobblestone)
-	part(model, "Floor", Vector3.new(W, 0.4, D), at(0, 0.8, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
-	part(model, "BackWall", Vector3.new(W, H, 1), at(0, H / 2 + 0.6, D / 2 - 0.5), Rustic.Stone, Enum.Material.Brick)
-	for _, sx in { -1, 1 } do
-		part(model, "SideWall", Vector3.new(1, H, D), at(sx * (W / 2 - 0.5), H / 2 + 0.6, 0), Rustic.Stone, Enum.Material.Brick)
-		-- Two front pillars and a wall stub either side of the wide open front.
-		part(model, "FrontWall", Vector3.new(6, H, 1), at(sx * (W / 2 - 3), H / 2 + 0.6, -D / 2 + 0.5), Rustic.Stone, Enum.Material.Brick)
-		part(model, "Pillar", Vector3.new(1.6, H, 1.6), at(sx * 5.2, H / 2 + 0.6, -D / 2 - 0.6), Rustic.PaintCream, Enum.Material.Concrete)
+	local shell = {} -- the part-built bank the Blender mesh replaces; the counter and the teller window stay
+	local function piece(...)
+		local p = part(...)
+		table.insert(shell, p)
+		return p
 	end
-	part(model, "Lintel", Vector3.new(W + 1, 1.4, 2.4), at(0, H + 0.4, -D / 2), Rustic.PaintCream, Enum.Material.Concrete)
-	local roof = part(model, "Roof", Vector3.new(W + 2, 1, D + 3), at(0, H + 1.6, -0.5), Rustic.PaintGreen, Enum.Material.Metal)
+	piece(model, "Steps", Vector3.new(W + 2, 0.6, D + 4), at(0, 0.3, -1), Rustic.StoneDark, Enum.Material.Cobblestone)
+	piece(model, "Floor", Vector3.new(W, 0.4, D), at(0, 0.8, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	piece(model, "BackWall", Vector3.new(W, H, 1), at(0, H / 2 + 0.6, D / 2 - 0.5), Rustic.Stone, Enum.Material.Brick)
+	for _, sx in { -1, 1 } do
+		piece(model, "SideWall", Vector3.new(1, H, D), at(sx * (W / 2 - 0.5), H / 2 + 0.6, 0), Rustic.Stone, Enum.Material.Brick)
+		-- Two front pillars and a wall stub either side of the wide open front.
+		piece(model, "FrontWall", Vector3.new(6, H, 1), at(sx * (W / 2 - 3), H / 2 + 0.6, -D / 2 + 0.5), Rustic.Stone, Enum.Material.Brick)
+		piece(model, "Pillar", Vector3.new(1.6, H, 1.6), at(sx * 5.2, H / 2 + 0.6, -D / 2 - 0.6), Rustic.PaintCream, Enum.Material.Concrete)
+	end
+	piece(model, "Lintel", Vector3.new(W + 1, 1.4, 2.4), at(0, H + 0.4, -D / 2), Rustic.PaintCream, Enum.Material.Concrete)
+	local roof = piece(model, "Roof", Vector3.new(W + 2, 1, D + 3), at(0, H + 1.6, -0.5), Rustic.PaintGreen, Enum.Material.Metal)
 
 	-- Teller counter with brass-coloured bars, and the vault door on the back wall.
 	part(model, "Counter", Vector3.new(14, 4, 1.6), at(0, 2.8, 2), Rustic.Wood, Enum.Material.WoodPlanks)
@@ -674,9 +681,9 @@ function Bank.build(worldFolder)
 		part(model, "Bar", Vector3.new(0.15, 3, 0.15), at(i * 2, 6.6, 2.2), Rustic.PaintYellow, Enum.Material.Metal)
 	end
 	part(model, "BarRail", Vector3.new(14, 0.2, 0.2), at(0, 8.1, 2.2), Rustic.PaintYellow, Enum.Material.Metal)
-	local vault = part(model, "VaultDoor", Vector3.new(6, 6, 0.6), at(0, 4.4, D / 2 - 1.2), Rustic.Metal, Enum.Material.DiamondPlate)
+	local vault = piece(model, "VaultDoor", Vector3.new(6, 6, 0.6), at(0, 4.4, D / 2 - 1.2), Rustic.Metal, Enum.Material.DiamondPlate)
 	vault.Shape = Enum.PartType.Block
-	part(model, "VaultWheel", Vector3.new(0.4, 2.4, 2.4), at(0, 4.4, D / 2 - 1.6) * CFrame.Angles(0, math.pi / 2, 0), Rustic.PaintYellow, Enum.Material.Metal).Shape =
+	piece(model, "VaultWheel", Vector3.new(0.4, 2.4, 2.4), at(0, 4.4, D / 2 - 1.6) * CFrame.Angles(0, math.pi / 2, 0), Rustic.PaintYellow, Enum.Material.Metal).Shape =
 		Enum.PartType.Cylinder
 
 	-- The teller window: stand at the counter and press E.
@@ -685,7 +692,44 @@ function Bank.build(worldFolder)
 	window.CanCollide = false
 	Bank.addTeller(window)
 
-	sign(roof, "MEADOW SAVINGS & LOAN\nSavings, truck loans, land loans", Vector3.new(0, 4, 0))
+	-- The Blender bank (Config/Props homestead_bank, hub.py: 26 x 20 walls 0.8 thick, a 5 x 8.5 front door, its
+	-- own vault behind the left window), front facing -Z like this one, its steps where these steps start. It is
+	-- only a look, so while it shows the walls you bump into are rebuilt to its shape (door, not the open front);
+	-- each client keeps the part bank until the mesh has really loaded.
+	local mesh = Props.make("homestead_bank", at(0, 13, 0))
+	if mesh then
+		for _, door in Props.find(mesh, "Door") do
+			door:Destroy() -- the doorway stands open
+		end
+		local box, size = mesh:GetBoundingBox()
+		mesh:PivotTo(mesh:GetPivot() + Vector3.new(center.X - box.X, 0, (center.Z - D / 2 - 3) - (box.Z - size.Z / 2)))
+		Props.restOn(mesh, center.Y)
+		mesh.Parent = model
+		Props.weldTo(mesh, roof, shell)
+		for _, p in shell do
+			p.CanCollide = false
+		end
+		-- Its walls, centered 12.9 studs behind the front of its steps.
+		local walls = Instance.new("Folder")
+		walls.Name = "Walls"
+		walls.Parent = model
+		local function wall(size, x, y, z)
+			local p = part(walls, "Wall", size, at(x, y, z + 2), Rustic.Stone)
+			p.Transparency = 1
+		end
+		wall(Vector3.new(27, 0.8, 21), 0, 0.4, 0) -- floor slab
+		wall(Vector3.new(10.5, 20, 0.8), -7.75, 10.8, -9.6) -- front, either side of the door
+		wall(Vector3.new(10.5, 20, 0.8), 7.75, 10.8, -9.6)
+		wall(Vector3.new(5, 11.5, 0.8), 0, 15.05, -9.6) -- over the door
+		wall(Vector3.new(26, 20, 0.8), 0, 10.8, 9.6)
+		wall(Vector3.new(0.8, 20, 20), -12.6, 10.8, 0)
+		wall(Vector3.new(0.8, 20, 20), 12.6, 10.8, 0)
+		for _, x in { -3.8, 3.8 } do
+			wall(Vector3.new(1.2, 9, 1.2), x, 5.3, -12) -- the porch columns
+		end
+	end
+
+	sign(roof, "MEADOW SAVINGS & LOAN\nSavings, truck loans, land loans", Vector3.new(0, mesh and 16 or 4, 0))
 	return model
 end
 
