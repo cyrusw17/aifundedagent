@@ -737,7 +737,7 @@ local function withPlayer(t, player)
 		-- Comfort settings (Hay #26): stored and published like the other settings, bad values refused.
 		local Settings = require(Services.Settings)
 		-- The keys are UI's (Settings.luau); until they are in this build, there is nothing to check.
-		for key, attribute in { holdToScoop = "SettingHoldToScoop", holdToCarry = "SettingHoldToCarry", bigThrow = "SettingBigThrow" } do
+		for key, attribute in { holdScoop = "SettingHoldScoop", holdCarry = "SettingHoldCarry", bigThrow = "SettingBigThrow" } do
 			if not Settings.Keys[key] then
 				t.skip(("the %s setting"):format(key), "not in Settings.Keys in this build (UI thread)")
 				continue
