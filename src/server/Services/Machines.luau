@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
 local LineRate = require(Shared.LineRate)
+local RateLimit = require(Shared.RateLimit)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
@@ -173,6 +174,7 @@ Machines.spawnSortedBale = spawnSortedBale
 
 -- Price holds (CEO #26): a player can tell their needle bins to keep their needles until this server's market pays a
 -- share of list price. state.needleHold is an index into HOLD_STEPS (nil or 0 is off, sell at any price).
+local holdLimit = RateLimit.new("NeedleBin.PriceHold", 3, 4)
 local HOLD_STEPS = { 1, 1.05, 1.1, 1.15 } -- the market swings 0.8 to 1.2 of list (Prices.Market.Swing)
 
 local function holdOf(player)
@@ -452,6 +454,9 @@ function Machines.needleBin(parent, frame)
 	holdPrompt.RequiresLineOfSight = false
 	holdPrompt.Parent = model.Floor
 	holdPrompt.Triggered:Connect(function(player)
+		if not holdLimit:allow(player) then
+			return
+		end
 		local state = Data.get(player)
 		if not state then
 			return

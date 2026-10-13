@@ -11,11 +11,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
+local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
 local Data = require(script.Parent.Data)
 local Machines = require(script.Parent.Machines)
 local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
 local Feedback = require(script.Parent.Feedback)
+
+local doorLimit = RateLimit.new("Vault", 2, 3) -- deposits and withdrawals, every vault
 
 local Vault = {}
 
@@ -83,6 +86,9 @@ function Vault.build(parent, frame, getOwnerId, saved)
 	end
 
 	prompt("Deposit", "Put pocket needles in", Enum.KeyCode.E, 0.3).Triggered:Connect(function(player)
+		if not doorLimit:allow(player) then
+			return
+		end
 		if not isOwner(player) or not Data.get(player) then
 			return
 		end
@@ -102,6 +108,9 @@ function Vault.build(parent, frame, getOwnerId, saved)
 	end)
 
 	prompt("Withdraw", "Take all needles out", Enum.KeyCode.T, 0.8).Triggered:Connect(function(player)
+		if not doorLimit:allow(player) then
+			return
+		end
 		if not isOwner(player) or not Data.get(player) then
 			return
 		end
