@@ -34,19 +34,28 @@ local d3, hit3, forced3 = Pity.apply(d2, m, cfg)
 check("the next bale with a needle is forced", hit3 and forced3 and d3 == 0 and m[1] == cfg.mult and m[2] == 1)
 local d4, hit4, forced4 = Pity.apply(17, { 1, 9 }, cfg)
 check("a natural mutation resets without forcing", d4 == 0 and hit4 and not forced4)
+local wetMult = Prices.WetMutation.mult
+local d5, hit5 = Pity.apply(17, { 1, wetMult }, cfg)
+check("a Wet needle does not end a dry run", d5 == 18 and not hit5, d5)
+check("Wet is under the smallest real mutation, so x2 always means Wet", wetMult > 1 and wetMult < Prices.Mutation.min and wetMult < cfg.mult)
+
+-- chance: boosts multiply, are capped, and bad boosts count as 1.
+check("no boost is the base chance", Pity.chance(chance) == chance)
+check("a storm's 5x and a 3x bale multiply", math.abs(Pity.chance(chance, 15) - chance * 15) < 1e-12)
+check("the chance is capped", Pity.chance(chance, 1e9) == Pity.MAX_CHANCE)
+check("a NaN or negative boost counts as 1", Pity.chance(chance, 0 / 0) == chance and Pity.chance(chance, -4) == chance)
 
 -- Uplift: needle value (sum of multipliers) with and without pity, by needles found a bale. Found needles are
 -- Poisson around NeedlesPerBale * recovery, mutations roll as Needle.rollMutation does.
--- A small seeded generator (the luau CLI has no Random): NextNumber and NextInteger like Roblox's Random.
+-- A seeded generator with Roblox Random's NextNumber and NextInteger (the luau CLI has no Random; math.random is PCG).
 local function newRng(seed)
-	local state = seed
+	math.randomseed(seed)
 	local r = {}
 	function r:NextNumber()
-		state = (state * 1103515245 + 12345) % 2147483648
-		return state / 2147483648
+		return math.random()
 	end
 	function r:NextInteger(a, b)
-		return a + math.floor(self:NextNumber() * (b - a + 1))
+		return math.random(a, b)
 	end
 	return r
 end
@@ -58,13 +67,25 @@ local function poisson(rng, mean)
 	until p <= l
 	return k - 1
 end
-local function run(mean, bales, withPity)
+-- weather: { storm = share of time a Thunderstorm is on, odds = its chance multiplier, wet = it always rains }.
+local function run(mean, bales, withPity, weather)
 	local rng = newRng(7)
-	local value, d, longest, run = 0, 0, 0, 0
+	local value, d, longest, run, needles = 0, 0, 0, 0, 0
 	for _ = 1, bales do
 		local mults = {}
+		local c, wet = chance, false
+		if weather then
+			c = Pity.chance(chance, rng:NextNumber() < weather.storm and weather.odds or 1)
+			wet = weather.wet
+		end
 		for i = 1, poisson(rng, mean) do
-			mults[i] = rng:NextNumber() < chance and rng:NextInteger(Prices.Mutation.min, Prices.Mutation.max) or 1
+			if rng:NextNumber() < c then
+				mults[i] = rng:NextInteger(Prices.Mutation.min, Prices.Mutation.max)
+			elseif wet and rng:NextNumber() * Prices.WetMutation.oneIn < 1 then
+				mults[i] = Prices.WetMutation.mult
+			else
+				mults[i] = 1
+			end
 		end
 		local hit = false
 		if withPity then
@@ -81,8 +102,9 @@ local function run(mean, bales, withPity)
 		for _, x in mults do
 			value += x
 		end
+		needles += #mults
 	end
-	return value, longest
+	return value, longest, needles
 end
 local report = {}
 for _, case in { { "meadow hand sieve", 2 * 0.15 }, { "meadow conveyor", 2 * 0.55 }, { "desert magnet", 4 * 0.75 }, { "swamp optical", 6 * 0.92 }, { "star optical", 20 * 0.92 } } do
@@ -95,6 +117,22 @@ for _, case in { { "meadow hand sieve", 2 * 0.15 }, { "meadow conveyor", 2 * 0.5
 	check(case[1] .. " never goes more than 40 needle bales dry", longest <= cfg.bales, longest)
 end
 print("pity uplift: " .. table.concat(report, ", "))
+
+-- Weather budget (H7): a Thunderstorm (5x odds; Map measured it at x1.19 mutations an hour, so on about
+-- 0.19 / 4 of the time) plus Wet needles, as if it always rained, plus pity, must add no more than 2x the mutation
+-- value (multiplier above plain) of today's rules (pity, no weather). Bought boosts (Hay Market) are paid for, so
+-- they are not in this budget.
+local storm = { storm = 0.19 / 4, odds = 5, wet = true }
+local weatherReport = {}
+for _, case in { { "meadow hand sieve", 2 * 0.15 }, { "meadow conveyor", 2 * 0.55 }, { "swamp optical", 6 * 0.92 }, { "star optical", 20 * 0.92 } } do
+	local bales = 300000
+	local today, _, n1 = run(case[2], bales, true)
+	local stormy, _, n2 = run(case[2], bales, true, storm)
+	local ratio = (stormy - n2) / (today - n1)
+	table.insert(weatherReport, ("%s x%.2f"):format(case[1], ratio))
+	check(case[1] .. " storm + Wet + pity stays within 2x of today's mutation value", ratio <= 2, ratio)
+end
+print("weather budget (always raining): " .. table.concat(weatherReport, ", "))
 
 if failed > 0 then
 	print(("pity: %d failed"):format(failed))

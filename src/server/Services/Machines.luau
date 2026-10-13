@@ -157,6 +157,12 @@ local function needleChance(hayType)
 	return Prices.needleChance(hayType)
 end
 
+-- A bale's or strand's boost attribute (NeedleBoost, MutationBoost): a positive number, else 1.
+local function boostOf(inst, name)
+	local v = inst:GetAttribute(name)
+	return (typeof(v) == "number" and v > 0 and v == v) and v or 1
+end
+
 local function spawnSortedBale(cframe, ownerId, hay, hayType)
 	local b = Bales.spawn(Vector3.zero, false, false)
 	b.body:SetAttribute("HayType", hayType or "meadow")
@@ -360,12 +366,14 @@ function Machines.needleBin(parent, frame)
 
 	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B). The bale's needles roll
 	-- their mutations here, up front, so the pity rule can see them: with dry (the owner's run of bales without a
-	-- mutation, Pity.apply) it returns the new dry count. Without dry, no pity.
-	function bin.add(from, ownerId, count, needleId, grade, dry)
+	-- mutation, Pity.apply) it returns the new dry count. Without dry, no pity. boost multiplies the mutation chance
+	-- (a Hay Market bale's MutationBoost), on top of the weather where the needles come out (Needle.weatherAt).
+	function bin.add(from, ownerId, count, needleId, grade, dry, boost)
 		local gen = generation
 		local mults, nears = {}, {}
+		local odds, wet = Needle.weatherAt(from)
 		for i = 1, count do
-			mults[i], nears[i] = Needle.rollMutation()
+			mults[i], nears[i] = Needle.rollMutation((boost or 1) * odds, wet)
 		end
 		if dry then
 			dry = Pity.apply(dry, mults, Prices.Pity)
@@ -858,7 +866,9 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
-	local function sort(hay, ownerId, hayType, recoveryMult)
+	-- needleBoost: times the hidden needles (rich field, chute, region event, golden field: the bale's NeedleBoost,
+	-- as breaking it by hand gives). mutationBoost: times each found needle's mutation chance (Hay Market bales).
+	local function sort(hay, ownerId, hayType, recoveryMult, needleBoost, mutationBoost)
 		sortingNow = true
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
@@ -876,10 +886,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		sortingNow, lastSortEnd = false, os.clock()
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
-		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
+		local hidden = Economy.rollNeedles(rng, hay, math.min(needleChance(hayType) * (needleBoost or 1), 1))
 		local found = LineMath.found(rng, hidden, tier.recovery, recoveryMult)
 		if bin then
-			local dry = bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id), ownerId and (dryRun[ownerId] or 0))
+			local dry = bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id), ownerId and (dryRun[ownerId] or 0), mutationBoost)
 			if ownerId then
 				dryRun[ownerId] = dry
 			end
@@ -1058,8 +1068,13 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if need then
 					refuse(bale.ownerId, need) -- not required, so it sorts, at need.penalty of the recovery
 				end
+				local needleBoost = boostOf(bale.body, "NeedleBoost")
+				if bale.body:GetAttribute("GoldenField") == true then
+					needleBoost *= Config.GoldenBaleNeedles
+				end
+				local mutationBoost = boostOf(bale.body, "MutationBoost")
 				Bales.consume(bale)
-				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1)
+				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1, needleBoost, mutationBoost)
 			elseif #loose > 0 then
 				-- One owner and one hay type per batch; anything else in the hopper goes next tick.
 				local firstOwner, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
@@ -1067,14 +1082,16 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
-				local taken = 0
+				local taken, boosted = 0, 0
 				for _, p in loose do
 					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
-						taken += Hay.strandsIn(p) -- a raked pile counts every strand in it
+						local strands = Hay.strandsIn(p) -- a raked pile counts every strand in it
+						taken += strands
+						boosted += strands * boostOf(p, "NeedleBoost") -- strands from a rich bale keep its boost
 						Hay.remove(p)
 					end
 				end
-				sort(taken * Config.HayPerPiece, ownerId, hayType)
+				sort(taken * Config.HayPerPiece, ownerId, hayType, 1, taken > 0 and boosted / taken or 1)
 			end
 		end
 	end)
