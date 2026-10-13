@@ -391,11 +391,11 @@ function Data.sync(player)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
-	local held = 0
+	local inPocket = 0
 	for _, count in state.pocket do
-		held += count
+		inPocket += count
 	end
-	player:SetAttribute("NeedlesHeld", held)
+	player:SetAttribute("NeedlesHeld", inPocket)
 	player:SetAttribute("Thatch", state.thatch or 0)
 	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
 	for _, alloy in Alloys do

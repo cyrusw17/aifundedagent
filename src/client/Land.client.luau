@@ -30,6 +30,7 @@ local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
 local switchRemote = state:WaitForChild("Switch")
 local nameRemote = state:WaitForChild("FarmName")
+local crewAnswerRemote = state:WaitForChild("CrewAnswer")
 local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
@@ -1189,3 +1190,58 @@ local function onPlotChanged()
 end
 player:GetAttributeChangedSignal("LandPlot"):Connect(onPlotChanged)
 onPlotChanged()
+
+-- Crew invites: another farm's owner asked this player to join their crew. Nothing changes until they say yes.
+local invitePanel = Instance.new("Frame")
+invitePanel.AnchorPoint = Vector2.new(0.5, 0)
+invitePanel.Position = UDim2.new(0.5, 0, 0, 90)
+invitePanel.Size = UDim2.fromOffset(340, 104)
+invitePanel.BackgroundColor3 = PANEL
+invitePanel.Visible = false
+invitePanel.Parent = gui
+corner(invitePanel, 12)
+local inviteStroke = Instance.new("UIStroke", invitePanel)
+inviteStroke.Color = INK
+inviteStroke.Thickness = 2
+local inviteText = text(invitePanel, "", 14, 10, 48, INK)
+local inviteYes = button(invitePanel, "JOIN CREW", GREEN)
+inviteYes.Position = UDim2.fromOffset(14, 64)
+inviteYes.Size = UDim2.fromOffset(150, 30)
+local inviteNo = button(invitePanel, "NO THANKS", MUTED)
+inviteNo.Position = UDim2.new(1, -164, 0, 64)
+inviteNo.Size = UDim2.fromOffset(150, 30)
+local inviteFrom = nil
+
+local function refreshInvite()
+	local value = player:GetAttribute("CrewInvite")
+	local id, name = nil, nil
+	if typeof(value) == "string" then
+		id, name = string.match(value, "^(%d+)|(.*)$")
+	end
+	inviteFrom = id and tonumber(id) or nil
+	invitePanel.Visible = inviteFrom ~= nil
+	if inviteFrom then
+		inviteText.Text = ("%s asks you to join their farm crew. Crew can drive their truck, and hay you run through their line pays them."):format(name)
+	end
+end
+local function answerInvite(yes)
+	if not inviteFrom then
+		return
+	end
+	local from = inviteFrom
+	invitePanel.Visible = false
+	local ok, done, message = pcall(function()
+		return crewAnswerRemote:InvokeServer(from, yes)
+	end)
+	if ok and message then
+		setInfo(message, done and GREEN or RED)
+	end
+end
+inviteYes.Activated:Connect(function()
+	answerInvite(true)
+end)
+inviteNo.Activated:Connect(function()
+	answerInvite(false)
+end)
+player:GetAttributeChangedSignal("CrewInvite"):Connect(refreshInvite)
+refreshInvite()
