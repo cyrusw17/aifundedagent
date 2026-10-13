@@ -60,6 +60,33 @@ local function stop()
 	hint.Visible = false
 end
 
+-- True for things the truck carries or pulls rather than drives on: other vehicles (its own trailer too), hay bales,
+-- loose hay and people.
+local function isLoose(part)
+	if part:HasTag("HayBale") or (part.Parent and part.Parent.Name == "LooseHay") then
+		return true
+	end
+	local node = part.Parent
+	while node and node ~= workspace do
+		if node:GetAttribute("TruckId") or node:GetAttribute("TrailerId") or node:FindFirstChildOfClass("Humanoid") then
+			return true
+		end
+		node = node.Parent
+	end
+	return false
+end
+
+local function groundBelow(origin, params)
+	for _ = 1, 5 do
+		local hit = workspace:Raycast(origin, Vector3.new(0, -9, 0), params)
+		if not hit or not isLoose(hit.Instance) then
+			return hit
+		end
+		params:AddToFilter(hit.Instance) -- the filter is reset every frame
+	end
+	return nil
+end
+
 -- The ground's up direction under the four corners of the truck, or nil in the air.
 local function groundUp(model, chassis, params)
 	local length = model:GetAttribute("Length") or 14
@@ -68,7 +95,7 @@ local function groundUp(model, chassis, params)
 	for _, z in { -length / 2 + 2.5, length / 2 - 2.5 } do
 		for _, x in { -track, track } do
 			local origin = chassis.CFrame * Vector3.new(x, 3, z)
-			local hit = workspace:Raycast(origin, Vector3.new(0, -9, 0), params)
+			local hit = groundBelow(origin, params)
 			if not hit then
 				return nil
 			end
@@ -148,6 +175,11 @@ local function start(seat)
 		if math.abs(state.speed) > math.abs(actual) + 10 then
 			state.speed = actual + math.sign(state.speed) * 10
 		end
+
+		-- Enough push to climb the steepest meadow slope with a full bed, whatever the truck and its load weigh.
+		-- PullMass is the load and hitched trailer the server counts for this truck (Vehicles.luau updateCargo).
+		local mass = chassis.AssemblyMass + (model:GetAttribute("PullMass") or 0)
+		drive.MaxForce = mass * (workspace.Gravity + 80)
 
 		local grip = math.clamp(math.abs(state.speed) / 14, 0, 1)
 		state.yaw -= steerInput * TURN * grip * math.sign(state.speed) * dt
