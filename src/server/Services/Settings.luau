@@ -1,7 +1,7 @@
 --!nonstrict
--- Player settings (effects volume, UI size, shadows, floating labels, hay comfort), saved with the save slot as state.settings and
--- published as "Setting<Key>" player attributes. The client applies them (Settings.client.luau); the server only
--- checks and stores them. Change one: ReplicatedStorage.Settings.Set:FireServer(key, value).
+-- Player settings (effects volume, UI size, shadows, floating labels, tool comfort), saved with the save slot as
+-- state.settings and published as "Setting<Key>" player attributes. The client applies them (Settings.client.luau);
+-- the server only checks and stores them. Change one: ReplicatedStorage.Settings.Set:FireServer(key, value).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Data = require(script.Parent.Data)
@@ -29,10 +29,10 @@ Settings.Keys = {
 	},
 	shadows = { "SettingShadows", true, bool },
 	labels = { "SettingLabels", true, bool },
-	-- Comfort (read by the hay tools and carrying, Hay thread): hold click to keep scooping, let go of the button to
-	-- set a carried bale down, and a bigger THROW button on phones.
-	holdToScoop = { "SettingHoldToScoop", true, bool },
-	holdToCarry = { "SettingHoldToCarry", false, bool },
+	-- Comfort (Hay thread): hold the click to keep scooping or raking; "hold" carrying, where letting go of the lift
+	-- key sets the bale down; a bigger THROW button on phones. Read by ToolRepeat.client and Throw.client.
+	holdScoop = { "SettingHoldScoop", true, bool },
+	holdCarry = { "SettingHoldCarry", false, bool },
 	bigThrow = { "SettingBigThrow", false, bool },
 }
 
