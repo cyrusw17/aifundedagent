@@ -20,6 +20,7 @@ local Avatar = require(Services.Avatar)
 local Bales = require(Services.Bales)
 local Hay = require(Services.Hay)
 local Gloves = require(Services.Gloves)
+local ToolGuide = require(game:GetService("ReplicatedStorage").Shared.ToolGuide)
 local GloveLooks = require(Services.GloveLooks)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
@@ -727,6 +728,12 @@ local function withPlayer(t, player)
 
 		-- Scoop three times quickly: each scoop picks up hay and the third is bigger (the combo).
 		local shovel = player.Backpack:FindFirstChild("Shovel") or character:FindFirstChild("Shovel")
+		-- Hotbar tooltips come from the configs (ToolGuide, Hay #25), so they never drift from the real numbers.
+		local rake = player.Backpack:FindFirstChild("Rake") or character:FindFirstChild("Rake")
+		if shovel and rake then
+			t.equal("the shovel's tooltip is ToolGuide's", shovel.ToolTip, ToolGuide.tool("Shovel"))
+			t.equal("the rake's tooltip is ToolGuide's", rake.ToolTip, ToolGuide.tool("Rake"))
+		end
 		if shovel and Avatar.onToolActivated then
 			humanoid:EquipTool(shovel)
 			stand(CFrame.new(burst) * CFrame.new(0, 0, 3))
