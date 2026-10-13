@@ -97,7 +97,7 @@ local function publish(player)
 end
 
 -- Set by Avatar so walk speed updates the moment gloves change.
-Gloves.changed = function() end
+Gloves.changed = function(_player) end
 
 local function save(player)
 	if not store or not owned[player] then
