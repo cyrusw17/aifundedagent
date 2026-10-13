@@ -94,16 +94,19 @@ def label(text, loc, size, material, rot=(0, 0, 0), align="CENTER", bold=True):
 STUD = 0.28  # props in blender/props are modeled in meters
 
 
-def rustic_finish(name="rustic", hay=None, twine=None):
-    """The house finish (blender/lib/style.py). hay/twine swap those palettes
-    (light, mid, dark sRGB 0-1) for map-specific hay."""
+def rustic_finish(name="rustic", hay=None, twine=None, **kinds):
+    """The house finish (blender/lib/style.py). hay, twine or any other kind (bark=..., paint_red=...)
+    swaps that palette (light, mid, dark sRGB 0-1), for map- and region-specific looks."""
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
     import style
     f = style.rustic()
-    if hay or twine:
+    if hay:
+        kinds["hay"] = hay
+    if twine:
+        kinds["twine"] = twine
+    if kinds:
         f.pal = dict(f.pal)
-        f.pal["hay"] = hay or f.pal["hay"]
-        f.pal["twine"] = twine or f.pal["twine"]
+        f.pal.update(kinds)
         f.name = name
     return f
 

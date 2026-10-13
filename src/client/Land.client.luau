@@ -444,6 +444,45 @@ local copyStart = nil -- first corner { gx, gz } of a copy
 local clipboard = nil -- { list = { { id, dx, dz, dir } }, total } from the last copy
 local aim = nil -- screen point { x, y, viewport = bool } the ghost follows
 local target = nil -- { gx, gz, valid } under the aim
+-- Drag-to-place for belts: where the mouse went down, and the run of cells from there to the aim.
+local DRAG_MAX = 60 -- the server's paste limit
+local dragStart = nil -- { gx, gz }
+local dragRun = nil -- { { gx, gz, dir }, ... }
+
+-- An L-shaped run of belt cells from a to b: along the longer axis first, then the other. Each belt faces the next
+-- cell; the last keeps the way the one before it faced (or the chosen turn when the run is a single cell).
+local function beltRun(ax, az, bx, bz, lastDir)
+	local cells = {}
+	local x, z = ax, az
+	table.insert(cells, { x, z })
+	local function walk(tx, tz)
+		while (x ~= tx or z ~= tz) and #cells < DRAG_MAX do
+			if x ~= tx then
+				x += if tx > x then 1 else -1
+			else
+				z += if tz > z then 1 else -1
+			end
+			table.insert(cells, { x, z })
+		end
+	end
+	if math.abs(bx - ax) >= math.abs(bz - az) then
+		walk(bx, az)
+		walk(bx, bz)
+	else
+		walk(ax, bz)
+		walk(bx, bz)
+	end
+	for i, cell in cells do
+		local nextCell = cells[i + 1]
+		if nextCell then
+			local dx, dz = nextCell[1] - cell[1], nextCell[2] - cell[2]
+			cell[3] = if dx > 0 then "E" elseif dx < 0 then "W" elseif dz > 0 then "S" else "N"
+		else
+			cell[3] = if i > 1 then cells[i - 1][3] else lastDir
+		end
+	end
+	return cells
+end
 
 local ghost = Instance.new("Model")
 ghost.Name = "BuildGhost"
@@ -655,6 +694,14 @@ local function updateGhost()
 		cells = { { gx, gz, { 0, 1 } } }
 		picking = true
 		showArrow = false
+	elseif dragStart and selected and selected.kind == "belt" then
+		dragRun = beltRun(dragStart.gx, dragStart.gz, gx, gz, dir)
+		for _, cell in dragRun do
+			table.insert(cells, { cell[1], cell[2], levelsOf(selected) })
+		end
+		cost = selected.price * #dragRun
+		setInfo(("Drag: %d belt%s, $%d. Let go to build."):format(#dragRun, #dragRun == 1 and "" or "s", cost))
+		showArrow = false
 	else
 		cells = withLevels(cellsFor(selected, gx, gz, dir), levelsOf(selected))
 		cost = selected.price
@@ -776,6 +823,126 @@ local function setTool(name)
 	describeSelection()
 end
 
+-- LAYOUTS: save the clipboard as a named layout (kept in the save slot), or load one back into the clipboard
+-- to PASTE on any plot (Services/Blueprints.luau).
+local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
+local presetButton = button(actions, "LAYOUTS", PICKED)
+presetButton.Size = UDim2.fromOffset(100, 34) -- "layouts", not "blueprints": those are the fill-in templates
+presetButton.Visible = blueprintRemotes ~= nil
+local presetPanel = Instance.new("Frame")
+presetPanel.AnchorPoint = Vector2.new(0.5, 1)
+presetPanel.Position = UDim2.new(0.5, 0, 1, -172)
+presetPanel.Size = UDim2.fromOffset(340, 300)
+presetPanel.BackgroundColor3 = PANEL
+presetPanel.Visible = false
+presetPanel.Parent = gui
+corner(presetPanel, 12)
+local presetStroke = Instance.new("UIStroke", presetPanel)
+presetStroke.Color = INK
+presetStroke.Thickness = 2
+text(presetPanel, "SAVED LAYOUTS", 16, 8, 20)
+local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a layout on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
+local nameBox = Instance.new("TextBox")
+nameBox.Position = UDim2.fromOffset(14, 62)
+nameBox.Size = UDim2.new(1, -118, 0, 30)
+nameBox.PlaceholderText = "Layout name"
+nameBox.Text = ""
+nameBox.ClearTextOnFocus = false
+nameBox.Font = F.Bold
+nameBox.TextSize = 14
+nameBox.TextColor3 = INK
+nameBox.BackgroundColor3 = CARD
+nameBox.Parent = presetPanel
+corner(nameBox, 6)
+local saveButton = button(presetPanel, "SAVE COPY", GREEN)
+saveButton.AnchorPoint = Vector2.new(1, 0)
+saveButton.Position = UDim2.new(1, -14, 0, 62)
+saveButton.Size = UDim2.fromOffset(92, 30)
+local presetList = Instance.new("ScrollingFrame")
+presetList.Position = UDim2.fromOffset(10, 100)
+presetList.Size = UDim2.new(1, -20, 1, -110)
+presetList.BackgroundTransparency = 1
+presetList.BorderSizePixel = 0
+presetList.ScrollBarThickness = 4
+presetList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+presetList.CanvasSize = UDim2.new()
+presetList.Parent = presetPanel
+local presetLayout = Instance.new("UIListLayout", presetList)
+presetLayout.Padding = UDim.new(0, 4)
+
+local function refreshPresets()
+	for _, child in presetList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local ok, saved = pcall(function()
+		return blueprintRemotes.List:InvokeServer()
+	end)
+	if not ok or typeof(saved) ~= "table" then
+		presetMessage.Text = "Couldn't reach the server."
+		return
+	end
+	for _, preset in saved do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -6, 0, 36)
+		row.BackgroundColor3 = CARD
+		row.Parent = presetList
+		corner(row, 6)
+		local label = text(row, ("%s  (%d pieces, $%d)"):format(preset.name, #preset.list, preset.total), 13, 8, 20)
+		label.Size = UDim2.new(1, -150, 0, 20)
+		local load = button(row, "LOAD", GREEN)
+		load.AnchorPoint = Vector2.new(1, 0.5)
+		load.Position = UDim2.new(1, -60, 0.5, 0)
+		load.Size = UDim2.fromOffset(70, 28)
+		load.Activated:Connect(function()
+			clipboard = { list = preset.list, total = preset.total }
+			presetPanel.Visible = false
+			tool = nil
+			setTool("paste")
+		end)
+		local del = button(row, "X", RED)
+		del.AnchorPoint = Vector2.new(1, 0.5)
+		del.Position = UDim2.new(1, -6, 0.5, 0)
+		del.Size = UDim2.fromOffset(44, 28)
+		del.Activated:Connect(function()
+			local done, _, message = pcall(function()
+				return blueprintRemotes.Delete:InvokeServer(preset.name)
+			end)
+			presetMessage.Text = done and (message or "") or "Couldn't reach the server."
+			task.defer(refreshPresets)
+		end)
+	end
+	if #saved == 0 then
+		presetMessage.Text = "No saved layouts yet. COPY an area of your line, name it, and SAVE."
+	end
+end
+
+if blueprintRemotes then
+	presetButton.Activated:Connect(function()
+		presetPanel.Visible = not presetPanel.Visible
+		if presetPanel.Visible then
+			refreshPresets()
+		end
+	end)
+	saveButton.Activated:Connect(function()
+		if not clipboard then
+			presetMessage.Text = "COPY an area of your line first."
+			return
+		end
+		local ok, _, message = pcall(function()
+			return blueprintRemotes.Save:InvokeServer(nameBox.Text, clipboard.list)
+		end)
+		presetMessage.Text = ok and (message or "") or "Couldn't reach the server."
+		refreshPresets()
+	end)
+	player:GetAttributeChangedSignal("Building"):Connect(function()
+		if not player:GetAttribute("Building") then
+			presetPanel.Visible = false
+		end
+	end)
+end
+
 local function undo()
 	if busy then
 		return
@@ -835,12 +1002,40 @@ pasteButton.Activated:Connect(function()
 	setTool("paste")
 end)
 
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1 or not dragStart then
+		return
+	end
+	local run = dragRun
+	dragStart, dragRun = nil, nil
+	if not building or not selected or busy then
+		return
+	end
+	if not run or #run <= 1 then
+		act() -- a click: one belt, facing the chosen way
+		return
+	end
+	local list = {}
+	local ax, az = run[1][1], run[1][2]
+	for _, cell in run do
+		table.insert(list, { id = selected.id, dx = cell[1] - ax, dz = cell[2] - az, dir = cell[3] })
+	end
+	report(call(pasteRemote, list, ax, az))
+	describeSelection()
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not building or gameProcessed then
 		return
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		aim = nil
+		if not tool and not removing and selected and selected.kind == "belt" and target and not busy then
+			-- Belts build on release, so a drag lays a run of them.
+			dragStart = { gx = target.gx, gz = target.gz }
+			dragRun = nil
+			return
+		end
 		act()
 	elseif input.UserInputType == Enum.UserInputType.Touch then
 		-- On a touch screen a tap moves the ghost; PLACE builds it.
@@ -907,18 +1102,18 @@ local nameStroke = Instance.new("UIStroke", namePanel)
 nameStroke.Color = INK
 nameStroke.Thickness = 2
 text(namePanel, "NAME YOUR FARM", 16, 8, 20)
-local nameBox = Instance.new("TextBox")
-nameBox.Position = UDim2.fromOffset(14, 36)
-nameBox.Size = UDim2.new(1, -28, 0, 30)
-nameBox.Font = F.Bold
-nameBox.TextSize = 15
-nameBox.TextColor3 = INK
-nameBox.BackgroundColor3 = CARD
-nameBox.PlaceholderText = "Up to 24 letters"
-nameBox.ClearTextOnFocus = false
-nameBox.Text = ""
-nameBox.Parent = namePanel
-corner(nameBox, 6)
+local farmNameBox = Instance.new("TextBox")
+farmNameBox.Position = UDim2.fromOffset(14, 36)
+farmNameBox.Size = UDim2.new(1, -28, 0, 30)
+farmNameBox.Font = F.Bold
+farmNameBox.TextSize = 15
+farmNameBox.TextColor3 = INK
+farmNameBox.BackgroundColor3 = CARD
+farmNameBox.PlaceholderText = "Up to 24 letters"
+farmNameBox.ClearTextOnFocus = false
+farmNameBox.Text = ""
+farmNameBox.Parent = namePanel
+corner(farmNameBox, 6)
 local nameSave = button(namePanel, "SAVE NAME", GREEN)
 nameSave.Position = UDim2.fromOffset(14, 72)
 nameSave.Size = UDim2.fromOffset(140, 30)
@@ -930,7 +1125,7 @@ local function submitName()
 	if busy then
 		return
 	end
-	local value = string.sub(nameBox.Text, 1, 60)
+	local value = string.sub(farmNameBox.Text, 1, 60)
 	busy = true
 	local ok, done, message = pcall(function()
 		return nameRemote:InvokeServer(value)
@@ -951,15 +1146,15 @@ nameButton.Activated:Connect(function()
 	namePanel.Visible = not namePanel.Visible
 	if namePanel.Visible then
 		local info = myPlot()
-		nameBox.Text = info and info:GetAttribute("FarmName") or ""
-		nameBox:CaptureFocus()
+		farmNameBox.Text = info and info:GetAttribute("FarmName") or ""
+		farmNameBox:CaptureFocus()
 	end
 end)
 nameSave.Activated:Connect(submitName)
 nameCancel.Activated:Connect(function()
 	namePanel.Visible = false
 end)
-nameBox.FocusLost:Connect(function(enter)
+farmNameBox.FocusLost:Connect(function(enter)
 	if enter then
 		submitName()
 	end

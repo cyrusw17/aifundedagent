@@ -547,7 +547,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
-	local function sort(hay, ownerId, hayType)
+	local function sort(hay, ownerId, hayType, recoveryMult)
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
@@ -569,7 +569,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
 		local found = 0
 		for _ = 1, hidden do
-			if rng:NextNumber() < tier.recovery then
+			if rng:NextNumber() < tier.recovery * (recoveryMult or 1) then
 				found += 1
 			end
 		end
@@ -582,6 +582,23 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		sorted += 1
 		model:SetAttribute("Sorted", sorted)
 		refreshLabel()
+	end
+
+	-- Region hay (Factory.Treatments) that still needs its region machine, and a reminder to its owner now and then.
+	local function untreated(body)
+		local t = Factory.Treatments[hayTypeOf(body)]
+		if t and not body:GetAttribute(t.mark) then
+			return t
+		end
+		return nil
+	end
+	local toldAt = {}
+	local function refuse(ownerId, need)
+		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+		if owner and os.clock() - (toldAt[ownerId] or -math.huge) > 15 then
+			toldAt[ownerId] = os.clock()
+			Data.toast(owner, need.refuse)
+		end
 	end
 
 	-- Hay that was sorted upstream goes straight out the far end.
@@ -639,7 +656,11 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
 				if b and not b.gone and not b.carriedBy and not b.breaking then
-					if not b.sorted then
+					local need = not b.sorted and not isAlien and p == b.body and untreated(p)
+					if need and need.required then
+						passThrough(p) -- region hay that skipped its machine rides on, unsorted
+						refuse(b.ownerId, need)
+					elseif not b.sorted then
 						bale = bale or b
 					elseif p == b.body then
 						passThrough(p) -- already sorted upstream: never sorted twice, and never left jamming the flap
@@ -666,8 +687,12 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
+				local need = not isAlien and untreated(bale.body)
+				if need then
+					refuse(bale.ownerId, need) -- not required, so it sorts, at need.penalty of the recovery
+				end
 				Bales.consume(bale)
-				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType)
+				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1)
 			elseif #loose > 0 then
 				-- One owner and one hay type per batch; anything else in the hopper goes next tick.
 				local firstOwner, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])

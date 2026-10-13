@@ -29,6 +29,11 @@ return function(SelfTest)
 		t.check("23 needles pack as 2 bundles + 3", whole == 2 and rest == 3)
 		t.near("optical sorter takes 2 s a bale", Machines.sortSeconds("optical_sorter", 90), 2, 0.01)
 
+		-- Line blueprints keep good copies and refuse bad ones.
+		local Blueprints = require(Services.Blueprints)
+		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
+		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
+
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
 		local boxSize = Vector3.new(190, 40, 190)
@@ -145,6 +150,30 @@ return function(SelfTest)
 			end
 		end
 		t.check("the baled bale rides out, owned by the strands' owner", madeBale)
+
+		-- Region hay: Frozen hay is refused by a sorter until a thawing shed has thawed it.
+		local Treat = require(Services.Treat)
+		local thawLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(thawLine, 0, 0, "E", 7)
+		Conveyors.finish(thawLine)
+		Treat.build(folder, Conveyors.frame(thawLine, 1, 0, "E"), "thawing_shed")
+		local thawSorter = Machines.sorter(folder, Conveyors.frame(thawLine, 4, 0, "E"), "optical_sorter", nil, payTo)
+		local frozenLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(frozenLine, 0, 0, "E", 4)
+		Conveyors.finish(frozenLine)
+		local frozenSorter = Machines.sorter(folder, Conveyors.frame(frozenLine, 1, 0, "E"), "optical_sorter", nil, payTo)
+		for _, line in { thawLine, frozenLine } do
+			local bale = Bales.spawn(Conveyors.cellCenter(line, 0, 0) + Vector3.new(0, Factory.BeltTop + 2, 0), false, false, "snow")
+			bale.ownerId = GHOST
+			bale.body.Anchored = false
+			table.insert(bales, bale)
+		end
+		local thawDeadline = os.clock() + 15
+		while os.clock() < thawDeadline and (thawSorter:GetAttribute("Sorted") or 0) < 1 do
+			t.wait(0.25)
+		end
+		t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
+		t.equal("Frozen hay that skipped the shed rides through unsorted", frozenSorter:GetAttribute("Sorted") or 0, 0)
 
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do

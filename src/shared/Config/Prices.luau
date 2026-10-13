@@ -137,7 +137,7 @@ Prices.PlotExpansion = 5000
 -- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
 -- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
 Prices.SecondPlot = 60000
-Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -165,10 +165,18 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
+	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
+	-- sorter, Volcano at the magnet drum).
+	thawing_shed = 10000,
+	drying_rack = 20000,
+	ash_sifter = 60000,
 	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	garage = 2000, -- swaps which owned truck is out; a convenience, so priced like a mid-early piece
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
 	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
 	decor_flowers = 200,
 	decor_bench = 350,
@@ -206,6 +214,14 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
+-- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
+-- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
+-- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+Prices.Trade = {
+	Fee = 25, -- per side, per trade
+	CashShare = 0.05, -- of the cash a side gives
+}
+
 -- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
 -- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
 -- Longstitch Highway, stay free.
@@ -218,7 +234,8 @@ Prices.Travel = {
 -- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
 -- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
 -- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
--- detour but never beats a steady haul.
+-- detour but never beats a steady haul. Each is worth about 5 to 10 minutes of income at the stage where you reach
+-- its region (ECONOMY.md "Region events").
 Prices.RegionEvents = {
 	EveryMinutes = 30,
 	Minutes = 5,
@@ -227,8 +244,8 @@ Prices.RegionEvents = {
 	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
 	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
 	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
-	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
-	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: glowing Star hay, the only free Star hay
+	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
+	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
 -- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward.

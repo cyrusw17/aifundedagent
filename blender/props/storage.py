@@ -17,6 +17,7 @@ sys.path.insert(0, HERE)
 import hay_bale  # noqa: E402
 import style  # noqa: E402
 from style import box, cap_uv, cyl  # noqa: E402,F401
+from rig import tag  # noqa: E402
 
 STUD = 0.28
 S = STUD
@@ -157,8 +158,8 @@ def mill_bin_small(f):
     parts += plank_walls(f, w, w, 0.35 * S, h - 0.35 * S, 4)
     parts += corner_posts(f, w + 0.15 * S, w + 0.15 * S, 0.35 * S, h + 0.15 * S)
     parts += bands(f, w + 0.2 * S, w + 0.2 * S, [h - 0.5 * S])
-    parts.append(fin(f, box((w - 0.3 * S, w - 0.3 * S, h - 0.9 * S), (0, 0, (h - 0.3 * S) / 2 + 0.3 * S)), "hay"))
-    parts.append(fin(f, heap(w * 0.5, 0.9 * S, (0, 0, h - 0.4 * S), verts=8), "hay", "z"))
+    parts += tag([fin(f, box((w - 0.3 * S, w - 0.3 * S, h - 0.9 * S), (0, 0, (h - 0.3 * S) / 2 + 0.3 * S)), "hay"),
+                  fin(f, heap(w * 0.5, 0.9 * S, (0, 0, h - 0.4 * S), verts=8), "hay", "z")], "HayFill")
     # Painted capacity board on the front.
     parts.append(fin(f, box((1.8 * S, 0.1 * S, 0.7 * S), (0, -w / 2 - 0.12 * S, h * 0.55)), "paint_cream"))
     return parts
@@ -224,8 +225,8 @@ def hopper_bin(f, w, body_h, leg_h, hop_h, planks, band_n, metal_roof=False, lad
         parts.append(fin(f, box((1.6 * S, 1.6 * S, 0.25 * S), (0, -w / 4, z1 + rh / 2 + 0.25 * S),
                                 rot=(math.atan2(rh, w / 2), 0, 0)), "paint_red"))
     else:
-        parts.append(fin(f, box((w - 0.3 * S, w - 0.3 * S, body_h * 0.6), (0, 0, z1 - body_h * 0.3 - 0.4 * S)), "hay"))
-        parts.append(fin(f, heap(w * 0.5, 1.2 * S, (0, 0, z1 - 0.45 * S), verts=10), "hay", "z"))
+        parts += tag([fin(f, box((w - 0.3 * S, w - 0.3 * S, body_h * 0.6), (0, 0, z1 - body_h * 0.3 - 0.4 * S)), "hay"),
+                      fin(f, heap(w * 0.5, 1.2 * S, (0, 0, z1 - 0.45 * S), verts=10), "hay", "z")], "HayFill")
     if ladder_side:
         raw = ladder(z1 + 0.6 * S, 1.4 * S)
         parts += place(f, raw, "metal", angle=math.pi / 2, offset=(w / 2 + 0.25 * S, -w * 0.15, 0))
@@ -527,45 +528,28 @@ def fence_post_set(f):
     xs = [-span, 0, span]
     for x in xs:
         yaw = rng.uniform(-0.15, 0.15)
-        parts.append(fin(f, box((0.6 * S, 0.6 * S, ph), (x, 0, ph / 2), rot=(0, 0, yaw)), "bark", "z"))
+        parts.append(fin(f, box((0.6 * S, 0.6 * S, ph), (x, 0, ph / 2), rot=(0, 0, yaw)), "bark", "z", False))
         tip = cone(0.3 * S * math.sqrt(2), 0.06 * S, 0.5 * S, (x, 0, ph + 0.25 * S), verts=4,
                    rot=(0, 0, math.pi / 4 + yaw))
-        parts.append(fin(f, tip, "bark", "z"))
+        parts.append(fin(f, tip, "bark", "z", False))
     for a, b in zip(xs, xs[1:]):
         for z in (1.5 * S, 3.2 * S):
             dz = rng.uniform(-0.15, 0.15) * S
             rail = box((span - 0.1 * S, 0.35 * S, 0.45 * S), ((a + b) / 2, -0.45 * S, z + dz),
                        rot=(rng.uniform(-0.08, 0.08), 0, rng.uniform(-0.015, 0.015)))
-            parts.append(fin(f, rail, "handle", "x"))
-    # Nails holding the rails.
-    for x in xs:
-        for z in (1.5 * S, 3.2 * S):
-            parts.append(f.apply(cyl(0.07 * S, 0.1 * S, (x, -0.62 * S, z), verts=6, rot=(math.pi / 2, 0, 0)), "metal"))
+            parts.append(fin(f, rail, "handle", "x", False))
     return parts
 
 
 def road_tile(f):
-    """A flat 6 x 6 stud driveway tile: packed dirt with two gravel wheel tracks and flat stones."""
+    """A flat 6 x 6 stud driveway tile: packed dirt, two gravel wheel tracks and stone kerbs. Placed many
+    times, so it is plain boxes (60 triangles)."""
     s, t = 6 * S, 0.2 * S
-    parts = [fin(f, box((s, s, t), (0, 0, t / 2)), "dirt", "y")]
-    # Gravel tracks running front to back.
+    parts = [fin(f, box((s, s, t), (0, 0, t / 2)), "dirt", "y", False)]
     for x in (-1.5 * S, 1.5 * S):
         parts.append(fin(f, box((1.4 * S, s, 0.06 * S), (x, 0, t + 0.02 * S)), "stone", "y", False))
-    import random
-    rng = random.Random(11)
-    # Flat embedded stones along the tracks and middle.
-    for i in range(6):
-        x = rng.uniform(-0.25, 0.25) * S
-        y = -2.4 * S + i * 0.96 * S + rng.uniform(-0.15, 0.15) * S
-        r = rng.uniform(0.25, 0.36) * S
-        st = cyl(r, 0.08 * S, (x, y, t + 0.03 * S), verts=6, rot=(0, 0, rng.uniform(0, 1)))
-        k = rng.uniform(0.75, 1.25)
-        for v in st.data.vertices:
-            v.co.x *= k
-        parts.append(f.apply(st, "stone"))
-    # Stone kerb edges on the two sides so tiles read as a lane.
     for x in (-s / 2 + 0.2 * S, s / 2 - 0.2 * S):
-        parts.append(fin(f, box((0.4 * S, s, 0.12 * S), (x, 0, t + 0.04 * S)), "stone", "y"))
+        parts.append(fin(f, box((0.4 * S, s, 0.12 * S), (x, 0, t + 0.04 * S)), "stone", "y", False))
     return parts
 
 

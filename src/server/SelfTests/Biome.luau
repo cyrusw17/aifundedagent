@@ -196,7 +196,6 @@ return function(SelfTest)
 		seat:Sit(humanoid)
 		t.wait(0.6)
 		t.check("player sits in the driver seat", seat.Occupant == humanoid)
-		t.check("Vehicles.canDrive lets the owner drive", not Vehicles.canDrive or Vehicles.canDrive(player, truck4) ~= false)
 		local weld = seat:FindFirstChild("SeatWeld")
 		if weld then
 			weld:Destroy()

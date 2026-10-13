@@ -35,7 +35,9 @@ local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Baler = require(script.Parent.Baler)
+local Treat = require(script.Parent.Treat)
 local Vault = require(script.Parent.Vault)
+local Blueprints = require(script.Parent.Blueprints)
 local Display = require(script.Parent.Display)
 local Skins = require(script.Parent.Skins)
 local Mixer = require(script.Parent.Mixer)
@@ -74,6 +76,7 @@ local sign = Machines.sign
 -- A tile's key, as Conveyors.luau keys its grid: "gx,gz" on the ground, "gx,gz,1" on the raised belt level.
 local addBinPrompt -- defined with the plot setup below
 local dress -- plot themes, defined with the plot setup below
+local truckSpot -- where a plot's truck parks, defined with the vehicles below
 
 local function key(gx, gz, level)
 	if level and level > 0 then
@@ -213,32 +216,62 @@ local function buildSilo(plot, item, def)
 	model.Name = "HaySilo"
 	model.Parent = plot.items
 
-	local height = 20
-	local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
-	body.Shape = Enum.PartType.Cylinder
-	local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
-	cap.Shape = Enum.PartType.Ball
-	part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
-	-- The chute comes out over the anchor lane at belt height.
+	local capacity = def.capacity or LandConfig.SiloCapacity
 	local laneX = -(def.size[1] - 1) * T / 2
-	part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
-	local label = sign(cap, "", Vector3.new(0, 4, 0))
-
-	local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
-	if mesh then
-		Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
-		for _, p in mesh:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.CanCollide = false
-			end
+	local label
+	if def.look == "barn" then
+		-- A red barn: plank walls, a pitched roof, white trim, and big doors at the front over the chute.
+		model.Name = "HayBarn"
+		local wallH = 10
+		local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
+		local pitch = math.rad(35)
+		local roofW = (w - 1) / 2 / math.cos(pitch) + 0.6
+		for _, side in { -1, 1 } do
+			part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
 		end
-		-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
-		Props.weldTo(mesh, body, { body, cap })
+		for _, x in { -(w - 1) / 2, (w - 1) / 2 } do
+			part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		end
+		part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(body, "", Vector3.new(0, wallH / 2 + (w - 1) / 4 + 3, 0))
+		local mesh = Props.make("barn", frame * CFrame.new(0, wallH / 2, 0), Vector3.new(w - 0.5, wallH + (w - 1) / 2, l - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y)
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			Props.weldTo(mesh, body, { body })
+		end
+	else
+		local height = 20
+		local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
+		body.Shape = Enum.PartType.Cylinder
+		local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
+		cap.Shape = Enum.PartType.Ball
+		part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
+		-- The chute comes out over the anchor lane at belt height.
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(cap, "", Vector3.new(0, 4, 0))
+
+		local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
+			Props.weldTo(mesh, body, { body, cap })
+		end
 	end
 
-	item.stored = math.clamp(item.stored or 0, 0, LandConfig.SiloCapacity)
+	item.stored = math.clamp(item.stored or 0, 0, capacity)
 	local function refresh()
-		label.Text = ("HAY SILO\n%d / %d bales"):format(item.stored, LandConfig.SiloCapacity)
+		label.Text = ("%s\n%d / %d bales"):format(def.name:upper(), item.stored, capacity)
 	end
 	refresh()
 
@@ -254,7 +287,7 @@ local function buildSilo(plot, item, def)
 			local changed = false
 			for _, p in Workspace:GetPartBoundsInBox(intake, intakeSize) do
 				local b = Bales.fromPart(p)
-				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < LandConfig.SiloCapacity then
+				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < capacity then
 					Bales.consume(b)
 					item.stored += 1
 					changed = true
@@ -486,6 +519,78 @@ local function buildParking(plot, item, def)
 	return model
 end
 
+-- Garage: a shed whose prompt swaps which of the owner's trucks is out. The truck that was out goes back into the save
+-- (nothing is lost but bales riding in its bed, so it refuses while one is being driven); the next one parks at the
+-- plot's truck spot. The trailer stays where it is.
+local function buildGarage(plot, item, def)
+	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
+	local w, l = def.size[1] * T, def.size[2] * T
+	local model = Instance.new("Model")
+	model.Name = "Garage"
+	model.Parent = plot.items
+	local wallH = 8
+	local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+	part(model, "Roof", Vector3.new(w, 0.6, l), frame * CFrame.new(0, wallH + 0.3, 0), Rustic.Metal, Enum.Material.Metal)
+	local door = part(model, "Door", Vector3.new(w * 0.7, wallH * 0.8, 0.3), frame * CFrame.new(0, wallH * 0.4, -(l - 1) / 2 - 0.15), Rustic.PaintGreen, Enum.Material.WoodPlanks)
+	for i = 1, 3 do
+		part(model, "Slat", Vector3.new(w * 0.7, 0.15, 0.1), frame * CFrame.new(0, wallH * 0.8 * i / 4, -(l - 1) / 2 - 0.35), Rustic.WoodDark, Enum.Material.Wood).CanCollide = false
+	end
+	local label = sign(body, "GARAGE", Vector3.new(0, wallH / 2 + 2.5, 0))
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "GaragePrompt"
+	prompt.ActionText = "Swap truck"
+	prompt.ObjectText = "Garage"
+	prompt.HoldDuration = 0.8
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = door
+	local busy = false
+	prompt.Triggered:Connect(function(player)
+		if busy then
+			return
+		end
+		if plot.owner ~= player then
+			Data.toast(player, "Only the farm's owner can use its garage.")
+			return
+		end
+		local s = Data.get(player)
+		if not s or #s.trucks < 2 then
+			Data.toast(player, "You have one truck. Buy another at Homestead Motors to swap between them.")
+			return
+		end
+		local out = Vehicles.ownedBy(player)
+		local seat = out and out:FindFirstChild("DriverSeat")
+		if seat and seat.Occupant then
+			Data.toast(player, "Someone is driving your truck. It has to be parked to swap.")
+			return
+		end
+		busy = true
+		-- The truck after the one that is out comes out, and goes first in the list so it is the one that parks on
+		-- the next load.
+		local outId = out and out:GetAttribute("TruckId") or s.trucks[1]
+		local at = table.find(s.trucks, outId) or 1
+		local nextId = s.trucks[at % #s.trucks + 1]
+		table.remove(s.trucks, table.find(s.trucks, nextId))
+		table.insert(s.trucks, 1, nextId)
+		local nextDef = Vehicles.get(nextId)
+		if nextDef then
+			local spot = truckSpot(plot)
+			local ok, err = pcall(Vehicles.spawnOwned, player, nextId, spot * CFrame.new(0, 0.3, nextDef.length / 2), { parent = vehiclesFolder })
+			if ok then
+				label.Text = "GARAGE\nOut: " .. nextDef.name
+				Data.sync(player)
+				Data.toast(player, ("Your %s is out."):format(nextDef.name))
+			else
+				warn("[Needlewood] garage swap failed: " .. tostring(err))
+				Data.toast(player, "Couldn't bring that truck out. Try again.")
+			end
+		end
+		busy = false
+	end)
+	return model
+end
+
 -- Decor: looks only, built from parts in the Rustic palette (the scarecrow wears its Blender mesh when imported).
 local function buildDecor(plot, item, def)
 	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
@@ -555,7 +660,7 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "ramp" then
 		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
-	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "baler" or def.kind == "starbeam" then
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "baler" or def.kind == "treat" or def.kind == "starbeam" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
@@ -568,6 +673,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Press.build(plot.items, frame))
 	elseif def.kind == "baler" then
 		table.insert(item.instances, Baler.build(plot.items, frame))
+	elseif def.kind == "treat" then
+		table.insert(item.instances, Treat.build(plot.items, frame, def.id))
 	elseif def.kind == "starbeam" then
 		table.insert(item.instances, Starbeam.build(plot.items, frame, function()
 			return plot.ownerId
@@ -595,6 +702,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, buildParking(plot, item, def))
 	elseif def.kind == "blueprint" then
 		table.insert(item.instances, buildBlueprint(plot, item, def))
+	elseif def.kind == "garage" then
+		table.insert(item.instances, buildGarage(plot, item, def))
 	elseif def.kind == "decor" then
 		table.insert(item.instances, buildDecor(plot, item, def))
 	end
@@ -704,13 +813,8 @@ end
 -- Vehicles ----------------------------------------------------------------------------------------------------------
 
 -- Parks the save's truck (and its trailer, hitched) on the plot's parking pad, or at the plot's road gate.
-local function parkVehicles(player, plot)
-	local s = Data.get(player)
-	local truckId = s and s.trucks and s.trucks[1]
-	local def = truckId and Vehicles.get(truckId)
-	if not def then
-		return
-	end
+-- Where a plot's truck parks: the front of its parking pad, or on the lane in front of the plot.
+truckSpot = function(plot)
 	local at = nil
 	for _, item in plot.list do
 		if item.parkAt then
@@ -726,6 +830,17 @@ local function parkVehicles(player, plot)
 		local nose = Vector3.new(plot.corner.X + plot.size.X / 2 + away * 3, 0, plot.laneZ + away * 3)
 		at = CFrame.lookAt(nose, nose - Vector3.xAxis * away)
 	end
+	return at
+end
+
+local function parkVehicles(player, plot)
+	local s = Data.get(player)
+	local truckId = s and s.trucks and s.trucks[1]
+	local def = truckId and Vehicles.get(truckId)
+	if not def then
+		return
+	end
+	local at = truckSpot(plot)
 	-- The truck's middle sits half its length back from the front of the pad.
 	local truckCF = at * CFrame.new(0, 0.3, def.length / 2) -- on top of the pad
 	local trailerId = s.trailers and s.trailers[1]
@@ -1936,6 +2051,7 @@ function Land.build(worldFolder)
 	end
 
 	buildOffice(folder)
+	Blueprints.init() -- named presets for the COPY / PASTE tools
 	for i, def in LandConfig.Plots do
 		buildPlot(folder, i, def)
 	end

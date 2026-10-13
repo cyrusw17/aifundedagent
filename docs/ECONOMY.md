@@ -174,6 +174,29 @@ There is no loan for it: the land loan only covers a first plot.
 
 Removing a piece still refunds half its price.
 
+### Pieces and upgrades added by other threads (reviewed)
+
+These were priced by the threads that built them. I checked each against the stage table and kept them; the reasons
+are below so the whole list lives in one place.
+
+| Piece | Price | Why it fits |
+|---|---|---|
+| Raised belt, ramps | $60, $150 each | Belts that cross a line. A few of them cost a few minutes; they are layout, not income. |
+| Splitter, sort splitter | $300, $600 | Layout pieces. The sorting one costs more because it routes sorted bales away from plain ones. |
+| Display wall | $1,000 | Shows off needles; no income. A small early sink. |
+| Hay baler | $3,000 | Packs loose strands back into bales. A convenience you want early, about 25 minutes by hand. |
+| Hay barn | $15,000 | Holds 150 bales to the silo's 60 ($100 a bale of storage against the silo's $83), so a long line can run while you are away. About 20 minutes at the conveyor-sorter stage, the point where lines get long enough to need it. |
+| Needle vault | $6,000 | Stores needles with no parts. It also lets you hold a flooded needle type until the market recovers (prices fade back in about 10 minutes), worth at most 20% on what you hold. About 15 minutes at the shaker stage. |
+| Hay press | $8,000 | Makes thatch for building, not money, so it is priced like a mid-game toy. |
+| Needle polisher (bin upgrade) | $12,000 | +25% on up to 30 needles a minute. At the shaker stage it pays back in about 3 hours, and at the conveyor sorter in about 1.5, so it is a mid-game upgrade like the sorters. |
+| Bin dividers (bin upgrade) | $1,500 | Sorts the bin by needle type. Tidiness, so it is cheap. |
+| Alloy mixer | $20,000 | Turns needles into building alloy. Its cost is mostly the needles it eats, so the machine itself sits beside the conveyor sorter. |
+| Decor: flowers, bench, lantern, scarecrow | $200, $350, $500, $900 | Looks only. Each is a few minutes of early income, so a new farm can look lived in. Later decor should cost more (a fountain or a windmill at $10,000 to $50,000) so rich players still have something to spend on. |
+| Sorter oil | $250 a can | 10% faster for 25 bales. It only pays when the sorter holds the line back, so it is a small treat. |
+
+Quest rewards (the five quest gloves, the Alien Collector, the Starbeam Collector) cost $0 because you earn them; they
+can't be bought.
+
 ### Needle sorters
 
 Priced from the V8 payback targets, for Meadow hay with the sorter kept full:
@@ -341,6 +364,41 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 3. **Needles per bale.** These are V8's numbers, which Cyrus hasn't approved yet. Each is one value in
    `Prices.NeedlesPerBale`.
 
+## Region events
+
+Map's region events (`Prices.RegionEvents`) run one at a time, every 30 minutes, for 5 minutes. They drop extra bales
+of the region's hay with more needles in them (`boost`), and never pay cash directly. An event should be worth a detour
+for whoever reaches it first, about 5 to 10 minutes of income at the stage where that region opens, and it shouldn't
+beat a steady haul over an hour. A raw event bale is worth hay plus needles × boost × sorted value:
+
+| Event | Hay | Bales | Boost | Worth sorted | Extra over normal bales | Stage income | Minutes of income |
+|---|---|---|---|---|---|---|---|
+| Hay Fever (Shore) | Meadow | 10 | 1.5x | $3,450 | $1,000 | $25k/h (shaker) | 8 |
+| Low Tide (Keys) | Meadow | 10 | 1.5x | $3,450 | $1,000 | $25k/h | 8 |
+| Meteor Shower (Valley, nights) | Meadow | 8 | 3x | $5,160 | $3,200 | $25k/h | 12 |
+| Windfall (Pine) | Pine | 12 | 1.5x | $6,480 | $1,980 | $22k/h | 18 |
+| Sandstorm (Desert) | Desert | 10 | 2x | $11,650 | $5,600 | $41k/h | 17 |
+| Avalanche (Snow) | Snow | 10 | 2x | $16,450 | $8,000 | $90k/h | 11 |
+| Eruption (Volcano) | Volcano | 10 | 2.5x | $60,450 | $36,000 | $437k/h | 8 |
+
+Two changes from Map's first numbers. The Meteor Shower went from 6 bales at 2.5x to 8 at 3x, because it only happens
+at night and was the weakest event in the game. The Eruption went from 8 bales to 10, because the Volcano is the
+hardest region to reach and 8 bales was under 7 minutes of income there. The rest stay as Map set them.
+
+Note for Map: Thimble Keys and Bobbin Rock use the hay types `keys` and `bobbin`. Neither has a row in
+`Prices.NeedlesPerBale`, `Config/Gloves.HayTypes` or `Config/Needles`, so they fall back to Meadow hay with steel
+needles. That's fine for launch, but they need their own rows if they are meant to be their own tier.
+
+## The trading post
+
+Land's trading post settles every trade through `Bank.settleTrade(a, b, terms)`. It takes the cash each side offers,
+charges each side a fee, and writes a line to both histories ("Trade with Sam: gave 3 Cosmic needles, got $2,000").
+The fee (`Prices.Trade`) is $25 a side plus 5% of any cash that side hands over. That's under a minute of hand
+earnings for a straight item swap, so it never stops a fair trade, while cash-for-needles deals pay something like the
+market's spread and big cash transfers between accounts carry a real cost. Cash moves wallet to wallet (taking from
+the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
+side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
+
 ## Where each number lives
 
 | Number | In `Config/Prices.luau` | Read by |
@@ -351,7 +409,9 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
-| Plot, expansion rows, second farm, pieces, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
+| Trade fee | `Trade` | `Services/Bank` (settleTrade) |
+| Region events | `RegionEvents` | `Services/RegionEvents` |
+| Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |

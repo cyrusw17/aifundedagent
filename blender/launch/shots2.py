@@ -70,11 +70,11 @@ def regions(rng, which="pine", seed=0):
     S.sun(elev_deg=28, azim_deg=225, energy=4.0)
     S.fill(30, 0.5)
     for i, (x, y, z, r) in enumerate([(-2.4, 0, 0, 0.05), (2.4, 0.2, 0, -0.05), (0, 0.1, 2.6, 0.08)]):
-        S.bale((x, y, z), r)
+        S.paint(S.bale((x, y, z), r), {"rustic_hay": R["hay"]})
     S.straw((6, -3, 0), 30, rng, spread=3)
     for _ in range(26):
         S.region_tree(R["trees"], rng.uniform(-60, 60), rng.uniform(16, 90), rng, rng.uniform(1.0, 1.5),
-                      leaves=R["leaves"])
+                      leaves=R["leaves"] if which == "haunted" else None)
     if which == "desert":
         rock = S.mat("rock", (210, 196, 170), 0.95)
         for _ in range(8):
@@ -92,6 +92,25 @@ def regions(rng, which="pine", seed=0):
         for _ in range(6):
             S.box((rng.uniform(3, 7), rng.uniform(3, 7), 0.5), (rng.uniform(-30, 30), rng.uniform(6, 40), 0.1),
                   stone, rot=(0, 0, rng.uniform(0, 3)), bevel=0.2)
+    if which == "volcano":
+        lava = S.mat("lava", (255, 120, 40), 0.6, 0, 5.0)
+        for _ in range(10):
+            S.box((rng.uniform(4, 12), rng.uniform(0.4, 0.9), 0.08), (rng.uniform(-30, 30), rng.uniform(6, 50), 0.05), lava,
+                  rot=(0, 0, rng.uniform(0, 3)), bevel=0)
+        bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=60, depth=70, location=(10, 200, 35))
+        bpy.context.active_object.data.materials.append(S.mat("peak_v", (60, 52, 50), 0.95))
+        S.cyl(9, 2, (10, 200, 70), lava, verts=10)
+    if which == "haunted":
+        for _ in range(12):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=rng.uniform(0.3, 0.6),
+                                                  location=(rng.uniform(-14, 14), rng.uniform(4, 30), rng.uniform(1.5, 6)))
+            bpy.context.active_object.data.materials.append(S.mat("wisp", (170, 160, 240), 0.5, 0, 10.0))
+        S.fill(200, 1.2, (150, 140, 220))
+    if which == "sky":
+        cloud = S.mat("cloud", (246, 246, 250), 0.9)
+        for _ in range(14):
+            S.box((rng.uniform(10, 24), rng.uniform(6, 12), rng.uniform(3, 6)),
+                  (rng.uniform(-90, 90), rng.uniform(60, 160), rng.uniform(-6, 30)), cloud, bevel=1.0)
     S.needle((5, -2.6, 0.3), 0.7, {"pine": "steel", "desert": "steel", "snow": "cloud", "swamp": "obsidian",
                                      "volcano": "obsidian", "haunted": "cloud", "sky": "cosmic"}.get(which, "steel"), scale=1.3)
     S.camera((7, -13, 4.5), (0, 6, 2.6), lens=28)
@@ -294,7 +313,8 @@ def store_backdrop(top, horizon):
     S.sun(elev_deg=36, azim_deg=220, energy=4.2)
     S.fill(40, 0.8)
     bpy.ops.mesh.primitive_plane_add(size=4000, location=(0, 0, -1.0))
-    bpy.context.active_object.data.materials.append(S.mat("store_floor", horizon, 0.95))
+    floor = tuple(int(c * 0.8) for c in horizon)
+    bpy.context.active_object.data.materials.append(S.mat("store_floor", floor, 0.95))
 
 
 TRUCK_SKINS = {
@@ -344,6 +364,7 @@ def store_truck(rng, skin):
             cx, cy = shots.place(0, 0, yaw, 0, -2 + i * 4.4)
             bpy.ops.mesh.primitive_torus_add(major_radius=5.6, minor_radius=0.25, location=(cx, cy, 8),
                                              rotation=(math.pi / 2, 0, yaw))
+            bpy.context.active_object.scale = (1, 1, 1)
             bpy.context.active_object.data.materials.append(S.mat("hoop", (110, 86, 60), 0.9))
         cx, cy = shots.place(0, 0, yaw, 0, 6.8)
         bpy.ops.mesh.primitive_cylinder_add(vertices=20, radius=5.5, depth=19, location=(cx, cy, 8),
@@ -363,7 +384,7 @@ def store_truck(rng, skin):
         for sx in (-1, 1):
             hx, hy = shots.place(0, 0, yaw, sx * 4.2, -6)
             S.cyl(0.4, 7, (hx, hy, 9), S.mat("stack", (200, 200, 204), 0.2, 1.0), verts=12)
-    S.camera((-26, -32, 14), (0, 0, 4.2), lens=42)
+    S.camera((14, -40, 13), (0, 1, 4.4), lens=42)
 
 
 PASSES = ["vip", "auto_dock", "big_silo", "paint_studio", "plot_themes", "truck_radio", "hay_fever", "meteor_shower",
@@ -403,7 +424,7 @@ def store_pass(rng, which):
         S.prop("silo_mega", (0, 0, 0), 0.4)
         for i in range(6):
             S.bale((-10 + (i % 3) * 5, -12 - (i // 3) * 3.4, 0), rng.uniform(-0.1, 0.1))
-        cam = ((-50, -80, 30), (0, 0, 22), 34)
+        cam = ((-34, -54, 18), (0, 0, 17), 34)
     elif which == "paint_studio":
         t = S.prop("rusty_pickup", (0, 0, 0), math.radians(-35))
         S.paint(t, {"rustic_paint_red": (90, 120, 160)})
@@ -444,7 +465,6 @@ def store_pass(rng, which):
                   S.mat("straw0", (219, 204, 153), 0.9), rot=(rng.uniform(0, 3), rng.uniform(0, 3), rng.uniform(0, 3)), bevel=0)
         cam = ((-18, -26, 12), (0, 0, 4.5), 40)
     elif which == "meteor_shower":
-        S.ground(400, seed=1, color=(70, 80, 60))
         for i in range(5):
             x, y, z = -8 + i * 4, 4 + i * 2, 14 + i * 3
             S.needle((x, y, z), 0.6, "cosmic", tilt=-0.7, scale=1.6)
