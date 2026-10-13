@@ -35,8 +35,9 @@ function SellShop.build(worldFolder)
 	)
 
 	local grid = Conveyors.newGrid(folder, ORIGIN)
-	Conveyors.place(grid, 6, 0, "W", true) -- dock tile, open at the back for a truck
-	Conveyors.run(grid, 5, 0, "W", 3)
+	-- Cell 6,0 is the dock funnel (Dock.buildFunnel), so the first belt tile is open at the back to take its loads.
+	Conveyors.place(grid, 5, 0, "W", true)
+	Conveyors.run(grid, 4, 0, "W", 2)
 	Conveyors.place(grid, 2, 0, "S")
 	Conveyors.place(grid, 2, 1, "S")
 	Conveyors.finish(grid)
@@ -50,6 +51,7 @@ function SellShop.build(worldFolder)
 
 	local dock = Conveyors.cellCenter(grid, 6, 0) + Vector3.new(T / 2, 0, 0)
 	Dock.init(dock, Vector3.new(1, 0, 0))
+	Dock.buildFunnel(folder, dock, Vector3.new(1, 0, 0))
 	Machines.stepPad(folder, Conveyors.cellCenter(grid, 5, -1), Machines.Colors.pad, "UNLOAD TRUCK", function(player)
 		if Dock.isBusy() then
 			Data.toast(player, "Already unloading.")
