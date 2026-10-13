@@ -147,4 +147,55 @@ function RoadPolish.build(parent)
 	print(("[Needlewood] road polish: %d rail posts, %d bridge sides"):format(posts, #RoadPolish.bridges))
 end
 
+-- Road lanterns (#26): a lantern post every LANTERN_STEP studs along the isles' roads, alternating sides, standing
+-- just off the lane on ground at road height (never on a bridge or over a drop). The lantern part's name holds
+-- "Lantern", so WorldClock lights it at dusk and puts it out at dawn. They go in their own "Lighting" container so
+-- the part budget (Config/WorldMap PartBudget) counts them on their own.
+local LANTERN_STEP = 110
+local LANTERN_AT = ROAD_HALF + 2.5
+local WARM = Color3.fromRGB(255, 196, 110)
+RoadPolish.lanterns = {} -- Vector3 of each lantern
+
+function RoadPolish.buildLanterns(parent)
+	local folder = Instance.new("Folder")
+	folder.Name = "Lighting"
+	folder.Parent = parent
+	local count, side = 0, 1
+	for _, road in Map.Roads do
+		local carried = LANTERN_STEP / 2 -- distance since the last lantern, carried round bends
+		for i = 1, #road.points - 1 do
+			local a, b = road.points[i], road.points[i + 1]
+			local length = (b - a).Magnitude
+			local dir = (b - a).Unit
+			local t = LANTERN_STEP - carried
+			while t <= length do
+				local p = a + dir * t
+				side = -side
+				local q = p + Vector2.new(-dir.Y, dir.X) * (side * LANTERN_AT)
+				local d, h = WorldShape.nearestRoad(p.X, p.Y)
+				local ground, water = WorldShape.column(q.X, q.Y)
+				local lane = WorldShape.nearestRoad(q.X, q.Y)
+				if d and h and not water and not WorldShape.inMeadow(q.X, q.Y) and math.abs(ground - h) < 2.5 and ground > Map.SeaLevel + 1 and (not lane or lane >= ROAD_HALF + 1) then
+					local base = CFrame.new(q.X, ground, q.Y)
+					part(folder, "LanternPost", Vector3.new(0.5, 9, 0.5), base * CFrame.new(0, 4.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+					local lamp = part(folder, "RoadLantern", Vector3.new(1, 1.4, 1), base * CFrame.new(0, 9.4, 0), WARM, Enum.Material.Neon)
+					lamp.CanCollide = false
+					lamp.CastShadow = false
+					local light = Instance.new("PointLight")
+					light.Color = WARM
+					light.Range = 22
+					light.Brightness = 1.1
+					light.Shadows = false
+					light.Parent = lamp
+					table.insert(RoadPolish.lanterns, lamp.Position)
+					count += 1
+				end
+				t += LANTERN_STEP
+			end
+			carried = length - (t - LANTERN_STEP)
+		end
+	end
+	print(("[Needlewood] %d road lanterns"):format(count))
+end
+
 return RoadPolish

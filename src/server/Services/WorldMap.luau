@@ -204,6 +204,7 @@ function WorldMap.build(worldFolder)
 		{ "ferries", Ferry.build },
 		{ "wilds", Wilds.build },
 		{ "road polish", RoadPolish.build },
+		{ "road lanterns", RoadPolish.buildLanterns },
 		{ "hay wagon", HayWagon.build },
 	} do
 		local ok, err = pcall(step[2], folder)

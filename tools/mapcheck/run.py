@@ -44,7 +44,7 @@ MODULES = {
 }
 
 
-EXTRA_CHECKS = ["reach.luau", "budget.luau", "safety.luau"]  # run after check.luau, on the map it built
+EXTRA_CHECKS = ["reach.luau", "budget.luau", "safety.luau", "lights.luau"]  # run after check.luau, on the map it built
 
 
 def bundle(entry):

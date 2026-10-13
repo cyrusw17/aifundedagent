@@ -374,7 +374,7 @@ local services = {
 	Workspace = newInstance("Workspace"),
 	CollectionService = {
 		AddTag = function(_, o, tag) TAGS[tag] = (TAGS[tag] or 0) + 1; TAGGED[tag] = TAGGED[tag] or {}; table.insert(TAGGED[tag], o) end,
-		HasTag = function() return false end,
+		HasTag = function(_, o, tag) for _, x in TAGGED[tag] or {} do if x == o then return true end end return false end,
 		RemoveTag = function() end,
 		GetTagged = function(_, tag) return table.clone(TAGGED[tag] or {}) end,
 		GetInstanceAddedSignal = function() return signal() end,

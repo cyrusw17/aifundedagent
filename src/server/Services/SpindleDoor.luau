@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local QuestConfig = require(ReplicatedStorage.Shared.Config.Quests)
 local WorldTerrain = require(script.Parent.WorldTerrain)
 local Data = require(script.Parent.Data)
+local WorldClock = require(script.Parent.WorldClock)
 
 local SpindleDoor = {}
 
@@ -80,8 +81,30 @@ function SpindleDoor.refresh()
 		end
 		player:SetAttribute("SpindleShards", n)
 	end
+	local lit = 0
 	for _, socket in CollectionService:GetTagged("ShardSocket") do
 		setSocket(socket, held[socket:GetAttribute("Slot") or 0] == true)
+		if socket:GetAttribute("Lit") then
+			lit += 1
+		end
+	end
+	-- The Spindle glows as its sockets fill (#26): a gold light on the door that grows with every lit socket, brighter
+	-- at night so the mountain's face shows from the valley.
+	for _, door in CollectionService:GetTagged("SpindleDoor") do
+		local glow = door:FindFirstChild("SpindleGlow")
+		if not glow then
+			glow = Instance.new("PointLight")
+			glow.Name = "SpindleGlow"
+			glow.Color = GOLD
+			glow.Shadows = false
+			glow.Parent = door
+			CollectionService:AddTag(glow, "AlwaysLit")
+		end
+		local night = WorldClock.isNight()
+		glow.Enabled = lit > 0
+		glow.Range = math.min(60, 16 + lit * 3.5)
+		glow.Brightness = lit / SpindleDoor.SLOTS * (night and 5 or 2)
+		door:SetAttribute("Glow", lit / SpindleDoor.SLOTS)
 	end
 end
 

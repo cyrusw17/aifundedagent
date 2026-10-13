@@ -97,6 +97,16 @@ return function(SelfTest)
 			end
 		end
 		t.check("every junction sign has a road distance to each place", #noRoute == 0, #noRoute > 0 and table.concat(noRoute, "; ") or nil)
+		-- Night lights (#26): lanterns along the roads, and every one of them is a lamp the clock switches.
+		local RoadPolishL = require(Services.RoadPolish)
+		local lighting = isles:FindFirstChild("Lighting")
+		local unlit = 0
+		for _, d in lighting and lighting:GetDescendants() or {} do
+			if d.Name == "RoadLantern" and not d:FindFirstChildOfClass("PointLight") then
+				unlit += 1
+			end
+		end
+		t.check("the roads have lanterns for the night", lighting ~= nil and #RoadPolishL.lanterns >= 50 and unlit == 0, ("%d lanterns, %d without a light"):format(#RoadPolishL.lanterns, unlit))
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}
