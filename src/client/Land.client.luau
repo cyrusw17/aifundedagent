@@ -2,7 +2,8 @@
 -- The land office panel and build mode. Stand on the rug at the land office counter to see every plot and buy one.
 -- Once you own land, the BUILD button opens a bar of pieces: pick one, aim at your plot and click (or tap the spot
 -- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. CREW lets other players on the
--- server drive your truck and run hay through your line for you. The server checks everything.
+-- server drive your truck and run hay through your line for you. At the office, VISIT takes you to someone else's
+-- farm, where you can like it at its sign. The server checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,6 +19,7 @@ local buyRemote = state:WaitForChild("Buy")
 local placeRemote = state:WaitForChild("Place")
 local removeRemote = state:WaitForChild("Remove")
 local crewRemote = state:WaitForChild("Crew")
+local visitRemote = state:WaitForChild("Visit")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -127,8 +129,8 @@ local function refreshPanel()
 			b.Text = "YOURS"
 			b.BackgroundColor3 = GREEN
 		elseif ownerId ~= 0 then
-			b.Text = "OWNED BY " .. string.upper(info:GetAttribute("OwnerName") or "?")
-			b.BackgroundColor3 = MUTED
+			b.Text = ("VISIT %s  ♥%d"):format(string.upper(info:GetAttribute("OwnerName") or "?"), info:GetAttribute("Likes") or 0)
+			b.BackgroundColor3 = PICKED
 		elseif mine > 0 then
 			b.Text = ("$%d"):format(price)
 			b.BackgroundColor3 = MUTED
@@ -162,8 +164,11 @@ for index, def in LandConfig.Plots do
 		end
 		busy = true
 		panelMessage.Text = "..."
+		local info = plotInfos()[index]
+		local ownerId = info and info:GetAttribute("OwnerId") or 0
+		local remote = (ownerId ~= 0 and ownerId ~= player.UserId) and visitRemote or buyRemote
 		local ok, bought, message = pcall(function()
-			return buyRemote:InvokeServer(index)
+			return remote:InvokeServer(index)
 		end)
 		busy = false
 		panelMessage.TextColor3 = ok and bought and GREEN or RED
