@@ -175,6 +175,23 @@ return function(SelfTest)
 		t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
 		t.equal("Frozen hay that skipped the shed rides through unsorted", frozenSorter:GetAttribute("Sorted") or 0, 0)
 
+		-- A plot loading dock leaves the belt in front of it open at the back and slides a load onto it.
+		local Dock = require(Services.Dock)
+		local dockLine = Conveyors.newGrid(folder, t.place().Position)
+		local dockFrame = Conveyors.frame(dockLine, 1, 0, "E")
+		local plotDock = Dock.plotDock(folder, dockFrame, Machines.Colors.pad, Machines.stepPad)
+		Conveyors.setFeeder(dockLine, 1, 0, Conveyors.Dirs.E)
+		Conveyors.run(dockLine, 2, 0, "E", 3)
+		Conveyors.finish(dockLine)
+		local rails = 0
+		for _, child in Conveyors.tileAt(dockLine, 2, 0).model:GetChildren() do
+			if child.Name == "Rail" then
+				rails += 1
+			end
+		end
+		t.equal("the belt in front of a dock has no back rail", rails, 2)
+		t.check("plot dock built", plotDock.Parent ~= nil)
+
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do
 			local found = Bales.fromPart(p)
