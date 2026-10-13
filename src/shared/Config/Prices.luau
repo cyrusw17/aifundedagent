@@ -154,8 +154,8 @@ Prices.Pieces = {
 	hand_sieve = 500,
 	shaker_table = 4000,
 	conveyor_sorter = 25000,
-	magnet_drum = 175000,
-	optical_sorter = 1100000,
+	magnet_drum = 190000, -- A-grade needles (+10%) lift it to $210 a bale; this holds its V8 payback near 74 minutes
+	optical_sorter = 1350000, -- S-grade needles (+25%) lift it to $275 a bale; this holds its payback near 200 minutes
 	-- Blueprints are cheap templates; what you fill them with (bales or needles) is the real cost.
 	blueprint_post = 10,
 	blueprint_wall = 10,
@@ -170,12 +170,13 @@ Prices.Pieces = {
 	display_wall = 1000,
 	hay_press = 8000,
 	loading_dock = 2000, -- the public shop's dock, on your own land: the haul ends at your farm
-	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
-	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
-	-- sorter, Volcano at the magnet drum).
-	thawing_shed = 10000,
-	drying_rack = 20000,
-	ash_sifter = 60000,
+	-- Region machines (Services/Treat.luau): each pays back in about 20 to 25 minutes of a solo player's haul (about 3
+	-- to 4 bales a minute) at the stage where they reach that region in ECONOMY.md's timeline: Snow with the box
+	-- truck and a conveyor sorter, Swamp with a magnet drum, Volcano with the heavy hauler. Snow and Swamp hay can't be
+	-- sorted without theirs, so they gate the region; the ash sifter only lifts a penalty, so it pays back slower.
+	thawing_shed = 30000,
+	drying_rack = 50000,
+	ash_sifter = 100000,
 	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
@@ -250,7 +251,13 @@ Prices.Travel = {
 	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
 	barge = 0, -- the Captain's Barge is earned by quest and free to use
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+	snack = 15, -- a snack from the ferry galley: cosmetic, a little treat for the crossing
 }
+
+-- Wet hay (Hay thread; Config/Game reads it as WetPriceFactor): a bale soaked by rain sells its hay at this share of
+-- the price until it dries. Needles are unharmed, so a wet Meadow bale sorts to $227 against $245: a nudge to park
+-- under cover or wait out the rain (it dries 150 s after), never a disaster.
+Prices.WetHayShare = 0.6
 
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it

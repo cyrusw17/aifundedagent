@@ -69,6 +69,80 @@ check("merged polished pine", slot["pine!"], 4)
 check("total", LineMath.total(slot), 10)
 check("merge nil", LineMath.total(LineMath.merge({ a = 1 }, nil)), 1)
 
+-- A seeded stand-in for Roblox's Random, so roll tests are repeatable.
+local function seeded(seed)
+	local state = seed
+	return {
+		NextNumber = function()
+			state = (state * 1103515245 + 12345) % 2147483648
+			return state / 2147483648
+		end,
+	}
+end
+
+-- Recovery rolls: never more than hidden, none at 0%, all at 100%, and about recovery x hidden on average.
+check("found none at 0%", LineMath.found(seeded(1), 50, 0), 0)
+check("found all at 100%", LineMath.found(seeded(1), 50, 1), 50)
+check("found is repeatable", LineMath.found(seeded(7), 40, 0.55), LineMath.found(seeded(7), 40, 0.55))
+local total = 0
+local rng = seeded(42)
+for _ = 1, 2000 do
+	total += LineMath.found(rng, 10, 0.55)
+end
+check("found averages recovery x hidden", math.abs(total / 2000 - 5.5) < 0.25, true)
+local halved = 0
+rng = seeded(42)
+for _ = 1, 2000 do
+	halved += LineMath.found(rng, 10, 0.75, 0.5)
+end
+check("ash penalty halves recovery", math.abs(halved / 2000 - 3.75) < 0.25, true)
+
+-- Oil: cans stack to the cap and no further; each oiled bale is faster and uses one up.
+check("first can", LineMath.oilAdd(0, 25, 75), 25)
+check("third can", LineMath.oilAdd(50, 25, 75), 75)
+check("fourth can refused", LineMath.oilAdd(75, 25, 75), nil)
+local sec, left = LineMath.oiledSeconds(11, 25, 0.1)
+check("oiled bale is 10% faster", sec, 10)
+check("oiled bale uses one up", left, 24)
+sec, left = LineMath.oiledSeconds(11, 0, 0.1)
+check("unoiled bale", sec, 11)
+check("no oil stays none", left, 0)
+
+-- Region treatments (Config/Factory Treatments shape).
+local treatments = {
+	snow = { mark = "Thawed", required = true },
+	volcano = { mark = "Sifted", required = false, penalty = 0.5 },
+}
+local what, mult = LineMath.treatment("snow", treatments, false)
+check("frozen untreated is refused", what, "refuse")
+what, mult = LineMath.treatment("snow", treatments, true)
+check("frozen thawed sorts", what .. mult, "sort1")
+what, mult = LineMath.treatment("volcano", treatments, false)
+check("ashen untreated sorts at half", what .. mult, "sort0.5")
+what, mult = LineMath.treatment("meadow", treatments, false)
+check("meadow needs nothing", what .. mult, "sort1")
+
+-- Grades by tier.
+local grade, bonus = LineMath.grade("optical_sorter", { optical_sorter = "S", magnet_drum = "A" }, { B = 0, A = 0.1, S = 0.25 })
+check("optical is S", grade .. bonus, "S0.25")
+grade, bonus = LineMath.grade("hand_sieve", { optical_sorter = "S" }, { B = 0, A = 0.1, S = 0.25 })
+check("unlisted tier is B", grade .. bonus, "B0")
+
+-- The live configs: every sorter has a grade, grades never lower a price, and every treatment is well formed.
+local Prices = require("../src/shared/Config/Prices")
+local Factory = require("../src/shared/Config/Factory")
+for tierId in Prices.SorterBalesPerMinute do
+	check("grade for " .. tierId, Prices.SorterGrade[tierId] ~= nil, true)
+end
+for g, b in Prices.NeedleGrades do
+	check("grade " .. g .. " bonus is not negative", b >= 0, true)
+end
+for hay, t in Factory.Treatments do
+	check("treatment " .. hay .. " has a mark", typeof(t.mark) == "string" or type(t.mark) == "string", true)
+	check("treatment " .. hay .. " refuses or has a penalty", t.required == true or (t.penalty and t.penalty > 0 and t.penalty < 1), true)
+	check("treatment " .. hay .. " machine is priced", Prices.Pieces[t.machine] ~= nil, true)
+end
+
 if failed > 0 then
 	error(("%d line math checks failed"):format(failed))
 end

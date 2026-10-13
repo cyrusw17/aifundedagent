@@ -27,6 +27,13 @@ for dirpath, _, names in os.walk(SRC):
 
 errors, warnings = [], []
 
+# 0. No empty or conflict-marked source files (a bad merge resolution once emptied two client scripts).
+for path, text in files.items():
+    if not text.strip():
+        errors.append(f"{path}: file is empty")
+    elif re.search(r"^(<<<<<<<|>>>>>>>) ", text, re.M):
+        errors.append(f"{path}: has merge conflict markers")
+
 
 def strip_comments(line):
     i = line.find("--")
