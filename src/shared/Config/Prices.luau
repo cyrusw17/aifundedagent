@@ -104,7 +104,7 @@ Prices.DailyContracts = {
 		{ fromSold = 530000, perHour = 436000, reward = 17000, bonus = 34000, needle = "obsidian" },
 		{ fromSold = 760000, perHour = 750000, reward = 30000, bonus = 60000, needle = "geode" },
 		{ fromSold = 5000000, perHour = 1396000, reward = 55000, bonus = 110000, needle = "cloud" },
-	},
+	} :: { any }, -- tiers after the first leave out `kinds` (it is optional)
 }
 
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
