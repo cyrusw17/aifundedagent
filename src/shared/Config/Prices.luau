@@ -86,7 +86,10 @@ Prices.Gloves = {
 -- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
 -- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
 Prices.Plot = 2500
-Prices.PlotExpansion = 1500 -- each extra row of 12 tiles at the back of a plot (two rows to buy)
+-- Each extra row of 12 tiles at the back of a plot (two rows to buy). A new plot's 96 tiles hold a first line easily;
+-- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
+-- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
+Prices.PlotExpansion = 5000
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -113,6 +116,12 @@ Prices.Pieces = {
 	hay_press = 8000,
 }
 Prices.RefundShare = 0.5
+
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.

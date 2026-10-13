@@ -17,6 +17,7 @@ local Debris = game:GetService("Debris")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Needles = require(ReplicatedStorage.Shared.Config.Needles)
+local HayTypes = require(ReplicatedStorage.Shared.Config.Gloves).HayTypes
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
@@ -60,6 +61,17 @@ folder.Name = "Needles"
 folder.Parent = Workspace
 
 local held = {} -- player -> { [key] = count }, only until a save slot is loaded (then Data state.pocket)
+
+-- The needle type hidden in a hay type (Config/Gloves HayTypes): the one from the same map, so Pine straw holds Pine
+-- needles and Star hay holds Cosmic ones.
+local byMap = {}
+for _, n in Needles do
+	byMap[n.map] = n.id
+end
+function Needle.forHay(hayType)
+	local hay = HayTypes[hayType or "meadow"]
+	return hay and byMap[hay.map] or Needle.default.id
+end
 
 function Needle.info(id)
 	return types[id] or Needle.default
@@ -187,6 +199,19 @@ function Needle.takeBest(player)
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	local id, mult = Needle.parseKey(bestKey)
 	return { id = id, mult = mult }
+end
+
+-- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
+-- false and takes none when they have too few.
+function Needle.takeFromPocket(player, needleId, count)
+	local pocket = pocketOf(player)
+	local have = pocket[needleId] or 0
+	if have < count then
+		return false
+	end
+	pocket[needleId] = have - count > 0 and have - count or nil
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
 end
 
 -- Puts a needle ({ id, mult }) into the player's pocket.

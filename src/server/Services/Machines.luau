@@ -26,7 +26,8 @@ local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local Tutorial = require(script.Parent.Tutorial)
 local Bank = require(script.Parent.Bank)
-local Oil = require(Shared.Config.Prices).SorterOil
+local Prices = require(Shared.Config.Prices)
+local Oil = Prices.SorterOil
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
@@ -54,6 +55,7 @@ Machines.Colors = {
 local C = Machines.Colors
 
 local rng = Random.new()
+local alienUsedDay = {} -- UserId -> UTC day the Alien collector beam was last used (per server)
 
 local needle = Needles[1]
 for _, n in Needles do
@@ -131,8 +133,17 @@ end
 
 -- Sorted bales come out of a sorter with their needles taken out. They are ordinary bales (Bales.spawn, same size
 -- and look as every other bale), marked sorted so no sorter takes them twice and buyers pay only for the hay.
-local function spawnSortedBale(cframe, ownerId, hay)
+-- Hay type of a bale body or hay piece (Config/Gloves HayTypes), and the chance of a needle per strand of it.
+local function hayTypeOf(p)
+	return p:GetAttribute("HayType") or "meadow"
+end
+local function needleChance(hayType)
+	return Prices.needleChance(hayType)
+end
+
+local function spawnSortedBale(cframe, ownerId, hay, hayType)
 	local b = Bales.spawn(Vector3.zero, false, false)
+	b.body:SetAttribute("HayType", hayType or "meadow")
 	b.sorted = true
 	b.sortedHay = hay
 	b.ownerId = ownerId
@@ -169,13 +180,14 @@ function Machines.needleBin(parent, frame)
 	local insideSize = Vector3.new(T - 0.8, 3.4, T - 0.8)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
+	local corners = nil -- needleId -> corner index, once the needle-type splitter is fitted
 	local function refresh()
 		Needle.bundleIn(inside, insideSize)
 		local count = 0
 		for _, n in Needle.inBox(inside, insideSize) do
 			count += Needle.count(n)
 		end
-		label.Text = ("NEEDLE BIN\n%d needles"):format(count)
+		label.Text = ("NEEDLE BIN\n%d needles%s"):format(count, corners and ", by type" or "")
 	end
 	refresh()
 	task.spawn(function()
@@ -185,11 +197,58 @@ function Machines.needleBin(parent, frame)
 		end
 	end)
 
+	-- The needle-type splitter upgrade: a cross of dividers makes four corners, and each needle type gets its own
+	-- corner (in the order the types first arrive; a fifth type shares with the first). Plots can sell it as an
+	-- upgrade; the SELL NEEDLES pad works the same.
+	local cornerLabels = {}
+	local CORNER = { Vector3.new(-1.3, 0, -1.3), Vector3.new(1.3, 0, -1.3), Vector3.new(-1.3, 0, 1.3), Vector3.new(1.3, 0, 1.3) }
+	local nextCorner = 0
+	local function cornerFor(needleId)
+		if not corners then
+			return nil
+		end
+		if not corners[needleId] then
+			nextCorner += 1
+			local i = (nextCorner - 1) % 4 + 1
+			corners[needleId] = i
+			cornerLabels[i].Text = Needle.info(needleId).name:upper()
+			cornerLabels[i].TextColor3 = (Needle.look(needleId))
+		end
+		return CORNER[corners[needleId]]
+	end
+
+	function bin.splitByType()
+		if corners then
+			return
+		end
+		corners = {}
+		model:SetAttribute("SplitByType", true)
+		local h = 1.4
+		part(model, "Divider", Vector3.new(T - 0.8, h, 0.2), floor * CFrame.new(0, h / 2, 0), C.metal, Enum.Material.Metal)
+		part(model, "Divider", Vector3.new(0.2, h, T - 0.8), floor * CFrame.new(0, h / 2, 0), C.metal, Enum.Material.Metal)
+		for i, at in CORNER do
+			local tag = part(model, "CornerTag", Vector3.new(0.6, 0.1, 0.6), floor * CFrame.new(at + Vector3.new(0, 0.05, 0)), C.pad)
+			tag.CanCollide = false
+			local l = sign(tag, "", Vector3.new(0, 2, 0))
+			l.Parent.Size = UDim2.fromOffset(110, 26)
+			l.Parent.MaxDistance = 40
+			cornerLabels[i] = l
+		end
+		label.Text = "NEEDLE BIN\nsorted by type"
+		-- Needles already in the bin move to their corners.
+		for _, n in Needle.inBox(inside, insideSize) do
+			local at = cornerFor(n:GetAttribute("NeedleId") or Needle.default.id)
+			n.CFrame = floor * CFrame.new(at + Vector3.new(rng:NextNumber(-0.6, 0.6), 0.4, rng:NextNumber(-0.6, 0.6)))
+		end
+	end
+
 	-- Throws count needles from `from` into the bin, owned by ownerId.
 	function bin.add(from, ownerId, count, needleId)
 		for i = 1, count do
 			task.delay(i * 0.08, function()
-				local to = (floor * CFrame.new(rng:NextNumber(-2, 2), 0.3, rng:NextNumber(-2, 2))).Position
+				local at = cornerFor(needleId or Needle.default.id)
+				local spread = at and 0.7 or 2
+				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
 				Needle.throw(from, to, ownerId, needleId)
 			end)
 		end
@@ -240,6 +299,25 @@ function Machines.needleBin(parent, frame)
 		for key, count in byKey do
 			local id, mult = Needle.parseKey(key)
 			if typeof(count) ~= "number" then
+				continue
+			end
+			local at = cornerFor(id)
+			if at then
+				-- A split bin keeps each type in its corner: stack them there.
+				local stacked = 0
+				local function cornerSpot()
+					stacked += 1
+					return floor * CFrame.new(at + Vector3.new(0, 0.3 + (stacked - 1) * 0.6, 0))
+				end
+				if mult == 1 then
+					while count >= Needle.BUNDLE do
+						Needle.bundle(cornerSpot(), ownerId, id).Anchored = true
+						count -= Needle.BUNDLE
+					end
+				end
+				for _ = 1, count do
+					Needle.make(cornerSpot(), ownerId, id, mult).Anchored = true
+				end
 				continue
 			end
 			if mult == 1 then
@@ -363,7 +441,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
-	local function sort(hay, ownerId)
+	local function sort(hay, ownerId, hayType)
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
@@ -382,7 +460,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		model:SetAttribute("Running", false)
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
-		local hidden = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
 		local found = 0
 		for _ = 1, hidden do
 			if rng:NextNumber() < tier.recovery then
@@ -390,16 +468,57 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			end
 		end
 		if bin then
-			bin.add(chuteFrom, ownerId, found)
+			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType))
 		end
-		spawnSortedBale(out, ownerId, hay)
+		spawnSortedBale(out, ownerId, hay, hayType)
 		sorted += 1
 		refreshLabel()
 	end
 
+	-- The Alien collector (quest only) sorts everything instantly at 100%, but only while its beam is up: a player
+	-- steps on BEAM UP once a day (UTC) to open a window of Factory.AlienWindowSeconds. Bales wait at the flap otherwise.
+	local isAlien = tier.hayPerMin == math.huge
+	local beamUntil = 0
+	if isAlien then
+		local beam = part(model, "Beam", Vector3.new(T - 1.6, 60, T - 1.6), center * CFrame.new(0, TOP + height + 31, 0), C.go, Enum.Material.Neon)
+		beam.Shape = Enum.PartType.Cylinder
+		beam.CFrame = center * CFrame.new(0, TOP + height + 31, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		beam.Size = Vector3.new(60, T - 1.6, T - 1.6)
+		beam.CanCollide = false
+		beam.CanQuery = false
+		beam.Transparency = 1
+		local padAt = (center * CFrame.new(T / 2 + 2.5, 0, -T / 2 - 1)).Position
+		Machines.stepPad(model, padAt, C.go, "BEAM UP\nonce a day", function(player)
+			if os.clock() < beamUntil then
+				return
+			end
+			local today = math.floor(os.time() / 86400)
+			if alienUsedDay[player.UserId] == today then
+				local left = (today + 1) * 86400 - os.time()
+				Data.toast(player, ("The collector is recharging. Next beam in %dh %dm."):format(left // 3600, (left % 3600) // 60))
+				return
+			end
+			alienUsedDay[player.UserId] = today
+			beamUntil = os.clock() + Factory.AlienWindowSeconds
+			beam.Transparency = 0.6
+			Data.toast(player, ("The beam is up for %d seconds. Feed it everything you have."):format(Factory.AlienWindowSeconds))
+			task.spawn(function()
+				while os.clock() < beamUntil and model.Parent do
+					label.Text = ("ALIEN COLLECTOR\nBEAM UP: %ds"):format(math.ceil(beamUntil - os.clock()))
+					task.wait(0.5)
+				end
+				beam.Transparency = 1
+				refreshLabel()
+			end)
+		end)
+	end
+
 	task.spawn(function()
 		while model.Parent do
-			task.wait(0.2)
+			task.wait(isAlien and 0.05 or 0.2)
+			if isAlien and os.clock() >= beamUntil then
+				continue
+			end
 			local bale, loose = nil, {}
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
@@ -410,21 +529,21 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				end
 			end
 			if bale then
-				local ownerId = bale.ownerId
+				local ownerId, hayType = bale.ownerId, hayTypeOf(bale.body)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
 				Bales.consume(bale)
-				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId)
+				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType)
 			elseif #loose > 0 then
-				local ownerId = loose[1]:GetAttribute("OwnerId")
+				local ownerId, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
 				for _, p in loose do
 					Hay.remove(p)
 				end
-				sort(#loose * Config.HayPerPiece, ownerId)
+				sort(#loose * Config.HayPerPiece, ownerId, hayType)
 			end
 		end
 	end)
@@ -464,12 +583,12 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 				else
 					local b = Bales.fromPart(p)
-					local hay, ownerId = 0, nil
+					local hay, ownerId, hayType = 0, nil, "meadow"
 					if b and p == b.body and not b.gone and not b.carriedBy then
-						hay, ownerId = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId
+						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
 						Bales.consume(b)
 					elseif Hay.isPiece(p) then
-						hay, ownerId = Config.HayPerPiece, p:GetAttribute("OwnerId")
+						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
 						Hay.remove(p)
 					end
 					if hay > 0 and ownerId and payTo then
@@ -478,7 +597,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					if hay > 0 and ownerId then
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }
 						t.hay += hay
-						t.needles += Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+						t.needles += Economy.rollNeedles(rng, hay, needleChance(hayType))
 						unsorted[ownerId] = t
 					end
 				end
