@@ -27,6 +27,7 @@ MODULES = {
     "Shared.PieceGuide": "shared/PieceGuide.luau",
     "Shared.LineRate": "shared/LineRate.luau",
     "Shared.Pity": "shared/Pity.luau",
+    "Shared.Reveal": "shared/Reveal.luau",
 }
 
 
