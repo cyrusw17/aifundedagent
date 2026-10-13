@@ -80,9 +80,8 @@ local function describe(slot)
 	if not slot.used then
 		return slot.preset and "Empty. Starts as your preset farm: truck, trailer, silo and a working line." or "Empty. Starts a new farm."
 	end
-	local plot = slot.plot and LandConfig.Plots[slot.plot]
 	local parts = { ("$%d"):format(slot.cash or 0) }
-	table.insert(parts, plot and plot.name or "no land yet")
+	table.insert(parts, slot.plot and "owns a farm" or "no land yet")
 	if (slot.trucks or 0) > 0 then
 		table.insert(parts, slot.trucks == 1 and "1 truck" or ("%d trucks"):format(slot.trucks))
 	end
@@ -139,13 +138,14 @@ end
 
 local showSlots
 
--- Step 2: where the farm goes. A save with land (or a preset) picks any free plot to farm on; a save with no land
--- can buy a plot right away or start without one.
+-- Step 2: where the farm goes. Every plot is the same, and only plots nobody on this server has taken can be picked.
+-- A save with land (or a preset) rebuilds its farm on the plot picked; a save with no land can buy one right away or
+-- start without one.
 local function showPlots(i, slot)
 	clear()
 	local hasLand = slot.plot ~= nil
-	title.Text = hasLand and ("Save %d: pick the plot for your farm."):format(i)
-		or ("Save %d: buy a plot now, or start without land."):format(i)
+	title.Text = hasLand and ("Save %d: pick a free plot. Your farm is rebuilt there."):format(i)
+		or ("Save %d: buy a free plot now, or start without land."):format(i)
 	local state = ReplicatedStorage:WaitForChild("Land", 10)
 	local infos = {}
 	if state then
@@ -178,12 +178,15 @@ local function showPlots(i, slot)
 		card.BackgroundColor3 = CARD
 		card.Parent = list
 		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
-		local name = def.name .. (hasLand and slot.plot == index and "  (your farm)" or "")
-		text(card, name, 15, 4, 20)
-		local size = ("%d x %d tiles"):format(def.tiles.X, def.tiles.Y)
-		text(card, hasLand and size or ("%s  ·  $%d"):format(size, def.price), 12, 26, 18, INK, Enum.Font.Gotham)
+		local taken = ownerId ~= 0 and ownerId ~= player.UserId
+		text(card, def.name, 15, 4, 20)
+		local where = def.open == "S" and "south of the lane" or "north of the lane"
+		local detail = taken and ("%s  ·  taken"):format(where)
+			or hasLand and ("%s  ·  free"):format(where)
+			or ("%s  ·  $%d"):format(where, def.price)
+		text(card, detail, 12, 26, 18, INK, Enum.Font.Gotham)
 		local b
-		if ownerId ~= 0 and ownerId ~= player.UserId then
+		if taken then
 			b = makeButton(card, "TAKEN", Color3.fromRGB(150, 140, 120))
 			b.AutoButtonColor = false
 		else

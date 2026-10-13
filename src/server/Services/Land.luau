@@ -69,6 +69,17 @@ local function cellsFor(def, gx, gz, dir)
 	return cells
 end
 
+-- Saves keep pieces in plot tiles as seen with the lane to the south, so a farm rebuilds the same on any plot. Plots
+-- that open to the north are that same plot turned half a turn; this maps a piece between the two (both ways). The
+-- back-left anchor turns with the piece, so it lands on the turned piece's back-left cell.
+local OPPOSITE = { N = "S", S = "N", E = "W", W = "E" }
+local function turnFor(plot, gx, gz, dir)
+	if plot.def.open == "S" then
+		return gx, gz, dir
+	end
+	return plot.tiles.X - 1 - gx, plot.tiles.Z - 1 - gz, OPPOSITE[dir] or dir
+end
+
 local function isCell(n)
 	return typeof(n) == "number" and n == n and math.floor(n) == n
 end
@@ -284,7 +295,8 @@ local function saveItems(player, plot)
 	end
 	local items = {}
 	for _, item in plot.list do
-		table.insert(items, { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored })
+		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -349,7 +361,7 @@ local function release(plot)
 	publish(plot)
 end
 
--- Gives a plot to a player and rebuilds what they saved on it. Pieces that don't fit (a smaller plot) are skipped.
+-- Gives a plot to a player and rebuilds what they saved on it. Pieces that don't fit (an older save) are skipped but kept.
 local function claim(plot, player, saved)
 	plot.owner, plot.ownerId, plot.ownerName = player, player.UserId, player.DisplayName
 	plotOf[player] = plot
@@ -358,8 +370,9 @@ local function claim(plot, player, saved)
 	for _, s in saved.items or {} do
 		local def = typeof(s) == "table" and pieces[s.id]
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
-			if fits(plot, def, s.gx, s.gz, s.dir) then
-				spawnItem(plot, def, s.gx, s.gz, s.dir, typeof(s.stored) == "number" and s.stored or nil)
+			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
+			if fits(plot, def, gx, gz, dir) then
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil)
 			else
 				table.insert(plot.leftOut, s)
 			end
@@ -543,9 +556,11 @@ local function buildPlot(parent, index, def)
 	local farZ = def.open == "S" and z0 or z1
 	fence(fences, Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ))
 
-	-- The needle bin sits at the west end of the strip, with its SELL NEEDLES pad toward the middle.
-	local binX = x0 + T * 0.5 + 0.5
-	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX - 1, 0, stripZ))
+	-- The needle bin sits at the left end of the strip (seen from the lane), with its SELL NEEDLES pad toward the middle:
+	-- the west end on plots south of the lane, the east end on the turned-around plots north of it.
+	local binX = if def.open == "S" then x0 + T * 0.5 + 0.5 else x1 - T * 0.5 - 0.5
+	local away = if def.open == "S" then -1 else 1
+	local binFrame = CFrame.lookAt(Vector3.new(binX, 0, stripZ), Vector3.new(binX + away, 0, stripZ))
 
 	-- Sign post in the middle of the strip.
 	local post = part(model, "SignPost", Vector3.new(0.8, 6, 0.8), CFrame.new((x0 + x1) / 2, 3, stripZ), Rustic.WoodDark, Enum.Material.Wood)
@@ -695,7 +710,7 @@ local function onLoaded(player)
 	task.spawn(sendHome, player, plot)
 	local message = ("Your farm is on %s."):format(plot.def.name)
 	if #plot.leftOut > 0 then
-		message ..= (" %d pieces don't fit here; they're kept in your save for a bigger plot."):format(#plot.leftOut)
+		message ..= (" %d saved pieces don't fit here; they're still kept in your save."):format(#plot.leftOut)
 	end
 	Data.toast(player, message)
 end
