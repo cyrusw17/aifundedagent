@@ -776,11 +776,11 @@ local function setTool(name)
 	describeSelection()
 end
 
--- PRESETS: save the clipboard as a named line blueprint (kept in the save slot), or load one back into the clipboard
+-- LAYOUTS: save the clipboard as a named layout (kept in the save slot), or load one back into the clipboard
 -- to PASTE on any plot (Services/Blueprints.luau).
 local blueprintRemotes = ReplicatedStorage:WaitForChild("LineBlueprints", 10)
-local presetButton = button(actions, "PRESETS", PICKED)
-presetButton.Size = UDim2.fromOffset(100, 34)
+local presetButton = button(actions, "LAYOUTS", PICKED)
+presetButton.Size = UDim2.fromOffset(100, 34) -- "layouts", not "blueprints": those are the fill-in templates
 presetButton.Visible = blueprintRemotes ~= nil
 local presetPanel = Instance.new("Frame")
 presetPanel.AnchorPoint = Vector2.new(0.5, 1)
@@ -793,12 +793,12 @@ corner(presetPanel, 12)
 local presetStroke = Instance.new("UIStroke", presetPanel)
 presetStroke.Color = INK
 presetStroke.Thickness = 2
-text(presetPanel, "LINE PRESETS", 16, 8, 20)
-local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a preset on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
+text(presetPanel, "SAVED LAYOUTS", 16, 8, 20)
+local presetMessage = text(presetPanel, "COPY an area, name it, and SAVE. LOAD puts a layout on PASTE.", 12, 28, 30, INK, Enum.Font.Gotham)
 local nameBox = Instance.new("TextBox")
 nameBox.Position = UDim2.fromOffset(14, 62)
 nameBox.Size = UDim2.new(1, -118, 0, 30)
-nameBox.PlaceholderText = "Preset name"
+nameBox.PlaceholderText = "Layout name"
 nameBox.Text = ""
 nameBox.ClearTextOnFocus = false
 nameBox.Font = F.Bold
@@ -867,7 +867,7 @@ local function refreshPresets()
 		end)
 	end
 	if #saved == 0 then
-		presetMessage.Text = "No presets yet. COPY an area of your line, name it, and SAVE."
+		presetMessage.Text = "No saved layouts yet. COPY an area of your line, name it, and SAVE."
 	end
 end
 
