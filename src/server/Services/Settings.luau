@@ -1,5 +1,5 @@
 --!nonstrict
--- Player settings (effects volume, UI size, shadows, floating labels), saved with the save slot as state.settings and
+-- Player settings (effects volume, UI size, shadows, floating labels, hay comfort), saved with the save slot as state.settings and
 -- published as "Setting<Key>" player attributes. The client applies them (Settings.client.luau); the server only
 -- checks and stores them. Change one: ReplicatedStorage.Settings.Set:FireServer(key, value).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,6 +29,11 @@ Settings.Keys = {
 	},
 	shadows = { "SettingShadows", true, bool },
 	labels = { "SettingLabels", true, bool },
+	-- Comfort (read by the hay tools and carrying, Hay thread): hold click to keep scooping, let go of the button to
+	-- set a carried bale down, and a bigger THROW button on phones.
+	holdToScoop = { "SettingHoldToScoop", true, bool },
+	holdToCarry = { "SettingHoldToCarry", false, bool },
+	bigThrow = { "SettingBigThrow", false, bool },
 }
 
 local function publish(player)
