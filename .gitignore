@@ -1,0 +1,9 @@
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+Packages/
+.DS_Store
+sourcemap.json
+node_modules/
+exports/
