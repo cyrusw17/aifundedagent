@@ -416,7 +416,7 @@ function Dealer.build(worldFolder)
 		end
 	end)
 
-	Vehicles.init()
+	Vehicles.init(trucksFolder)
 	buildBuilding()
 	buildLot()
 end

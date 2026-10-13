@@ -156,6 +156,7 @@ function Data.sync(player)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
+	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 end
 
 function Data.toast(player, text)
