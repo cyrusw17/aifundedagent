@@ -5,6 +5,9 @@
 --   RichFieldEnds / RichFieldRegion            when the rich field moves on (WorldMap.luau)
 --   RegionEvent / RegionEventEnds              when the region event ends (RegionEvents.luau)
 --   WeatherFront / WeatherFrontKind / Phase / At   when a front arrives or clears (Weather.luau)
+--   StormStarts / StormEnds                    when the thunderstorm breaks or ends (Weather.luau)
+--   HayMarketRestockAt                         when the Hay Market restocks (HayMarket.luau)
+--   SiloFullIn (player)                        seconds until your silo fills, 0 when full (Land.luau)
 --   Cash and Catalog.nextGoal()                how little is left to the next buy
 -- Pick order: anything due within a minute (soonest first), then "only $X to ..." when the next buy is close, then
 -- the soonest timer. Hidden when there is nothing to say; it sits in the top-center stack (UI/Hud.luau).
@@ -98,6 +101,28 @@ local function timers()
 			table.insert(list, { frontLeft, ("%s reaches %s in %s"):format(kind.name, region, clock(frontLeft)) })
 		elseif phase == "on" then
 			table.insert(list, { frontLeft, ("%s over %s clears in %s"):format(kind.name, region, clock(frontLeft)) })
+		end
+	end
+	local storm = left("StormStarts")
+	if storm then
+		table.insert(list, { storm, ("⚡ Thunderstorm in %s"):format(clock(storm)) })
+	else
+		local stormLeft = left("StormEnds")
+		if stormLeft then
+			table.insert(list, { stormLeft, ("⚡ Thunderstorm ends in %s"):format(clock(stormLeft)) })
+		end
+	end
+	local restock = left("HayMarketRestockAt")
+	if restock then
+		table.insert(list, { restock, ("Hay Market restocks in %s"):format(clock(restock)) })
+	end
+	-- Your silos and barns (Land): seconds until full while hay is arriving; 0 when already full; nil otherwise.
+	local full = player:GetAttribute("SiloFullIn")
+	if typeof(full) == "number" then
+		if full <= 0 then
+			table.insert(list, { 0, "Your silo is full! Sort or sell to make room" })
+		else
+			table.insert(list, { full, ("Your silo is full in %s"):format(clock(full)) })
 		end
 	end
 	table.sort(list, function(a, b)
