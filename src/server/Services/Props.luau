@@ -82,16 +82,34 @@ local function scan()
 	-- at the origin. The game's own world folder is left alone.
 	local inWorld = {}
 	collect(Workspace, Workspace:FindFirstChild("Needlewood"), inWorld)
+	local function storage()
+		if not folder then
+			folder = Instance.new("Folder")
+			folder.Name = Config.Folder
+			folder.Parent = ServerStorage
+		end
+		return folder
+	end
 	for name, root in inWorld do
 		if not templates[name] then
-			if not folder then
-				folder = Instance.new("Folder")
-				folder.Name = Config.Folder
-				folder.Parent = ServerStorage
-			end
-			root.Parent = folder
+			root.Parent = storage()
 			templates[name] = root
 		end
+	end
+
+	-- Everything else Import 3D left in the world goes too, even models no prop name matches yet. Left in the
+	-- Workspace, a bulk import is dozens of models piled up at the spawn, all rendered and simulated.
+	local scene = Workspace:FindFirstChild("Scene")
+	for _, child in (scene and scene:GetChildren() or {}) do
+		child.Parent = storage()
+	end
+	for _, child in Workspace:GetChildren() do
+		if child:IsA("Model") and string.match(child.Name, "_Node$") then
+			child.Parent = storage()
+		end
+	end
+	if scene and #scene:GetChildren() == 0 then
+		scene:Destroy()
 	end
 
 	local missing = {}
