@@ -226,9 +226,9 @@ Prices.RegionEvents = {
 	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
 	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
 	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
-	low_tide = { bales = 10, boost = 1.5 }, -- Thimble Keys: the sand bars dry out
+	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
 	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
-	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: fallen stars in the hay
+	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: glowing Star hay, the only free Star hay
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

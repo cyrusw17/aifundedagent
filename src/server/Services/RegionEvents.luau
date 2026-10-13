@@ -1,7 +1,7 @@
 --!nonstrict
 -- One event at a time somewhere on the Stitched Isles, every Prices.RegionEvents.EveryMinutes: Hay Fever on the
--- Meadow Shore, Windfall in the Pine Forest, a Sandstorm on the Dunes, an Avalanche on Snow Peak, Low Tide on the
--- Keys, an Eruption on the Volcano and, at night only, a Meteor Shower over Mirror Lake Valley.
+-- Meadow Shore, Windfall in the Pine Forest, a Sandstorm on the Dunes, an Avalanche on Snow Peak, Low Tide in the
+-- Swamp, an Eruption on the Volcano and, at night only, a Meteor Shower over Mirror Lake Valley.
 -- Each one is announced server-wide, sets the region's weather (Weather.force) and drops extra bales of that region's
 -- hay near its fields, worth more needles (NeedleBoost, amounts in Prices.RegionEvents). Bales nobody has touched
 -- when it ends are taken away again. ReplicatedStorage attributes RegionEvent (name) and RegionEventAt (Vector3) tell
@@ -26,9 +26,9 @@ RegionEvents.List = {
 	{ id = "windfall", name = "Windfall", region = "pine", weather = "rain", text = "Windfall in the %s! The gale brought bales down off the ridge. Up to %sx needles." },
 	{ id = "sandstorm", name = "Sandstorm", region = "desert", weather = "dust", text = "Sandstorm over the %s! Buried bales are coming up. %sx needles." },
 	{ id = "avalanche", name = "Avalanche", region = "snow", weather = "snow", text = "Avalanche on %s! Bales tumbled down to the lodge. %sx needles." },
-	{ id = "low_tide", name = "Low Tide", region = "keys", weather = "clear", text = "Low Tide at %s! The sand bars are dry and full of hay. %sx needles." },
+	{ id = "low_tide", name = "Low Tide", region = "swamp", weather = "mist", text = "Low Tide in the %s! Sunken bales are out of the water. %sx needles." },
 	{ id = "eruption", name = "Eruption", region = "volcano", weather = "ash", text = "The %s is erupting! Scorched bales on the slopes, %sx needles." },
-	{ id = "meteor_shower", name = "Meteor Shower", region = "valley", weather = "clear", night = true, text = "Meteor Shower over %s! Fallen stars landed in the hay. %sx needles." },
+	{ id = "meteor_shower", name = "Meteor Shower", region = "valley", weather = "clear", night = true, hay = "star", text = "Meteor Shower over %s! Star hay fell into the fields, glowing. %sx needles." },
 }
 
 local SPREAD = 26 -- studs around a field's center the event's bales land
@@ -144,8 +144,16 @@ function RegionEvents.run(id, minutes)
 		if def.id == "meteor_shower" then
 			task.spawn(streak, spot, folder or workspace)
 		end
-		local b = Bales.spawn(spot - Vector3.new(0, 0.35, 0), false, true, region.hayType)
+		local b = Bales.spawn(spot - Vector3.new(0, 0.35, 0), false, true, def.hay or region.hayType)
 		if b then
+			if def.hay == "star" then
+				-- Fallen stars glow so they can be found in the dark.
+				local glow = Instance.new("PointLight")
+				glow.Color = Color3.fromRGB(255, 226, 150)
+				glow.Range = 14
+				glow.Brightness = 1.5
+				glow.Parent = b.body
+			end
 			b.body:SetAttribute("NeedleBoost", reward.boost)
 			b.body:SetAttribute("RegionEvent", def.id)
 			event.bales[b] = true
