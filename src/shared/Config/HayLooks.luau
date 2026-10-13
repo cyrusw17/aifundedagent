@@ -44,6 +44,19 @@ local looks: { [string]: Look } = {
 		thick = { 0.14, 0.2 },
 		dust = { 90, 96, 70 },
 	},
+	keys = { -- pale salt-bleached sea grass, thin and wiry
+		colors = { { 196, 190, 150 }, { 176, 178, 136 }, { 210, 200, 164 }, { 150, 160, 120 } },
+		length = { 0.8, 1.4 },
+		thick = { 0.08, 0.12 },
+		dust = { 214, 206, 178 },
+	},
+	bobbin = { -- coppery thread-like grass, fine and long
+		colors = { { 168, 120, 78 }, { 150, 104, 66 }, { 186, 140, 92 }, { 132, 94, 62 } },
+		length = { 1.0, 1.6 },
+		thick = { 0.06, 0.09 },
+		dust = { 150, 118, 88 },
+		motes = { 220, 180, 110 },
+	},
 	volcano = { -- scorched hay with ash
 		colors = { { 92, 80, 70 }, { 70, 62, 56 }, { 120, 92, 66 }, { 140, 96, 60 } },
 		length = { 0.4, 0.9 },
