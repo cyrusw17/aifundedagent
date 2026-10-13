@@ -15,6 +15,7 @@ local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
+local Feedback = require(script.Parent.Feedback)
 
 local Tools = {}
 
@@ -122,7 +123,9 @@ local function useShovel(player, root, aim)
 		state.loadNeedles += found + Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 		Data.sync(player)
 		Hay.flyToPlayer(root, list)
+		Feedback.play("Scoop", root)
 		if found > 0 then
+			Feedback.needle(root)
 			Data.toast(player, found == 1 and "You found a needle in the hay!" or ("You found %d needles!"):format(found))
 		end
 	end)
@@ -136,10 +139,12 @@ local function useRake(player, root, aim)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
 		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		Feedback.play("Rake", center)
 	end)
 end
 
 function Tools.init()
+	Feedback.init()
 	Gloves.init()
 	-- The glove stand goes beside the sell pad once the world has built it.
 	task.defer(function()
