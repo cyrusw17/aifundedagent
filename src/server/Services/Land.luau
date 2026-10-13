@@ -34,6 +34,9 @@ local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Display = require(script.Parent.Display)
+local Mixer = require(script.Parent.Mixer)
+local LineStats = require(script.Parent.LineStats)
+local Quests = require(script.Parent.Quests)
 
 local Land = {}
 
@@ -487,6 +490,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Starbeam.build(plot.items, frame, function()
 			return plot.ownerId
 		end))
+	elseif def.kind == "mixer" then
+		table.insert(item.instances, Mixer.build(plot.items, frame))
 	elseif def.kind == "splitter" then
 		table.insert(item.instances, Machines.splitter(plot.grid, gx, gz, dir, def.rule))
 	elseif def.kind == "display" then
@@ -588,6 +593,7 @@ local function saveItems(player, plot)
 	land.plot = plot.index
 	land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
 	land.binSorted = plot.binSorted or nil
+	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
 	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
 	land.needles = plot.bin.contents(player.UserId)
@@ -695,6 +701,37 @@ addBinPrompt = function(plot)
 		Data.toast(player, "Your needle bin now sorts needles into a corner per type.")
 	end)
 	plot.binPrompt = prompt
+
+	-- And a polishing wheel on its side: polished needles sell for more.
+	local polish = Instance.new("ProximityPrompt")
+	polish.Name = "PolisherPrompt"
+	polish.ActionText = ("Fit a needle polisher $%d"):format(LandConfig.PolisherPrice)
+	polish.ObjectText = "Needle bin"
+	polish.HoldDuration = 0.5
+	polish.MaxActivationDistance = 10
+	polish.RequiresLineOfSight = false
+	polish.UIOffset = Vector2.new(0, 80) -- below the dividers prompt
+	polish.Parent = floor
+	polish.Triggered:Connect(function(player)
+		if plot.owner ~= player then
+			Data.toast(player, "Only the farm's owner can fit a polisher to its bin.")
+			return
+		end
+		if plot.binPolisher then
+			return
+		end
+		local paid, why = Bank.charge(player, LandConfig.PolisherPrice, "Land: needle polisher")
+		if not paid then
+			Data.toast(player, why or "Not enough money.")
+			return
+		end
+		plot.binPolisher = true
+		plot.bin.fitPolisher()
+		polish.Enabled = false
+		saveItems(player, plot)
+		Data.toast(player, "Needles resting in your bin now get polished, and polished needles sell for more.")
+	end)
+	plot.polishPrompt = polish
 end
 
 local function release(plot)
@@ -720,11 +757,12 @@ local function release(plot)
 	end
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
-	if plot.binSorted then
-		-- Dividers belong to the owner's save; the next owner gets a plain bin.
+	if plot.binSorted or plot.binPolisher then
+		-- Dividers and the polisher belong to the owner's save; the next owner gets a plain bin.
 		plot.bin.model:Destroy()
 		plot.bin = Machines.needleBin(plot.model, plot.binFrame)
 		plot.binSorted = nil
+		plot.binPolisher = nil
 		addBinPrompt(plot)
 	end
 	plot.leftOut = nil
@@ -770,6 +808,13 @@ local function claim(plot, player, saved, landKey)
 		plot.bin.splitByType()
 		if plot.binPrompt then
 			plot.binPrompt.Enabled = false
+		end
+	end
+	if saved.binPolisher then
+		plot.binPolisher = true
+		plot.bin.fitPolisher()
+		if plot.polishPrompt then
+			plot.polishPrompt.Enabled = false
 		end
 	end
 	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
@@ -898,8 +943,7 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
-	local s = Data.get(player)
-	if def.quest and not (s and typeof(s.quests) == "table" and typeof(s.quests.earned) == "table" and s.quests.earned[def.id]) then
+	if def.quest and not Quests.has(player, def.quest) then
 		return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
 	end
 	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
@@ -1376,6 +1420,13 @@ local function buildPlot(parent, index, def)
 	}
 	plots[index] = plot
 	addBinPrompt(plot)
+	-- The line stats board at the other end of the strip from the bin, facing the lane: the owner's bales, needles and
+	-- dollars a minute.
+	local statsX = if def.open == "S" then x1 - T * 0.5 - 0.5 else x0 + T * 0.5 + 0.5
+	local statsAt = Vector3.new(statsX, 0, stripZ)
+	LineStats.board(model, CFrame.lookAt(statsAt, Vector3.new(statsX, 0, plot.laneZ)), function()
+		return plot.ownerId
+	end)
 	dress(plot, DEFAULT_THEME.id)
 	likePrompt.Triggered:Connect(function(player)
 		local ownerId = plot.ownerId
