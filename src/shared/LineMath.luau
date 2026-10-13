@@ -43,7 +43,7 @@ end
 
 -- Adds every count in `from` into `into` (both { [key] = count }). Returns into.
 function LineMath.merge(into: { [string]: number }, from: { [string]: number }?): { [string]: number }
-	for key, count in from or {} do
+	for key, count in (from or {}) :: { [string]: number } do
 		into[key] = (into[key] or 0) + count
 	end
 	return into
