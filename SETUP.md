@@ -39,6 +39,6 @@ Each tool does one job. Number keys (or the hotbar) switch tools; press the same
 - **Picking up a bale:** walk up to it and a small "Pick up" button appears. Click or tap it (or press F). It only shows with empty hands: press the tool's number again to put the tool away. With a tool out, clicks go to the tool. You carry the real bale and walk slower. The button changes to "Put down"; click it, click anywhere, or press G to set the bale down. It lands square on whatever is in front of you, so set one down facing another bale and it stacks on top. A bale left out in the field disappears after 3 minutes; set it on the brown BALE DROP-OFF pad by the spawn and it stays until you smash or sell it.
 - **Shovel (slot 1, equipped on spawn):** click a bale: the twine snaps, the bale bursts and the hay spills out as a pile of loose pieces. Face the pile and click to scoop a few pieces at a time into your arms.
 - **Rake (slot 2):** face loose hay and click. The rake drags the pieces toward you and spreads them across the ground.
-- **Selling:** the yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole bale on it, or rake loose pieces onto it.
+- **Selling:** the glowing SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole bale on it, or rake loose pieces onto it.
 - **HUD:** top left shows cash, the hay you carry, and one line saying what a click does with what is in your hands.
 - Tuning numbers are in `src/shared/Config/Game.luau` (swing angles, carry speed, cooldowns).

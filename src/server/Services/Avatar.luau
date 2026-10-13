@@ -14,7 +14,7 @@ Avatar.onToolActivated = nil -- set by Tools.init: function(player, kind) for ea
 
 local rigs = {}
 
-local WOOD = Color3.fromRGB(139, 90, 43)
+local WOOD = Color3.fromRGB(128, 105, 77) -- rustic weathered handle
 
 -- A tool with a wooden handle plus extra welded parts. parts is a list of { name, size, offset, color, material }.
 local function buildTool(name, tip, parts)
@@ -57,7 +57,7 @@ local function buildShovel()
 			"Blade",
 			Vector3.new(1.2, 1.5, 0.12),
 			CFrame.new(0, 4.35, 0),
-			Color3.fromRGB(150, 158, 166),
+			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
 	})
@@ -65,7 +65,7 @@ end
 
 -- A long shaft with a crossbar and a row of teeth at the end.
 local function buildRake()
-	local steel = Color3.fromRGB(150, 158, 166)
+	local steel = Color3.fromRGB(107, 94, 84)
 	local parts = {
 		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },
 		{ "Bar", Vector3.new(3.2, 0.25, 0.3), CFrame.new(0, 4.5, 0), steel, Enum.Material.Metal },
@@ -99,9 +99,18 @@ local function tweenMotor(motor, base, degrees, seconds, style)
 	if not motor or not motor.Parent or not base then
 		return
 	end
+	-- Some rigs lock the shoulder joint (Studio reports C0 as read only). The arm pose is only cosmetic, so if it
+	-- cannot move, skip it rather than let the error stop the swing, the scoop or the carry.
 	local goal = { C0 = base * CFrame.Angles(math.rad(degrees), 0, 0) }
-	TweenService:Create(motor, TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out), goal)
-		:Play()
+	local info = TweenInfo.new(seconds, style or Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	local ok = pcall(function()
+		TweenService:Create(motor, info, goal):Play()
+	end)
+	if not ok then
+		pcall(function()
+			motor.C0 = goal.C0
+		end)
+	end
 end
 
 local function tweenArm(rig, degrees, seconds, style)

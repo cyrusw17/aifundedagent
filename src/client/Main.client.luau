@@ -46,7 +46,7 @@ Instance.new("UICorner", barBack).CornerRadius = UDim.new(0, 5)
 
 local bar = Instance.new("Frame")
 bar.Size = UDim2.fromScale(0, 1)
-bar.BackgroundColor3 = Color3.fromRGB(240, 173, 46)
+bar.BackgroundColor3 = Color3.fromRGB(189, 168, 112)
 bar.Parent = barBack
 Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 5)
 

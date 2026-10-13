@@ -53,7 +53,7 @@ function World.build()
 			"Ground",
 			Vector3.new(300, 1, 300),
 			CFrame.new(0, -0.5, 0),
-			Color3.fromRGB(106, 166, 90),
+			Color3.fromRGB(112, 128, 82),
 			Enum.Material.Grass
 		)
 	end
@@ -65,7 +65,7 @@ function World.build()
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 0
-	spawn.Color = Color3.fromRGB(200, 180, 120)
+	spawn.Color = Color3.fromRGB(189, 168, 112)
 	spawn.Parent = folder
 
 	Bales.init(folder)
@@ -84,18 +84,18 @@ function World.build()
 		"Floor",
 		Vector3.new(16, 1, 12),
 		CFrame.new(22, 0.5, -18),
-		Color3.fromRGB(200, 180, 140),
+		Color3.fromRGB(128, 105, 77),
 		Enum.Material.WoodPlanks
 	)
-	newPart(shop, "BackWall", Vector3.new(16, 9, 1), CFrame.new(22, 5.5, -23.5), Color3.fromRGB(244, 239, 224))
-	newPart(shop, "LeftWall", Vector3.new(1, 9, 12), CFrame.new(14.5, 5.5, -18), Color3.fromRGB(244, 239, 224))
-	newPart(shop, "RightWall", Vector3.new(1, 9, 12), CFrame.new(29.5, 5.5, -18), Color3.fromRGB(244, 239, 224))
+	newPart(shop, "BackWall", Vector3.new(16, 9, 1), CFrame.new(22, 5.5, -23.5), Color3.fromRGB(153, 128, 97), Enum.Material.WoodPlanks)
+	newPart(shop, "LeftWall", Vector3.new(1, 9, 12), CFrame.new(14.5, 5.5, -18), Color3.fromRGB(153, 128, 97), Enum.Material.WoodPlanks)
+	newPart(shop, "RightWall", Vector3.new(1, 9, 12), CFrame.new(29.5, 5.5, -18), Color3.fromRGB(153, 128, 97), Enum.Material.WoodPlanks)
 	newPart(
 		shop,
 		"Roof",
 		Vector3.new(18, 1, 14),
 		CFrame.new(22, 10.5, -18),
-		Color3.fromRGB(192, 57, 43),
+		Color3.fromRGB(102, 66, 42),
 		Enum.Material.Slate
 	)
 	local counter = newPart(
@@ -103,7 +103,7 @@ function World.build()
 		"Counter",
 		Vector3.new(10, 4, 2),
 		CFrame.new(22, 3, -14),
-		Color3.fromRGB(139, 90, 43),
+		Color3.fromRGB(92, 74, 54),
 		Enum.Material.Wood
 	)
 	addSign(counter, "HAY SHOP", Vector3.new(0, 6, 0))
@@ -114,7 +114,7 @@ function World.build()
 		"SellPad",
 		Vector3.new(12, 0.4, 9),
 		CFrame.new(22, 0.2, -6),
-		Color3.fromRGB(240, 173, 46),
+		Color3.fromRGB(219, 204, 153),
 		Enum.Material.Neon
 	)
 	pad.Transparency = 0.35
@@ -127,7 +127,7 @@ function World.build()
 		"BaleDropOff",
 		Vector3.new(14, 0.2, 10),
 		CFrame.new(0, 0.1, -4),
-		Color3.fromRGB(150, 110, 70),
+		Color3.fromRGB(92, 74, 54),
 		Enum.Material.WoodPlanks
 	)
 	addSign(dropOff, "BALE DROP-OFF", Vector3.new(0, 5, 0))
