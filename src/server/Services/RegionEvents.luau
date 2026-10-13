@@ -118,6 +118,7 @@ local function finish()
 	end
 	ReplicatedStorage:SetAttribute("RegionEvent", nil)
 	ReplicatedStorage:SetAttribute("RegionEventAt", nil)
+	ReplicatedStorage:SetAttribute("RegionEventEnds", nil)
 end
 
 -- Starts an event now (by id); returns the bales it dropped. Ends any running event first.
@@ -162,6 +163,8 @@ function RegionEvents.run(id, minutes)
 	local center = spots[1] or Vector3.new(region.center.X, region.base, region.center.Y)
 	ReplicatedStorage:SetAttribute("RegionEvent", def.name)
 	ReplicatedStorage:SetAttribute("RegionEventAt", center)
+	-- When it ends (server time; the HUD countdown strip, Countdown.client.luau).
+	ReplicatedStorage:SetAttribute("RegionEventEnds", workspace:GetServerTimeNow() + seconds)
 	Announce.say(def.text:format(region.name, tostring(reward.boost)), "event")
 
 	task.delay(seconds, function()

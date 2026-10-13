@@ -177,6 +177,8 @@ local function pickRich(parent)
 	-- For map screens: where the rich field is now (a UI can mark it).
 	ReplicatedStorage:SetAttribute("RichField", rich.center)
 	ReplicatedStorage:SetAttribute("RichFieldRegion", rich.region)
+	-- When it moves on (server time; the HUD countdown strip, Countdown.client.luau).
+	ReplicatedStorage:SetAttribute("RichFieldEnds", workspace:GetServerTimeNow() + Map.RichMinutes * 60)
 	Announce.say(("Rich field in %s: 2x needles for %d minutes. Follow the gold beam!"):format(rich.region, Map.RichMinutes), "event")
 end
 

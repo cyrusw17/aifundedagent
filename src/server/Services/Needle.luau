@@ -27,6 +27,7 @@ local Market = require(script.Parent.Market)
 local Props = require(script.Parent.Props)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
+local Pity = require(ReplicatedStorage.Shared.Pity)
 
 local Needle = {}
 
@@ -179,11 +180,13 @@ function Needle.isNeedle(part)
 end
 
 -- Rolls whether a freshly found needle is mutated. Returns its multiplier (1 when it is a normal needle).
+-- The second result is true on a near miss (Prices.Pity.nearMiss): a plain needle that rolled just over the chance.
 function Needle.rollMutation()
-	if rng:NextNumber() < MUTATION_CHANCE then
-		return rng:NextInteger(MUTATION_MIN, MUTATION_MAX)
+	local roll = Pity.roll(rng:NextNumber(), MUTATION_CHANCE, Prices.Pity.nearMiss)
+	if roll == "hit" then
+		return rng:NextInteger(MUTATION_MIN, MUTATION_MAX), false
 	end
-	return 1
+	return 1, roll == "near"
 end
 
 -- How many needles are in this player's pocket.
@@ -472,10 +475,14 @@ local function announce(ownerId, needleId, mult)
 end
 
 -- The reveal: a freshly found needle pops up at `from` with a flash and hangs there for a moment, spinning, then
--- arcs to land at `to`, where it glints and dings and settles with physics. Rolls the mutation chance.
-function Needle.throw(from, to, ownerId, needleId, grade)
+-- arcs to land at `to`, where it glints and dings and settles with physics. Rolls the mutation chance unless mult
+-- comes rolled already (the sorter's bin rolls a bale's needles up front for the pity rule); near makes a plain needle
+-- flicker gold for a moment over the chute, a "so close" near miss.
+function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	needleId = needleId or Needle.default.id
-	local mult = Needle.rollMutation()
+	if mult == nil then
+		mult, near = Needle.rollMutation()
+	end
 	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult), grade)
 	n.Anchored = true
 	n.CanCollide = false
@@ -490,14 +497,44 @@ function Needle.throw(from, to, ownerId, needleId, grade)
 		announce(ownerId, needleId, mult)
 	end
 
+	near = near and mult == 1
+	local own, ownMaterial = n.Color, n.Material
+	if near then
+		local tag = Instance.new("BillboardGui")
+		tag.Name = "SoClose"
+		tag.Size = UDim2.fromOffset(110, 26)
+		tag.StudsOffset = Vector3.new(0, 1.6, 0)
+		tag.MaxDistance = 40
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextScaled = true
+		text.TextColor3 = MUTATED_COLOR
+		text.TextStrokeTransparency = 0.4
+		text.Text = "so close!"
+		text.Parent = tag
+		tag.Parent = n
+		Debris:AddItem(tag, 1.6)
+	end
+
 	task.spawn(function()
-		local hover = mult > 1 and 1.5 or 0.35
+		local hover = mult > 1 and 1.5 or near and 0.9 or 0.35
 		local lift = from + Vector3.new(0, 1.5, 0)
 		local started = os.clock()
 		while n.Parent and os.clock() - started < hover do
 			local t = (os.clock() - started) / hover
 			n.CFrame = CFrame.new(from:Lerp(lift, math.sin(t * math.pi / 2))) * CFrame.Angles(0, t * 12, math.rad(30))
+			if near then -- flickers gold three times, then settles back to its own color
+				local gold = t < 0.8 and math.floor(t * 7.5) % 2 == 0
+				n.Color = gold and MUTATED_COLOR or own
+				n.Material = gold and Enum.Material.Neon or ownMaterial
+				light.Color = n.Color
+			end
 			RunService.Heartbeat:Wait()
+		end
+		if near and n.Parent then
+			n.Color, n.Material = own, ownMaterial
 		end
 		light:Destroy()
 
