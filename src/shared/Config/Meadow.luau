@@ -5,7 +5,7 @@
 return {
 	-- Change Version whenever the layout or noise changes. A place that was baked in Studio with an older version
 	-- gets regenerated when you press Play.
-	Version = 6,
+	Version = 7,
 	Seed = 7, -- shifts the noise; same seed always gives the same hills
 
 	HalfSize = 512, -- the biome is 1024 x 1024 studs, centered on base camp
