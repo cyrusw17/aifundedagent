@@ -44,6 +44,15 @@ local function addSign(parent, text, offset, kind)
 	return WorldLabel.billboard(parent, text, { offset = offset, kind = kind or "status" })
 end
 
+-- Runs one build step. A step that errors is reported and skipped, so one broken builder (a missing mesh or config
+-- entry) can't stop the land office, bank, map and quests after it from being built.
+local function step(name, fn)
+	local ok, err = xpcall(fn, debug.traceback)
+	if not ok then
+		warn(("[Needlewood] World.build: %s failed, building the rest anyway\n%s"):format(name, tostring(err)))
+	end
+end
+
 function World.build()
 	local folder = Instance.new("Folder")
 	folder.Name = "Needlewood"
@@ -55,7 +64,9 @@ function World.build()
 	if baseplate and baseplate:IsA("BasePart") then
 		baseplate:Destroy()
 	end
-	MeadowTerrain.ensure()
+	step("MeadowTerrain.ensure", function()
+		MeadowTerrain.ensure()
+	end)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "BaseCampSpawn"
@@ -67,9 +78,15 @@ function World.build()
 	spawn.Color = Color3.fromRGB(189, 168, 112)
 	spawn.Parent = folder
 
-	Bales.init(folder)
-	Hay.init(folder)
-	Tools.init()
+	step("Bales.init", function()
+		Bales.init(folder)
+	end)
+	step("Hay.init", function()
+		Hay.init(folder)
+	end)
+	step("Tools.init", function()
+		Tools.init()
+	end)
 	for i = 0, 2 do
 		Bales.spawn(Vector3.new(-18 + i * 7, 0, -18), true)
 	end
@@ -118,15 +135,23 @@ function World.build()
 	)
 	pad.Transparency = 0.35
 	addSign(pad, "SELL HERE", Vector3.new(0, 5, 0))
-	Gameplay.wireSellPad(pad)
+	step("Gameplay.wireSellPad", function()
+		Gameplay.wireSellPad(pad)
+	end)
 
 	-- Today's needle prices on this server (Market.luau), on a board beside the sell pad.
-	Market.build(folder, Vector3.new(34, 0, -8))
+	step("Market.build", function()
+		Market.build(folder, Vector3.new(34, 0, -8))
+	end)
 
 	-- NPC buyer orders and their delivery pad, on the west side of camp (Orders.luau).
-	Orders.build(folder, Vector3.new(-34, 0, 6))
+	step("Orders.build", function()
+		Orders.build(folder, Vector3.new(-34, 0, 6))
+	end)
 	-- The Hay Market stall: rare bales, new stock every 5 minutes (HayMarket.luau).
-	HayMarket.build(folder, Vector3.new(-36, 0, -22))
+	step("HayMarket.build", function()
+		HayMarket.build(folder, Vector3.new(-36, 0, -22))
+	end)
 
 	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(
@@ -138,33 +163,59 @@ function World.build()
 		Enum.Material.WoodPlanks
 	)
 	addSign(dropOff, "BALE DROP-OFF", Vector3.new(0, 5, 0))
-	Bales.setDropOff(dropOff)
+	step("Bales.setDropOff", function()
+		Bales.setDropOff(dropOff)
+	end)
 
 	-- The Rustic props that have no job yet (wheelbarrow, crate, logs, spare tools) dress up the camp.
-	Props.dressBaseCamp(folder)
+	step("Props.dressBaseCamp", function()
+		Props.dressBaseCamp(folder)
+	end)
 
 	-- The public hay sell shop with its conveyor line, east of base camp.
-	SellShop.build(folder)
+	step("SellShop.build", function()
+		SellShop.build(folder)
+	end)
 
 	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
-	Dealer.build(folder)
-	Trade.build(folder) -- the Trading Post between the dealer's lot and base camp
-	Leaderboards.build(folder) -- top sellers and rarest needle, east of the spawn
-	MeadowDecor.build(folder)
+	step("Dealer.build", function()
+		Dealer.build(folder)
+	end)
+	step("Trade.build", function() -- the Trading Post between the dealer's lot and base camp
+		Trade.build(folder)
+	end)
+	step("Leaderboards.build", function() -- top sellers and rarest needle, east of the spawn
+		Leaderboards.build(folder)
+	end)
+	step("MeadowDecor.build", function()
+		MeadowDecor.build(folder)
+	end)
 
 	-- The land office and the buildable plots south of the main road.
-	Land.build(folder)
+	step("Land.build", function()
+		Land.build(folder)
+	end)
 
 	-- Meadow Savings & Loan, on the main road east of the plot road.
-	Bank.build(folder)
+	step("Bank.build", function()
+		Bank.build(folder)
+	end)
 
 	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
-	WorldMap.build(folder)
-	Chutes.build(folder) -- after the world map, so its hay fields get chutes
+	step("WorldMap.build", function()
+		WorldMap.build(folder)
+	end)
+	step("Chutes.build", function() -- after the world map, so its hay fields get chutes
+		Chutes.build(folder)
+	end)
 	-- No tall grass blades anywhere: clear any Grass a baked or hand-painted place still holds (MeadowTerrain).
-	MeadowTerrain.sweepGrass(require(game:GetService("ReplicatedStorage").Shared.Config.WorldMap).Bounds)
+	step("MeadowTerrain.sweepGrass", function()
+		MeadowTerrain.sweepGrass(require(game:GetService("ReplicatedStorage").Shared.Config.WorldMap).Bounds)
+	end)
 	-- Quests, rituals and the places they send you, plus the day and night cycle.
-	Quests.build(folder)
+	step("Quests.build", function()
+		Quests.build(folder)
+	end)
 end
 
 return World

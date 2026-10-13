@@ -94,7 +94,9 @@ local function addMoving(part)
 	end
 	moving[part] = {
 		rest = part.CFrame,
-		axis = axle(part.Size),
+		-- an "Axis" attribute (a Vector3, in the part's own space) overrides the guess, as a windmill sail needs: its
+		-- long side is not its axle
+		axis = typeof(part:GetAttribute("Axis")) == "Vector3" and part:GetAttribute("Axis") or axle(part.Size),
 		kind = part:GetAttribute("Motion") or "Spin",
 		machine = machine ~= workspace and machine or nil,
 	}

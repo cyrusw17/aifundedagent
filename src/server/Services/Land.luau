@@ -707,6 +707,7 @@ local function buildDecor(plot, item, def)
 			local sail = part(model, "Sail" .. i, Vector3.new(1.8, 18, 0.3), hubAt * CFrame.new(0, 0, -0.8) * CFrame.Angles(0, 0, angle), Rustic.Cloth, Enum.Material.Fabric)
 			sail.CanCollide = false
 			sail:SetAttribute("Motion", "Spin")
+			sail:SetAttribute("Axis", Vector3.zAxis) -- turn about the hub (the sail's facing axis), not along the spar
 			CollectionService:AddTag(sail, "PropMotion")
 		end
 	end

@@ -116,7 +116,10 @@ return function(SelfTest)
 		local truck2 = spawnPickup(t, lane)
 		t.wait(1)
 		local cargoAt = truck2.PrimaryPart.CFrame * truck2:GetAttribute("CargoOffset")
-		local chute = Chutes.make(workspace, CFrame.lookAt(Vector3.new(cargoAt.X, lane.Y, cargoAt.Z), Vector3.new(cargoAt.X, lane.Y, cargoAt.Z) + lane.LookVector))
+		-- Stand the chute 4 studs under the bed's middle, wherever the truck is: a headless run has no physics, so the
+		-- truck may still hang where it was built instead of on the pad.
+		local under = Vector3.new(cargoAt.X, cargoAt.Y - 4, cargoAt.Z)
+		local chute = Chutes.make(workspace, CFrame.lookAt(under, under + lane.LookVector))
 		t.cleanup(chute.model)
 		local dropping = Chutes.pull(chute, nil)
 		t.equal("chute drops a full layer into the pickup bed", dropping, 9)
