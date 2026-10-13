@@ -35,9 +35,14 @@ local function blockedAhead(body, dir)
 	local params = OverlapParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { body }
-	local reach = math.max(body.Size.X, body.Size.Z) / 2 + 1
-	local ahead = CFrame.new(body.Position + dir * reach)
-	for _, p in Workspace:GetPartBoundsInBox(ahead, Vector3.new(2.5, 2, 2.5), params) do
+	-- How far the bale's front face is from its center along dir, however the bale is turned; then a thin box just
+	-- past that face.
+	local cf = body.CFrame
+	local half = math.abs(cf.RightVector:Dot(dir)) * body.Size.X / 2
+		+ math.abs(cf.UpVector:Dot(dir)) * body.Size.Y / 2
+		+ math.abs(cf.LookVector:Dot(dir)) * body.Size.Z / 2
+	local ahead = CFrame.lookAt(body.Position + dir * (half + 0.6), body.Position + dir * (half + 2))
+	for _, p in Workspace:GetPartBoundsInBox(ahead, Vector3.new(2.5, 2, 1.2), params) do
 		if p.CanCollide and not CollectionService:HasTag(p, "ConveyorBelt") and p.Name ~= "Rail" and p.Name ~= "RampRail" then
 			return true
 		end
@@ -66,7 +71,13 @@ local function clear(body)
 	-- Lift it clear of whatever caught it, square it to the belt, and push it along.
 	local flat = Vector3.new(dir.X, 0, dir.Z)
 	local look = flat.Magnitude > 0.01 and flat.Unit or Vector3.zAxis
-	local at = Vector3.new(belt.Position.X, body.Position.Y + 1, belt.Position.Z)
+	-- Over the belt's middle line, just above its surface where the bale is (a ramp's center is higher or lower).
+	local offset = body.Position - belt.Position
+	local along = offset:Dot(look) * look
+	local x = belt.Position + along
+	local hit = Workspace:Raycast(Vector3.new(x.X, body.Position.Y + 6, x.Z), Vector3.new(0, -12, 0), downParams)
+	local y = hit and hit.Position.Y + body.Size.Y / 2 + 0.6 or body.Position.Y + 1
+	local at = Vector3.new(x.X, y, x.Z)
 	body.CFrame = CFrame.lookAt(at, at + look) * CFrame.Angles(0, math.pi / 2, 0)
 	body.AssemblyLinearVelocity = dir * 6
 	body.AssemblyAngularVelocity = Vector3.zero
@@ -83,7 +94,7 @@ local function markJammed(body)
 	prompt.Name = "ClearJam"
 	prompt.ActionText = "Clear jam"
 	prompt.ObjectText = "Stuck bale"
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.KeyboardKeyCode = Enum.KeyCode.J -- F is the bale's Pick up; J is free
 	prompt.HoldDuration = 0.4
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
@@ -109,7 +120,7 @@ local function check()
 			continue
 		end
 		if blockedAhead(body, beltV.Unit) then
-			stillSince[body] = nil -- queuing behind something: fine
+			unjam(body) -- queuing behind something: fine
 			continue
 		end
 		stillSince[body] = stillSince[body] or now
@@ -120,6 +131,10 @@ local function check()
 	for body in stillSince do
 		if not body.Parent then
 			stillSince[body] = nil
+		end
+	end
+	for body in jammed do
+		if not body.Parent then
 			jammed[body] = nil
 		end
 	end

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
+local Alloys = require(ReplicatedStorage.Shared.Config.Alloys)
 
 local Data = {}
 
@@ -255,6 +256,10 @@ function Data.sync(player)
 	end
 	player:SetAttribute("NeedlesHeld", held)
 	player:SetAttribute("Thatch", state.thatch or 0)
+	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
+	for _, alloy in Alloys do
+		player:SetAttribute("Material_" .. alloy.id, (state.materials or {})[alloy.id] or 0)
+	end
 end
 
 function Data.toast(player, text)
