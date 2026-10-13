@@ -10,7 +10,7 @@ MODULES["Services.Bales"] = function()
 		return { body = body, hayType = hayType, spawnPosition = pos, gone = false }
 	end }
 end
-MODULES["Services.Data"] = function() return { get = function() return nil end, toast = function() end } end
+MODULES["Services.Data"] = function() return { get = function() return nil end, toast = function() end, loaded = { Event = { Connect = function() end } } } end
 MODULES["Services.Vehicles"] = function() return { all = function() return {} end } end
 MODULES["Services.WorldTerrain"] = function() return { ensure = function() end, isReady = function() return false end } end
 MODULES["Shared.WorldLabel"] = function()
