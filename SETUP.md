@@ -14,3 +14,14 @@ You only do this once. Claude edits the code in this repo; you run it in Roblox 
 
 Blender: install Blender 4.x from blender.org. Model scripts will live in `blender/`. Run one with
 `/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/<script>.py`.
+
+## Cloud session tools (for Claude)
+
+GitHub release downloads are blocked in the cloud environment, so tools are built from crates.io. Add this to the environment's Setup script so every new session has them:
+
+```
+cargo install rojo --locked
+cargo install stylua --locked
+```
+
+Checked so far: `rojo build default.project.json -o test.rbxl` builds the project, and `stylua --check src` parses and formats all Luau files.
