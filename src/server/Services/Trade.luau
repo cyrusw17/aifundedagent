@@ -143,9 +143,10 @@ local function isWhole(n)
 	return typeof(n) == "number" and n == n and n >= 1 and n <= MAX_AMOUNT and math.floor(n) == n
 end
 
--- Cash a player can put in: wallet plus bank, the same money Bank.settleTrade takes it from.
+-- Cash a player can put in: wallet plus bank, the same money Bank.settleTrade takes it from (loan money held for
+-- purchases can't be traded).
 local function cashAvailable(state)
-	return math.max(0, math.floor(Bank.spendable(state)))
+	return math.max(0, math.floor(Bank.liquid(state)))
 end
 
 -- Cleans an offer from the client: whole positive amounts, no more than the player can trade right now. Returns the

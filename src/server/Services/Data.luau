@@ -192,7 +192,7 @@ local function bankFrom(saved)
 	if typeof(saved.loans) == "table" then
 		for kind, loan in saved.loans do
 			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then
-				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
+				bank.loans[kind] = { owed = num(loan.owed), principal = num(loan.principal), held = math.max(0, num(loan.held)), item = typeof(loan.item) == "string" and loan.item or nil, takenAt = num(loan.takenAt) }
 			end
 		end
 	end
@@ -353,11 +353,13 @@ function Data.sync(player)
 	-- Wallet, BankBalance and LoanOwed are the real figures for the bank HUD (they stay real with InfiniteMoney on).
 	local bank = state.bank
 	local balance = bank and bank.balance or 0
-	local owed = 0
+	local owed, held = 0, 0
 	for _, loan in (bank and bank.loans or {}) do
 		owed += loan.owed
+		held += loan.held or 0
 	end
-	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance)
+	-- Cash also counts loan money the bank holds for purchases (Bank.held), since shops can spend it.
+	player:SetAttribute("Cash", if Config.InfiniteMoney then state.cash else state.cash + balance + held)
 	player:SetAttribute("Wallet", if Config.InfiniteMoney then state.savedCash or 0 else state.cash)
 	player:SetAttribute("BankBalance", balance)
 	player:SetAttribute("LoanOwed", owed)
