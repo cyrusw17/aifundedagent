@@ -9,9 +9,12 @@
 --   Machines.sorter(parent, frame, "conveyor_sorter", bin)                 -- covers this cell and the next one along
 --   Machines.hayBuyer(parent, frame, "HAY BUYER")                          -- end-of-line hopper, pays on drop
 --   Machines.stepPad(parent, position, color, text, function(player) end)  -- tycoon floor button
+--   Machines.splitter(grid, gx, gz, dir, "alternate" | "sorted")           -- a belt tile with two ways out (before finish)
+-- A merger needs no piece: a belt tile fed from both sides merges them (and wears the merger mesh).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
@@ -24,6 +27,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
+local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
 
 local Machines = {}
@@ -392,6 +396,81 @@ function Machines.hayBuyer(parent, frame, title)
 		end
 	end)
 	return model
+end
+
+-- A splitter tile: loads come in from behind and leave through its left or right side onto the tiles there.
+-- rule "alternate" sends them left, right, left...; rule "sorted" sends sorted bales left and everything else
+-- (unsorted bales, loose hay, needles) right, so unsorted hay can loop back to a sorter. A side with no tile is skipped.
+-- Lay it before Conveyors.finish(grid), like any tile. Returns the tile's model.
+function Machines.splitter(grid, gx, gz, dir, rule)
+	local belt = Conveyors.place(grid, gx, gz, dir)
+	local tile = Conveyors.makeSplitter(grid, gx, gz)
+	belt.AssemblyLinearVelocity = Vector3.zero -- the splitter pushes each load itself
+	belt:SetAttribute("Speed", 0)
+	local left, right = Conveyors.sides(tile.d)
+	local center = Conveyors.cellCenter(grid, gx, gz)
+	local zone = CFrame.new(center + Vector3.new(0, TOP + 2.5, 0))
+	local zoneSize = Vector3.new(T - 0.4, 5, T - 0.4)
+	local label = sign(belt, rule == "sorted" and "SPLITTER\nsorted left" or "SPLITTER", Vector3.new(0, 4, 0))
+	label.Parent.MaxDistance = 40
+
+	local function open(side)
+		return Conveyors.tileAt(grid, gx + math.round(side.X), gz + math.round(side.Z)) ~= nil
+	end
+
+	local going = {} -- part -> side it is being pushed out of
+	local nextLeft = true
+	local function pick(p)
+		local want
+		if rule == "sorted" then
+			local b = Bales.fromPart(p)
+			want = (b and b.sorted) and left or right
+		else
+			want = nextLeft and left or right
+			nextLeft = not nextLeft
+		end
+		local other = want == left and right or left
+		if not open(want) and open(other) then
+			return other
+		end
+		return want
+	end
+
+	task.spawn(function()
+		local nextScan = 0
+		while tile.model.Parent do
+			if os.clock() >= nextScan then
+				nextScan = os.clock() + 0.15
+				local seen = {}
+				for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
+					local b = Bales.fromPart(p)
+					local load = (b and p == b.body and not b.gone and not b.carriedBy) or Hay.isPiece(p) or Needle.isNeedle(p)
+					if load and not p.Anchored then
+						seen[p] = true
+						if not going[p] then
+							going[p] = pick(p)
+							pcall(function()
+								p:SetNetworkOwner(nil)
+							end)
+						end
+					end
+				end
+				for p in going do
+					if not seen[p] then
+						going[p] = nil
+					end
+				end
+			end
+			for p, side in going do
+				if p.Parent then
+					local v = p.AssemblyLinearVelocity
+					p.AssemblyLinearVelocity = side * Factory.BeltSpeed + Vector3.new(0, math.min(v.Y, 0), 0)
+				end
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+	return tile.model
 end
 
 return Machines
