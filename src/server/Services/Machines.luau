@@ -173,7 +173,12 @@ function Machines.needleBin(parent, frame)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
 	local function refresh()
-		label.Text = ("NEEDLE BIN\n%d needles"):format(#Needle.inBox(inside, insideSize))
+		Needle.bundleIn(inside, insideSize)
+		local count = 0
+		for _, n in Needle.inBox(inside, insideSize) do
+			count += Needle.count(n)
+		end
+		label.Text = ("NEEDLE BIN\n%d needles"):format(count)
 	end
 	refresh()
 	task.spawn(function()
@@ -197,7 +202,7 @@ function Machines.needleBin(parent, frame)
 		local count, value = Needle.sellHeld(player)
 		for _, n in Needle.inBox(inside, insideSize) do
 			if n:GetAttribute("OwnerId") == player.UserId then
-				count += 1
+				count += Needle.count(n)
 				value += Needle.value(n)
 				n:Destroy()
 			end

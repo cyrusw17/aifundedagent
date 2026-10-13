@@ -5,6 +5,9 @@
 --
 -- Each needle type has its own color (rarer types glow). About 1 in 500 found needles is MUTATED: bigger, glowing,
 -- worth 3x to 25x, and announced to the whole server.
+--
+-- To keep part counts down, every 10 plain needles of one type and owner resting in a bin are tied into a BUNDLE:
+-- one needle part with a "Count" attribute of 10 and a twine band. A bundle sells and picks up as 10 needles.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,6 +43,9 @@ local LOOKS = {
 	cosmic = { Color3.fromRGB(80, 70, 220), true },
 }
 local MUTATED_COLOR = Color3.fromRGB(255, 210, 60)
+local BUNDLE = 10
+local BUNDLE_SIZE = Vector3.new(1.3, 0.55, 0.55)
+local TWINE = Color3.fromRGB(97, 84, 69)
 
 local rng = Random.new()
 
@@ -64,9 +70,14 @@ function Needle.priceOf(id, mult)
 	return Needle.info(id).sortedValue * (mult or 1)
 end
 
--- Dollars a needle part sells for.
+-- How many needles a needle part is: 1, or 10 for a bundle.
+function Needle.count(part)
+	return part:GetAttribute("Count") or 1
+end
+
+-- Dollars a needle part sells for (a bundle counts all its needles).
 function Needle.value(part)
-	return Needle.priceOf(part:GetAttribute("NeedleId"), part:GetAttribute("Mutation"))
+	return Needle.priceOf(part:GetAttribute("NeedleId"), part:GetAttribute("Mutation")) * Needle.count(part)
 end
 
 function Needle.isNeedle(part)
@@ -137,19 +148,18 @@ local function pickUp(player, n)
 	end
 	local id = n:GetAttribute("NeedleId") or Needle.default.id
 	local mult = n:GetAttribute("Mutation") or 1
+	local count = Needle.count(n)
+	local value = Needle.value(n)
 	local pocket = held[player] or {}
-	table.insert(pocket, { id = id, mult = mult })
+	for _ = 1, count do
+		table.insert(pocket, { id = id, mult = mult })
+	end
 	held[player] = pocket
 	player:SetAttribute("NeedlesHeld", #pocket)
 	n:Destroy()
-	Data.toast(
-		player,
-		("Picked up a %s%s needle ($%d). Any sell pad buys it."):format(
-			mult > 1 and ("x%d MUTATED "):format(mult) or "",
-			Needle.info(id).name:lower(),
-			Needle.priceOf(id, mult)
-		)
-	)
+	local what = count > 1 and ("a bundle of %d %s needles"):format(count, Needle.info(id).name:lower())
+		or ("a %s%s needle"):format(mult > 1 and ("x%d MUTATED "):format(mult) or "", Needle.info(id).name:lower())
+	Data.toast(player, ("Picked up %s ($%d). Any sell pad buys it."):format(what, value))
 end
 
 -- Makes a needle at position. ownerId is who it belongs to while it sits in a bin. mult > 1 makes it mutated.
@@ -278,6 +288,56 @@ function Needle.inBox(cframe, size)
 		end
 	end
 	return found
+end
+
+-- Ties every 10 plain needles of one type and owner resting in a box into one bundle. Needles still flying in
+-- (anchored), mutated needles and bundles are left alone. Returns how many bundles it tied.
+function Needle.bundleIn(cframe, size)
+	local groups = {}
+	for _, n in Needle.inBox(cframe, size) do
+		if not n.Anchored and Needle.count(n) == 1 and not n:GetAttribute("Mutation") then
+			local k = ("%s|%s"):format(tostring(n:GetAttribute("OwnerId")), n:GetAttribute("NeedleId") or Needle.default.id)
+			groups[k] = groups[k] or {}
+			table.insert(groups[k], n)
+		end
+	end
+	local tied = 0
+	for _, list in groups do
+		while #list >= BUNDLE do
+			local center = Vector3.zero
+			local first = list[1]
+			for i = 1, BUNDLE do
+				center += list[i].Position / BUNDLE
+			end
+			local ownerId, needleId = first:GetAttribute("OwnerId"), first:GetAttribute("NeedleId")
+			for _ = 1, BUNDLE do
+				table.remove(list, 1):Destroy()
+			end
+			local b = Needle.spawn(center + Vector3.new(0, 0.3, 0), ownerId, needleId)
+			b.Name = "NeedleBundle"
+			b.Size = BUNDLE_SIZE
+			b:SetAttribute("Count", BUNDLE)
+			local band = Instance.new("Part")
+			band.Name = "Twine"
+			band.Shape = Enum.PartType.Cylinder
+			band.Size = Vector3.new(0.2, BUNDLE_SIZE.Y + 0.08, BUNDLE_SIZE.Z + 0.08)
+			band.CFrame = b.CFrame
+			band.Color = TWINE
+			band.Material = Enum.Material.Fabric
+			band.CanCollide = false
+			band.CanQuery = false
+			band.CanTouch = false
+			band.Massless = true
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = b
+			weld.Part1 = band
+			weld.Parent = band
+			band.Parent = b
+			glint(b, 10)
+			tied += 1
+		end
+	end
+	return tied
 end
 
 Players.PlayerRemoving:Connect(function(player)
