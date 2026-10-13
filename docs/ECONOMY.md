@@ -436,9 +436,10 @@ field the two boosts stack (2x × 3x = 6x), which is still a single bale.
 
 Land's trading post settles every trade through `Bank.settleTrade(a, b, terms)`. It takes the cash each side offers,
 charges each side a fee, and writes a line to both histories ("Trade with Sam: gave 3 Cosmic needles, got $2,000").
-The fee (`Prices.Trade`) is $25 a side plus 5% of any cash that side hands over. That's under a minute of hand
-earnings for a straight item swap, so it never stops a fair trade, while cash-for-needles deals pay something like the
-market's spread and big cash transfers between accounts carry a real cost. Cash moves wallet to wallet (taking from
+The fee (`Prices.Trade`) is $25 plus 5% of the cash, paid only by a side that hands over cash. A side that only
+gives items pays nothing, so swaps and gifts are free and a brand-new player can always hand a friend a needle.
+Cash-for-needles deals pay something like the market's spread, and big cash transfers between accounts carry a real
+cost. Cash moves wallet to wallet (taking from
 the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
 side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
 
