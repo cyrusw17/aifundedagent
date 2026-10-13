@@ -165,6 +165,7 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	loading_dock = 2000, -- the public shop's dock, on your own land: the haul ends at your farm
 	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
 	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
 	-- sorter, Volcano at the magnet drum).

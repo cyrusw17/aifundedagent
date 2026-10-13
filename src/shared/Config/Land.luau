@@ -57,6 +57,7 @@ return {
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
 		{ id = "alloy_mixer", kind = "mixer", name = "Alloy mixer", price = Prices.Pieces.alloy_mixer, size = { 1, 1 }, blurb = "Mixes two needle types from your pocket into an alloy block for blueprints. No belt needed." },
 		{ id = "hay_baler", kind = "baler", name = "Hay baler", price = Prices.Pieces.hay_baler, size = { 1, 2 }, blurb = "Packs loose strands on the belt back into bales, so raked and scooped hay can feed your line." },
+		{ id = "loading_dock", kind = "dock", name = "Loading dock", price = Prices.Pieces.loading_dock, size = { 3, 1 }, blurb = "Back a truck up to it and step on UNLOAD: the load slides onto the belt in front of its middle. Put it at the edge of your land." },
 		{ id = "thawing_shed", kind = "treat", name = "Thawing shed", price = Prices.Pieces.thawing_shed, size = { 1, 2 }, blurb = "Frozen hay must pass through one before a sorter will take it." },
 		{ id = "drying_rack", kind = "treat", name = "Drying rack", price = Prices.Pieces.drying_rack, size = { 1, 2 }, blurb = "Bog reed must dry here before a sorter will take it." },
 		{ id = "ash_sifter", kind = "treat", name = "Ash sifter", price = Prices.Pieces.ash_sifter, size = { 1, 2 }, blurb = "Knocks the ash out of Ashen hay. Without it, sorters find half the needles." },

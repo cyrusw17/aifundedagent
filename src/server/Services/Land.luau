@@ -36,6 +36,7 @@ local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Baler = require(script.Parent.Baler)
 local Treat = require(script.Parent.Treat)
+local Dock = require(script.Parent.Dock)
 local Vault = require(script.Parent.Vault)
 local Blueprints = require(script.Parent.Blueprints)
 local Display = require(script.Parent.Display)
@@ -717,6 +718,16 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Press.build(plot.items, frame))
 	elseif def.kind == "baler" then
 		table.insert(item.instances, Baler.build(plot.items, frame))
+	elseif def.kind == "dock" then
+		-- The funnel's middle cell feeds the belt in front of it, so that belt keeps its back open.
+		local fx, fz = step(dir)
+		local mx, mz = gx - fz, gz + fx -- one cell to the right (across) of the back-left anchor
+		local model = Dock.plotDock(plot.items, footprintFrame(plot, def, gx, gz, dir), Machines.Colors.pad, Machines.stepPad)
+		Conveyors.setFeeder(plot.grid, mx, mz, Conveyors.Dirs[dir])
+		model.Destroying:Connect(function()
+			Conveyors.setFeeder(plot.grid, mx, mz, nil)
+		end)
+		table.insert(item.instances, model)
 	elseif def.kind == "treat" then
 		table.insert(item.instances, Treat.build(plot.items, frame, def.id))
 	elseif def.kind == "starbeam" then
