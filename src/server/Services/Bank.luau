@@ -350,13 +350,15 @@ end
 
 -- Trades -------------------------------------------------------------------------------------------------------------
 
--- What one side of a trade pays the post: the flat fee plus a share of the cash it gives. Free with InfiniteMoney on.
+-- What one side of a trade pays the post: nothing for a side that only hands over items (so a new player can always
+-- give a needle away), else the flat fee plus a share of the cash it gives. Free with InfiniteMoney on.
 function Bank.tradeFee(cashGiven)
-	if Config.InfiniteMoney then
+	cashGiven = math.max(0, tonumber(cashGiven) or 0)
+	if Config.InfiniteMoney or cashGiven <= 0 then
 		return 0
 	end
 	local t = Prices.Trade
-	return math.floor(t.Fee + math.max(0, cashGiven or 0) * t.CashShare + 0.5)
+	return math.floor(t.Fee + cashGiven * t.CashShare + 0.5)
 end
 
 -- Settles the money side of a trade both players have confirmed, and logs it in both histories. Land's trading post

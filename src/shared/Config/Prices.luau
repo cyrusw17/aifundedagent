@@ -222,11 +222,12 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
--- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
--- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
--- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+-- The trading post (Land) settles every trade through Bank.settleTrade. A side that hands over cash pays a small flat
+-- fee plus a share of that cash, so cash-for-needles deals don't dodge the market and moving money between accounts
+-- costs something. A side that only gives items pays nothing, so swaps and gifts are always free. Set both to 0 to
+-- make cash trades free too.
 Prices.Trade = {
-	Fee = 25, -- per side, per trade
+	Fee = 25, -- per side that gives cash, per trade
 	CashShare = 0.05, -- of the cash a side gives
 }
 
