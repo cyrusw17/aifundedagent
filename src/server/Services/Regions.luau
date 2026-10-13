@@ -1315,7 +1315,9 @@ function Regions.build(worldFolder)
 	local trees, made = 0, 0
 
 	for _, r in WorldShape.regions do
-		local sub = Instance.new("Folder")
+		-- A plain Model per region (Default streaming, never Atomic): parts stream one by one, and the region can be
+		-- found, pivoted or budgeted as a unit (Config/WorldMap PartBudget).
+		local sub = Instance.new("Model")
 		sub.Name = r.name
 		sub.Parent = folder
 		palette = PALETTE[r.id] or {}
@@ -1342,22 +1344,22 @@ function Regions.build(worldFolder)
 		task.wait() -- spread the work out so the server keeps ticking
 	end
 
-	local cave = Instance.new("Folder")
+	local cave = Instance.new("Model")
 	cave.Name = "Crystal Cave"
 	cave.Parent = folder
 	LANDMARKS.cave(cave, rng)
 
-	local sea = Instance.new("Folder")
+	local sea = Instance.new("Model")
 	sea.Name = "Graveyard of Ships"
 	sea.Parent = folder
 	graveyard(sea, rng)
 
-	local sky = Instance.new("Folder")
+	local sky = Instance.new("Model")
 	sky.Name = "Sky Island"
 	sky.Parent = folder
 	skyIsland(sky, rng)
 
-	local signs = Instance.new("Folder")
+	local signs = Instance.new("Model")
 	signs.Name = "Signs"
 	signs.Parent = folder
 	for _, j in JUNCTIONS do

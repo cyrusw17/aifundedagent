@@ -1107,8 +1107,9 @@ local function setDown(model, ground, height)
 end
 
 -- Flips the player's truck back onto its wheels where it lies ("flip"), or tows it, and a hitched trailer, to the
--- dealer lot ("tow", once every 30 seconds). Returns ok and a message.
-function Vehicles.recover(player, mode)
+-- dealer lot ("tow", once every 30 seconds). "rescue" sets it down on a given ground CFrame with no cooldown (the
+-- server's fall catch, FallSafety.luau; never reachable from a client). Returns ok and a message.
+function Vehicles.recover(player, mode, to)
 	local truck = owned[player]
 	local chassis = truck and truck.Parent and truck.PrimaryPart
 	if not chassis or chassis.Anchored then
@@ -1129,6 +1130,8 @@ function Vehicles.recover(player, mode)
 		pcall(function()
 			player:RequestStreamAroundAsync(spot, 10)
 		end)
+	elseif mode == "rescue" and typeof(to) == "CFrame" then
+		ground = to
 	elseif mode == "flip" then
 		if os.clock() - (lastFlip[player] or -math.huge) < FLIP_COOLDOWN then
 			return false, "Give it a moment."

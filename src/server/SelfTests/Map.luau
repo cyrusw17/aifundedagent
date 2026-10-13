@@ -43,6 +43,45 @@ return function(SelfTest)
 			end
 		end
 		t.check(("all %d regions have their trees and landmarks"):format(#Map.Regions), #missing == 0, #missing > 0 and table.concat(missing, ", ") or nil)
+		-- Part budget (#21): each container within its slice of Config/WorldMap PartBudget, with the real props in.
+		local function partsIn(inst)
+			local n = 0
+			for _, d in inst:GetDescendants() do
+				if d:IsA("BasePart") then
+					n += 1
+				end
+			end
+			return n
+		end
+		local overBudget = {}
+		local containers = {}
+		for _, child in isles:GetChildren() do
+			if child.Name == "Isles" then
+				for _, sub in child:GetChildren() do
+					table.insert(containers, sub)
+				end
+			elseif child.Name ~= "WorldEdge" then
+				table.insert(containers, child)
+			end
+		end
+		for _, c in containers do
+			local cap = Map.PartBudget[c.Name]
+			local n = partsIn(c)
+			if cap and n > cap then
+				table.insert(overBudget, ("%s %d/%d"):format(c.Name, n, cap))
+			end
+		end
+		t.check("every map container is within its part budget", #overBudget == 0, #overBudget > 0 and table.concat(overBudget, ", ") or nil)
+		-- Fall safety (#22): a fall anywhere lands on a dry road, never back at camp.
+		local FallSafety = require(Services.FallSafety)
+		local wet = {}
+		for _, at in { Vector3.new(900, -100, -900), Vector3.new(-1500, -100, -600), Vector3.new(2600, -100, -1700), Vector3.new(10, -100, 10) } do
+			local ground, name = FallSafety.target(at)
+			if name == "camp" or ground.Position.Y <= Map.SeaLevel then
+				table.insert(wet, ("%d,%d -> %s"):format(at.X, at.Z, tostring(name)))
+			end
+		end
+		t.check("a fall anywhere lands on a dry road", #wet == 0, #wet > 0 and table.concat(wet, "; ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}

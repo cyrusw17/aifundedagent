@@ -29,3 +29,11 @@ narrower than a Rusty Pickup with a Medium Trailer plus 2 studs (roads, highway,
 MaxGrade + 0.06; a region with no hay field; a hay field underwater, inside the ground, more than 70 studs from a
 reachable road, or behind water or a slope over 0.45 on the way in; a landmark underwater or more than a 260-stud walk
 from a road; a secret underwater or inside the rock.
+
+`budget.luau` (#21) prints every container's parts against its slice of `Config/WorldMap.PartBudget` (the map's
+12,000 of Health's 40,000) and checks streaming: regions are plain Models, Atomic models stay under 400 parts, and
+only the listed models are Persistent. It ends with the same table as markdown for /mnt/project-files/map/PART_BUDGET.md.
+
+`safety.luau` (#22) checks that every spawn, ferry and zeppelin landing, tow spot and hay wagon stop has ground and
+headroom, that the kill floor (FallSafety.KILL_Y) is below all ground, and that a fall anywhere lands on a dry road.
+
