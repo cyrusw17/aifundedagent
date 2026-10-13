@@ -135,6 +135,32 @@ do
 	if Weather.front() ~= nil then weatherOk = false print("WARN a front started during an event") end
 	Weather.force("snow", "clear", 0)
 end
+-- Thunderstorms (H7): warned, then on with 5x odds, then gone with the next one scheduled about an hour out.
+do
+	local RS = game:GetService("ReplicatedStorage")
+	local base = Weather.needleOdds(Vector3.new(0, 5, 0))
+	if base ~= 1 then weatherOk = false print("WARN needle odds not 1 without a storm", base) end
+	Weather.startStorm()
+	if RS:GetAttribute("Storm") ~= "coming" or Weather.needleOdds(Vector3.new(0, 5, 0)) ~= 1 then weatherOk = false print("WARN storm warning wrong") end
+	local now = os.clock() + WeatherConfig.StormWarnSeconds + 1
+	Weather.stepStorm(now)
+	if RS:GetAttribute("Storm") ~= "on" or Weather.needleOdds(Vector3.new(0, 5, 0)) ~= WeatherConfig.StormMutationOdds then weatherOk = false print("WARN storm never broke") end
+	Weather.stepStorm(now + WeatherConfig.StormMinutes * 60 + 1)
+	local nextAt = RS:GetAttribute("NextStorm")
+	if RS:GetAttribute("Storm") ~= nil or not nextAt then weatherOk = false print("WARN storm never cleared or no next storm") end
+	if not RS:GetAttribute("StormStarts") or RS:GetAttribute("StormEnds") ~= nil then weatherOk = false print("WARN StormStarts/StormEnds not published between storms") end
+	-- Rain makes a needle found out in it wet; clear weather doesn't.
+	Weather.set("meadow", "rain")
+	local _, wet = Weather.needleOdds(Vector3.new(0, 5, 0))
+	Weather.set("meadow", "clear")
+	local _, dry = Weather.needleOdds(Vector3.new(0, 5, 0))
+	if not wet or dry then weatherOk = false print("WARN wet mutation flag wrong", wet, dry) end
+	-- Expected mutation rate: storms add (odds - 1) * minutes / cycle of today's rate.
+	local cycle = (WeatherConfig.StormEveryMinutes[1] + WeatherConfig.StormEveryMinutes[2]) / 2 + WeatherConfig.StormWarnSeconds / 60 + WeatherConfig.StormMinutes
+	local factor = 1 + (WeatherConfig.StormMutationOdds - 1) * WeatherConfig.StormMinutes / cycle
+	print(("storm mutation rate x%.2f of today (cycle %.0f min)"):format(factor, cycle))
+	if factor > 2 then weatherOk = false print("WARN storms more than double mutations") end
+end
 print("weather", weatherOk and "ok" or "WRONG")
 
 -- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
