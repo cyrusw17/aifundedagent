@@ -40,8 +40,8 @@ return function(SelfTest)
 		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
 		-- Every sorter tier has its own band color and star count (#27), so a line reads at a glance.
 		local bands, stars = {}, {}
-		for id, look in Machines.TierLooks do
-			t.check(id .. " has a look of its own", not bands[look.band:ToHex()] and not stars[look.stars])
+		for tierId, look in Machines.TierLooks do
+			t.check(tierId .. " has a look of its own", not bands[look.band:ToHex()] and not stars[look.stars])
 			bands[look.band:ToHex()], stars[look.stars] = true, true
 		end
 
