@@ -45,6 +45,7 @@ function Data.sync(player)
 	player:SetAttribute("LoadCap", Config.CarryCapacity)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
+	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
 end
 
 function Data.toast(player, text)
@@ -53,7 +54,7 @@ function Data.toast(player, text)
 end
 
 function Data.load(player)
-	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil, trucks = {} }
+	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil, trucks = {}, trailers = {} }
 	if store then
 		local ok, saved = pcall(function()
 			return store:GetAsync(keyFor(player))
@@ -62,6 +63,13 @@ function Data.load(player)
 			if typeof(saved) == "table" and typeof(saved.cash) == "number" then
 				state.cash = saved.cash
 				state.savedCash = saved.cash
+			end
+			if typeof(saved) == "table" and typeof(saved.trailers) == "table" then
+				for _, id in saved.trailers do
+					if typeof(id) == "string" then
+						table.insert(state.trailers, id)
+					end
+				end
 			end
 			if typeof(saved) == "table" and typeof(saved.trucks) == "table" then
 				for _, id in saved.trucks do
@@ -86,7 +94,7 @@ function Data.save(player)
 	local ok, err = pcall(function()
 		-- With infinite money on, the save keeps the balance the player had before, not the test cash.
 		local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-		store:SetAsync(keyFor(player), { cash = cash, trucks = state.trucks })
+		store:SetAsync(keyFor(player), { cash = cash, trucks = state.trucks, trailers = state.trailers })
 	end)
 	if not ok then
 		warn("[Needlewood] save failed for " .. player.Name .. ": " .. tostring(err))
