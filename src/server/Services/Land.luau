@@ -647,6 +647,50 @@ local function buildDecor(plot, item, def)
 		part(body, "Hat", Vector3.new(1.8, 0.15, 1.8), frame * CFrame.new(0, 6.6, 0), Rustic.Hay, Enum.Material.Fabric)
 		part(body, "Crown", Vector3.new(1, 0.6, 1), frame * CFrame.new(0, 6.95, 0), Rustic.Hay, Enum.Material.Fabric)
 		Skins.dress("scarecrow", post, body, frame, CFrame.Angles(0, 0, 0))
+	elseif def.look == "fountain" then
+		local r = def.size[1] * T / 2 - 0.6
+		local basin = part(model, "Basin", Vector3.new(1.6, r * 2, r * 2), frame * CFrame.new(0, 0.8, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Stone, Enum.Material.Cobblestone)
+		basin.Shape = Enum.PartType.Cylinder
+		local water = part(model, "Water", Vector3.new(0.2, r * 2 - 1.2, r * 2 - 1.2), frame * CFrame.new(0, 1.55, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Water, Enum.Material.Glass)
+		water.Shape = Enum.PartType.Cylinder
+		water.Transparency = 0.3
+		water.CanCollide = false
+		part(model, "Pillar", Vector3.new(1.4, 3.6, 1.4), frame * CFrame.new(0, 3.4, 0), Rustic.StoneDark, Enum.Material.Cobblestone)
+		local bowl = part(model, "Bowl", Vector3.new(0.6, 3.6, 3.6), frame * CFrame.new(0, 5.4, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Stone, Enum.Material.Cobblestone)
+		bowl.Shape = Enum.PartType.Cylinder
+		local spout = part(model, "Spout", Vector3.new(0.4, 0.4, 0.4), frame * CFrame.new(0, 6, 0), Rustic.StoneDark, Enum.Material.Cobblestone)
+		local spray = Instance.new("ParticleEmitter")
+		spray.Color = ColorSequence.new(Color3.fromRGB(200, 225, 235))
+		spray.Transparency = NumberSequence.new(0.3, 1)
+		spray.Size = NumberSequence.new(0.35, 0.1)
+		spray.Lifetime = NumberRange.new(0.6, 0.9)
+		spray.Speed = NumberRange.new(6, 8)
+		spray.SpreadAngle = Vector2.new(18, 18)
+		spray.Acceleration = Vector3.new(0, -24, 0)
+		spray.Rate = 40
+		spray.EmissionDirection = Enum.NormalId.Top
+		spray.Parent = spout
+	elseif def.look == "windmill" then
+		-- A tapering timber tower with a cap, and four sails that turn (PropMotion, spun by Conveyors.client).
+		local w = def.size[1] * T - 2
+		local height = 22
+		for i = 0, 3 do
+			local y = i * height / 4
+			local s = w * (1 - i * 0.15)
+			part(model, "Tower", Vector3.new(s, height / 4, s), frame * CFrame.new(0, y + height / 8, 0), i % 2 == 0 and Rustic.PaintCream or Rustic.Wood, Enum.Material.WoodPlanks)
+		end
+		part(model, "Door", Vector3.new(2.4, 4.4, 0.3), frame * CFrame.new(0, 2.2, -w / 2 - 0.1), Rustic.WoodDark, Enum.Material.WoodPlanks)
+		local capY = height + 1.5
+		part(model, "Cap", Vector3.new(w * 0.55, 3, w * 0.75), frame * CFrame.new(0, capY, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
+		local hubAt = frame * CFrame.new(0, capY, -w * 0.375 - 0.8)
+		part(model, "Hub", Vector3.new(1.4, 1.4, 1.2), hubAt, Rustic.Metal, Enum.Material.Metal)
+		for i, angle in { 0, math.pi / 2 } do
+			-- Each sail spar is thinnest along the facing axis, so it spins in the sail plane around the hub.
+			local sail = part(model, "Sail" .. i, Vector3.new(1.8, 18, 0.3), hubAt * CFrame.new(0, 0, -0.8) * CFrame.Angles(0, 0, angle), Rustic.Cloth, Enum.Material.Fabric)
+			sail.CanCollide = false
+			sail:SetAttribute("Motion", "Spin")
+			CollectionService:AddTag(sail, "PropMotion")
+		end
 	end
 	return model
 end
