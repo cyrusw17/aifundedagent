@@ -82,6 +82,14 @@ local function noPlayerChecks(t)
 	)
 	t.check("pine bale is named in its prompt", prompt ~= nil and pine.body:FindFirstChildOfClass("ProximityPrompt").ObjectText:find("Pine") ~= nil)
 
+	-- A golden field bale: marked, glinting, named in its button, and rare.
+	local gold = bale(t.place())
+	Bales.makeGolden(gold, false)
+	t.check("a golden bale is marked golden", gold.body:GetAttribute("GoldenField") == true)
+	t.check("...glints", gold.body:FindFirstChildOfClass("Sparkles") ~= nil)
+	t.check("...and says so in its button", gold.prompt.ObjectText:sub(1, 6) == "Golden", gold.prompt.ObjectText)
+	t.check("golden bales are rare and hold more needles", Config.GoldenBaleOneIn >= 50 and Config.GoldenBaleNeedles > 1)
+
 	-- Strands take their hay's shape.
 	local strand = Hay.spawnPiece(spot.Position + Vector3.new(10, 2, 0), Vector3.zero, 0, nil, "pine")
 	t.check("a pine strand is thin like pine straw", strand.Size.Y <= HayLooks.pine.thick[2] + 0.001, strand.Size.Y)

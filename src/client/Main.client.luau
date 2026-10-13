@@ -2,6 +2,7 @@
 -- Client entry point. Shows the HUD only. The client never decides what was found or earned.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -99,6 +100,23 @@ local function sendAim()
 	end
 end
 
+-- On a phone a tool fires on a tap, and the mouse may still sit where an earlier touch left it. The tap's own spot
+-- in the world is the truth, so it is sent too (the server uses the newest aim it has).
+UserInputService.TouchTapInWorld:Connect(function(position, gameProcessed)
+	local character = player.Character
+	if gameProcessed or not (character and character:FindFirstChildOfClass("Tool")) then
+		return
+	end
+	local ray = workspace.CurrentCamera:ViewportPointToRay(position.X, position.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
+	if hit then
+		aimRemote:FireServer(hit.Position, hit.Instance)
+	end
+end)
+
 local function hookTool(child)
 	if child:IsA("Tool") and not hookedTools[child] then
 		hookedTools[child] = true
@@ -109,10 +127,15 @@ end
 -- Setting a carried bale down or throwing it (click, G, tap, hold to charge) is in Throw.client.luau.
 
 local HINTS = {
-	Shovel = "Shovel: click a bale or hay",
-	Rake = "Rake: click loose hay",
-	Wheelbarrow = "Wheelbarrow: click a bale to load, the ground to unload",
+	Shovel = "Shovel: %s a bale or hay",
+	Rake = "Rake: %s loose hay",
+	Wheelbarrow = "Barrow: %s a bale, a truck bed, or the ground",
 }
+
+-- "tap" on a phone, "click" everywhere else.
+local function verb()
+	return UserInputService.TouchEnabled and not UserInputService.MouseEnabled and "tap" or "click"
+end
 
 local function refresh()
 	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
@@ -123,9 +146,9 @@ local function refresh()
 	cashLabel.Text = Kit.money(cash)
 	if carrying then
 		loadLabel.Text = "Carrying a bale"
-		hintLabel.Text = "Click or G: set it down"
+		hintLabel.Text = if verb() == "tap" then "Tap: set it down. Hold THROW: throw" else "Click: set down. Hold: throw"
 	else
-		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a bale"
+		hintLabel.Text = tool and HINTS[tool.Name] and HINTS[tool.Name]:format(verb()) or "Hands: press Pick up on a bale"
 		loadLabel.Text = ("Hay %d / %d · %s"):format(hay, cap, player:GetAttribute("GloveName") or "Bare hands")
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)

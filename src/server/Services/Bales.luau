@@ -20,6 +20,7 @@ local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
+local Announce = require(script.Parent.Announce)
 
 local Bales = {}
 
@@ -296,6 +297,12 @@ function Bales.breakOpen(player, b)
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
 		local boost = b.body:GetAttribute("NeedleBoost") or 1
+		-- A golden field bale (1 in GoldenBaleOneIn) holds GoldenBaleNeedles times the needles on top of that.
+		local golden = b.body:GetAttribute("GoldenField") == true
+		if golden then
+			boost *= Config.GoldenBaleNeedles
+			Announce.say(("%s broke open a golden bale!"):format(player.DisplayName), "gold")
+		end
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)
 		Feedback.play("BaleBurst", center)
@@ -632,6 +639,10 @@ function Bales.spawn(position, home, fadeIn, hayType)
 		gone = false,
 	}
 	byBody[body] = b
+	-- Now and then a field bale grows golden: it glints, and holds Config.GoldenBaleNeedles times the needles.
+	if home and rng:NextInteger(1, Config.GoldenBaleOneIn) == 1 then
+		Bales.makeGolden(b, fadeIn)
+	end
 	body.Parent = folder
 
 	if fadeIn then
@@ -653,6 +664,37 @@ function Bales.spawn(position, home, fadeIn, hayType)
 		end
 	end)
 	return b
+end
+
+-- Turns a bale golden: gold twine-wrapped hay with a glint and a soft glow, named in its button. announce tells the
+-- server one has grown (left off for the bales placed when the world is built, so the start isn't a flood).
+function Bales.makeGolden(b, announce)
+	local body = b.body
+	body:SetAttribute("GoldenField", true)
+	body.Color = Color3.fromRGB(222, 182, 72)
+	body.Material = Enum.Material.Fabric
+	for _, d in body:GetDescendants() do
+		if d:IsA("MeshPart") or (d:IsA("BasePart") and d.Name ~= "Twine") then
+			pcall(function()
+				d.Color = Color3.fromRGB(222, 182, 72)
+			end)
+		elseif d:IsA("SpecialMesh") then
+			d.VertexColor = Vector3.new(1.25, 1.05, 0.45)
+		end
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(255, 226, 130)
+	sparkles.Parent = body
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Brightness = 1.2
+	light.Range = 10
+	light.Parent = body
+	b.prompt.ObjectText = "Golden " .. (b.prompt.ObjectText ~= "" and b.prompt.ObjectText or "bale")
+	if announce then
+		local hay = GloveConfig.HayTypes[b.hayType or "meadow"]
+		Announce.say(("A golden bale has grown in the %s fields!"):format(hay and hay.map or "Meadow"), "gold")
+	end
 end
 
 -- The "Stack N" label over the top of a neat stack.
