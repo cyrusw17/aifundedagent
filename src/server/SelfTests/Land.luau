@@ -316,6 +316,27 @@ return function(SelfTest)
 			t.check("Leaderboards.test exists", false)
 		end
 
+		-- Showing off mutated needles: the name tag keeps the best needle ever held, and a trade announces a new
+		-- mutated needle once.
+		local okTags, NameTags = pcall(require, Services.NameTags)
+		local okTrade, Trade = pcall(require, Services.Trade)
+		if okTags and NameTags.test and okTrade and Trade.test then
+			local NT = NameTags.test
+			t.check("no needles means no tag", NT.bestOf(nil, {}) == nil and NT.tagFor(nil) == nil)
+			t.check("the best needle is the most valuable in the pocket", NT.bestOf(nil, { steel = 3, cosmic = 1 }) == "cosmic")
+			t.check("a mutated needle beats its plain type", NT.bestOf(nil, { ["steel*20"] = 1, steel = 9 }) == "steel*20")
+			t.check("the saved best stays after the pocket empties", NT.bestOf("cosmic", {}) == "cosmic")
+			t.check("an empty pocket stack doesn't count", NT.bestOf(nil, { cosmic = 0, steel = 1 }) == "steel")
+			local text = NT.tagFor("cosmic*12")
+			t.check("a mutated tag names it", typeof(text) == "string" and text:find("x12 MUTATED COSMIC") ~= nil, tostring(text))
+			local mutatedNew = Trade.test.mutatedNew
+			t.check("a plain offer announces nothing", mutatedNew(nil, { needles = { steel = 4 } }) == nil)
+			t.check("a new mutated needle in an offer is announced", mutatedNew({ needles = { steel = 4 } }, { needles = { steel = 4, ["ice*7"] = 1 } }) == "ice*7")
+			t.check("one already in the offer isn't announced again", mutatedNew({ needles = { ["ice*7"] = 1 } }, { needles = { ["ice*7"] = 2 } }) == nil)
+		else
+			t.check("NameTags.test and Trade.test exist", false)
+		end
+
 		-- Plots: six, all the same size and price, all with a bin and a mailbox.
 		local count, sizes, prices = 0, {}, {}
 		for _, plot in L.plots do
