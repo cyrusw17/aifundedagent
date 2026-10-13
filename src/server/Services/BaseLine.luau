@@ -21,6 +21,7 @@ local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
 local Conveyors = require(script.Parent.Conveyors)
 local Trailer = require(script.Parent.Trailer)
+local Dock = require(script.Parent.Dock)
 
 local BaseLine = {}
 
@@ -419,6 +420,7 @@ function BaseLine.build(worldFolder)
 	buildBuyer(5, 5)
 
 	local dock = cell(6, 0) + Vector3.new(T / 2, 0, 0)
+	Dock.init(dock, Vector3.new(1, 0, 0))
 	Trailer.init(folder, dock, Vector3.new(1, 0, 0), Vector3.new(0, 0, -1))
 
 	local _, orderLabel = stepPad("OrderPad", cell(5, -1), GREEN, "ORDER HAY TRAILER", function(player)
@@ -433,8 +435,14 @@ function BaseLine.build(worldFolder)
 		if Trailer.state == "parked" then
 			Trailer.unload()
 			toast(player, "Unloading onto the belt.")
+		elseif Dock.isBusy() then
+			toast(player, "Already unloading.")
+		elseif Dock.hasCargo() then
+			-- Any truck or trailer backed up to the dock with loose bales in its bed.
+			Dock.unload()
+			toast(player, "Unloading onto the belt.")
 		elseif Trailer.state == "none" then
-			toast(player, "No trailer here. Step on ORDER HAY TRAILER first.")
+			toast(player, "Nothing at the dock. Back a truck of bales up to the belt, or step on ORDER HAY TRAILER.")
 		else
 			toast(player, "Wait until the trailer has backed up to the dock.")
 		end
