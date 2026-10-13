@@ -47,6 +47,53 @@ local function bale(at, hayType)
 	table.insert(made, b)
 	return b
 end
+-- Physics-only checks (where a bale lands, a rake's pull, a catch in mid-air) skip when nothing falls: the headless
+-- run (tools/headless) has no physics, so there they would fail for the stand-in, not for the game.
+local physicsRuns = true
+local function findPhysics(t)
+	local probe = Instance.new("Part")
+	probe.Name = "SelfTestPhysicsProbe"
+	probe.Size = Vector3.new(1, 1, 1)
+	probe.CFrame = CFrame.new(0, 400, 0)
+	probe.Anchored = false
+	probe.CanCollide = false
+	probe.Parent = workspace
+	t.wait(0.5)
+	-- The headless scenario also says so outright (Workspace.Headless, set by tools/headless).
+	physicsRuns = probe.Position.Y < 399 and workspace:GetAttribute("Headless") ~= true
+	probe:Destroy()
+end
+local function pcheck(t, label, ok, detail)
+	if physicsRuns then
+		t.check(label, ok, detail)
+	else
+		t.skip(label, "needs physics (no physics in this run)")
+	end
+end
+local function pnear(t, label, got, want, tolerance)
+	if physicsRuns then
+		t.near(label, got, want, tolerance)
+	else
+		t.skip(label, "needs physics (no physics in this run)")
+	end
+end
+local function pequal(t, label, got, want)
+	if physicsRuns then
+		t.equal(label, got, want)
+	else
+		t.skip(label, "needs physics (no physics in this run)")
+	end
+end
+-- Only bare hands lift a whole bale, so the lifting checks put any tool away first (a player, or the headless
+-- run's tool poke, may have one out).
+local function bareHands(player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:UnequipTools()
+	end
+end
+
 local function clearBales()
 	for _, b in made do
 		if not b.gone and not b.carriedBy then
@@ -206,7 +253,7 @@ local function noPlayerChecks(t)
 	Hay.rake(rakeAt, gather, Config.RakeRadius, 0)
 	t.wait(Config.RakeStrokeSeconds + 0.6)
 	local after = meanDistance()
-	t.check("rake gathers strands toward the player", after < before * 0.8, ("%.1f -> %.1f studs"):format(before, after))
+	pcheck(t, "rake gathers strands toward the player", after < before * 0.8, ("%.1f -> %.1f studs"):format(before, after))
 	for _, p in pieces do
 		if p.Parent then
 			Hay.remove(p)
@@ -243,7 +290,7 @@ local function noPlayerChecks(t)
 			startX += p.Position.X
 		end
 	end
-	t.check("raked strands land on the belt", onBelt >= #loose * 0.75, ("%d of %d"):format(onBelt, #loose))
+	pcheck(t, "raked strands land on the belt", onBelt >= #loose * 0.75, ("%d of %d"):format(onBelt, #loose))
 	t.wait(1)
 	local endX, still = 0, 0
 	for _, p in loose do
@@ -253,7 +300,7 @@ local function noPlayerChecks(t)
 			endX += p.Position.X
 		end
 	end
-	t.check("...and ride it along", still > 0 and onBelt > 0 and endX / still - startX / onBelt > 2, ("%.1f studs"):format(still > 0 and onBelt > 0 and endX / still - startX / onBelt or 0))
+	pcheck(t, "...and ride it along", still > 0 and onBelt > 0 and endX / still - startX / onBelt > 2, ("%.1f studs"):format(still > 0 and onBelt > 0 and endX / still - startX / onBelt or 0))
 	local pileMade = false
 	for _, p in Hay.near(belt.Position, 20, nil) do
 		if Hay.isPile(p) then
@@ -439,12 +486,12 @@ local function stackedRide(t)
 		local p = (chassis.CFrame * chassis.Parent:GetAttribute("CargoOffset")):PointToObjectSpace(b.body.Position)
 		return math.abs(p.X) <= size.X / 2 + 0.5 and math.abs(p.Z) <= size.Z / 2 + 0.5 and p.Y > -size.Y / 2 - 0.5
 	end
-	t.check("stacked bales stay in the bed through a drive and a hard stop", inBox(bottom) and inBox(top))
-	t.near("the top bale stays on the bottom one", top.body.Position.Y - bottom.body.Position.Y, BALE.Y, 0.7)
+	pcheck(t, "stacked bales stay in the bed through a drive and a hard stop", inBox(bottom) and inBox(top))
+	pnear(t, "the top bale stays on the bottom one", top.body.Position.Y - bottom.body.Position.Y, BALE.Y, 0.7)
 	-- A hard stop can slide a bale forward at up to the truck's speed; an explosion or jitter flings it far faster.
-	t.check("neither bale jitters or flies off (slip vs the bed)", worstSlip < 30 + 15, ("worst %.1f studs/s"):format(worstSlip))
-	t.check("neither bale spins out", worstSpin < 8, ("worst %.1f rad/s"):format(worstSpin))
-	t.check("both bales are still loose (never welded)", isLoose(bottom) and isLoose(top))
+	pcheck(t, "neither bale jitters or flies off (slip vs the bed)", worstSlip < 30 + 15, ("worst %.1f studs/s"):format(worstSlip))
+	pcheck(t, "neither bale spins out", worstSpin < 8, ("worst %.1f rad/s"):format(worstSpin))
+	pcheck(t, "both bales are still loose (never welded)", isLoose(bottom) and isLoose(top))
 end
 
 local function edgeCases(t, player, state, root, stand)
@@ -456,11 +503,13 @@ local function edgeCases(t, player, state, root, stand)
 	t.wait(0.2)
 	local other = { Name = "SelfTestOther", UserId = -1 } -- stands in for a second player already holding it
 	contested.carriedBy = other
+	bareHands(player)
 	Bales.pickup(player, contested)
 	t.check("a bale someone else holds can't be lifted", state.carryBale ~= contested and contested.carriedBy == other)
 	Bales.breakOpen(player, contested)
 	t.check("...or broken open", not contested.breaking and not contested.gone)
 	contested.carriedBy = nil
+	bareHands(player)
 	Bales.pickup(player, contested)
 	t.check("once free, the first to grab it holds it", state.carryBale == contested)
 	t.check("...and a second grab is refused", not Bales.stow(player, contested, root, CFrame.new()))
@@ -469,6 +518,7 @@ local function edgeCases(t, player, state, root, stand)
 	-- Leaving the game mid-carry: the held bale goes away and nothing stays stuck to the player.
 	local leaving = bale(spot * CFrame.new(0, 0, -4))
 	t.wait(0.2)
+	bareHands(player)
 	Bales.pickup(player, leaving)
 	local held = state.carryBale == leaving
 	Bales.playerLeft(player)
@@ -481,14 +531,15 @@ local function edgeCases(t, player, state, root, stand)
 	local bed = truckBed(t, bedSpot)
 	local cargo = bale(spot * CFrame.new(10, 0, -4))
 	stand(spot * CFrame.new(10, 0, 0))
+	bareHands(player)
 	Bales.pickup(player, cargo)
 	-- Two studs off the bed's back end, facing in; the set-down spot lands about 4 studs ahead, inside the bed.
 	stand(bedSpot * CFrame.new(0, 0, 9))
 	Bales.drop(player)
 	t.wait(1)
-	t.near("a bale set down into a truck bed rests on the bed floor", cargo.body.Position.Y - bed.top, BALE.Y / 2, 0.6)
-	t.check("...inside the bed", inBed(bed, cargo))
-	t.check("...loose, never welded", isLoose(cargo))
+	pnear(t, "a bale set down into a truck bed rests on the bed floor", cargo.body.Position.Y - bed.top, BALE.Y / 2, 0.6)
+	pcheck(t, "...inside the bed", inBed(bed, cargo))
+	pcheck(t, "...loose, never welded", isLoose(cargo))
 
 	-- Pour: hay in your arms goes into a truck bed as loose strands; sorted hay stays sorted, and the needles rolled
 	-- for it come back out of your load with it. The ground is never a pour target.
@@ -527,8 +578,8 @@ local function edgeCases(t, player, state, root, stand)
 			end
 		end
 	end
-	t.check("the poured strands land in the bed", landed - before >= poured * 0.85, ("%d of %d"):format(landed - before, poured))
-	t.equal("hay scooped from sorted bales pours out sorted", sorted, 10)
+	pcheck(t, "the poured strands land in the bed", landed - before >= poured * 0.85, ("%d of %d"):format(landed - before, poured))
+	pequal(t, "hay scooped from sorted bales pours out sorted", sorted, 10)
 
 	-- Wet strands from a wet bale.
 	local soaked = bale(spot * CFrame.new(-12, 0, 6))
@@ -561,16 +612,18 @@ local function edgeCases(t, player, state, root, stand)
 	stand(throwSpot)
 	local thrown = bale(throwSpot * CFrame.new(0, 0, -4))
 	t.wait(0.2)
+	bareHands(player)
 	Bales.pickup(player, thrown)
 	local from = root.Position
 	Bales.toss(player, 1)
 	t.check("a throw lets go of the bale", state.carryBale == nil and thrown.carriedBy == nil)
 	t.wait(2)
 	local flew = (Vector3.new(thrown.body.Position.X, 0, thrown.body.Position.Z) - Vector3.new(from.X, 0, from.Z)).Magnitude
-	t.check("a full throw lands well out in front", flew > Config.TossRange * 0.6 and flew < Config.TossRange * 1.6, ("%.1f studs"):format(flew))
-	t.check("a thrown bale is loose", isLoose(thrown))
+	pcheck(t, "a full throw lands well out in front", flew > Config.TossRange * 0.6 and flew < Config.TossRange * 1.6, ("%.1f studs"):format(flew))
+	pcheck(t, "a thrown bale is loose", isLoose(thrown))
 	local tapped = bale(throwSpot * CFrame.new(12, 0, -4))
 	stand(throwSpot * CFrame.new(12, 0, 0))
+	bareHands(player)
 	Bales.pickup(player, tapped)
 	Bales.toss(player, Config.TossMinPower / 2)
 	t.wait(0.8)
@@ -621,9 +674,10 @@ local function edgeCases(t, player, state, root, stand)
 		return fromPlayer == thrower and toPlayer == player
 	end
 	local passed = bale(catchSpot * CFrame.new(0, 0, 20))
+	bareHands(player) -- only bare hands catch
 	lob(passed)
 	t.wait(1)
-	t.check("a teammate's thrown bale is caught", state.carryBale == passed and passed.carriedBy == player)
+	pcheck(t, "a teammate's thrown bale is caught", state.carryBale == passed and passed.carriedBy == player)
 	Bales.drop(player)
 	Bales.isTeammate = function()
 		return false
@@ -642,14 +696,18 @@ local function edgeCases(t, player, state, root, stand)
 	local a2 = bale(carrySpot * CFrame.new(3, 0, -4))
 	t.wait(0.2)
 	Config.DoubleCarryTier = 99 -- gloves can't reach this
+	bareHands(player)
 	Bales.pickup(player, a1)
+	bareHands(player)
 	Bales.pickup(player, a2)
 	t.check("weak gloves carry one bale only", state.carryBale == a1 and state.carryExtra == nil and a2.carriedBy == nil)
 	Config.DoubleCarryTier = 0 -- any gloves
+	bareHands(player)
 	Bales.pickup(player, a2)
 	t.check("good gloves carry a second bale", state.carryExtra == a2 and a2.carriedBy == player)
 	local a3 = bale(carrySpot * CFrame.new(-3, 0, -4))
 	t.wait(0.2)
+	bareHands(player)
 	Bales.pickup(player, a3)
 	t.check("...but never a third", a3.carriedBy == nil)
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
@@ -657,7 +715,7 @@ local function edgeCases(t, player, state, root, stand)
 	Bales.drop(player)
 	t.check("putting down frees both hands", state.carryBale == nil and state.carryExtra == nil)
 	t.wait(1)
-	t.near("the second bale lands on top of the first", a2.body.Position.Y - a1.body.Position.Y, BALE.Y, 0.6)
+	pnear(t, "the second bale lands on top of the first", a2.body.Position.Y - a1.body.Position.Y, BALE.Y, 0.6)
 end
 
 local function withPlayer(t, player)
@@ -687,6 +745,7 @@ local function withPlayer(t, player)
 		t.wait(0.2)
 
 		-- Lift and set down.
+		bareHands(player)
 		Bales.pickup(player, first)
 		t.check("bare hands lift a bale", state.carryBale == first and first.carriedBy == player)
 		t.check("carrying a bale slows you", humanoid.WalkSpeed < 16, humanoid.WalkSpeed)
@@ -698,11 +757,12 @@ local function withPlayer(t, player)
 		-- Stack: set a second bale down onto the first.
 		local second = bale(spot * CFrame.new(8, 0, 0))
 		stand(spot * CFrame.new(8, 0, 4))
+		bareHands(player)
 		Bales.pickup(player, second)
 		stand(spot)
 		Bales.drop(player)
 		t.wait(1)
-		t.near("a set-down bale stacks on the one in front", second.body.Position.Y - first.body.Position.Y, BALE.Y, 0.6)
+		pnear(t, "a set-down bale stacks on the one in front", second.body.Position.Y - first.body.Position.Y, BALE.Y, 0.6)
 
 		-- Break with the shovel: the first bale ever always spills a needle.
 		Gloves.setFirstBaleBroken(player, false)
@@ -763,8 +823,8 @@ local function withPlayer(t, player)
 				t.wait(Config.ScoopCooldownSeconds + 0.1)
 				gains[i] = state.loadHay - had
 			end
-			t.check("each scoop picks up hay", gains[1] > 0 and gains[2] > 0 and gains[3] > 0, table.concat(gains, ", "))
-			t.check("the third quick scoop is bigger (combo)", gains[3] > gains[1], table.concat(gains, ", "))
+			pcheck(t, "each scoop picks up hay", gains[1] > 0 and gains[2] > 0 and gains[3] > 0, table.concat(gains, ", "))
+			pcheck(t, "the third quick scoop is bigger (combo)", gains[3] > gains[1], table.concat(gains, ", "))
 			-- Clumps count as every strand in them, and a scoop never takes more strands than the scoop size allows.
 			local most = (Gloves.scoopSize(player, 0) + Config.ComboMaxBonus) * Config.HayPerPiece
 			t.check("no scoop of clumps tops the scoop size", math.max(gains[1], gains[2], gains[3]) <= most, table.concat(gains, ", "))
@@ -843,7 +903,7 @@ local function withPlayer(t, player)
 					inside += 1
 				end
 			end
-			t.equal("every tipped bale is in the bed and loose", inside, Config.WheelbarrowBales)
+			pequal(t, "every tipped bale is in the bed and loose", inside, Config.WheelbarrowBales)
 			humanoid:UnequipTools()
 		else
 			t.skip("wheelbarrow", "the barrow tool was not given")
@@ -877,6 +937,7 @@ end
 
 return function(SelfTest)
 	SelfTest.register("Hay", function(t)
+		findPhysics(t)
 		noPlayerChecks(t)
 		local ok, err = pcall(stackedRide, t)
 		if not ok then
