@@ -171,6 +171,75 @@ return function(SelfTest)
 		Lighting.ClockTime = was
 		t.check("the sky has an Atmosphere to tint", Lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
 
+		-- Weather ----------------------------------------------------------------------------------------------
+		local Weather = require(Services.Weather)
+		local WeatherConfig = require(Shared.Config.Weather)
+		local unset = {}
+		for _, def in Map.Regions do
+			if not WeatherConfig.Kinds[Weather.get(def.id)] or not WeatherConfig.Regions[def.id] then
+				table.insert(unset, def.id)
+			end
+		end
+		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		local desertWas = Weather.get("desert")
+		Weather.force("desert", "dust", 1)
+		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")
+		Weather.set("desert", desertWas)
+
+		-- Region events ----------------------------------------------------------------------------------------
+		local RegionEvents = require(Services.RegionEvents)
+		local dropped = RegionEvents.run("sandstorm", 1)
+		local count, strong = 0, 0
+		for b in dropped do
+			count += 1
+			if b.body:GetAttribute("NeedleBoost") == Prices.RegionEvents.sandstorm.boost then
+				strong += 1
+			end
+		end
+		t.check("a Sandstorm drops boosted bales on the Dunes", count > 0 and strong == count, ("%d bales, %d boosted"):format(count, strong))
+		t.equal("...and blows dust there", Weather.get("desert"), "dust")
+		RegionEvents.finish()
+		local left = 0
+		for b in dropped do
+			if not b.gone then
+				left += 1
+			end
+		end
+		t.equal("untouched event bales are taken away when it ends", left, 0)
+		Weather.set("desert", desertWas)
+
+		-- Wilds -----------------------------------------------------------------------------------------------
+		local Wilds = require(Services.Wilds)
+		for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+			local found = Wilds.Secrets[id]
+			t.check(("secret %s is hidden on the map, with a reward in Prices"):format(id), found ~= nil and found.part.Parent ~= nil and Prices.Secrets[id] ~= nil)
+		end
+		local ember = Wilds.Secrets.ember_cache
+		t.check("the Ember Cache lies in the crater's heat", ember ~= nil and Wilds.inHeat(ember.part.Position))
+		local clockWas = Lighting.ClockTime
+		Lighting.ClockTime = 0
+		Wilds.refreshGhost()
+		t.check("the Ghost Road holds at midnight", Wilds.ghostSolid())
+		Lighting.ClockTime = clockWas
+		Wilds.refreshGhost()
+
+		-- Discoveries -------------------------------------------------------------------------------------------
+		local Discoveries = require(Services.Discoveries)
+		local unfound = {}
+		for _, entry in Discoveries.all() do
+			if entry.kind == "landmark" then
+				local hit = false
+				for _, id in Discoveries.at(Vector3.new(entry.at.X, 20, entry.at.Y)) do
+					hit = hit or id == entry.id
+				end
+				if not hit then
+					table.insert(unfound, entry.id)
+				end
+			end
+		end
+		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
+		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")

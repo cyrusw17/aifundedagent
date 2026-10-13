@@ -54,13 +54,15 @@ end
 -- Weight and tier of one loose piece, from its HayType attribute.
 function Gloves.pieceWeight(piece)
 	local hay = Gloves.hayType(piece:GetAttribute("HayType"))
-	return hay.weight * Config.HayPerPiece, hay.tier
+	local wet = piece:GetAttribute("Wet") and Config.WetWeightFactor or 1
+	return hay.weight * Config.HayPerPiece * wet, hay.tier
 end
 
 -- Weight and tier of a whole bale.
 function Gloves.baleWeight(body)
 	local hay = Gloves.hayType(body:GetAttribute("HayType"))
-	return Config.PiecesPerBale * Config.HayPerPiece * hay.weight * GloveConfig.BaleWeightFactor, hay.tier
+	local wet = body:GetAttribute("Wet") and Config.WetWeightFactor or 1 -- a rain-soaked bale is heavier
+	return Config.PiecesPerBale * Config.HayPerPiece * hay.weight * GloveConfig.BaleWeightFactor * wet, hay.tier
 end
 
 -- How many tiers the player's gloves fall short of hay of the given tier.
@@ -79,15 +81,21 @@ function Gloves.scoopSize(player, hayTier)
 	return math.max(2, math.floor(base * (1 - GloveConfig.UnderGearedScoop * short) + 0.5))
 end
 
--- Walk speed carrying weight of hay whose hardest tier is hayTier.
-function Gloves.walkSpeed(player, baseSpeed, weight, hayTier)
+-- Walk speed wearing glove (a Config/Gloves tier) and carrying weight of hay whose hardest tier is hayTier.
+-- The gloves add their carrySpeed and take away relief of the slowdown; hay above their tier slows much more.
+function Gloves.speedFor(glove, baseSpeed, weight, hayTier)
 	if weight <= 0 then
 		return baseSpeed
 	end
-	local glove = Gloves.get(player)
-	local short = Gloves.shortBy(player, hayTier)
+	local short = math.max(0, (hayTier or 0) - glove.tier)
 	local slow = weight * GloveConfig.SlowPerWeight * (1 - glove.relief) * (1 + GloveConfig.UnderGearedSlow * short)
-	return math.max(GloveConfig.MinWalkSpeed, baseSpeed - slow)
+	-- Never faster than walking with empty hands, however good the gloves.
+	return math.clamp(baseSpeed + (glove.carrySpeed or 0) - slow, GloveConfig.MinWalkSpeed, baseSpeed)
+end
+
+-- Walk speed for this player carrying weight of hay whose hardest tier is hayTier.
+function Gloves.walkSpeed(player, baseSpeed, weight, hayTier)
+	return Gloves.speedFor(Gloves.get(player), baseSpeed, weight, hayTier)
 end
 
 local function publish(player)

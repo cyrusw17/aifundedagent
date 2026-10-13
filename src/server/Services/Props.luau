@@ -18,18 +18,26 @@ local Props = {}
 local templates = nil -- normalized name -> imported model
 
 -- hay_bale, HayBale, "Hay Bale" and HayBale_Node all name the same prop. Studio's importer wraps each file in a
--- <Name>_Node model and splits a mesh with two materials into <Name> and <Name>2, so a trailing "node" or number
--- is dropped too.
+-- <Name>_Node model and splits a mesh with two materials into <Name> and <Name>2. A name that ends in a number of
+-- its own (beacon_part_1, corn_maze_key_3) is matched whole first; only otherwise is a trailing number dropped.
 local function normalize(name)
 	local key = string.lower((string.gsub(name, "[^%w]", "")))
-	key = string.gsub(key, "node$", "")
-	key = string.gsub(key, "%d+$", "")
-	return key
+	return (string.gsub(key, "node$", ""))
 end
 
 local known = {}
 for name in Config.Sizes do
 	known[normalize(name)] = name
+end
+
+-- The prop an imported instance's name refers to, and the key it matched on, or nil.
+local function resolve(name)
+	local key = normalize(name)
+	if known[key] then
+		return known[key], key
+	end
+	key = string.gsub(key, "%d+$", "")
+	return known[key], key
 end
 
 local function partsOf(instance)
@@ -50,7 +58,7 @@ end
 local function propRoot(instance, key, stop)
 	local root = instance
 	local parent = instance.Parent
-	while parent and parent ~= stop and normalize(parent.Name) == key do
+	while parent and parent ~= stop and select(2, resolve(parent.Name)) == key do
 		root = parent
 		parent = parent.Parent
 	end
@@ -61,9 +69,9 @@ end
 -- Workspace.Scene.HayBale_Node.HayBale). skip is a folder to leave out.
 local function collect(container, skip, found)
 	for _, d in container:GetDescendants() do
-		local name = known[normalize(d.Name)]
+		local name, key = resolve(d.Name)
 		if name and not found[name] and not (skip and d:IsDescendantOf(skip)) then
-			local root = propRoot(d, normalize(d.Name), container)
+			local root = propRoot(d, key, container)
 			if #partsOf(root) > 0 then
 				found[name] = root
 			end

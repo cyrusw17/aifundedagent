@@ -134,14 +134,11 @@ local function deliverNeedles(player)
 	if not i then
 		return
 	end
-	local pocket = Needle.held(player)
-	local have = pocket[offer.needle] or 0
-	local count = math.min(have, want)
-	if count <= 0 then
+	-- Any grade or polish of the type counts, cheapest first (Needle.take).
+	local count = math.min(Needle.plainCount(player, offer.needle), want)
+	if count <= 0 or not Needle.take(player, offer.needle, count) then
 		return
 	end
-	pocket[offer.needle] = have - count > 0 and have - count or nil
-	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	credit(player, i, offer, count)
 end
 
@@ -188,14 +185,13 @@ function Orders.build(parent, position)
 		label.Parent = gui
 	end
 	board = post
-	-- The Blender bounty board (Config/Props bounty_board) when it has been imported; the plank part stays as the
-	-- surface the text is drawn on, just in front of the mesh's board.
+	-- The Blender bounty board (Config/Props bounty_board) when it has been imported. The plank part stays as the
+	-- surface the text is drawn on, just in front of the mesh's board, and is the fallback look: each client hides it
+	-- only once the mesh has really loaded (Props.weldTo), so the board is never invisible.
 	local mesh = Props.make("bounty_board", post.CFrame, Vector3.new(8, 9, 1.5))
 	if mesh then
-		mesh.Parent = model
-		post.Transparency = 1
-		post.CanCollide = false
 		post.CFrame = post.CFrame * CFrame.new(0, 0, -0.8)
+		Props.weldTo(mesh, post, post)
 	end
 
 	-- The delivery pad, east of the board (toward camp).

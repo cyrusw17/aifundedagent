@@ -27,7 +27,17 @@ return function(SelfTest)
 		t.check("parseKey round trip", id == "cosmic" and mult == 3 and polished == true, ("%s %s %s"):format(id, mult, tostring(polished)))
 		local whole, rest = LineMath.bundles(23, 10)
 		t.check("23 needles pack as 2 bundles + 3", whole == 2 and rest == 3)
+		t.equal("optical sorter grades S", Needle.gradeFor("optical_sorter"), "S")
+		t.equal("conveyor sorter grades B", Needle.gradeFor("conveyor_sorter"), "B")
+		t.check("an S needle sells for more than a B", Needle.priceOf("steel", 1, false, "S") > Needle.priceOf("steel", 1, false, "B"))
+		t.check("Cosmic needles are Legendary", Needle.rarity("cosmic") ~= nil and Needle.rarity("cosmic").name == "Legendary")
+		t.check("steel needles have no rarity sparkle", Needle.rarity("steel") == nil)
 		t.near("optical sorter takes 2 s a bale", Machines.sortSeconds("optical_sorter", 90), 2, 0.01)
+
+		-- Line blueprints keep good copies and refuse bad ones.
+		local Blueprints = require(Services.Blueprints)
+		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
+		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
 
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
@@ -146,6 +156,47 @@ return function(SelfTest)
 		end
 		t.check("the baled bale rides out, owned by the strands' owner", madeBale)
 
+		-- Region hay: Frozen hay is refused by a sorter until a thawing shed has thawed it.
+		local Treat = require(Services.Treat)
+		local thawLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(thawLine, 0, 0, "E", 7)
+		Conveyors.finish(thawLine)
+		Treat.build(folder, Conveyors.frame(thawLine, 1, 0, "E"), "thawing_shed")
+		local thawSorter = Machines.sorter(folder, Conveyors.frame(thawLine, 4, 0, "E"), "optical_sorter", nil, payTo)
+		local frozenLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(frozenLine, 0, 0, "E", 4)
+		Conveyors.finish(frozenLine)
+		local frozenSorter = Machines.sorter(folder, Conveyors.frame(frozenLine, 1, 0, "E"), "optical_sorter", nil, payTo)
+		for _, line in { thawLine, frozenLine } do
+			local bale = Bales.spawn(Conveyors.cellCenter(line, 0, 0) + Vector3.new(0, Factory.BeltTop + 2, 0), false, false, "snow")
+			bale.ownerId = GHOST
+			bale.body.Anchored = false
+			table.insert(bales, bale)
+		end
+		local thawDeadline = os.clock() + 15
+		while os.clock() < thawDeadline and (thawSorter:GetAttribute("Sorted") or 0) < 1 do
+			t.wait(0.25)
+		end
+		t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
+		t.equal("Frozen hay that skipped the shed rides through unsorted", frozenSorter:GetAttribute("Sorted") or 0, 0)
+
+		-- A plot loading dock leaves the belt in front of it open at the back and slides a load onto it.
+		local Dock = require(Services.Dock)
+		local dockLine = Conveyors.newGrid(folder, t.place().Position)
+		local dockFrame = Conveyors.frame(dockLine, 1, 0, "E")
+		local plotDock = Dock.plotDock(folder, dockFrame, Machines.Colors.pad, Machines.stepPad)
+		Conveyors.setFeeder(dockLine, 1, 0, Conveyors.Dirs.E)
+		Conveyors.run(dockLine, 2, 0, "E", 3)
+		Conveyors.finish(dockLine)
+		local rails = 0
+		for _, child in Conveyors.tileAt(dockLine, 2, 0).model:GetChildren() do
+			if child.Name == "Rail" then
+				rails += 1
+			end
+		end
+		t.equal("the belt in front of a dock has no back rail", rails, 2)
+		t.check("plot dock built", plotDock.Parent ~= nil)
+
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do
 			local found = Bales.fromPart(p)
@@ -164,5 +215,87 @@ return function(SelfTest)
 		folder:Destroy()
 		t.wait(3)
 		t.equal("part count back to where it started", partsHere(), baseline)
+	end)
+
+	-- Load test (CEO #17): an optical line fed a bale every 2 s (30 bales a minute) for 60 s with the whole map
+	-- loaded. Reports the server heartbeat and the Workspace part count, and fails below 45 Hz.
+	SelfTest.register("ConveyorLoad", function(t)
+		local RunService = game:GetService("RunService")
+		local Conveyors = require(Services.Conveyors)
+		local Machines = require(Services.Machines)
+		local Bales = require(Services.Bales)
+
+		local folder = t.cleanup(Instance.new("Folder"))
+		folder.Name = "ConveyorLoadTest"
+		folder.Parent = Workspace
+		local grid = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(grid, 0, 0, "E", 6)
+		Conveyors.finish(grid)
+		local bin = Machines.needleBin(folder, Conveyors.frame(grid, 1, -2, "E"))
+		local sorter = Machines.sorter(folder, Conveyors.frame(grid, 1, 0, "E"), "optical_sorter", bin, function()
+			return GHOST
+		end)
+		local sink = CFrame.new(Conveyors.cellCenter(grid, 6, 0) + Vector3.new(0, 4, 0)) -- just past the end of the belt
+
+		local function countParts()
+			local n = 0
+			for _, d in Workspace:GetDescendants() do
+				if d:IsA("BasePart") then
+					n += 1
+				end
+			end
+			return n
+		end
+
+		local frames, worstHz, totalFrames = 0, math.huge, 0
+		local beat = RunService.Heartbeat:Connect(function()
+			frames += 1
+		end)
+		local startParts = countParts()
+		local peakParts = startParts
+		local started = os.clock()
+		local nextBale, nextSecond, nextCount = started, started + 1, started + 5
+		local fed = 0
+		while os.clock() - started < 60 do
+			local now = os.clock()
+			if now >= nextBale then
+				nextBale += 2
+				local bale = Bales.spawn(Conveyors.cellCenter(grid, 0, 0) + Vector3.new(0, Factory.BeltTop + 2, 0), false, false, "meadow")
+				bale.ownerId = GHOST
+				bale.body.Anchored = false
+				fed += 1
+			end
+			if now >= nextSecond then
+				worstHz = math.min(worstHz, frames / (now - nextSecond + 1))
+				totalFrames += frames
+				frames = 0
+				nextSecond = now + 1
+				-- Sorted bales off the end of the line are sold, as a buyer would.
+				for _, p in Workspace:GetPartBoundsInBox(sink, Vector3.new(12, 10, 12)) do
+					local b = Bales.fromPart(p)
+					if b and not b.gone and p == b.body then
+						Bales.consume(b)
+					end
+				end
+			end
+			if now >= nextCount then
+				nextCount = now + 5
+				peakParts = math.max(peakParts, countParts())
+			end
+			task.wait()
+		end
+		beat:Disconnect()
+		local avgHz = totalFrames / (os.clock() - started)
+		t.check("optical line keeps up with 30 bales a minute", (sorter:GetAttribute("Sorted") or 0) >= fed - 3, ("fed %d, sorted %d"):format(fed, sorter:GetAttribute("Sorted") or 0))
+		t.check("server heartbeat stays at 45 Hz or more", worstHz >= 45, ("worst second %.1f Hz, average %.1f Hz"):format(worstHz, avgHz))
+		t.check("parts during the run", true, ("start %d, peak %d (+%d)"):format(startParts, peakParts, peakParts - startParts))
+
+		for _, p in Workspace:GetPartBoundsInBox(t.center * CFrame.new(0, 20, 0), Vector3.new(190, 40, 190)) do
+			local b = Bales.fromPart(p)
+			if b and not b.gone then
+				Bales.consume(b)
+			end
+		end
+		bin.clear()
 	end)
 end

@@ -17,10 +17,12 @@ local Waypoint = require(UI:WaitForChild("Waypoint"))
 local Places = require(UI:WaitForChild("Places"))
 local Catalog = require(UI:WaitForChild("Catalog"))
 local Hud = require(UI:WaitForChild("Hud"))
+local DiscoveryList = require(UI:WaitForChild("DiscoveryList"))
 local Meadow = require(Config:WaitForChild("Meadow"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Rustic = require(Config:WaitForChild("Rustic"))
 local GameConfig = require(Config:WaitForChild("Game"))
+local Prices = require(Config:WaitForChild("Prices"))
 
 local Theme = Kit.Theme
 local C, F, T = Theme.Colors, Theme.Fonts, Theme.Text
@@ -78,11 +80,21 @@ local function refreshGoal()
 	end
 	local cash = player:GetAttribute("Cash") or 0
 	goalTitle.Text = "NEXT: " .. currentGoal.name
-	goalFill.Size = UDim2.fromScale(math.clamp(cash / math.max(currentGoal.price, 1), 0, 1), 1)
+	-- Trucks are meant to be bought on a bank loan, so for those the bar fills toward the down payment.
+	local target = currentGoal.price
+	local down = currentGoal.loan and math.floor(currentGoal.price * (Prices.Bank.DownPayment or 1)) or nil
+	if down and cash < down then
+		target = down
+	end
+	goalFill.Size = UDim2.fromScale(math.clamp(cash / math.max(target, 1), 0, 1), 1)
 	if GameConfig.InfiniteMoney then
 		goalMoney.Text = ("%s  ·  test cash is on"):format(Kit.money(currentGoal.price))
 	elseif cash >= currentGoal.price then
 		goalMoney.Text = ("%s  ·  you can buy it now!"):format(Kit.money(currentGoal.price))
+	elseif down and cash >= down then
+		goalMoney.Text = ("%s  ·  bank loan ready"):format(Kit.money(currentGoal.price))
+	elseif down then
+		goalMoney.Text = ("%s / %s down"):format(Kit.money(cash), Kit.money(down))
 	else
 		goalMoney.Text = ("%s / %s"):format(Kit.money(cash), Kit.money(currentGoal.price))
 	end
@@ -92,7 +104,9 @@ goalButton.Activated:Connect(function()
 		Waypoint.set(Places.get(currentGoal.place), Places.name(currentGoal.place))
 	end
 end)
-for _, name in { "Cash", "OwnedTrucks", "GlovesOwned", "LandPlot", "TutorialFlags", "SaveSlot" } do
+for _, name in
+	{ "Cash", "OwnedTrucks", "OwnedTrailers", "Gear", "GlovesOwned", "LandPlot", "TutorialFlags", "SaveSlot" }
+do
 	player:GetAttributeChangedSignal(name):Connect(refreshGoal)
 end
 refreshGoal()
@@ -450,6 +464,9 @@ do
 end
 
 local worldCanvas = nil
+local weatherLabels = {} -- region id -> label under its name on the WORLD map
+local worldEvent = nil
+local stamps = {} -- discovery id -> its stamp on the WORLD map
 local worldMe = nil
 local worldMarker = nil
 local worldRich = nil
@@ -609,8 +626,12 @@ if WorldMap then
 	end
 	for _, region in WorldMap.Regions do
 		worldText(region.name, region.center, 10)
+		weatherLabels[region.id] = worldText("", region.center, 10)
+		weatherLabels[region.id].Position += UDim2.fromOffset(0, 13)
 	end
 	worldText("Meadow Farm", Vector2.new(0, 0), 11)
+	weatherLabels.meadow = worldText("", Vector2.new(0, 0), 10)
+	weatherLabels.meadow.Position += UDim2.fromOffset(0, 14)
 	if WorldMap.SkyIsland then
 		worldText("Sky Island", WorldMap.SkyIsland.center + Vector2.new(0, -WorldMap.SkyIsland.radius - 60), 10)
 	end
@@ -641,6 +662,41 @@ if WorldMap then
 	worldRich.TextStrokeTransparency = 0
 	worldRich.ZIndex = 8
 
+	-- Discovery stamps: a gold ◆ on each landmark you have found, a ✓ above each region you have visited.
+	for _, d in DiscoveryList.all() do
+		local stamp = Kit.label(worldCanvas, d.kind == "region" and "✓" or "◆", {
+			size = d.kind == "region" and 12 or 11,
+			font = F.Title,
+			color = C.Hay,
+			align = "center",
+			wrap = false,
+		})
+		stamp.AnchorPoint = Vector2.new(0.5, 0.5)
+		stamp.Size = UDim2.fromOffset(14, 14)
+		stamp.Position = toWorld(d.at.X, d.at.Y)
+		if d.kind == "region" then
+			stamp.Position += UDim2.fromOffset(0, -13)
+		end
+		stamp.TextStrokeColor3 = C.Ink
+		stamp.TextStrokeTransparency = 0
+		stamp.ZIndex = 8
+		stamp.Visible = false
+		stamps[d.id] = stamp
+	end
+
+	-- A region event (Hay Fever, Sandstorm...) while one runs.
+	worldEvent =
+		Kit.label(worldCanvas, "", { size = 11, font = F.Title, color = C.Cream, align = "center", wrap = false })
+	worldEvent.AnchorPoint = Vector2.new(0.5, 0.5)
+	worldEvent.Size = UDim2.fromOffset(0, 18)
+	worldEvent.AutomaticSize = Enum.AutomaticSize.X
+	worldEvent.BackgroundColor3 = C.Red
+	worldEvent.BackgroundTransparency = 0.1
+	worldEvent.ZIndex = 9
+	worldEvent.Visible = false
+	Kit.corner(worldEvent, 6)
+	Kit.pad(worldEvent, 4)
+
 	worldCanvas.InputBegan:Connect(function(input)
 		local kind = input.UserInputType
 		if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
@@ -667,6 +723,14 @@ Waypoint.changed.Event:Connect(function(position)
 	end
 end)
 
+local function refreshStamps()
+	local found = DiscoveryList.found(player)
+	for id, stamp in stamps do
+		stamp.Visible = found[id] == true
+	end
+end
+player:GetAttributeChangedSignal("Discovered"):Connect(refreshStamps)
+
 local function refreshRich()
 	if not worldRich then
 		return
@@ -678,6 +742,48 @@ local function refreshRich()
 	end
 end
 ReplicatedStorage:GetAttributeChangedSignal("RichField"):Connect(refreshRich)
+
+-- Weather per region (Weather.luau publishes "Weather_<region id>") and the running region event ("RegionEvent",
+-- "RegionEventAt"). Both are just ReplicatedStorage attributes, so they work with streaming.
+local WEATHER_ICONS = {
+	rain = "🌧 Rain",
+	snow = "❄ Snow",
+	dust = "💨 Dust",
+	fog = "🌫 Fog",
+	ash = "🌋 Ash",
+	mist = "🌫 Mist",
+}
+local function refreshWeather()
+	for id, label in weatherLabels do
+		local kind = ReplicatedStorage:GetAttribute("Weather_" .. id)
+		label.Text = kind and WEATHER_ICONS[kind] or ""
+	end
+end
+local function refreshEvent()
+	if not worldEvent then
+		return
+	end
+	local name = ReplicatedStorage:GetAttribute("RegionEvent")
+	local at = ReplicatedStorage:GetAttribute("RegionEventAt")
+	worldEvent.Visible = typeof(name) == "string" and name ~= "" and typeof(at) == "Vector3"
+	if worldEvent.Visible then
+		worldEvent.Text = "! " .. string.upper(name)
+		worldEvent.Position = toWorld(at.X, at.Z)
+	end
+end
+ReplicatedStorage.AttributeChanged:Connect(function(name)
+	if string.sub(name, 1, 8) == "Weather_" then
+		refreshWeather()
+	elseif name == "RegionEvent" or name == "RegionEventAt" then
+		refreshEvent()
+		local event = ReplicatedStorage:GetAttribute("RegionEvent")
+		if name == "RegionEvent" and typeof(event) == "string" and event ~= "" then
+			-- A short HUD toast (Main.client.luau shows ToastText when ToastId changes).
+			player:SetAttribute("ToastText", ("%s has started! Press M to see where."):format(event))
+			player:SetAttribute("ToastId", -math.floor(os.clock() * 1000))
+		end
+	end
+end)
 
 -- Side column: regions, places, clear.
 local side = Instance.new("Frame")
@@ -712,6 +818,9 @@ local _, selectView = Kit.tabs(viewRow, { "MEADOW", "WORLD" }, function(index)
 		mapTitle.Text = worldView and "MAP  ·  THE STITCHED ISLES" or "MAP  ·  MEADOW FARM"
 	end
 	refreshRich()
+	refreshWeather()
+	refreshEvent()
+	refreshStamps()
 end)
 
 -- Regions: every one on Config/WorldMap, with the one you're in marked.
@@ -982,7 +1091,7 @@ Menus.register("Shop", function(open)
 		selectTab(currentTab)
 	end
 end)
-for _, name in { "Cash", "OwnedTrucks", "GlovesOwned", "GloveId", "LandPlot" } do
+for _, name in { "Cash", "OwnedTrucks", "OwnedTrailers", "GlovesOwned", "GloveId", "LandPlot" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
 		if shopOpen then
 			renderShop()

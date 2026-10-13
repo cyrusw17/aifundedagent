@@ -11,6 +11,7 @@
 --
 -- Every number is a placeholder to tune in playtests.
 
+export type Discovery = { id: string, name: string, at: Vector2?, flat: string?, radius: number }
 type FlatZone = { name: string, min: Vector2, max: Vector2, height: number, blend: number, material: string? }
 return {
 	-- Bump when the shape changes: a place baked in Studio with an older version is rewritten on Play.
@@ -352,6 +353,27 @@ return {
 		chamber = { center = Vector3.new(-100, 10, -1010), radius = 70 },
 		hayType = "cave",
 	},
+
+	-- Places worth finding (Services/Discoveries.luau): the first visit pays Prices.Discovery.landmark, stamps the
+	-- map and fills a collection page. at = the place (x, z); radius = how close counts. Every region (and Sky Island
+	-- and the Crystal Cave) is a discovery too, worth Prices.Discovery.region. Set flat = a Flat zone's name to use
+	-- its middle instead of at.
+	Discoveries = ({
+		{ id = "old_well", name = "The Old Well", at = Vector2.new(0, -1440), radius = 25 },
+		{ id = "spindle_door", name = "The Spindle Door", at = Vector2.new(155, -990), radius = 40 },
+		{ id = "observatory", name = "The Observatory", at = Vector2.new(30, -1080), radius = 40 },
+		{ id = "mirror_lake", name = "Mirror Lake", at = Vector2.new(400, -880), radius = 170 },
+		{ id = "lighthouse", name = "The Lighthouse", at = Vector2.new(420, 860), radius = 45 },
+		{ id = "tailors_shack", name = "The Tailor's Shack", at = Vector2.new(-250, 660), radius = 40 },
+		{ id = "wreck_bobbin", name = "Wreck of the Bobbin", at = Vector2.new(-1770, -860), radius = 60 },
+		{ id = "ghost_isle", name = "Ghost Isle", at = Vector2.new(-2075, -780), radius = 50 },
+		{ id = "ski_lodge", name = "Snow Peak Lodge", at = Vector2.new(-650, -1625), radius = 50 },
+		{ id = "crater_rim", name = "The Crater Rim", at = Vector2.new(1080, -1520), radius = 115 },
+		{ id = "old_quarry", name = "The Old Quarry", at = Vector2.new(740, -1300), radius = 50 },
+		{ id = "buried_pyramid", name = "The Buried Pyramid", at = Vector2.new(1500, -580), radius = 80 },
+		{ id = "graveyard_of_ships", name = "Graveyard of Ships", at = Vector2.new(2150, -1560), radius = 300 },
+		{ id = "weavers_workshop", name = "The Weaver's Workshop", flat = "Workshop", radius = 50 },
+	} :: { Discovery }),
 
 	-- Mirror Lake, north of Meadow. Low Tide drains it later; for now it is a calm lake with a dock.
 	Lake = { center = Vector2.new(400, -880), radius = 130, depth = 18, level = 3 },

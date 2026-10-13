@@ -348,6 +348,87 @@ function Bank.payLoan(player, kind)
 	return true, ("Paid %s. You still owe %s."):format(money(pay), money(loan.owed))
 end
 
+-- Trades -------------------------------------------------------------------------------------------------------------
+
+-- What one side of a trade pays the post: nothing for a side that only hands over items (so a new player can always
+-- give a needle away), else the flat fee plus a share of the cash it gives. Free with InfiniteMoney on.
+function Bank.tradeFee(cashGiven)
+	cashGiven = math.max(0, tonumber(cashGiven) or 0)
+	if Config.InfiniteMoney or cashGiven <= 0 then
+		return 0
+	end
+	local t = Prices.Trade
+	return math.floor(t.Fee + cashGiven * t.CashShare + 0.5)
+end
+
+-- Settles the money side of a trade both players have confirmed, and logs it in both histories. Land's trading post
+-- calls it once, after the countdown and before it swaps the items:
+--
+--   local ok, why = Bank.settleTrade(a, b, { aGives = "3 Cosmic needles", bGives = "a Fossil", aCash = 0, bCash = 500 })
+--   if not ok then cancel the trade and show why end
+--
+-- aGives / bGives describe the items for the history (cash is added to the line here). aCash / bCash are dollars each
+-- side hands over (optional). Each side also pays Bank.tradeFee on what it gives. Nothing moves unless both sides can
+-- pay, so on false the trade is cancelled with no money changed. Cash comes from the wallet first, then the bank, and
+-- lands in the other side's wallet. It is not earnings: no loan share and no credit.
+function Bank.settleTrade(a, b, terms)
+	terms = terms or {}
+	local sa, sb = a and Data.get(a), b and Data.get(b)
+	if not sa or not sb or a == b then
+		return false, "Both traders need a save loaded."
+	end
+	local function cash(v)
+		v = tonumber(v) or 0
+		if v ~= v or v == math.huge or v < 0 then
+			return nil
+		end
+		return math.floor(v)
+	end
+	local aCash, bCash = cash(terms.aCash), cash(terms.bCash)
+	if not aCash or not bCash then
+		return false, "That amount of cash isn't valid."
+	end
+	local aOwes, bOwes = aCash + Bank.tradeFee(aCash), bCash + Bank.tradeFee(bCash)
+	if Bank.spendable(sa) < aOwes then
+		return false, ("%s needs %s more for this trade."):format(a.DisplayName, money(aOwes - Bank.spendable(sa)))
+	end
+	if Bank.spendable(sb) < bOwes then
+		return false, ("%s needs %s more for this trade."):format(b.DisplayName, money(bOwes - Bank.spendable(sb)))
+	end
+
+	local function pay(state, amount)
+		local fromWallet = math.min(wallet(state), amount)
+		setWallet(state, wallet(state) - fromWallet)
+		account(state).balance -= amount - fromWallet
+	end
+	pay(sa, aOwes)
+	pay(sb, bOwes)
+	setWallet(sa, wallet(sa) + bCash)
+	setWallet(sb, wallet(sb) + aCash)
+
+	local function side(gives, givesCash)
+		local parts = {}
+		if gives and gives ~= "" then
+			table.insert(parts, gives)
+		end
+		if givesCash > 0 then
+			table.insert(parts, money(givesCash))
+		end
+		return #parts > 0 and table.concat(parts, " + ") or "nothing"
+	end
+	local aSide, bSide = side(terms.aGives, aCash), side(terms.bGives, bCash)
+	local function log(player, state, other, gave, got, delta, fee)
+		record(state, "trade", delta, ("Trade with %s: gave %s, got %s"):format(other.DisplayName, gave, got))
+		if fee > 0 then
+			record(state, "spend", -fee, "Trading post fee")
+		end
+		Data.sync(player)
+	end
+	log(a, sa, b, aSide, bSide, bCash - aCash, aOwes - aCash)
+	log(b, sb, a, bSide, aSide, aCash - bCash, bOwes - bCash)
+	return true
+end
+
 -- Interest -----------------------------------------------------------------------------------------------------------
 
 function Bank.interestOn(balance)

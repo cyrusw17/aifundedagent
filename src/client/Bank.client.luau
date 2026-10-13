@@ -369,6 +369,7 @@ local KIND_TEXT = {
 	interest = "Interest",
 	refund = "Refund",
 	test = "Test purchase",
+	trade = "Trade",
 }
 local function ago(seconds)
 	if seconds < 60 then

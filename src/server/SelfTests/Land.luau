@@ -118,6 +118,8 @@ local function randomSave(rng, big)
 		thatch = rng:NextInteger(0, 500),
 		materials = { bronze = rng:NextInteger(1, 50) },
 		finds = { horseshoe = 2 },
+		secrets = { ["secret_" .. rng:NextInteger(1, 9)] = 1, meadow_well = 1 },
+		discovered = { ["region_" .. rng:NextInteger(1, 14)] = 1, old_mill = 1 },
 		gloves = { owned = { "work", "leather" }, worn = "leather", brokeFirstBale = true },
 		land = farm(big and 120 or rng:NextInteger(0, 30)),
 		land2 = rng:NextNumber() < 0.5 and farm(big and 120 or rng:NextInteger(0, 30)) or nil,
@@ -127,6 +129,8 @@ local function randomSave(rng, big)
 		quests = { earned = { alien_collector = true }, done = {}, active = {} },
 	}
 end
+
+local COUNT_FIELDS, savesField = {}, {}
 
 local function registerSaves(SelfTest)
 	SelfTest.register("Saves", function(t)
@@ -142,6 +146,34 @@ local function registerSaves(SelfTest)
 		t.check("a lock nobody refreshed for an hour is stale", not Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() - 3600 } }))
 		t.check("this server's own lock never blocks it", not Data.heldElsewhere({ _lock = { job = game.JobId, at = os.time() } }))
 		t.check("an unlocked save is free", not Data.heldElsewhere({ cash = 1 }))
+
+		-- Shutdown saves run side by side: 12 two-second saves finish in about 2 seconds, and a stuck one can't hold
+		-- shutdown past the deadline.
+		local list = {}
+		for i = 1, 12 do
+			table.insert(list, i)
+		end
+		local started = os.clock()
+		local finished = Data.saveAll(list, 10, function()
+			task.wait(2)
+		end)
+		local took = os.clock() - started
+		t.check(("12 shutdown saves run in parallel (%.1f s)"):format(took), finished == 12 and took < 4)
+		started = os.clock()
+		finished = Data.saveAll({ 1, 2 }, 1, function(i)
+			task.wait(i == 1 and 0 or 30)
+		end)
+		took = os.clock() - started
+		t.check(("a stuck save stops at the deadline (%.1f s, %d of 2 done)"):format(took, finished), finished == 1 and took < 2)
+
+		-- Which per-slot sets this build saves at all.
+		COUNT_FIELDS = { "secrets", "discovered" }
+		savesField = {}
+		for _, field in COUNT_FIELDS do
+			local probe = D.toSave(D.stateFrom({ [field] = { probe = 1 } }))
+			savesField[field] = typeof(probe[field]) == "table" and probe[field].probe == 1
+			t.check(("the save keeps %s per slot"):format(field), savesField[field])
+		end
 
 		-- Round trips: save, JSON (what the DataStore keeps), load, save again. The second save must equal the first,
 		-- and what the player had must survive.
@@ -172,6 +204,17 @@ local function registerSaves(SelfTest)
 				end
 				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
 					error("second farm lost")
+				end
+				-- Map's per-slot sets: secrets found and regions/landmarks discovered. A field this build's Data doesn't
+				-- save yet is skipped here and reported once below.
+				for _, field in COUNT_FIELDS do
+					if savesField[field] then
+						for k, n in original[field] do
+							if not first[field] or first[field][k] ~= n then
+								error(field .. " " .. k .. " lost")
+							end
+						end
+					end
 				end
 				if first.land.name ~= original.land.name then
 					error("farm name lost")

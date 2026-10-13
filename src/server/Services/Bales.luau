@@ -16,10 +16,14 @@ local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
 local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
+local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
+local Announce = require(script.Parent.Announce)
+local Weather = require(script.Parent.Weather)
+local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
 
@@ -58,15 +62,21 @@ local function buildBale(position, hayType)
 	body.TopSurface = Enum.SurfaceType.Smooth
 	body.BottomSurface = Enum.SurfaceType.Smooth
 	body.Anchored = true
-	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart.
-	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
+	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart. The heavy friction and elasticity
+	-- weights make the bale's own grip and zero bounce win against whatever it rests on (a slick metal truck bed, a
+	-- springy floor), so two bales stacked in a moving pickup ride it out instead of skating or popping apart.
+	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.4, 0, 50, 100)
 
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
-	local mesh = Props.make("hay_bale", body.CFrame, SIZE)
+	-- Each region's hay has its own bale mesh (bale_pine, bale_star, ...); the meadow bale is hay_bale.
+	local regionalName = PropsConfig.BaleForHay[hayType] or ("bale_%s"):format(hayType)
+	local regional = hayType ~= "meadow" and Props.has(regionalName)
+	local mesh = Props.make(regional and regionalName or "hay_bale", body.CFrame, SIZE)
 	if mesh then
-		-- Tint the mesh for rarer hay (an untextured mesh takes the color; a textured one keeps its own).
-		if hayType ~= "meadow" then
+		-- Tint the meadow mesh for rarer hay that has no mesh of its own (an untextured mesh takes the color; a
+		-- textured one keeps its own).
+		if hayType ~= "meadow" and not regional then
 			for _, d in mesh:GetDescendants() do
 				if d:IsA("MeshPart") then
 					d.Color = body.Color
@@ -296,6 +306,13 @@ function Bales.breakOpen(player, b)
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
 		local boost = b.body:GetAttribute("NeedleBoost") or 1
+		local wet = b.body:GetAttribute("Wet") == true -- a soaked bale spills soaked hay
+		-- A golden field bale (1 in GoldenBaleOneIn) holds GoldenBaleNeedles times the needles on top of that.
+		local golden = b.body:GetAttribute("GoldenField") == true
+		if golden then
+			boost *= Config.GoldenBaleNeedles
+			Announce.say(("%s broke open a golden bale!"):format(player.DisplayName), "gold")
+		end
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)
 		Feedback.play("BaleBurst", center)
@@ -346,6 +363,9 @@ function Bales.breakOpen(player, b)
 				if sorted then
 					piece:SetAttribute("Sorted", true)
 				end
+				if wet then
+					Bales.wetPiece(piece)
+				end
 			end
 			-- Now and then a needle tumbles out with the hay.
 			if not sorted and (rng:NextNumber() < Config.VisibleNeedleChance * boost or (promiseNeedle and wave == waves)) then
@@ -372,7 +392,12 @@ end
 function Bales.pickup(player, b)
 	local state = Data.get(player)
 	local root = Avatar.getRoot(player)
-	if not state or not root or state.carryBale or b.gone or b.carriedBy or b.breaking then
+	if not state or not root or b.gone or b.carriedBy or b.breaking then
+		return
+	end
+	-- One bale in your arms, or two (one on top of the other) with Reinforced gloves or better.
+	local second = state.carryBale ~= nil
+	if second and (state.carryExtra or not Bales.canDoubleCarry(player)) then
 		return
 	end
 	if Avatar.equippedKind(player) ~= nil then
@@ -385,18 +410,23 @@ function Bales.pickup(player, b)
 	b.carriedBy = player
 	b.ownerId = b.ownerId or player.UserId -- the first to haul it keeps it, so nobody can lift another's bale to sell
 	b.dropToken += 1
-	state.carryBale = b
+	if second then
+		state.carryExtra = b
+	else
+		state.carryBale = b
+	end
 
-	-- The bale itself is welded in front of the player, so what you carry is the real bale.
+	-- The bale itself is welded in front of the player, so what you carry is the real bale. A second rides on top.
+	local offset = second and CARRY_OFFSET * CFrame.new(0, SIZE.Y + 0.05, 0) or CARRY_OFFSET
 	b.body.Anchored = false
 	b.body.CanCollide = false
 	b.body.Massless = true
-	b.body.CFrame = root.CFrame * CARRY_OFFSET
+	b.body.CFrame = root.CFrame * offset
 	local weld = Instance.new("Weld")
 	weld.Name = "CarryWeld"
 	weld.Part0 = root
 	weld.Part1 = b.body
-	weld.C0 = CARRY_OFFSET
+	weld.C0 = offset
 	weld.Parent = b.body
 	b.carryWeld = weld
 	b.prompt.ActionText = "Put down"
@@ -404,7 +434,14 @@ function Bales.pickup(player, b)
 	scheduleRegrow(b)
 	Feedback.play("BaleLift", b.body)
 	Avatar.setCarry(player)
+	Avatar.refreshSpeed(player) -- setCarry skips this when already carrying, and the second bale weighs too
 	Data.sync(player)
+end
+
+-- True when this player's gloves are good enough to carry two bales at once (Config.DoubleCarryTier).
+function Bales.canDoubleCarry(player)
+	local glove = Gloves.get(player)
+	return glove ~= nil and (glove.tier or 0) >= Config.DoubleCarryTier
 end
 
 -- Sets a bale down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
@@ -432,42 +469,96 @@ local function setDown(b, root)
 	pcall(function()
 		b.body:SetNetworkOwnershipAuto()
 	end)
-
 end
 
--- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
+-- Lobs a bale forward from where it is held. power 0..1 sets the range, from a short toss to Config.TossRange studs
+-- on flat ground. The bale flies loose with real physics and lands however it lands.
+local function toss(b, root, power, lift)
+	local look = root.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
+	local range = Config.TossMinRange + (Config.TossRange - Config.TossMinRange) * power
+	-- A 45 degree lob: speed for that range under this place's gravity, split evenly up and forward.
+	local speed = math.sqrt(range * workspace.Gravity) / math.sqrt(2)
+	b.body.Massless = false
+	b.body.CanCollide = true
+	b.body.Anchored = false
+	b.body.CFrame = b.body.CFrame + Vector3.new(0, lift, 0)
+	b.prompt.ActionText = "Pick up"
+	-- The server flies it, so the throw is the same for everyone, then hands it back to Roblox once it has landed.
+	pcall(function()
+		b.body:SetNetworkOwner(nil)
+	end)
+	b.body.AssemblyLinearVelocity = flat * speed + Vector3.new(0, speed, 0) + root.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+	b.body.AssemblyAngularVelocity = root.CFrame.RightVector * -rng:NextNumber(1, 3)
+	local token = b.dropToken
+	task.delay(Config.TossFlightSeconds, function()
+		if not b.gone and not b.carriedBy and b.dropToken == token and not b.body:GetAttribute("InTruck") then
+			pcall(function()
+				b.body:SetNetworkOwnershipAuto()
+			end)
+		end
+	end)
+end
+
+-- Lets go of everything the player holds (the carried bale and a second on top). Returns the bales, bottom first,
+-- or nil if a carried bale has gone away (then the player's hands are simply freed).
+local function letGo(player, state)
+	local held = {}
+	for _, b in { state.carryBale, state.carryExtra } do
+		if b and not b.gone then
+			if b.carryWeld then
+				b.carryWeld:Destroy()
+				b.carryWeld = nil
+			end
+			b.carriedBy = nil
+			table.insert(held, b)
+		end
+	end
+	state.carryBale = nil
+	state.carryExtra = nil
+	Data.sync(player)
+	Avatar.clearCarry(player)
+	return held
+end
+
+-- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there. A second
+-- carried bale goes down on top of the first.
 function Bales.drop(player)
 	local state = Data.get(player)
-	local b = state and state.carryBale
-	if not b then
-		return
-	end
-	if b.gone then
-		-- The bale went away while carried: free the player's hands rather than leave them stuck carrying nothing.
-		state.carryBale = nil
-		Data.sync(player)
-		Avatar.clearCarry(player)
+	if not state or not state.carryBale then
 		return
 	end
 	local root = Avatar.getRoot(player)
-	state.carryBale = nil
-	Data.sync(player)
-
-	if b.carryWeld then
-		b.carryWeld:Destroy()
-		b.carryWeld = nil
+	for _, b in letGo(player, state) do
+		if not root or not root.Parent then
+			Bales.consume(b)
+		else
+			setDown(b, root)
+			Feedback.play("BaleSetDown", b.body)
+			startDespawnTimer(b)
+		end
 	end
-	b.carriedBy = nil
+end
 
-	if not root or not root.Parent then
-		Bales.consume(b)
+-- Throw the carried bale(s) forward. power is 0..1 from how long the throw was charged. A tiny power (a plain click)
+-- just sets the bale down instead.
+function Bales.toss(player, power)
+	local state = Data.get(player)
+	if not state or not state.carryBale then
 		return
 	end
-
-	setDown(b, root)
-	Feedback.play("BaleSetDown", b.body)
-	Avatar.clearCarry(player)
-	startDespawnTimer(b)
+	power = typeof(power) == "number" and power == power and math.clamp(power, 0, 1) or 0
+	local root = Avatar.getRoot(player)
+	if not root or power < Config.TossMinPower then
+		Bales.drop(player)
+		return
+	end
+	for i, b in letGo(player, state) do
+		toss(b, root, power, (i - 1) * 0.2)
+		Feedback.play("BaleLift", b.body, 0.8)
+		startDespawnTimer(b)
+	end
 end
 
 -- Loads a bale into something the player moves (a wheelbarrow): welded to anchor at offset, out of play until
@@ -561,6 +652,10 @@ function Bales.spawn(position, home, fadeIn, hayType)
 		gone = false,
 	}
 	byBody[body] = b
+	-- Now and then a field bale grows golden: it glints, and holds Config.GoldenBaleNeedles times the needles.
+	if home and rng:NextInteger(1, Config.GoldenBaleOneIn) == 1 then
+		Bales.makeGolden(b, fadeIn)
+	end
 	body.Parent = folder
 
 	if fadeIn then
@@ -582,6 +677,145 @@ function Bales.spawn(position, home, fadeIn, hayType)
 		end
 	end)
 	return b
+end
+
+-- Turns a bale golden: gold twine-wrapped hay with a glint and a soft glow, named in its button. announce tells the
+-- server one has grown (left off for the bales placed when the world is built, so the start isn't a flood).
+function Bales.makeGolden(b, announce)
+	local body = b.body
+	body:SetAttribute("GoldenField", true)
+	body.Color = Color3.fromRGB(222, 182, 72)
+	body.Material = Enum.Material.Fabric
+	for _, d in body:GetDescendants() do
+		if d:IsA("MeshPart") or (d:IsA("BasePart") and d.Name ~= "Twine") then
+			pcall(function()
+				d.Color = Color3.fromRGB(222, 182, 72)
+			end)
+		elseif d:IsA("SpecialMesh") then
+			d.VertexColor = Vector3.new(1.25, 1.05, 0.45)
+		end
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(255, 226, 130)
+	sparkles.Parent = body
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Brightness = 1.2
+	light.Range = 10
+	light.Parent = body
+	b.prompt.ObjectText = "Golden " .. (b.prompt.ObjectText ~= "" and b.prompt.ObjectText or "bale")
+	if announce then
+		local hay = GloveConfig.HayTypes[b.hayType or "meadow"]
+		Announce.say(("A golden bale has grown in the %s fields!"):format(hay and hay.map or "Meadow"), "gold")
+	end
+end
+
+-- Wet hay (Config.WetWeather). A wet bale is darker and drips; its weight (Gloves) and price (Gameplay) follow the
+-- Wet attribute.
+local WET_DARKEN = 0.62
+
+local function tintAll(body, factor)
+	for _, d in { body, unpack(body:GetDescendants()) } do
+		if d:IsA("BasePart") and d.Name ~= "Twine" then
+			local base = d:GetAttribute("DryColor")
+			if factor < 1 then
+				if not base then
+					d:SetAttribute("DryColor", d.Color)
+					base = d.Color
+				end
+				d.Color = Color3.new(base.R * factor, base.G * factor, base.B * factor)
+			elseif base then
+				d.Color = base
+				d:SetAttribute("DryColor", nil)
+			end
+		end
+	end
+end
+
+-- Soaks a bale: heavier, worth less, darker, and dripping until it dries.
+function Bales.wet(b)
+	if b.gone or b.body:GetAttribute("Wet") then
+		return false
+	end
+	b.body:SetAttribute("Wet", true)
+	b.dryFor = 0
+	tintAll(b.body, WET_DARKEN)
+	local drips = Instance.new("ParticleEmitter")
+	drips.Name = "WetDrips"
+	drips.Rate = 6
+	drips.Lifetime = NumberRange.new(0.4, 0.7)
+	drips.Speed = NumberRange.new(0, 0.5)
+	drips.Acceleration = Vector3.new(0, -30, 0)
+	drips.EmissionDirection = Enum.NormalId.Bottom
+	drips.Size = NumberSequence.new(0.08)
+	drips.Color = ColorSequence.new(Color3.fromRGB(170, 190, 210))
+	drips.Transparency = NumberSequence.new(0.3, 1)
+	drips.Parent = b.body
+	return true
+end
+
+-- Dries a wet bale (the sun, or Conveyor's drying rack). Returns true if it was wet.
+function Bales.dry(b)
+	if b.gone or not b.body:GetAttribute("Wet") then
+		return false
+	end
+	b.body:SetAttribute("Wet", nil)
+	b.rainFor, b.dryFor = 0, 0
+	tintAll(b.body, 1)
+	local drips = b.body:FindFirstChild("WetDrips")
+	if drips then
+		drips:Destroy()
+	end
+	return true
+end
+
+-- Marks a loose strand as wet (spilled from a wet bale, or poured from a wet load).
+function Bales.wetPiece(piece)
+	piece:SetAttribute("Wet", true)
+	local c = piece.Color
+	piece.Color = Color3.new(c.R * WET_DARKEN, c.G * WET_DARKEN, c.B * WET_DARKEN)
+end
+
+-- Whether rain falls on this spot: its region is in wet weather and nothing overhead shelters it.
+local skyParams = RaycastParams.new()
+skyParams.FilterType = Enum.RaycastFilterType.Exclude
+function Bales.rainingOn(position, ignore)
+	local region = WorldRegions.at(position)
+	if not region or not Config.WetWeather[Weather.get(region.id)] then
+		return false
+	end
+	skyParams.FilterDescendantsInstances = ignore
+	return workspace:Raycast(position + Vector3.new(0, 3, 0), Vector3.new(0, 120, 0), skyParams) == nil
+end
+
+-- Every few seconds: bales out in the rain soak, wet bales out of it dry.
+local WEATHER_TICK = 5
+local function weatherTick()
+	local ignore = { folder, Hay.folder }
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(ignore, player.Character)
+		end
+	end
+	for _, b in byBody do
+		if not b.gone and not b.carriedBy and not b.breaking and b.body.Parent then
+			if Bales.rainingOn(b.body.Position, ignore) then
+				b.dryFor = 0
+				b.rainFor = (b.rainFor or 0) + WEATHER_TICK
+				if b.rainFor >= Config.WetSoakSeconds then
+					Bales.wet(b)
+				end
+			else
+				b.rainFor = 0
+				if b.body:GetAttribute("Wet") then
+					b.dryFor = (b.dryFor or 0) + WEATHER_TICK
+					if b.dryFor >= Config.WetDrySeconds then
+						Bales.dry(b)
+					end
+				end
+			end
+		end
+	end
 end
 
 -- The "Stack N" label over the top of a neat stack.
@@ -667,8 +901,32 @@ local function scanStacks()
 	end
 end
 
+-- A bale does not stay stuck to a player who left the game: whatever they held goes, and their hands are free.
+function Bales.playerLeft(player)
+	for _, b in byBody do
+		if b.carriedBy == player and not b.gone then
+			Bales.consume(b)
+		end
+	end
+	local state = Data.get(player)
+	if state then
+		state.carryBale = nil
+		state.carryExtra = nil
+	end
+end
+
 function Bales.init(worldFolder)
 	folder = worldFolder
+
+	task.spawn(function()
+		while true do
+			task.wait(WEATHER_TICK)
+			local ok, err = pcall(weatherTick)
+			if not ok then
+				warn("[Needlewood] wet bales: " .. tostring(err))
+			end
+		end
+	end)
 
 	task.spawn(function()
 		while true do
@@ -697,14 +955,7 @@ function Bales.init(worldFolder)
 		watch(player)
 	end
 
-	-- A bale does not stay stuck to a player who left the game.
-	Players.PlayerRemoving:Connect(function(player)
-		for _, b in byBody do
-			if b.carriedBy == player then
-				Bales.consume(b)
-			end
-		end
-	end)
+	Players.PlayerRemoving:Connect(Bales.playerLeft)
 end
 
 return Bales

@@ -82,7 +82,6 @@ Kit.corner(toast, 10)
 Kit.stroke(toast, C.Ink, 1.5)
 Kit.pad(toast, 10)
 
-local dropRemote = ReplicatedStorage:WaitForChild("DropBale")
 local aimRemote = ReplicatedStorage:WaitForChild("ToolAim")
 
 -- The server runs every tool click. All the client adds is where the click pointed, so the shovel and rake
@@ -101,6 +100,23 @@ local function sendAim()
 	end
 end
 
+-- On a phone a tool fires on a tap, and the mouse may still sit where an earlier touch left it. The tap's own spot
+-- in the world is the truth, so it is sent too (the server uses the newest aim it has).
+UserInputService.TouchTapInWorld:Connect(function(position, gameProcessed)
+	local character = player.Character
+	if gameProcessed or not (character and character:FindFirstChildOfClass("Tool")) then
+		return
+	end
+	local ray = workspace.CurrentCamera:ViewportPointToRay(position.X, position.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
+	if hit then
+		aimRemote:FireServer(hit.Position, hit.Instance)
+	end
+end)
+
 local function hookTool(child)
 	if child:IsA("Tool") and not hookedTools[child] then
 		hookedTools[child] = true
@@ -108,29 +124,18 @@ local function hookTool(child)
 	end
 end
 
--- While carrying a bale, a click on the world or G puts it down (its Put down button does the same).
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or not player:GetAttribute("Carrying") then
-		return
-	end
-	local kind = input.UserInputType
-	-- Touch is left out on purpose: dragging the camera on a phone is a touch too. Phones use the Put down button
-	-- or a tap (below).
-	if kind == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.G then
-		dropRemote:FireServer()
-	end
-end)
-UserInputService.TouchTap:Connect(function(_, gameProcessed)
-	if not gameProcessed and player:GetAttribute("Carrying") then
-		dropRemote:FireServer()
-	end
-end)
+-- Setting a carried bale down or throwing it (click, G, tap, hold to charge) is in Throw.client.luau.
 
 local HINTS = {
-	Shovel = "Shovel: click a bale or hay",
-	Rake = "Rake: click loose hay",
-	Wheelbarrow = "Wheelbarrow: click a bale to load, the ground to unload",
+	Shovel = "Shovel: %s hay or a bale; a truck bed or belt pours",
+	Rake = "Rake: %s loose hay",
+	Wheelbarrow = "Barrow: %s a bale, a truck bed, or the ground",
 }
+
+-- "tap" on a phone, "click" everywhere else.
+local function verb()
+	return UserInputService.TouchEnabled and not UserInputService.MouseEnabled and "tap" or "click"
+end
 
 local function refresh()
 	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
@@ -141,9 +146,9 @@ local function refresh()
 	cashLabel.Text = Kit.money(cash)
 	if carrying then
 		loadLabel.Text = "Carrying a bale"
-		hintLabel.Text = "Click or G: set it down"
+		hintLabel.Text = if verb() == "tap" then "Tap: set it down. Hold THROW: throw" else "Click: set down. Hold: throw"
 	else
-		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a bale"
+		hintLabel.Text = tool and HINTS[tool.Name] and HINTS[tool.Name]:format(verb()) or "Hands: press Pick up on a bale"
 		loadLabel.Text = ("Hay %d / %d · %s"):format(hay, cap, player:GetAttribute("GloveName") or "Bare hands")
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)

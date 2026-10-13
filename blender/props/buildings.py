@@ -442,23 +442,23 @@ def barn(f):
 
 def garage(f):
     """Garage for the truck and trailers, about 36 x 42 x 21 studs: two 10 x 10 stud roll-up doors
-    (one rolled up, one down) and a side door."""
+    (one rolled up, one down) and a side door. Barn-red walls so it reads apart from the blue warehouse."""
     hw, hd, base, eave, rise = 17.0, 20.0, 0.4, 14.0, 5.0
     p = [floor(f, "stone", 2 * hw + 1, 2 * hd + 1, base)]
     a = hw - WALL / 2
     doors = [(-14.5, -4.5, base, base + 10), (4.5, 14.5, base, base + 10)]
-    p += wall(f, "paint_blue", "x", -hd + WALL / 2, -a, a, base, eave, holes=doors)
-    p += wall(f, "paint_blue", "x", hd - WALL / 2, -a, a, base, eave)
+    p += wall(f, "paint_red", "x", -hd + WALL / 2, -a, a, base, eave, holes=doors)
+    p += wall(f, "paint_red", "x", hd - WALL / 2, -a, a, base, eave)
     side = (-12, -7.5, base, base + 7.5)
     for s in (-1, 1):
-        p += wall(f, "paint_blue", "y", s * (hw - WALL / 2), -hd, hd, base, eave, holes=[side] if s > 0 else [])
+        p += wall(f, "paint_red", "y", s * (hw - WALL / 2), -hd, hd, base, eave, holes=[side] if s > 0 else [])
         for y in ((-2, 6, 14) if s > 0 else (-12, -4, 4, 12)):
             p += window(f, "y", s * hw, s, y, 9, 3.5, 2.5)
     p += door_frame(f, "y", hw, 1, *side)
     p.append(B(f, "paint_cream", (0.4, 4.5, 7.5), (hw + 0.1, -9.75, base + 3.75), along="z"))
     p.append(B(f, "metal", (0.5, 0.6, 0.3), (hw + 0.4, -11.2, base + 3.8), rnd=False))
     for y in (-hd + WALL / 2, hd - WALL / 2):
-        p.append(prism(f, "paint_blue", "x", y, WALL, [(-hw, eave), (hw, eave), (0, eave + rise)]))
+        p.append(prism(f, "paint_red", "x", y, WALL, [(-hw, eave), (hw, eave), (0, eave + rise)]))
     p += corner_posts(f, "paint_cream", hw - 0.2, hd - 0.2, base, eave + 0.2, 1.1)
     p += gable_roof(f, "metal", hw, eave, rise, 2 * hd, ridge="y", over=1.5, sheet=True)
     for (u0, u1, z0, z1), down in zip(doors, (False, True)):

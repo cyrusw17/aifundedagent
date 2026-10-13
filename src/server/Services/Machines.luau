@@ -301,11 +301,11 @@ function Machines.needleBin(parent, frame)
 	local flying = {}
 	local generation = 0
 
-	-- Throws count needles from `from` into the bin, owned by ownerId.
-	function bin.add(from, ownerId, count, needleId)
+	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B).
+	function bin.add(from, ownerId, count, needleId, grade)
 		local gen = generation
 		for i = 1, count do
-			local token = { ownerId = ownerId, id = needleId or Needle.default.id }
+			local token = { ownerId = ownerId, id = needleId or Needle.default.id, grade = grade }
 			flying[token] = true
 			task.delay(i * 0.08, function()
 				if gen ~= generation or not model.Parent then
@@ -315,7 +315,7 @@ function Machines.needleBin(parent, frame)
 				local at = cornerFor(needleId or Needle.default.id)
 				local spread = at and 0.7 or 2
 				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
-				token.part = Needle.throw(from, to, ownerId, needleId)
+				token.part = Needle.throw(from, to, ownerId, needleId, grade)
 				task.delay(2.5, function()
 					flying[token] = nil -- landed (the longest hover plus flight is 2.1 seconds)
 				end)
@@ -346,10 +346,10 @@ function Machines.needleBin(parent, frame)
 	end
 
 	-- Drops one existing needle (a visible one a sorter caught) into the bin as it is.
-	function bin.put(ownerId, needleId, mult, polished)
+	function bin.put(ownerId, needleId, mult, polished, grade)
 		local at = cornerFor(needleId or Needle.default.id) or Vector3.zero
 		local spread = cornerFor(needleId or Needle.default.id) and 0.7 or 2
-		local n = Needle.make(floor * CFrame.new(at + Vector3.new(rng:NextNumber(-spread, spread), 0.8, rng:NextNumber(-spread, spread))), ownerId, needleId, mult, polished)
+		local n = Needle.setGrade(Needle.make(floor * CFrame.new(at + Vector3.new(rng:NextNumber(-spread, spread), 0.8, rng:NextNumber(-spread, spread))), ownerId, needleId, mult, polished), grade)
 		n.Anchored = false
 		refresh()
 	end
@@ -362,7 +362,7 @@ function Machines.needleBin(parent, frame)
 		local function add(n)
 			seen[n] = true
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
-				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"))
+				local key = Needle.keyOfPart(n)
 				byKey[key] = (byKey[key] or 0) + Needle.count(n)
 			end
 		end
@@ -375,7 +375,8 @@ function Machines.needleBin(parent, frame)
 					add(token.part)
 				end
 			elseif ownerId == nil or token.ownerId == ownerId then
-				byKey[token.id] = (byKey[token.id] or 0) + 1 -- not thrown yet, so not rolled: saved plain
+				local key = Needle.keyOf(token.id, 1, false, token.grade)
+				byKey[key] = (byKey[key] or 0) + 1 -- not thrown yet, so not rolled: saved plain
 			end
 		end
 		return byKey
@@ -394,7 +395,7 @@ function Machines.needleBin(parent, frame)
 			return floor * CFrame.new(-1.95 + col * 1.3, 0.3 + layer * 0.6, -2.3 + row * 0.2)
 		end
 		for key, count in byKey do
-			local id, mult, polished = Needle.parseKey(key)
+			local id, mult, polished, grade = Needle.parseKey(key)
 			if typeof(count) ~= "number" then
 				continue
 			end
@@ -413,23 +414,23 @@ function Machines.needleBin(parent, frame)
 				end
 				if mult == 1 then
 					while count >= Needle.BUNDLE do
-						Needle.bundle(cornerSpot(), ownerId, id, polished).Anchored = true
+						Needle.setGrade(Needle.bundle(cornerSpot(), ownerId, id, polished), grade).Anchored = true
 						count -= Needle.BUNDLE
 					end
 				end
 				for _ = 1, count do
-					Needle.make(cornerSpot(), ownerId, id, mult, polished).Anchored = true
+					Needle.setGrade(Needle.make(cornerSpot(), ownerId, id, mult, polished), grade).Anchored = true
 				end
 				continue
 			end
 			if mult == 1 then
 				while count >= Needle.BUNDLE do
-					Needle.bundle(nextSpot(), ownerId, id, polished).Anchored = true
+					Needle.setGrade(Needle.bundle(nextSpot(), ownerId, id, polished), grade).Anchored = true
 					count -= Needle.BUNDLE
 				end
 			end
 			for _ = 1, count do
-				local n = Needle.make(nextSpot(), ownerId, id, mult, polished)
+				local n = Needle.setGrade(Needle.make(nextSpot(), ownerId, id, mult, polished), grade)
 				n.Anchored = true
 			end
 		end
@@ -547,7 +548,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
-	local function sort(hay, ownerId, hayType)
+	local function sort(hay, ownerId, hayType, recoveryMult)
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
@@ -569,12 +570,12 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
 		local found = 0
 		for _ = 1, hidden do
-			if rng:NextNumber() < tier.recovery then
+			if rng:NextNumber() < tier.recovery * (recoveryMult or 1) then
 				found += 1
 			end
 		end
 		if bin then
-			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType))
+			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
 		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
@@ -582,6 +583,23 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		sorted += 1
 		model:SetAttribute("Sorted", sorted)
 		refreshLabel()
+	end
+
+	-- Region hay (Factory.Treatments) that still needs its region machine, and a reminder to its owner now and then.
+	local function untreated(body)
+		local t = Factory.Treatments[hayTypeOf(body)]
+		if t and not body:GetAttribute(t.mark) then
+			return t
+		end
+		return nil
+	end
+	local toldAt = {}
+	local function refuse(ownerId, need)
+		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+		if owner and os.clock() - (toldAt[ownerId] or -math.huge) > 15 then
+			toldAt[ownerId] = os.clock()
+			Data.toast(owner, need.refuse)
+		end
 	end
 
 	-- Hay that was sorted upstream goes straight out the far end.
@@ -639,7 +657,11 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
 				if b and not b.gone and not b.carriedBy and not b.breaking then
-					if not b.sorted then
+					local need = not b.sorted and not isAlien and p == b.body and untreated(p)
+					if need and need.required then
+						passThrough(p) -- region hay that skipped its machine rides on, unsorted
+						refuse(b.ownerId, need)
+					elseif not b.sorted then
 						bale = bale or b
 					elseif p == b.body then
 						passThrough(p) -- already sorted upstream: never sorted twice, and never left jamming the flap
@@ -649,7 +671,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 						-- A visible needle that spilled from a bale: it goes to the bin as it is, not counted as a strand.
 						if bin and p.Parent then
 							local owner = p:GetAttribute("OwnerId")
-							bin.put(payTo and payTo(owner) or owner, p:GetAttribute("NeedleId"), p:GetAttribute("Mutation"), p:GetAttribute("Polished"))
+							bin.put(payTo and payTo(owner) or owner, p:GetAttribute("NeedleId"), p:GetAttribute("Mutation"), p:GetAttribute("Polished"), p:GetAttribute("Grade"))
 							Hay.remove(p)
 						else
 							passThrough(p)
@@ -666,8 +688,12 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
+				local need = not isAlien and untreated(bale.body)
+				if need then
+					refuse(bale.ownerId, need) -- not required, so it sorts, at need.penalty of the recovery
+				end
 				Bales.consume(bale)
-				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType)
+				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType, need and need.penalty or 1)
 			elseif #loose > 0 then
 				-- One owner and one hay type per batch; anything else in the hopper goes next tick.
 				local firstOwner, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
@@ -678,8 +704,8 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				local taken = 0
 				for _, p in loose do
 					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
+						taken += Hay.strandsIn(p) -- a raked pile counts every strand in it
 						Hay.remove(p)
-						taken += 1
 					end
 				end
 				sort(taken * Config.HayPerPiece, ownerId, hayType)
@@ -738,7 +764,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 							end
 						end
 					elseif Hay.isPiece(p) and not Needle.isNeedle(p) then -- a visible needle stays for its finder to pick up
-						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
+						hay, ownerId, hayType = Config.HayPerPiece * Hay.strandsIn(p), p:GetAttribute("OwnerId"), hayTypeOf(p)
 						clean = p:GetAttribute("Sorted") == true -- from a sorted bale that broke: its needles are gone
 						take = function()
 							Hay.remove(p)

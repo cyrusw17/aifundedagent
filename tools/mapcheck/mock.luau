@@ -157,6 +157,8 @@ typeof = function(v)
 	return type(v)
 end
 
+TweenInfo = { new = function(...) return { ... } end }
+
 -- Random: a plain LCG, deterministic per seed.
 Random = {
 	new = function(seed)
@@ -208,7 +210,7 @@ Inst.__index = function(o, k)
 	if k == "Position" and o._props.CFrame then return o._props.CFrame.p end
 	if k == "ExtentsCFrame" then return o._props.CFrame end
 	if k == "ExtentsSize" then return o._props.Size end
-	if k == "Triggered" or k == "Changed" or k == "Touched" or k == "ChildAdded" or k == "AncestryChanged" or k == "Event" or k == "OnServerEvent" then return signal() end
+	if k == "Triggered" or k == "Changed" or k == "Touched" or k == "ChildAdded" or k == "DescendantAdded" or k == "DescendantRemoving" or k == "AncestryChanged" or k == "Event" or k == "OnServerEvent" then return signal() end
 	local v = o._props[k]
 	if v ~= nil then return v end
 	for _, child in o._children do
@@ -378,7 +380,7 @@ local services = {
 	},
 	Players = { GetPlayers = function() return {} end, GetPlayerByUserId = function() return nil end, PlayerAdded = signal(), PlayerRemoving = signal() },
 	RunService = { IsStudio = function() return true end, IsServer = function() return true end, Heartbeat = signal(), Stepped = signal() },
-	TweenService = { Create = function() return { Play = function() end } end },
+	TweenService = { Create = function(_, inst, _, goal) return { Play = function() for k, v in goal do inst[k] = v end end, Completed = { Wait = function() end } } end },
 	Debris = { AddItem = function() end },
 	Lighting = newInstance("Lighting"),
 }

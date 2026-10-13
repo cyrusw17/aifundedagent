@@ -178,7 +178,7 @@ def two_wheel_handcart(f):
         parts.append(B(f, "handle", (0.12, 4.5, 0.18), (x * 1.97, 0, bz + 0.85), along="y"))
     # Hay heaped inside.
     heap = B(f, "hay", (3.3, 3.9, 1.4), (0, 0, bz + 1.1), along="y")
-    parts.append(heap)
+    parts += tag([heap], "HayFill")
     # Under-frame, axle and wheels.
     for x in (-1.2, 1.2):
         parts.append(B(f, "handle", (0.35, 5.2, 0.35), (x, -0.3, bz - 0.15), along="y"))
@@ -209,7 +209,7 @@ def pull_wagon(f):
         for y in (-1, 0, 1):
             parts.append(B(f, "metal", (0.25, 0.25, 1.7), (x * (W / 2 + 0.05), y * (L / 2 - 0.05), bz + 0.95),
                            along="z"))
-    parts.append(B(f, "hay", (W - 0.6, L - 0.6, 1.4), (0, 0, bz + 1.0), along="y"))
+    parts += tag([B(f, "hay", (W - 0.6, L - 0.6, 1.4), (0, 0, bz + 1.0), along="y")], "HayFill")
     # Frame, axles and wheels.
     parts.append(B(f, "metal", (0.4, L - 0.6, 0.35), (0, 0, bz - 0.15), along="y"))
     for y in (-2.4, 2.4):
@@ -443,12 +443,12 @@ def box_truck(f):
     wall_h = 6.4
     parts, i, yc = truck_with_bed(f, "box_truck", "paint_cream", 4, wall_h, k=1.05, wide=1.55, wheel_r=1.45, gap=0.4,
                                   dual=True, axles=[3.2])
-    bed, Lo, Wo = cargo_bed(f, "box_truck", 4, 3, wall_h, yc, floor="handle", wall="paint_cream", tail_h=2.6,
+    bed, Lo, Wo = cargo_bed(f, "box_truck", 4, 3, wall_h, yc, floor="handle", wall="paint_blue", tail_h=2.6,
                             layers=2)
     BEDS["box_truck"] = BEDS["box_truck"][:3] + ((4, 3, 2),)
     parts += bed + bed_support(f, i, yc, Lo)
     top = FLOOR + wall_h
-    parts.append(flat(f, "paint_cream", (Wo, Lo, WALL_T), (0, yc, top + WALL_T / 2), along="y"))
+    parts.append(flat(f, "paint_blue", (Wo, Lo, WALL_T), (0, yc, top + WALL_T / 2), along="y"))
     # Rolled-up door under the roof at the back, and its rails.
     yb = yc + Lo / 2
     parts.append(C(f, "metal", 0.35, Wo - 0.8, (0, yb - 0.5, top - 0.35), axis="x", verts=10, rounded=False))
@@ -656,35 +656,45 @@ def sailboat(f):
 
 
 def cargo_barge(f):
-    """Flat steel cargo barge with raked ends; the 34 x 11 stud deck takes a full trailer."""
-    L, W, H = 38.0, 11.0, 2.6
+    """Car ferry barge: steel hull 22 x 74 studs with an open deck 18 wide x 66 long inside low rails
+    (a pickup plus a medium trailer, about 60 long, drives on), a hinged ramp at each end and a small
+    pilot house on a side sponson."""
+    L, W, H = 66.0, 22.0, 2.6      # deck length between ramps, hull width, deck height
+    inner = 18.0
     parts = []
     hb = box(s(W, L, H), s(0, 0, H / 2))
     for v in hb.data.vertices:
         if v.co.z < 0:
-            v.co.y *= 0.88  # raked bow and stern
+            v.co.y *= 0.94  # raked bow and stern
     parts.append(f.apply(f.shape(hb), "metal", along="y"))
-    # Painted sheer stripe and deck.
     for x in (-1, 1):
         parts.append(B(f, "paint_red", (0.1, L - 0.6, 0.6), (x * (W / 2 + 0.04), 0, H - 0.5), along="y",
                        rounded=False))
-    parts.append(B(f, "stone", (W - 1.0, L - 3.2, 0.12), (0, 0, H + 0.05), along="y", rounded=False))
-    # Coaming rails, bollards, tire fenders and tie-down bars.
+    parts.append(flat(f, "stone", (inner, L, 0.12), (0, 0, H + 0.06), along="y"))
+    # Low rails (1.2 tall) and walkways outside them, bollards and tire fenders.
     for x in (-1, 1):
-        parts.append(B(f, "metal", (0.35, L - 1.0, 0.6), (x * (W / 2 - 0.2), 0, H + 0.3), along="y"))
-        for y in (-L / 2 + 1.2, L / 2 - 1.2, 0):
-            parts.append(C(f, "metal", 0.35, 0.9, (x * (W / 2 - 1.0), y, H + 0.45), verts=10))
-            parts.append(C(f, "metal", 0.5, 0.15, (x * (W / 2 - 1.0), y, H + 0.95), verts=10))
-        for y in (-12, -4, 4, 12):
+        parts.append(flat(f, "metal", (0.3, L, 1.2), (x * (inner / 2 + 0.15), 0, H + 0.6), along="y"))
+        for y in (-L / 2 + 2, -L / 4, 0, L / 4, L / 2 - 2):
+            parts.append(C(f, "metal", 0.35, 0.9, (x * (W / 2 - 0.8), y, H + 0.45), verts=8))
+        for y in (-24, -8, 8, 24):
             parts.append(C(f, "tire", 0.6, 0.6, (x * (W / 2 + 0.35), y, H - 1.1), axis="x", verts=10))
-    for y in (-14, -8, 8, 14):
-        parts.append(B(f, "metal", (W - 3.0, 0.25, 0.2), (0, y, H + 0.2), rounded=False))
+    # Lane stripes and wheel chocks.
+    for x in (-4.5, 4.5):
+        parts.append(flat(f, "paint_yellow", (0.3, L - 4, 0.02), (x, 0, H + 0.13), along="y"))
+    # Hinged ramps at both ends (hinge on the deck edge), lying down slightly sloped.
     for y in (-1, 1):
-        parts.append(B(f, "metal", (W - 0.4, 0.35, 0.9), (0, y * (L / 2 - 0.3), H + 0.45)))
-    # Wheel chocks for a trailer's tires.
-    for x in (-2.55, 2.55):
-        for y in (4.8, 8.2):
-            parts.append(B(f, "paint_yellow", (0.8, 0.6, 0.45), (x, y, H + 0.32)))
+        ramp = box(s(inner, 5.0, 0.3), s(0, y * (L / 2 + 2.4), H - 0.4), rot=(y * 0.12, 0, 0))
+        parts += tag([f.apply(f.shape(ramp, round_edges=False), "metal", along="y")], "Ramp", y)
+        for x in (-1, 1):
+            parts.append(C(f, "metal", 0.3, 1.0, (x * (inner / 2 - 0.5), y * (L / 2 + 0.1), H - 0.1), axis="x", verts=8))
+    # Pilot house on a sponson off the starboard side, outside the deck.
+    px = W / 2 + 2.5
+    parts.append(B(f, "metal", (5.0, 8.0, 0.6), (px, -L / 4, H - 0.3), along="y"))
+    parts.append(B(f, "paint_cream", (4.2, 5.0, 4.2), (px, -L / 4, H + 2.1), along="y"))
+    parts.append(B(f, "paint_red", (4.8, 5.6, 0.4), (px, -L / 4, H + 4.4), along="y"))
+    for y in (-L / 4 - 2.55, -L / 4 + 2.55):
+        parts.append(B(f, "glass", (3.4, 0.12, 1.4), (px, y, H + 3.0), rounded=False))
+    parts.append(C(f, "metal", 0.25, 2.5, (px, -L / 4 + 1.5, H + 5.8), verts=8))
     return parts
 
 

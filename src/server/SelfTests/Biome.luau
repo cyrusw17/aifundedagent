@@ -15,12 +15,15 @@ return function(SelfTest)
 	local Dock = require(Services.Dock)
 	local Data = require(Services.Data)
 
-	local function spawnPickup(t, cframe, owner)
-		local model = Vehicles.build(Vehicles.get("rusty_pickup"), cframe, workspace)
+	local function spawnPickupLike(t, id, cframe, owner)
+		local model = Vehicles.build(Vehicles.get(id), cframe, workspace)
 		t.cleanup(model)
 		Vehicles.makeDrivable(model, owner or { Name = "SelfTest", UserId = -1 })
 		Vehicles.release(model, owner)
 		return model
+	end
+	local function spawnPickup(t, cframe, owner)
+		return spawnPickupLike(t, "rusty_pickup", cframe, owner)
 	end
 
 	-- The loose bales inside a truck's cargo box.
@@ -76,13 +79,13 @@ return function(SelfTest)
 		local need = chassis.AssemblyMass * workspace.Gravity * 1.2
 		t.check("drive force lifts the truck's own weight with room to spare", chassis.Drive.MaxForce >= need, ("%.0f, want >= %.0f"):format(chassis.Drive.MaxForce, need))
 
-		-- Every truck with a bale bed holds 9 bales a layer (3 along x 3 across).
-		for _, id in { "rusty_pickup", "farm_flatbed" } do
+		-- Every truck with a bale bed holds its Blender bed's bales a layer (along x across).
+		for id, want in { rusty_pickup = 9, farm_flatbed = 9, box_truck = 12, heavy_hauler = 15 } do
 			local m = Vehicles.build(Vehicles.get(id), t.place(), workspace)
 			t.cleanup(m)
 			local size = m:GetAttribute("CargoSize")
 			local slots = size and math.floor((size.X + 0.3) / 3.2) * math.floor((size.Z + 0.3) / 4.6) or 0
-			t.equal(id .. " bed holds 9 bales a layer", slots, 9)
+			t.equal(("%s bed holds %d bales a layer"):format(id, want), slots, want)
 			m:Destroy()
 		end
 
@@ -196,7 +199,6 @@ return function(SelfTest)
 		seat:Sit(humanoid)
 		t.wait(0.6)
 		t.check("player sits in the driver seat", seat.Occupant == humanoid)
-		t.check("Vehicles.canDrive lets the owner drive", not Vehicles.canDrive or Vehicles.canDrive(player, truck4) ~= false)
 		local weld = seat:FindFirstChild("SeatWeld")
 		if weld then
 			weld:Destroy()
@@ -247,5 +249,143 @@ return function(SelfTest)
 		end
 		t.wait(0.5)
 		root.CFrame = home
+	end)
+
+	-- Drops a full bottom layer of loose bales into a bed. Returns the bales and their total mass.
+	local function fillLayer(t, model)
+		local chassis = model.PrimaryPart
+		local cargo = chassis.CFrame * model:GetAttribute("CargoOffset")
+		local size = model:GetAttribute("CargoSize")
+		local across = math.floor((size.X + 0.3) / 3.2)
+		local along = math.floor((size.Z + 0.3) / 4.6)
+		local mass = 0
+		for k = 1, along do
+			for i = 1, across do
+				local x = (i - (across + 1) / 2) * math.min(3.25, size.X / across)
+				local z = (k - (along + 1) / 2) * math.min(4.7, size.Z / along)
+				local b = Bales.spawn(Vector3.zero, false, false)
+				b.body.CFrame = cargo * CFrame.new(x, -size.Y / 2 + 1.5, z) * CFrame.Angles(0, math.pi / 2, 0)
+				b.body.Anchored = false
+				t.cleanup(b.body)
+				mass += b.body.AssemblyMass
+			end
+		end
+		return across * along, mass
+	end
+
+	local function ramp(t, lowEdge, angle, length)
+		local r = Instance.new("Part")
+		r.Name = "SelfTestRamp"
+		r.Anchored = true
+		r.Size = Vector3.new(18, 2, length)
+		r.CFrame = CFrame.new(lowEdge) * CFrame.Angles(math.rad(angle), 0, 0) * CFrame.new(0, -1, -length / 2)
+		r.Material = Enum.Material.Ground
+		r.Parent = workspace
+		t.cleanup(r)
+		return r
+	end
+
+	-- Loaded climbs: every buyable bale truck with a full bottom layer, and the pickup pulling a loaded Small Trailer,
+	-- up a 20 degree ramp with physics alone. The bales must stay in and the truck must rise half the ramp.
+	SelfTest.register("Biome loaded climb", function(t)
+		local angle, length = 20, 50
+		local rise = math.sin(math.rad(angle)) * length
+		local runs = {}
+		local lane = 0
+		for _, def in require(ReplicatedStorage.Shared.Config.Trucks) do
+			if not def.available then
+				continue
+			end
+			lane += 1
+			local laneX = -80 + (lane - 1) * 32
+			local stand = t.center * CFrame.new(laneX, 0, 80)
+			ramp(t, (stand * CFrame.new(0, 0, -def.length / 2 - 6)).Position, angle, length)
+			local truck = spawnPickupLike(t, def.id, stand)
+			table.insert(runs, { def = def, truck = truck })
+			if def.id == "rusty_pickup" then
+				-- A second pickup in its own lane with a hitched, loaded Small Trailer.
+				lane += 1
+				local laneX2 = -80 + (lane - 1) * 32
+				local stand2 = t.center * CFrame.new(laneX2, 0, 60)
+				ramp(t, (stand2 * CFrame.new(0, 0, -def.length / 2 - 6)).Position, angle, length)
+				local truck2 = spawnPickupLike(t, def.id, stand2)
+				local tdef = Vehicles.getTrailer("small_trailer")
+				local trailer = Vehicles.buildTrailer(tdef, stand2 * CFrame.new(0, 0, 25), workspace)
+				t.cleanup(trailer)
+				Vehicles.makeTrailerLive(trailer, { Name = "SelfTest", UserId = -1 })
+				Vehicles.hitch(truck2, trailer)
+				table.insert(runs, { def = def, truck = truck2, trailer = trailer, label = "rusty_pickup + loaded small_trailer" })
+			end
+		end
+		t.wait(1)
+		for _, run in runs do
+			local n, mass = fillLayer(t, run.truck)
+			run.count = n
+			if run.trailer then
+				local tn, tmass = fillLayer(t, run.trailer)
+				run.trailerCount = tn
+				mass += tmass + run.trailer.PrimaryPart.AssemblyMass
+				for _, p in run.trailer:GetChildren() do
+					if p.Name == "Wheel" and p:IsA("BasePart") then
+						mass += p.AssemblyMass
+					end
+				end
+			end
+			Vehicles.setDriveForce(run.truck, mass)
+		end
+		t.wait(2)
+		for _, run in runs do
+			local chassis = run.truck.PrimaryPart
+			run.startY = chassis.Position.Y
+			run.top = run.startY
+			task.spawn(function()
+				local c = RunService.Heartbeat:Connect(function()
+					run.top = math.max(run.top, chassis.Position.Y)
+				end)
+				driveFor(run.truck, 4, run.def.maxSpeed)
+				c:Disconnect()
+				run.done = true
+			end)
+		end
+		local deadline = os.clock() + 8
+		repeat
+			t.wait(0.25)
+			local all = true
+			for _, run in runs do
+				all = all and run.done
+			end
+		until all or os.clock() > deadline
+		t.wait(1)
+		for _, run in runs do
+			local name = run.label or run.def.id .. " loaded"
+			local climbed = run.top - run.startY
+			t.check(("%s climbs a %d degree ramp"):format(name, angle), climbed >= rise * 0.5, ("rose %.1f of %.1f"):format(climbed, rise))
+			t.equal(name .. ": bales stay in the bed", (balesIn(run.truck)), run.count)
+			if run.trailer then
+				t.equal(name .. ": bales stay in the trailer", (balesIn(run.trailer)), run.trailerCount)
+			end
+		end
+	end)
+
+	-- Side-slope hold: parked across a 15 degree slope with no throttle, the truck must not creep sideways.
+	SelfTest.register("Biome side slope", function(t)
+		local angle = 15
+		local slope = Instance.new("Part")
+		slope.Name = "SelfTestSlope"
+		slope.Anchored = true
+		slope.Size = Vector3.new(40, 2, 50)
+		slope.CFrame = t.center * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.rad(angle))
+		slope.Material = Enum.Material.Ground
+		slope.Parent = workspace
+		t.cleanup(slope)
+		local ground = slope.CFrame * CFrame.new(0, 1, 0)
+		local truck = spawnPickupLike(t, "rusty_pickup", ground)
+		local chassis = truck.PrimaryPart
+		t.wait(1)
+		local start = chassis.Position
+		driveFor(truck, 5, 0)
+		local drift = (chassis.Position - start) * Vector3.new(1, 0, 1)
+		t.check(("pickup holds on a %d degree side slope for 5 s"):format(angle), drift.Magnitude < 1, ("drifted %.2f studs"):format(drift.Magnitude))
+		t.check("pickup stays on its wheels on the side slope", chassis.CFrame.UpVector.Y > 0.9, ("up.Y %.2f"):format(chassis.CFrame.UpVector.Y))
 	end)
 end

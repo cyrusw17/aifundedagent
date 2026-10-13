@@ -90,3 +90,96 @@ if WorldClock.phase() ~= "midnight" then clockOk = false end
 Lighting.ClockTime = 18
 if WorldClock.phase() ~= "dusk" then clockOk = false end
 print("clock", clockOk and "ok" or "WRONG", "atmosphere", Lighting:FindFirstChildOfClass("Atmosphere") and "made" or "missing")
+
+-- Weather: every region has a known kind on the board, and an event can force one.
+local Weather = require({ __path = "Services.Weather" })
+local WeatherConfig = require({ __path = "Shared.Config.Weather" })
+local weatherOk = true
+for _, r in Map.Regions do
+	local kind = Weather.get(r.id)
+	if not WeatherConfig.Regions[r.id] or not WeatherConfig.Kinds[kind] then
+		weatherOk = false
+		print("WARN weather missing for region", r.id, kind)
+	end
+end
+Weather.force("desert", "dust", 60)
+if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+print("weather", weatherOk and "ok" or "WRONG")
+
+-- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
+local RegionEvents = require({ __path = "Services.RegionEvents" })
+local Prices = require({ __path = "Shared.Config.Prices" })
+local WorldShapeE = require({ __path = "Services.WorldShape" })
+local eventsOk = true
+for _, e in RegionEvents.List do
+	local reward = Prices.RegionEvents[e.id]
+	local dropped = RegionEvents.run(e.id, 1)
+	local n, onRoad = 0, 0
+	for b in dropped do
+		n += 1
+		local d = WorldShapeE.nearestRoad(b.spawnPosition.X, b.spawnPosition.Z)
+		if d and d < 6 then onRoad += 1 end
+		if b.body:GetAttribute("NeedleBoost") ~= reward.boost then eventsOk = false end
+	end
+	if n < reward.bales * 0.6 or onRoad > 0 then
+		eventsOk = false
+		print("WARN event", e.id, "dropped", n, "of", reward.bales, "on road", onRoad)
+	end
+	print(("event %-14s %2d bales"):format(e.id, n))
+end
+RegionEvents.finish()
+print("events", eventsOk and "ok" or "WRONG")
+
+-- Wilds: the four secrets exist, the crater is hot, the Ghost Road holds only at night.
+local Wilds = require({ __path = "Services.Wilds" })
+local wildsOk = true
+for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+	if not Wilds.Secrets[id] or not Prices.Secrets[id] then
+		wildsOk = false
+		print("WARN secret missing", id)
+	end
+end
+local ember = Wilds.Secrets.ember_cache
+if ember and not Wilds.inHeat(ember.part.Position) then
+	wildsOk = false
+	print("WARN the Ember Cache is outside the crater's heat", ember.part.Position)
+end
+local quarry = Vector3.new(740, 30, -1300)
+if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry") end
+Lighting.ClockTime = 0
+Wilds.refreshGhost()
+if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+print("wilds", wildsOk and "ok" or "WRONG")
+
+-- Discoveries: every landmark is found standing on it, every region standing in its middle, and nothing in Meadow.
+local Discoveries = require({ __path = "Services.Discoveries" })
+local discOk = true
+local function finds(position, id)
+	for _, got in Discoveries.at(position) do
+		if got == id then return true end
+	end
+	return false
+end
+for _, entry in Discoveries.all() do
+	local p
+	if entry.kind == "landmark" then
+		p = Vector3.new(entry.at.X, 20, entry.at.Y)
+	else
+		for _, r in Map.Regions do
+			if r.id == entry.id then p = Vector3.new(r.center.X, WorldShapeE.heightAt(r.center.X, r.center.Y) + 3, r.center.Y) end
+		end
+	end
+	if p and not finds(p, entry.id) then
+		discOk = false
+		print("WARN discovery not found where it stands", entry.id)
+	end
+end
+if #Discoveries.at(Vector3.new(0, 5, 0)) > 0 then discOk = false print("WARN Meadow counts as a discovery") end
+print("discoveries", #Discoveries.all(), discOk and "ok" or "WRONG")
+
+-- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
+local mapParts = 0
+for _, d in workspace:GetDescendants() do
+	if d:IsA("BasePart") then mapParts += 1 end
+end
+print("map parts", mapParts, mapParts <= 12000 and "within 12000" or "WARN over the map's 12000 share")

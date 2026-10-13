@@ -139,6 +139,18 @@ local function unloadAll(player)
 	return #load
 end
 
+-- The cargo box (CFrame at its middle, and its size) of the truck or trailer part belongs to, or nil.
+Wheelbarrow.cargoOf = cargoOf
+
+-- Tips the barrow's load into the cargo box of the truck or trailer that part belongs to. Returns how many went in.
+function Wheelbarrow.tipInto(player, part)
+	local box, size = cargoOf(part)
+	if not box then
+		return 0
+	end
+	return tipInto(player, box, size)
+end
+
 -- Loads a bale into the player's barrow (it must be out and have room). Returns true if it went in.
 function Wheelbarrow.load(player, bale)
 	local state = Data.get(player)
@@ -261,6 +273,7 @@ local function buy(player)
 	end
 	state.gear = state.gear or {}
 	table.insert(state.gear, GEAR_ID)
+	Data.sync(player) -- publishes the "Gear" attribute the goal bar reads
 	give(player)
 	Data.toast(player, "Bought a wheelbarrow. Hauls 3 bales at a time.")
 end

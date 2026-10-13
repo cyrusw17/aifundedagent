@@ -1,6 +1,6 @@
 --!nonstrict
 -- Field bale chutes (V8 plan). A wooden hopper on four posts stands over a lane beside each big hay field, and one
--- on the meadow's trailer road. Park a truck or trailer bed under it and pull the rope: it drops loose bales into the
+-- on the meadow's trailer road. Park a truck or trailer bed under it and pull the lever: it drops loose bales into the
 -- free spots of the bed, one layer at a time, in about three seconds. Loading 9 bales by hand was the slow part of a
 -- truck trip, so this is what makes a truck beat the wheelbarrow.
 --
@@ -19,11 +19,13 @@ local Bales = require(script.Parent.Bales)
 local Data = require(script.Parent.Data)
 local Feedback = require(script.Parent.Feedback)
 local Vehicles = require(script.Parent.Vehicles)
+local Props = require(script.Parent.Props)
 
 local Chutes = {}
 
 local BALE = Vector3.new(4.6, 2.6, 3.2) -- Bales.luau SIZE: lying lengthwise in a bed, 3.2 across and 4.6 along
 local SLOT_ACROSS, SLOT_ALONG = 3.25, 4.7
+local ROAD_CLEAR = 18 -- from a road's center line to a field chute's center: half a road plus the chute's half width
 
 local chutes = {}
 
@@ -113,7 +115,7 @@ local function tell(player, text)
 	end
 end
 
--- Pulls the rope for player (nil in self-tests: the bales then have no owner). Returns how many bales will drop.
+-- Pulls the lever for player (nil in self-tests: the bales then have no owner). Returns how many bales will drop.
 function Chutes.pull(chute, player)
 	if chute.busy then
 		return 0
@@ -124,7 +126,7 @@ function Chutes.pull(chute, player)
 	end
 	local bed = bedUnder(chute)
 	if not bed then
-		tell(player, "Park a truck or trailer bed under the chute, then pull the rope.")
+		tell(player, "Park a truck or trailer bed under the chute, then pull the lever.")
 		return 0
 	end
 	local slots = freeSlots(bed)
@@ -208,9 +210,18 @@ function Chutes.make(parent, frame, field, name)
 	light.Parent = lantern
 	model.Parent = parent
 
+	-- The Blender chute (art-review/MODEL_SPECS.md: 12 x 16 x 14, faces -Z) at 1.2x, so its 11 x 9.5 clearance opens
+	-- to about 13 x 11.4 and a box truck fits under. The parts above stay as the collisions; each client hides them
+	-- once the mesh has loaded (PropMeshes.client.luau).
+	local fit = 16 * 1.2
+	local mesh = Props.make("field_bale_chute", frame * CFrame.new(0, fit / 2, 0), fit)
+	if mesh then
+		Props.weldTo(mesh, hopper, model)
+	end
+
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "PullPrompt"
-	prompt.ActionText = "Pull rope"
+	prompt.ActionText = "Pull lever"
 	prompt.ObjectText = "Bale chute"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0.25
@@ -252,8 +263,9 @@ local function spotFor(field, WorldShape)
 				break
 			end
 		end
+		-- Close to a road so a truck can pull in, but never standing on it.
 		local road = WorldShape.nearestRoad(p.X, p.Z)
-		if flat and road and (not bestRoad or road < bestRoad) then
+		if flat and road and road >= ROAD_CLEAR and (not bestRoad or road < bestRoad) then
 			best, bestRoad = CFrame.lookAt(Vector3.new(p.X, h, p.Z), Vector3.new(p.X, h, p.Z) + lane), road
 		end
 	end
