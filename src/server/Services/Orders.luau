@@ -4,6 +4,13 @@
 -- step on it with needles in your pocket. Each one pays the order's rate straight away, up to the order's amount per
 -- player, so nothing delivered is ever lost when the orders change. New orders come every Prices.Orders.RotateSeconds.
 -- The numbers, buyers and kinds of order are in Config/Prices (Orders).
+--
+-- Daily contracts (CEO H9, Prices.DailyContracts) use the same pad: three a day, the same for everyone, reset at
+-- midnight UTC. Anything delivered counts toward today's contract of its kind, and a contract with no order open for
+-- its goods takes them at their normal price. Each finished contract pays a reward, all three a bonus and a streak
+-- day (Quests.countStreak). The board's back face lists them; each player's progress is the player attribute
+-- Contracts (one line each), and ReplicatedStorage attribute ContractsResetAt is the next reset (unix time, the same
+-- clock as workspace:GetServerTimeNow()) for the HUD countdown.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -16,6 +23,7 @@ local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Needle = require(script.Parent.Needle)
 local Props = require(script.Parent.Props)
+local NeedleTypes = require(Shared.Config.Needles)
 
 local Orders = {}
 
@@ -101,6 +109,138 @@ local function credit(player, i, offer, count, fill)
 	end
 end
 
+-- Daily contracts ---------------------------------------------------------------------------------------------------
+
+local Contract = Prices.DailyContracts
+local DAY = 86400
+
+local function today()
+	return os.time() // DAY
+end
+
+local function tierFor(sold)
+	local pick = 1
+	for i, tier in Contract.Tiers do
+		if sold >= tier.fromSold then
+			pick = i
+		end
+	end
+	return pick
+end
+
+local function needleName(id)
+	for _, n in NeedleTypes do
+		if n.id == id then
+			return n.name
+		end
+	end
+	return id
+end
+
+local function what(kind, needleId)
+	return kind == "needles" and (needleName(needleId):lower() .. " needles") or kind == "sorted" and "sorted bales" or "hay bales"
+end
+
+-- Today's contracts at a tier: { buyer, kind, needle?, amount }. Seeded by the day, so every server agrees.
+function Orders.contractsFor(tierIndex, day)
+	local tier = Contract.Tiers[tierIndex]
+	local r = Random.new((day or today()) * 104729 + 7)
+	local out = {}
+	for i, kind in tier.kinds or { "bales", "sorted", "needles" } do
+		local range = Contract.Kinds[kind].amount
+		out[i] = {
+			buyer = Terms.Buyers[r:NextInteger(1, #Terms.Buyers)],
+			kind = kind,
+			needle = kind == "needles" and tier.needle or nil,
+			amount = r:NextInteger(range[1], range[2]),
+		}
+	end
+	return out
+end
+
+-- A player's contract state for today, started fresh (tier fixed for the day) when the day has turned.
+local function contractState(player)
+	local state = Data.get(player)
+	if not state then
+		return nil
+	end
+	local c = state.contracts
+	if typeof(c) ~= "table" or c.day ~= today() or not Contract.Tiers[c.tier] then
+		c = { day = today(), tier = tierFor(Bank.account(state).sold), n = {}, paid = {} }
+		state.contracts = c
+	end
+	c.n = typeof(c.n) == "table" and c.n or {}
+	c.paid = typeof(c.paid) == "table" and c.paid or {}
+	return c, Orders.contractsFor(c.tier, c.day)
+end
+
+local function publishContracts(player)
+	local c, list = contractState(player)
+	if not c then
+		return
+	end
+	local lines = {}
+	for i, def in list do
+		table.insert(lines, ("%s: %d / %d %s%s"):format(def.buyer, math.min(c.n[i] or 0, def.amount), def.amount, what(def.kind, def.needle), c.paid[i] and " (done)" or ""))
+	end
+	local tier = Contract.Tiers[c.tier]
+	table.insert(lines, ("$%d each, $%d more for all three"):format(tier.reward, tier.bonus))
+	player:SetAttribute("Contracts", table.concat(lines, "\n"))
+end
+
+-- The open contract for these goods: index, def, how many more it takes.
+local function openContract(player, kind, needleId)
+	local c, list = contractState(player)
+	if not c then
+		return nil
+	end
+	for i, def in list do
+		if def.kind == kind and (kind ~= "needles" or def.needle == needleId) and (c.n[i] or 0) < def.amount then
+			return i, def, def.amount - (c.n[i] or 0)
+		end
+	end
+	return nil
+end
+
+local Quests -- required on first use: Quests is a big service, and Orders loads early
+local function countContract(player, i, count)
+	local c, list = contractState(player)
+	local def = c and list[i]
+	if not def then
+		return
+	end
+	c.n[i] = math.min(def.amount, (c.n[i] or 0) + count)
+	if c.n[i] >= def.amount and not c.paid[i] then
+		c.paid[i] = true
+		local tier = Contract.Tiers[c.tier]
+		Bank.earn(player, tier.reward, ("Contract: %s"):format(def.buyer))
+		Data.toast(player, ("Contract done for %s! +$%d"):format(def.buyer, tier.reward))
+		local all = true
+		for j in list do
+			all = all and c.paid[j] == true
+		end
+		if all and not c.bonus then
+			c.bonus = true
+			Bank.earn(player, tier.bonus, "Contract: all three today")
+			Data.toast(player, ("All three contracts done! +$%d bonus"):format(tier.bonus))
+			Quests = Quests or require(script.Parent.Quests)
+			Quests.countStreak(player)
+		end
+	end
+	publishContracts(player)
+end
+
+local function contractsText()
+	local list = Orders.contractsFor(2) -- the board shows the usual three kinds
+	local lines = { "DAILY CONTRACTS", "Finish all three for a bonus and a streak day" }
+	for _, def in list do
+		table.insert(lines, ("%s wants %s"):format(def.buyer, def.kind == "needles" and "needles from your best field" or what(def.kind)))
+	end
+	local left = (today() + 1) * DAY - os.time()
+	table.insert(lines, ("New contracts in %dh %02dm"):format(left // 3600, left % 3600 // 60))
+	return table.concat(lines, "\n\n")
+end
+
 -- A bale set on the pad goes to its owner's open order, sorted or plain. Bales nobody ordered stay where they are.
 local warned = setmetatable({}, { __mode = "k" }) -- bales already told "nobody wants this"
 local function deliverBale(b)
@@ -113,7 +253,8 @@ local function deliverBale(b)
 	end
 	local kind = b.sorted and "sorted" or "bales"
 	local i, offer = openOrder(player.UserId, kind)
-	if not i then
+	local ci = openContract(player, kind)
+	if not i and not ci then
 		if not warned[b] then
 			warned[b] = true
 			Data.toast(player, b.sorted and "Nobody here wants more sorted bales right now." or "Nobody here wants more hay bales right now.")
@@ -123,7 +264,14 @@ local function deliverBale(b)
 	-- A sorted bale pays for the hay it holds: a sorter can wrap a few loose strands into a full-size sorted bale.
 	local fill = b.sorted and math.min(1, (b.sortedHay or Prices.HayPerBale) / Prices.HayPerBale) or 1
 	Bales.consume(b)
-	credit(player, i, offer, 1, fill)
+	if i then
+		credit(player, i, offer, 1, fill)
+	else
+		Bank.earn(player, math.floor(baseRate(kind) * fill + 0.5), "Contract: delivery")
+	end
+	if ci then
+		countContract(player, ci, 1)
+	end
 end
 
 -- Standing on the pad hands over matching needles from your pocket. Mutated needles stay in your pocket.
@@ -134,15 +282,33 @@ local function deliverNeedles(player)
 	end
 	lastStep[player] = os.clock()
 	local i, offer, want = openOrder(player.UserId, "needles")
-	if not i then
+	if i then
+		-- Any grade or polish of the type counts, cheapest first (Needle.take).
+		local count = math.min(Needle.plainCount(player, offer.needle), want)
+		if count > 0 and Needle.take(player, offer.needle, count) then
+			credit(player, i, offer, count)
+			local ci = openContract(player, "needles", offer.needle)
+			if ci then
+				countContract(player, ci, count)
+			end
+		end
+	end
+	-- Then today's needle contract, if it wants a type the order didn't take (or more than it took).
+	local c, list = contractState(player)
+	if not c then
 		return
 	end
-	-- Any grade or polish of the type counts, cheapest first (Needle.take).
-	local count = math.min(Needle.plainCount(player, offer.needle), want)
-	if count <= 0 or not Needle.take(player, offer.needle, count) then
-		return
+	for _, def in list do
+		if def.kind == "needles" then
+			local ci, _, more = openContract(player, "needles", def.needle)
+			local count = ci and math.min(Needle.plainCount(player, def.needle), more) or 0
+			if count > 0 and Needle.take(player, def.needle, count) then
+				Bank.earn(player, baseRate("needles", def.needle) * count, "Contract: delivery")
+				countContract(player, ci, count)
+			end
+			break
+		end
 	end
-	credit(player, i, offer, count)
 end
 
 -- Credits up to count units of a kind ("bales", "sorted" or "needles") to a player's open order, as the pad does once
@@ -158,6 +324,34 @@ function Orders.fill(player, kind, count, fill)
 	end
 	credit(player, i, offer, take, fill)
 	return take
+end
+
+-- Credits count units of a kind to today's contract for that kind (needles: the contract's type), paying their normal
+-- price, as the pad does when no order wants them. Returns how many it took. SelfTests/Economy calls this.
+function Orders.fillContract(player, kind, count)
+	local _, list = contractState(player)
+	local needleId
+	for _, def in list or {} do
+		if def.kind == kind then
+			needleId = def.needle
+			break
+		end
+	end
+	local ci, _, more = openContract(player, kind, needleId)
+	local take = ci and math.min(math.floor(count or 0), more) or 0
+	if take <= 0 then
+		return 0
+	end
+	Bank.earn(player, baseRate(kind, needleId) * take, "Contract: delivery")
+	countContract(player, ci, take)
+	return take
+end
+
+-- Today's contracts and this player's progress: state ({ day, tier, n, paid, bonus }) and the list. Also sets the
+-- player's Contracts attribute.
+function Orders.contracts(player)
+	publishContracts(player)
+	return contractState(player)
 end
 
 function Orders.build(parent, position)
@@ -231,10 +425,18 @@ function Orders.build(parent, position)
 			end
 			if os.clock() - lastText > 5 then
 				lastText = os.clock()
-				local text = boardText()
+				local text, back = boardText(), contractsText()
 				for _, g in board:GetChildren() do
 					if g:IsA("SurfaceGui") then
-						g.TextLabel.Text = text
+						g.TextLabel.Text = g.Face == Enum.NormalId.Back and back or text
+					end
+				end
+				-- The contract countdown, and each player's contract lines (new players, and everyone when the day turns).
+				ReplicatedStorage:SetAttribute("ContractsResetAt", (today() + 1) * DAY)
+				for _, player in Players:GetPlayers() do
+					if Data.get(player) and player:GetAttribute("ContractsDay") ~= today() then
+						player:SetAttribute("ContractsDay", today())
+						publishContracts(player)
 					end
 				end
 			end

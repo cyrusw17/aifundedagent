@@ -317,6 +317,8 @@ local function stateFrom(saved)
 		codex = typeof(saved.codex) == "table" and saved.codex or {},
 		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
+		-- contracts: today's daily contracts, { day, tier, n = { [i] = count }, paid = { [i] = true }, bonus } (Orders.luau)
+		contracts = typeof(saved.contracts) == "table" and saved.contracts or nil,
 		tradeLocks = tradeLocksFrom(saved.tradeLocks), -- mythic needles received in a trade can't be traded on for a day
 	}
 	state.savedCash = state.cash
@@ -353,6 +355,7 @@ local function toSave(state)
 		settings = state.settings,
 		codex = state.codex,
 		quests = state.quests,
+		contracts = state.contracts,
 		tradeLocks = state.tradeLocks,
 	}
 end

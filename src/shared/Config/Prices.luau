@@ -80,6 +80,33 @@ Prices.Orders = {
 	},
 }
 
+-- Daily contracts (Services/Orders.luau, CEO H9). Three contracts a day from the same buyers, the same for everyone on
+-- a UTC day, reset at midnight UTC. Deliver on the orders pad: goods pay their normal price (or the open order's rate
+-- when one wants them too), so a contract never costs you a sale. Finishing one pays reward, all three pay bonus and
+-- count a streak day. The cash scales with how far along you are, read once a day from your lifetime sales (Bank
+-- sold): each tier is where tools/economy_model.py's first playthrough reaches that stage, perHour is that stage's
+-- income (the slowest stage until the next tier), and a full day (3 x reward + bonus) is about 20% of one hour there.
+-- tests/contracts.luau fails if any tier goes over 25%. Before a sorter (sold under 5,000) the sorted contract is a
+-- second hay one.
+Prices.DailyContracts = {
+	Kinds = {
+		bales = { amount = { 10, 20 } },
+		sorted = { amount = { 10, 20 } },
+		needles = { amount = { 8, 16 } },
+	},
+	Tiers = {
+		{ fromSold = 0, perHour = 6500, reward = 250, bonus = 500, needle = "steel", kinds = { "bales", "needles", "bales" } },
+		{ fromSold = 5000, perHour = 13700, reward = 550, bonus = 1100, needle = "steel" },
+		{ fromSold = 15000, perHour = 21600, reward = 850, bonus = 1700, needle = "pine" },
+		{ fromSold = 40000, perHour = 40500, reward = 1500, bonus = 3000, needle = "sand" },
+		{ fromSold = 80000, perHour = 90000, reward = 3500, bonus = 7000, needle = "ice" },
+		{ fromSold = 170000, perHour = 150000, reward = 6000, bonus = 12000, needle = "bog" },
+		{ fromSold = 530000, perHour = 436000, reward = 17000, bonus = 34000, needle = "obsidian" },
+		{ fromSold = 760000, perHour = 750000, reward = 30000, bonus = 60000, needle = "geode" },
+		{ fromSold = 5000000, perHour = 1396000, reward = 55000, bonus = 110000, needle = "cloud" },
+	},
+}
+
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
 -- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
 -- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
