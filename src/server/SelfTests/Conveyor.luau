@@ -151,6 +151,30 @@ return function(SelfTest)
 		end
 		t.check("the baled bale rides out, owned by the strands' owner", madeBale)
 
+		-- Region hay: Frozen hay is refused by a sorter until a thawing shed has thawed it.
+		local Treat = require(Services.Treat)
+		local thawLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(thawLine, 0, 0, "E", 7)
+		Conveyors.finish(thawLine)
+		Treat.build(folder, Conveyors.frame(thawLine, 1, 0, "E"), "thawing_shed")
+		local thawSorter = Machines.sorter(folder, Conveyors.frame(thawLine, 4, 0, "E"), "optical_sorter", nil, payTo)
+		local frozenLine = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(frozenLine, 0, 0, "E", 4)
+		Conveyors.finish(frozenLine)
+		local frozenSorter = Machines.sorter(folder, Conveyors.frame(frozenLine, 1, 0, "E"), "optical_sorter", nil, payTo)
+		for _, line in { thawLine, frozenLine } do
+			local bale = Bales.spawn(Conveyors.cellCenter(line, 0, 0) + Vector3.new(0, Factory.BeltTop + 2, 0), false, false, "snow")
+			bale.ownerId = GHOST
+			bale.body.Anchored = false
+			table.insert(bales, bale)
+		end
+		local thawDeadline = os.clock() + 15
+		while os.clock() < thawDeadline and (thawSorter:GetAttribute("Sorted") or 0) < 1 do
+			t.wait(0.25)
+		end
+		t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
+		t.equal("Frozen hay that skipped the shed rides through unsorted", frozenSorter:GetAttribute("Sorted") or 0, 0)
+
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do
 			local found = Bales.fromPart(p)

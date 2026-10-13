@@ -165,6 +165,12 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	-- Region machines (Services/Treat.luau): the price of the line you need for each region's hay, set at about 20
+	-- minutes of what you earn when you first reach that region (Snow at the shaker stage, Swamp at the conveyor
+	-- sorter, Volcano at the magnet drum).
+	thawing_shed = 10000,
+	drying_rack = 20000,
+	ash_sifter = 60000,
 	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
 	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
