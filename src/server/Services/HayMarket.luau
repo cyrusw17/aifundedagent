@@ -191,6 +191,9 @@ local function dress(b, kindId)
 	body:SetAttribute("RareBale", kindId)
 end
 
+-- For Land's silos: a bale that went into a silo comes back out dressed as the same kind.
+HayMarket.dress = dress
+
 -- Sells one bale from slot i to player. Returns ok, a message, and the bale.
 function HayMarket.buy(player, i)
 	local slot = slots[i]

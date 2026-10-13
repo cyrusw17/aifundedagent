@@ -29,6 +29,7 @@ local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
+local HayMarket = require(script.Parent.HayMarket)
 local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
 local Tutorial = require(script.Parent.Tutorial)
@@ -223,6 +224,58 @@ end
 
 -- A tall round silo over its footprint. Bales set down against its back or sides go in; one at a time they come out
 -- of the chute at the front onto the belt there (in the lane of the silo's anchor cell).
+-- Bales through a silo (audit: the silo used to hand back every bale as plain Meadow hay owned by the plot owner,
+-- dropping Hay Market and field boosts and letting anyone's bale become yours).
+local SiloBales = {}
+SiloBales.KEEP = { "NeedleBoost", "MutationBoost", "RichBoost", "FestivalBoost", "RegionEvent", "TogetherBoost" }
+
+-- A silo takes ownerless bales and bales of the farm's owner or crew; somebody else's bale stays theirs.
+function SiloBales.mayTake(plot, ownerId)
+	return ownerId == nil or ownerId == plot.ownerId or (plot.crew ~= nil and plot.crew[ownerId] == true)
+end
+
+function SiloBales.record(b)
+	local body = b.body
+	local rec = {
+		hayType = b.hayType or body:GetAttribute("HayType"),
+		ownerId = b.ownerId,
+		wet = body:GetAttribute("Wet") == true,
+		golden = body:GetAttribute("GoldenField") == true,
+		rare = body:GetAttribute("RareBale"),
+		attrs = {},
+	}
+	for _, name in SiloBales.KEEP do
+		rec.attrs[name] = body:GetAttribute(name)
+	end
+	return rec
+end
+
+-- Spawns a bale at position as rec described (nil: plain Meadow hay), owned by its old owner or fallbackOwner.
+function SiloBales.respawn(position, rec, fallbackOwner)
+	local b = Bales.spawn(position, false, false, rec and rec.hayType or nil)
+	if not b then
+		return nil
+	end
+	b.ownerId = rec and rec.ownerId or fallbackOwner
+	if rec then
+		if rec.hayType then
+			b.body:SetAttribute("HayType", rec.hayType)
+		end
+		if typeof(rec.rare) == "string" and HayMarket.dress then
+			pcall(HayMarket.dress, b, rec.rare)
+		elseif rec.golden then
+			Bales.makeGolden(b, false)
+		end
+		if rec.wet then
+			Bales.wet(b)
+		end
+		for _, name in SiloBales.KEEP do
+			b.body:SetAttribute(name, rec.attrs[name]) -- the exact boosts it went in with (stacked ones included)
+		end
+	end
+	return b
+end
+
 local function buildSilo(plot, item, def)
 	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
 	local w, l = def.size[1] * T, def.size[2] * T
@@ -296,13 +349,19 @@ local function buildSilo(plot, item, def)
 	local intakeSize = Vector3.new(w + 5, 8, l + 2.5)
 	local outSpot = frame * CFrame.new(laneX, 0, -l / 2 - T / 2 - 1)
 	local lastOut = 0
+	-- What each stored bale was (SiloBales: hay type, owner, wet, golden, Hay Market kind and every needle boost), so
+	-- it comes back out as the same bale, still its owner's. Bales loaded from a save have no record and come out
+	-- as plain Meadow hay owned by the plot owner.
+	item.queue = item.queue or {}
 	task.spawn(function()
 		while model.Parent do
 			task.wait(0.25)
 			local changed = false
 			for _, p in Workspace:GetPartBoundsInBox(intake, intakeSize) do
 				local b = Bales.fromPart(p)
-				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < capacity then
+				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < capacity
+					and SiloBales.mayTake(plot, b.ownerId) then
+					table.insert(item.queue, SiloBales.record(b))
 					Bales.consume(b)
 					item.stored += 1
 					changed = true
@@ -321,9 +380,10 @@ local function buildSilo(plot, item, def)
 					lastOut = os.clock()
 					item.stored -= 1
 					changed = true
-					local b = Bales.spawn(outSpot.Position + Vector3.new(0, TOP + 0.1, 0), false)
+					-- The oldest recorded bale first; once the records run out the rest came from a save.
+					local rec = #item.queue > item.stored and table.remove(item.queue, 1) or nil
+					local b = SiloBales.respawn(outSpot.Position + Vector3.new(0, TOP + 0.1, 0), rec, plot.ownerId)
 					if b then
-						b.ownerId = plot.ownerId
 						b.body.CFrame = CFrame.lookAt(b.body.Position, b.body.Position + outSpot.RightVector)
 						b.body.Anchored = false
 						pcall(function()
@@ -2176,8 +2236,11 @@ local function mailbox(player, land)
 		elseif def and def.kind == "buyer" then
 			hasBuyer = true
 		elseif def and def.kind == "separator" then
+			-- Only sorters that run on their own: the Alien Collector (hayPerMin math.huge, LineRate 0 bales a
+			-- minute) sorts only in its beam-up window, so it can't be the line that ran all night (audit).
 			for _, tier in Sorters do
-				if tier.id == def.id and (not best or tier.recovery > best.recovery) then
+				if tier.id == def.id and tier.hayPerMin ~= math.huge and LineRate.line("meadow", tier.id).bales > 0
+					and (not best or tier.recovery > best.recovery) then
 					best = tier
 				end
 			end
@@ -2500,6 +2563,7 @@ end
 
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	SiloBales = SiloBales,
 	lastAction = lastAction,
 	helperOn = helperOn,
 	seasonedState = seasonedState,
