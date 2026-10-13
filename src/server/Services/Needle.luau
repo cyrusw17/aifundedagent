@@ -115,6 +115,40 @@ function Needle.sellHeld(player)
 	return count, value
 end
 
+-- Takes the most valuable needle out of the player's pocket, for putting it on show. Returns { id, mult } or nil.
+function Needle.takeBest(player)
+	local pocket = held[player]
+	if not pocket or #pocket == 0 then
+		return nil
+	end
+	local best = 1
+	for i, n in pocket do
+		if Needle.priceOf(n.id, n.mult) > Needle.priceOf(pocket[best].id, pocket[best].mult) then
+			best = i
+		end
+	end
+	local n = table.remove(pocket, best)
+	player:SetAttribute("NeedlesHeld", #pocket)
+	return n
+end
+
+-- Puts a needle ({ id, mult }) into the player's pocket.
+function Needle.give(player, n)
+	local pocket = held[player] or {}
+	table.insert(pocket, { id = n.id, mult = n.mult or 1 })
+	held[player] = pocket
+	player:SetAttribute("NeedlesHeld", #pocket)
+end
+
+-- How a needle of this type looks: its color and material (mutated needles are gold and glow).
+function Needle.look(id, mult)
+	local look = LOOKS[id] or LOOKS.steel
+	if (mult or 1) > 1 then
+		return MUTATED_COLOR, Enum.Material.Neon
+	end
+	return look[1], look[2] and Enum.Material.Neon or Enum.Material.Metal
+end
+
 local function sound(parent, id, volume)
 	local s = Instance.new("Sound")
 	s.SoundId = id
@@ -166,14 +200,12 @@ end
 function Needle.spawn(position, ownerId, needleId, mult)
 	needleId = needleId or Needle.default.id
 	mult = mult or 1
-	local look = LOOKS[needleId] or LOOKS.steel
 	local n = Instance.new("Part")
 	n.Name = "Needle"
 	n.Shape = Enum.PartType.Cylinder
 	n.Size = mult > 1 and SIZE * 1.6 or SIZE
 	n.CFrame = CFrame.new(position)
-	n.Color = mult > 1 and MUTATED_COLOR or look[1]
-	n.Material = (mult > 1 or look[2]) and Enum.Material.Neon or Enum.Material.Metal
+	n.Color, n.Material = Needle.look(needleId, mult)
 	n.CollisionGroup = Groups.Loose
 	n:SetAttribute("OwnerId", ownerId)
 	n:SetAttribute("NeedleId", needleId)
