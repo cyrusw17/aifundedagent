@@ -8,6 +8,7 @@
 --   Mixer.material(player, id)              -- units of a material the player carries
 --   Mixer.spend(player, id, units)          -- true and takes it, or false when they have too little
 --   Mixer.give(player, id, units)
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
@@ -67,18 +68,23 @@ function Mixer.spend(player, id, units)
 	return true
 end
 
-local function spawnBlock(cframe, recipe)
+local function spawnBlock(cframe, recipe, ownerId)
 	local block = part(Workspace, "AlloyBlock", BLOCK, cframe, Color3.fromRGB(table.unpack(recipe.color)), Enum.Material.Metal)
 	block.Anchored = false
 	block.Reflectance = 0.2
 	block.CollisionGroup = Groups.Loose
 	block:SetAttribute("Material", recipe.id)
 	block:SetAttribute("Units", recipe.units)
+	block:SetAttribute("OwnerId", ownerId)
 	CollectionService:AddTag(block, "AlloyBlock")
 	local click = Instance.new("ClickDetector")
 	click.MaxActivationDistance = 12
 	click.MouseClick:Connect(function(player)
-		if not block.Parent then
+		if not block.Parent or not Data.get(player) then
+			return -- no save loaded yet: leave the block, or the alloy would be lost
+		end
+		if player.UserId ~= ownerId then
+			Data.toast(player, "That alloy belongs to whoever mixed it.")
 			return
 		end
 		Mixer.give(player, recipe.id, recipe.units)
@@ -162,7 +168,7 @@ function Mixer.build(parent, frame)
 			model:SetAttribute("Running", false)
 			busy = false
 			if model.Parent then
-				spawnBlock(frame * CFrame.new(0, 2.9, -T / 2 - 0.4), r)
+				spawnBlock(frame * CFrame.new(0, 2.9, -T / 2 - 0.4), r, player.UserId)
 				Feedback.play("BaleSetDown", base)
 			end
 		end)
@@ -170,5 +176,14 @@ function Mixer.build(parent, frame)
 	hopperClick.Parent = hopper
 	return model
 end
+
+-- Blocks nobody can pick up any more go when their owner leaves.
+Players.PlayerRemoving:Connect(function(player)
+	for _, block in CollectionService:GetTagged("AlloyBlock") do
+		if block:GetAttribute("OwnerId") == player.UserId then
+			block:Destroy()
+		end
+	end
+end)
 
 return Mixer

@@ -36,6 +36,9 @@ local reachable = { Meadow = true } -- regions with a built place (Meadow, the S
 local wanderIndex = 1
 local players = {} -- player -> { lifted = bool, lastPublish }
 local changedRemote = nil -- RemoteEvent: tells a client its quest log changed
+-- player -> { quests, pocket } while Quests.sandbox runs (SelfTests): quest steps run on these instead of the save,
+-- and no cash, gear, needles or saves change.
+local sandboxes = {}
 
 local questById = {}
 for i, q in QuestConfig.List do
@@ -96,7 +99,8 @@ local function questsOf(player)
 	if not s then
 		return nil, nil
 	end
-	local q = s.quests
+	local box = sandboxes[player]
+	local q = box and box.quests or s.quests
 	if typeof(q) ~= "table" then
 		q = {}
 		s.quests = q
@@ -221,6 +225,14 @@ local function rewardText(reward)
 end
 
 local function giveReward(player, q, reward, name)
+	if sandboxes[player] then
+		for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
+			for _, id in rewardIds(reward[key]) do
+				q.earned[id] = true
+			end
+		end
+		return
+	end
 	if reward.cash then
 		Bank.earn(player, reward.cash, "Quest: " .. name)
 	end
@@ -247,6 +259,10 @@ local function complete(player, q, def)
 			got ~= "" and ("You got: " .. got) or ""
 		)
 	)
+	unlockQuests(q)
+	if sandboxes[player] then
+		return
+	end
 	if def.ritual then
 		for _, other in Players:GetPlayers() do
 			if other ~= player then
@@ -254,7 +270,6 @@ local function complete(player, q, def)
 			end
 		end
 	end
-	unlockQuests(q)
 	task.spawn(Data.save, player)
 end
 
@@ -1058,7 +1073,9 @@ local function onEvent(player, kind, amount, info)
 			bounty.n[def.id] = (bounty.n[def.id] or 0) + amount
 			if bounty.n[def.id] >= def.count then
 				bounty.done[def.id] = true
-				Bank.earn(player, def.cash, "Bounty: " .. def.text)
+				if not sandboxes[player] then
+					Bank.earn(player, def.cash, "Bounty: " .. def.text)
+				end
 				Data.toast(player, ("Bounty done: %s. +$%d"):format(def.text, def.cash))
 			end
 			publish(player)
@@ -1091,7 +1108,8 @@ function Quests.usePrompt(player, spotId)
 		return
 	end
 	local spot = spots[spotId]
-	if not spot or not near(player, spot, 14) then
+	local box = sandboxes[player]
+	if not spot or not (box or near(player, spot, 14)) then
 		return
 	end
 	for _, id in activeIds(q) do
@@ -1151,12 +1169,12 @@ function Quests.usePrompt(player, spotId)
 			end
 			local missing = {}
 			for needleId, count in want do
-				local have = Needle.plainCount(player, needleId)
+				local have = box and (box.pocket[needleId] or 0) or Needle.plainCount(player, needleId)
 				if have < count then
 					table.insert(missing, ("%d more %s"):format(count - have, needleName(needleId):lower()))
 				end
 			end
-			if step.cash and not Bank.canAfford(player, step.cash) then
+			if step.cash and not box and not Bank.canAfford(player, step.cash) then
 				table.insert(missing, ("%s more"):format(Bank.money(step.cash - Bank.spendable(s))))
 			end
 			if #missing > 0 then
@@ -1168,11 +1186,15 @@ function Quests.usePrompt(player, spotId)
 				)
 				return
 			end
-			if step.cash and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
+			if step.cash and not box and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
 				return
 			end
 			for needleId, count in want do
-				Needle.take(player, needleId, count)
+				if box then
+					box.pocket[needleId] -= count
+				else
+					Needle.take(player, needleId, count)
+				end
 			end
 			Data.toast(player, ("%s accepts your offering."):format(spot.def.name))
 			advance(player, id)
@@ -1539,6 +1561,33 @@ local function onLoaded(player)
 	unlockQuests(q)
 	applyPerks(player, q)
 	publish(player)
+end
+
+-- For SelfTests: runs fn(q, pocket) with this player's quests swapped for a fresh, empty set (q) and a pretend needle
+-- pocket, so steps, rituals and rewards can be driven without touching their save, cash, gear or real needles.
+-- Prompts work from anywhere while it runs. Returns pcall's results.
+function Quests.sandbox(player, fn)
+	if not Data.get(player) or sandboxes[player] then
+		return false, "no save loaded, or a sandbox is already running"
+	end
+	local box = { quests = {}, pocket = {} }
+	sandboxes[player] = box
+	local q = questsOf(player)
+	unlockQuests(q)
+	local results = table.pack(pcall(fn, q, box.pocket))
+	sandboxes[player] = nil
+	publish(player)
+	return table.unpack(results, 1, results.n)
+end
+
+-- For SelfTests: presses a quest spot's prompt as this player (no distance check inside a sandbox).
+function Quests.press(player, spotId)
+	Quests.usePrompt(player, spotId)
+end
+
+-- For SelfTests: the built spot for an id ({ def, model, base, position }), or nil.
+function Quests.spot(spotId)
+	return spots[spotId]
 end
 
 function Quests.has(player, rewardId)

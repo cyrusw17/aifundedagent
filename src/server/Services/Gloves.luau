@@ -224,6 +224,17 @@ function Gloves.firstBaleBreak(player)
 	return true
 end
 
+-- For the self-test: read or set the first-bale flag, so a test can check the promised needle and then put the
+-- player's real flag back.
+function Gloves.firstBaleBroken(player)
+	return brokeFirstBale[player] == true
+end
+
+function Gloves.setFirstBaleBroken(player, value)
+	brokeFirstBale[player] = value == true or nil
+	save(player)
+end
+
 function Gloves.owns(player, id)
 	return owned[player] ~= nil and owned[player][id] == true
 end

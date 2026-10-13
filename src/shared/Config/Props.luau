@@ -74,6 +74,7 @@ return {
 		needle_polisher = 5.4,
 		alloy_mixer = 10.5,
 		alien_collector = 12.4,
+		starbeam_collector = 22, -- not modeled yet: the height of the part-built tower in Starbeam.luau until the .glb lands
 		-- Buildings and storage
 		bale_rack = 18.3,
 		barn = 41.9,
