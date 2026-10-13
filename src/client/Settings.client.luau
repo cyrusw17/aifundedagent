@@ -1,7 +1,7 @@
 --!nonstrict
--- The settings page (⚙ under the HUD): sound volume, UI size, shadows, floating labels, hay comfort (Hay thread),
--- replay the tutorial and the list of controls. Values are saved with the save slot by the server (Settings.luau) and
--- come back as "Setting<Key>" player attributes; this script applies them on this screen.
+-- The settings page (⚙ under the HUD): sound volume, UI size, shadows, floating labels, replay the tutorial and the
+-- list of controls. Values are saved with the save slot by the server (Settings.luau) and come back as "Setting<Key>"
+-- player attributes; this script applies them on this screen.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
