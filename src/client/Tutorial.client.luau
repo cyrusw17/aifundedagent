@@ -49,7 +49,7 @@ end
 local STEPS = {
 	{
 		title = "Lift a bale",
-		text = "Walk up to a hay bale and press Pick up (E).",
+		text = "Walk up to a hay bale and press F to pick it up.",
 		done = function()
 			return player:GetAttribute("Carrying") == true
 		end,

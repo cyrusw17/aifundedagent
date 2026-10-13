@@ -1,7 +1,8 @@
 --!nonstrict
 -- Everything the shop page lists and the goal bar counts toward. Prices come from Config/Prices (the one price
 -- config, "Economy and banking"); the item configs give names and blurbs.
--- Client only: ownership comes from this player's attributes.
+-- Ownership comes from the local player's attributes. Catalog.who can be set to any object with GetAttribute (a
+-- Player, or a stand-in table) so the server self-test can run the same logic (SelfTests/UI.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -14,11 +15,19 @@ local Prices = require(Config:WaitForChild("Prices"))
 
 local Catalog = {}
 
-local player = Players.LocalPlayer
+Catalog.who = Players.LocalPlayer
+
+local function attr(name)
+	local who = Catalog.who
+	if who == nil then
+		return nil
+	end
+	return who:GetAttribute(name)
+end
 
 local function listAttr(name)
 	local set = {}
-	for id in string.gmatch(player:GetAttribute(name) or "", "[^,]+") do
+	for id in string.gmatch(attr(name) or "", "[^,]+") do
 		set[id] = true
 	end
 	return set
@@ -61,7 +70,7 @@ function Catalog.items(tab)
 		end
 	elseif tab == "Gloves" then
 		local owned = listAttr("GlovesOwned")
-		local wearing = player:GetAttribute("GloveId")
+		local wearing = attr("GloveId")
 		for _, def in Gloves.Tiers do
 			if def.price > 0 then
 				table.insert(rows, {
@@ -80,7 +89,7 @@ function Catalog.items(tab)
 			end
 		end
 	elseif tab == "Land" then
-		local mine = player:GetAttribute("LandPlot") or 0
+		local mine = attr("LandPlot") or 0
 		local state = ReplicatedStorage:FindFirstChild("Land")
 		local infos = {}
 		for _, info in state and state:GetChildren() or {} do
@@ -106,7 +115,7 @@ function Catalog.items(tab)
 			})
 		end
 	elseif tab == "Build" then
-		local hasLand = (player:GetAttribute("LandPlot") or 0) > 0
+		local hasLand = (attr("LandPlot") or 0) > 0
 		for _, def in LandConfig.Pieces do
 			table.insert(rows, {
 				id = def.id,
@@ -136,7 +145,8 @@ function Catalog.items(tab)
 	return rows
 end
 
--- The goal bar's ladder: the first one you don't have yet is the goal.
+-- The goal bar's ladder, in the order Economy plans (ECONOMY.md): gloves, the pickup, land, a sieve, then glove
+-- tiers. The first one you don't have yet is the goal.
 local LADDER = {
 	{
 		name = "Work Gloves",
@@ -147,11 +157,19 @@ local LADDER = {
 		end,
 	},
 	{
+		name = "the Rusty Pickup",
+		price = 6000,
+		place = "dealer",
+		have = function()
+			return listAttr("OwnedTrucks").rusty_pickup
+		end,
+	},
+	{
 		name = "your first plot",
 		price = LandConfig.Plots[1].price,
 		place = "landoffice",
 		have = function()
-			return (player:GetAttribute("LandPlot") or 0) > 0
+			return (attr("LandPlot") or 0) > 0
 		end,
 	},
 	{
@@ -168,14 +186,6 @@ local LADDER = {
 		place = "gloves",
 		have = function()
 			return listAttr("GlovesOwned").leather
-		end,
-	},
-	{
-		name = "the Rusty Pickup",
-		price = 6000,
-		place = "dealer",
-		have = function()
-			return listAttr("OwnedTrucks").rusty_pickup
 		end,
 	},
 	{
