@@ -21,6 +21,22 @@ local Regions = {}
 
 local IRON = Color3.new(0.48, 0.48, 0.47) -- weathered grey iron (BUILD_REGISTRY.md), never rusty orange
 local SNOW = Color3.fromRGB(226, 228, 226)
+local BARN_RED = Color3.fromRGB(133, 61, 48) -- the Meadow accent, for anything outside a region
+
+-- The region's accent (Config/WorldMap style, from STYLE.md Regions) at a point: one sign or trim per building.
+local function accentAt(x, z)
+	local region = WorldShape.regionAt(x, z)
+	return region and region.style and region.style.accent or BARN_RED
+end
+
+-- Tree colors from the STYLE.md region sheet (mid shades). Regions not on the sheet keep the house palette.
+local PALETTE = {
+	pine = { leaves = Color3.fromRGB(48, 76, 59), bark = Color3.fromRGB(66, 51, 38) },
+	snow = { leaves = Color3.fromRGB(54, 76, 71), bark = Color3.fromRGB(71, 64, 56) },
+	desert = { leaves = Color3.fromRGB(107, 128, 89), bark = Color3.fromRGB(122, 110, 94) },
+	swamp = { leaves = Color3.fromRGB(74, 92, 54), bark = Color3.fromRGB(59, 54, 46) },
+}
+local palette: { leaves: Color3?, bark: Color3? } = {} -- the region being planted right now (set in Regions.build)
 local SEA = Map.SeaLevel
 
 -- Every hay field in the world, for the rich field rotation: { region, center, bales = { bale record } }
@@ -143,6 +159,7 @@ local function signpost(parent, x, z, facing, text, width)
 	local base = spot(x, z, facing)
 	part(model, "Post", Vector3.new(0.6, 7, 0.6), base * CFrame.new(0, 3, 0.4), Rustic.WoodDark, Enum.Material.Wood)
 	local board = part(model, "Board", Vector3.new(width, 3.6, 0.4), base * CFrame.new(0, 6.2, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+	part(model, "Trim", Vector3.new(width + 0.4, 0.4, 0.6), base * CFrame.new(0, 8.2, 0), accentAt(x, z), Enum.Material.WoodPlanks)
 	boardText(board, text)
 	model.Parent = parent
 	return model
@@ -167,7 +184,8 @@ local function building(parent, name, cframe, w, d, h, opts)
 		local front = (w - door) / 2
 		part(model, "Front", Vector3.new(front, h, t), cframe * CFrame.new(side * (w / 2 - front / 2), h / 2 + 1, -d / 2 + t / 2), wall, material)
 	end
-	part(model, "Lintel", Vector3.new(door, h * 0.3, t), cframe * CFrame.new(0, h * 0.85 + 1, -d / 2 + t / 2), wall, material)
+	-- The lintel over the door is the one trim in the region's accent color.
+	part(model, "Lintel", Vector3.new(door, h * 0.3, t), cframe * CFrame.new(0, h * 0.85 + 1, -d / 2 + t / 2), accentAt(cframe.X, cframe.Z), material)
 	-- Gable roof: two slabs meeting over the middle.
 	local rise = math.min(w, d) * 0.3
 	local slant = math.sqrt((w / 2) ^ 2 + rise ^ 2) + 0.6
@@ -284,8 +302,9 @@ function TREES.pine(parent, base, s, rng)
 	local model = Instance.new("Model")
 	model.Name = "PineTree"
 	local height = rng:NextNumber(18, 26) * s
-	post(model, "Trunk", height, rng:NextNumber(1.3, 1.8) * s, base, Rustic.Bark, Enum.Material.Wood)
-	pineTiers(model, base, height, s, rng, rng:NextNumber() < 0.5 and Rustic.LeavesDark or Color3.fromRGB(62, 80, 54), false)
+	post(model, "Trunk", height, rng:NextNumber(1.3, 1.8) * s, base, palette.bark or Rustic.Bark, Enum.Material.Wood)
+	local dark = rng:NextNumber() < 0.5
+	pineTiers(model, base, height, s, rng, palette.leaves and (dark and palette.leaves:Lerp(Color3.new(), 0.15) or palette.leaves) or (dark and Rustic.LeavesDark or Color3.fromRGB(62, 80, 54)), false)
 	model.Parent = parent
 end
 
@@ -293,15 +312,15 @@ function TREES.snowpine(parent, base, s, rng)
 	local model = Instance.new("Model")
 	model.Name = "SnowPine"
 	local height = rng:NextNumber(16, 22) * s
-	post(model, "Trunk", height, rng:NextNumber(1.2, 1.6) * s, base, Rustic.Bark, Enum.Material.Wood)
-	pineTiers(model, base, height, s, rng, Color3.fromRGB(64, 82, 66), true)
+	post(model, "Trunk", height, rng:NextNumber(1.2, 1.6) * s, base, palette.bark or Rustic.Bark, Enum.Material.Wood)
+	pineTiers(model, base, height, s, rng, palette.leaves or Color3.fromRGB(64, 82, 66), true)
 	model.Parent = parent
 end
 
 function TREES.dead(parent, base, s, rng)
 	local model = Instance.new("Model")
 	model.Name = "DeadTree"
-	local bark = Color3.fromRGB(58, 50, 52)
+	local bark = palette.bark or Color3.fromRGB(58, 50, 52)
 	local height = rng:NextNumber(12, 18) * s
 	local thick = rng:NextNumber(1.2, 1.7) * s
 	local lean = CFrame.Angles(rng:NextNumber(-0.12, 0.12), 0, rng:NextNumber(-0.12, 0.12))
@@ -371,7 +390,7 @@ function TREES.willow(parent, base, s, rng)
 	local height = rng:NextNumber(10, 14) * s
 	post(model, "Trunk", height, 1.8 * s, base * CFrame.Angles(rng:NextNumber(-0.1, 0.1), 0, rng:NextNumber(-0.1, 0.1)), Color3.fromRGB(70, 62, 50), Enum.Material.Wood)
 	local canopy = base * CFrame.new(0, height, 0) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0)
-	part(model, "Canopy", Vector3.new(12, 3, 12) * Vector3.new(s, 1, s), canopy, Rustic.LeavesDark, Enum.Material.Grass, nil, false)
+	part(model, "Canopy", Vector3.new(12, 3, 12) * Vector3.new(s, 1, s), canopy, palette.leaves or Rustic.LeavesDark, Enum.Material.Grass, nil, false)
 	for _, side in { -1, 1 } do
 		part(model, "Drape", Vector3.new(11 * s, height * 0.55, 1.2), canopy * CFrame.new(0, -height * 0.27, side * 5.2 * s), Color3.fromRGB(84, 98, 60), Enum.Material.Grass, nil, false)
 	end
@@ -542,10 +561,10 @@ end
 
 -- Bale colors by hay, so each region's hay reads at a glance (the mesh, when imported, keeps its own straw look).
 local HAY_TINT = {
-	pine = Color3.fromRGB(150, 124, 84),
-	desert = Color3.fromRGB(204, 178, 120),
-	snow = Color3.fromRGB(200, 204, 196),
-	swamp = Color3.fromRGB(128, 132, 84),
+	pine = Color3.fromRGB(158, 156, 102), -- STYLE.md Regions hay (mid shade)
+	desert = Color3.fromRGB(209, 186, 133),
+	snow = Color3.fromRGB(191, 184, 148),
+	swamp = Color3.fromRGB(133, 128, 79),
 	volcano = Color3.fromRGB(120, 96, 80),
 	cave = Color3.fromRGB(170, 160, 196),
 	sky = Color3.fromRGB(226, 220, 196),
@@ -1232,6 +1251,7 @@ function Regions.build(worldFolder)
 		local sub = Instance.new("Folder")
 		sub.Name = r.name
 		sub.Parent = folder
+		palette = PALETTE[r.id] or {}
 		local landmark = LANDMARKS[r.id]
 		if landmark then
 			-- One broken landmark shouldn't take the rest of the map down with it.
@@ -1250,6 +1270,7 @@ function Regions.build(worldFolder)
 			windmill(sub, r.cx + r.rx * 0.35, r.cz - r.rz * 0.2)
 		end
 		hayFields(r, rng)
+		palette = {}
 		made += 1
 		task.wait() -- spread the work out so the server keeps ticking
 	end
