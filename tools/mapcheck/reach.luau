@@ -251,6 +251,39 @@ for _, d in RMap.Discoveries do
 	end
 end
 
+-- Quest markers out on the isles (Config/Quests Spots with a world position): a walk from a reachable road, and dry.
+local QuestConfig = require({ __path = "Shared.Config.Quests" })
+local CLIMBS = { volcano_crater = true, snow_door = true } -- meant to be climbs: up the crater, up the ridge
+local questOk, questWet = 0, {}
+for id, spot in QuestConfig.Spots do
+	local at = spot.world
+	if typeof(at) == "Vector2" then
+		local h, water = RShape.column(at.X, at.Y)
+		local dist = nearestReachedRoad(at.X, at.Y)
+		if dist > WALK and not CLIMBS[id] then
+			warn("quest marker far from a road", id, ("%.0f"):format(dist))
+		elseif water and water > h + 1.5 then
+			table.insert(questWet, id) -- may be meant (wrecks); listed, not failed
+			questOk += 1
+		else
+			questOk += 1
+		end
+	end
+end
+print("REACH quest markers", questOk, #questWet > 0 and ("in water (by design?): " .. table.concat(questWet, ", ")) or "all dry")
+
+-- Turns: no road bends harder than a pickup and trailer can follow at a junction-like corner.
+for _, road in RMap.Roads do
+	for k = 2, #road.points - 1 do
+		local a = (road.points[k] - road.points[k - 1]).Unit
+		local b = (road.points[k + 1] - road.points[k]).Unit
+		local bend = math.deg(math.acos(math.clamp(a:Dot(b), -1, 1)))
+		if bend > 100 then
+			warn(("%s bends %d degrees at (%d, %d)"):format(road.name, bend, road.points[k].X, road.points[k].Y))
+		end
+	end
+end
+
 -- Secrets above water and out of the rock (the cave's and the sky's are in places of their own).
 for id, s in RWilds.Secrets do
 	if id ~= "geode_heart" and id ~= "lost_kite" and id ~= "captains_lantern" then
