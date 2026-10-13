@@ -251,6 +251,7 @@ local function stateFrom(saved)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
 		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -288,6 +289,7 @@ local function toSave(state)
 		thatch = state.thatch,
 		materials = state.materials,
 		finds = state.finds,
+		secrets = state.secrets,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,

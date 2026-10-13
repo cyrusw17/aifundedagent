@@ -129,3 +129,24 @@ for _, e in RegionEvents.List do
 end
 RegionEvents.finish()
 print("events", eventsOk and "ok" or "WRONG")
+
+-- Wilds: the four secrets exist, the crater is hot, the Ghost Road holds only at night.
+local Wilds = require({ __path = "Services.Wilds" })
+local wildsOk = true
+for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+	if not Wilds.Secrets[id] or not Prices.Secrets[id] then
+		wildsOk = false
+		print("WARN secret missing", id)
+	end
+end
+local ember = Wilds.Secrets.ember_cache
+if ember and not Wilds.inHeat(ember.part.Position) then
+	wildsOk = false
+	print("WARN the Ember Cache is outside the crater's heat", ember.part.Position)
+end
+local quarry = Vector3.new(740, 30, -1300)
+if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry") end
+Lighting.ClockTime = 0
+Wilds.refreshGhost()
+if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+print("wilds", wildsOk and "ok" or "WRONG")
