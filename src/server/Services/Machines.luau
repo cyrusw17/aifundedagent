@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
 local LineRate = require(Shared.LineRate)
+local Pity = require(Shared.Pity)
 local RateLimit = require(Shared.RateLimit)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
@@ -63,6 +64,12 @@ Machines.Colors = {
 local C = Machines.Colors
 
 local rng = Random.new()
+-- Pity (Prices.Pity): each owner's run of sorted bales that found needles but no mutated one, across all their
+-- sorters. Kept for the server session only; a rejoin starts the count again.
+local dryRun = {}
+Players.PlayerRemoving:Connect(function(player)
+	dryRun[player.UserId] = nil
+end)
 local alienUsedDay = {} -- UserId -> UTC day the Alien collector beam was last used (per server)
 
 local needle = Needles[1]
@@ -351,9 +358,18 @@ function Machines.needleBin(parent, frame)
 	local flying = {}
 	local generation = 0
 
-	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B).
-	function bin.add(from, ownerId, count, needleId, grade)
+	-- Throws count needles from `from` into the bin, owned by ownerId, graded grade (nil is B). The bale's needles roll
+	-- their mutations here, up front, so the pity rule can see them: with dry (the owner's run of bales without a
+	-- mutation, Pity.apply) it returns the new dry count. Without dry, no pity.
+	function bin.add(from, ownerId, count, needleId, grade, dry)
 		local gen = generation
+		local mults, nears = {}, {}
+		for i = 1, count do
+			mults[i], nears[i] = Needle.rollMutation()
+		end
+		if dry then
+			dry = Pity.apply(dry, mults, Prices.Pity)
+		end
 		for i = 1, count do
 			local token = { ownerId = ownerId, id = needleId or Needle.default.id, grade = grade }
 			flying[token] = true
@@ -365,7 +381,7 @@ function Machines.needleBin(parent, frame)
 				local at = cornerFor(needleId or Needle.default.id)
 				local spread = at and 0.7 or 2
 				local to = (floor * CFrame.new((at or Vector3.zero) + Vector3.new(rng:NextNumber(-spread, spread), 0.3, rng:NextNumber(-spread, spread)))).Position
-				token.part = Needle.throw(from, to, ownerId, needleId, grade)
+				token.part = Needle.throw(from, to, ownerId, needleId, grade, mults[i], nears[i])
 				if token.part then
 					token.part:SetAttribute("Binned", true)
 				end
@@ -374,6 +390,7 @@ function Machines.needleBin(parent, frame)
 				end)
 			end)
 		end
+		return dry
 	end
 
 	-- Sells the player's needles in the bin, except types their price hold keeps back. Each sale lowers the market as
@@ -862,7 +879,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
 		local found = LineMath.found(rng, hidden, tier.recovery, recoveryMult)
 		if bin then
-			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
+			local dry = bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id), ownerId and (dryRun[ownerId] or 0))
+			if ownerId then
+				dryRun[ownerId] = dry
+			end
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
 		local bales = hay / (Config.PiecesPerBale * Config.HayPerPiece)

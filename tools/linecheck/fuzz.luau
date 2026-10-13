@@ -189,9 +189,13 @@ do
 	local PricesM = require({ __path = "Shared.Config.Prices" })
 	local m = NeedleM.MUTATION
 	local N = 1000000
-	local mutated, multSum, lo, hi, whole = 0, 0, math.huge, 0, true
+	local mutated, multSum, lo, hi, whole, nears, nearOnMutated = 0, 0, math.huge, 0, true, 0, 0
 	for _ = 1, N do
-		local mult = NeedleM.rollMutation()
+		local mult, near = NeedleM.rollMutation()
+		if near then
+			nears += 1
+			nearOnMutated += mult > 1 and 1 or 0
+		end
 		if mult > 1 then
 			mutated += 1
 			multSum += mult
@@ -206,6 +210,11 @@ do
 	local spread = math.sqrt(((m.max - m.min + 1) ^ 2 - 1) / 12) / math.sqrt(math.max(mutated, 1))
 	check("mutation multipliers average the middle of min..max", math.abs(mean - (m.min + m.max) / 2) <= 5 * spread, ("mean x%.2f"):format(mean))
 	check("multipliers reach both ends and are whole", lo == m.min and hi == m.max and whole, ("x%d..x%d"):format(lo, hi))
+	-- Near misses (Prices.Pity.nearMiss, H3): plain needles that rolled just over the chance, (nearMiss - 1) times as
+	-- often as a mutation, never on a mutated one.
+	local wantNear = N * m.chance * (PricesM.Pity.nearMiss - 1)
+	local sdNear = math.sqrt(wantNear)
+	check("near misses come at (nearMiss - 1) x the mutation rate (5 sd)", math.abs(nears - wantNear) <= 5 * sdNear and nearOnMutated == 0, ("%d near, want %.0f +- %.0f, %d on mutated"):format(nears, wantNear, 5 * sdNear, nearOnMutated))
 	-- Payouts: a mutated needle sells for exactly mult times a plain one, at every market price.
 	for _, def in require({ __path = "Shared.Config.Needles" }) do
 		for _, mult in { m.min, 12, m.max } do
