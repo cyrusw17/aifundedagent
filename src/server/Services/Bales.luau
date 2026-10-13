@@ -390,6 +390,7 @@ function Bales.spawn(position, home, fadeIn)
 			Bales.pickup(player, b)
 		end
 	end)
+	return b
 end
 
 function Bales.init(worldFolder)
