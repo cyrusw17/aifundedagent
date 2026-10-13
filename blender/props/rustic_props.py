@@ -70,15 +70,57 @@ def round_bale(f):
 
 # ---------------------------------------------------------------- hand tools
 
+def rod(f, kind, p0, p1, r, verts=6, along=None):
+    """A round bar from p0 to p1 (meters)."""
+    from mathutils import Vector
+    d = Vector(p1) - Vector(p0)
+    o = cyl(r, d.length, tuple((Vector(p0) + Vector(p1)) / 2), verts=verts)
+    o.rotation_mode = "QUATERNION"
+    o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(d)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    return f.apply(o, kind, along=along) if along else f.apply(o, kind)
+
+
 def basic_shovel(f):
-    """Small spade, about 2.7 studs tall."""
-    parts = [handle(f, 0.48, 0.23)] + d_grip(f, 0.75)
-    parts.append(f.apply(f.shape(box((0.05, 0.03, 0.06), (0, 0, 0.22))), "metal"))
-    blade = box((0.17, 0.02, 0.2), (0, 0, 0.1))
-    for v in blade.data.vertices:
+    """Small spade, about 2.7 studs tall. Mid detail: round ash shaft, a proper D grip, a riveted
+    tapered socket, a dished blade with a pointed tip, a front strap and folded foot treads."""
+    parts = [handle(f, 0.45, 0.23, r=0.017, sides=10)]
+    # D grip: two cheeks rising from a split shaft to a round cross grip.
+    for x in (-1, 1):
+        parts.append(rod(f, "handle", (0, 0, 0.67), (x * 0.05, 0, 0.745), 0.012, verts=8, along="z"))
+    parts.append(f.apply(f.shape(cyl(0.017, 0.13, (0, 0, 0.749), verts=10, rot=(0, math.pi / 2, 0)), round_edges=False),
+                         "handle", along="x"))
+    parts.append(f.apply(cyl(0.02, 0.025, (0, 0, 0.67), verts=10), "metal"))                 # grip ferrule
+    # Tapered socket with two rivets.
+    sock = cyl(0.024, 0.09, (0, 0, 0.225), verts=10)
+    for v in sock.data.vertices:
         if v.co.z < 0:
-            v.co.x *= 0.8
-    parts.append(f.apply(f.shape(blade), "metal"))
+            v.co.x *= 1.5
+            v.co.y *= 0.8
+    parts.append(f.apply(f.shape(sock, round_edges=False), "metal"))
+    for z in (0.21, 0.25):
+        parts.append(f.apply(cyl(0.006, 0.06, (0, 0, z), verts=6, rot=(math.pi / 2, 0, 0)), "metal"))
+    # Dished blade: a 4 x 5 grid bent around the shaft, narrowing to a rounded point.
+    bm = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=4, y_segments=5, size=0.5)
+    for v in bm.verts:
+        u, w = v.co.x * 2, v.co.y + 0.5                         # u -1..1 across, w 0 (tip)..1 (top)
+        width = 0.085 * (0.55 + 0.45 * min(1.0, w * 1.6))
+        tip = 0.03 * (1 - u * u) if w < 0.01 else 0.0
+        v.co = (u * width, 0.018 * (u * u) - 0.01, 0.03 + 0.17 * w - tip)
+    me = bpy.data.meshes.new("blade")
+    bm.to_mesh(me)
+    bm.free()
+    blade = bpy.data.objects.new("blade", me)
+    bpy.context.collection.objects.link(blade)
+    m = blade.modifiers.new("solid", "SOLIDIFY")
+    m.thickness = 0.008
+    bpy.context.view_layer.objects.active = blade
+    bpy.ops.object.modifier_apply(modifier=m.name)
+    parts.append(f.apply(f.shape(blade, round_edges=False), "metal"))
+    parts.append(f.apply(box((0.03, 0.01, 0.11), (0, -0.008, 0.15)), "metal"))                # front strap
+    for x in (-1, 1):                                                                          # foot treads
+        parts.append(f.apply(box((0.06, 0.03, 0.008), (x * 0.05, 0.0, 0.2)), "metal"))
     return parts
 
 
@@ -96,12 +138,23 @@ def wide_scoop(f):
 
 
 def garden_rake(f):
-    """Long rake, about 5 studs, with a wooden head and iron teeth."""
-    parts = [handle(f, 1.3, 0.06)]
-    parts.append(f.apply(f.shape(box((0.5, 0.05, 0.05), (0, 0, 0.06))), "handle", along="x"))
-    for i in range(11):
-        x = -0.22 + i * 0.044
-        parts.append(f.apply(box((0.012, 0.012, 0.09), (x, 0.0, 0.0)), "metal"))
+    """Long rake, about 5 studs: a round shaft, a wooden head with a steel ferrule and two bowed
+    braces, and 14 tapered iron teeth that curve forward at the tips."""
+    parts = [handle(f, 1.3, 0.08, r=0.018, sides=10)]
+    parts.append(f.apply(f.shape(box((0.5, 0.045, 0.055), (0, 0, 0.06))), "handle", along="x"))
+    parts.append(f.apply(cyl(0.024, 0.06, (0, 0, 0.11), verts=10), "metal"))                  # ferrule
+    for x in (-1, 1):                                                                         # bowed braces
+        parts.append(rod(f, "handle", (0, 0, 0.3), (x * 0.08, 0, 0.17), 0.009, verts=6, along="z"))
+        parts.append(rod(f, "handle", (x * 0.08, 0, 0.17), (x * 0.16, 0, 0.085), 0.009, verts=6, along="z"))
+        parts.append(f.apply(cyl(0.007, 0.05, (x * 0.23, 0, 0.06), verts=6, rot=(math.pi / 2, 0, 0)), "metal"))
+    for i in range(14):
+        x = -0.225 + i * 0.45 / 13
+        tooth = cyl(0.007, 0.08, (x, 0.0, -0.005), verts=6)
+        for v in tooth.data.vertices:
+            if v.co.z < 0:
+                v.co.x *= 0.5
+                v.co.y = v.co.y * 0.5 - 0.012                                                 # tips curve forward
+        parts.append(f.apply(tooth, "metal"))
     return parts
 
 
@@ -141,8 +194,8 @@ def hay_hook(f):
 
 # ---------------------------------------------------------------- carriers and storage
 
-def wheelbarrow(f):
-    """About 5 x 2.5 x 2.5 studs: open wooden tray, one wheel at the front, two handles."""
+def _wheelbarrow(f):
+    """Shared body for wheelbarrow / wheelbarrow_loaded. Returns (parts, wheel_parts)."""
     parts = []
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
@@ -169,14 +222,37 @@ def wheelbarrow(f):
     m.thickness = 0.025
     bpy.ops.object.modifier_apply(modifier=m.name)
     parts.append(f.apply(f.shape(tray, round_edges=False), "handle", along="x"))
-    # Handles run from under the tray back past it.
+    # Rolled steel rim around the tray top (top corners: x -0.47..0.59, y +-0.375, z 0.6).
+    x0, x1, yy, zt = -0.47, 0.59, 0.375, 0.6
+    for y in (-yy, yy):
+        parts.append(rod(f, "metal", (x0, y, zt), (x1, y, zt), 0.014, verts=6))
+    for x in (x0, x1):
+        parts.append(rod(f, "metal", (x, -yy, zt), (x, yy, zt), 0.014, verts=6))
+    # Handles run from under the tray back past it, with rubber grips; steel legs with feet and a brace.
     for y in (-0.2, 0.2):
         parts.append(f.apply(f.shape(box((1.3, 0.04, 0.04), (-0.25, y, 0.27), rot=(0, 0.12, 0))), "handle", along="x"))
-        parts.append(f.apply(f.shape(box((0.04, 0.04, 0.3), (-0.3, y, 0.15))), "handle", along="z"))
-    wheel = cyl(0.17, 0.07, (0.48, 0, 0.17), verts=12, rot=(math.pi / 2, 0, 0))
-    parts.append(f.apply(f.shape(wheel), "bark", along="x"))
-    parts.append(f.apply(cyl(0.05, 0.08, (0.48, 0, 0.17), verts=8, rot=(math.pi / 2, 0, 0)), "metal"))
-    return parts
+        parts.append(f.apply(cyl(0.026, 0.14, (-0.83, y, 0.34), verts=8, rot=(0, math.pi / 2 - 0.12, 0)), "tire"))
+        parts.append(rod(f, "metal", (-0.3, y, 0.25), (-0.33, y * 1.15, 0.02), 0.014, verts=6))
+        parts.append(f.apply(box((0.08, 0.05, 0.015), (-0.33, y * 1.15, 0.008)), "metal"))
+        parts.append(rod(f, "metal", (-0.31, y, 0.15), (-0.05, y, 0.3), 0.01, verts=6))       # leg stay
+        parts.append(f.apply(box((0.1, 0.012, 0.07), (0.44, y, 0.2), rot=(0, -0.4, 0)), "metal"))  # axle bracket
+    parts.append(rod(f, "metal", (-0.32, -0.22, 0.12), (-0.32, 0.22, 0.12), 0.01, verts=6))
+    # Wheel: rubber tyre, steel rim, six spokes, hub.
+    c = (0.48, 0, 0.17)
+    wheel = [f.apply(f.shape(cyl(0.17, 0.07, c, verts=18, rot=(math.pi / 2, 0, 0))), "tire", along="x"),
+             f.apply(cyl(0.125, 0.075, c, verts=18, rot=(math.pi / 2, 0, 0)), "metal"),
+             f.apply(cyl(0.04, 0.09, c, verts=8, rot=(math.pi / 2, 0, 0)), "metal")]
+    for i in range(6):
+        a = math.pi * i / 6
+        wheel.append(f.apply(box((0.012, 0.012, 0.25), c, rot=(0, a, 0)), "metal"))
+    return parts, wheel
+
+
+def wheelbarrow(f):
+    """About 5 x 2.5 x 2.5 studs: open wooden tray with a rolled rim, one spoked wheel at the front,
+    two handles with rubber grips, steel legs."""
+    parts, wheel = _wheelbarrow(f)
+    return parts + wheel
 
 
 def wheelbarrow_loaded(f):
@@ -184,12 +260,11 @@ def wheelbarrow_loaded(f):
     turned to face forward (wheel at the front, Roblox -Z), the wheel and hub as one Wheel_L1 mesh, and
     a loose-hay HayFill heap the game raises as it fills. Bales ride loose in game, so none are baked in."""
     from mathutils import Matrix
-    parts = wheelbarrow(f)
-    wheel = parts[-2:]
+    parts, wheel = _wheelbarrow(f)
     hay = f.apply(f.shape(box((0.84, 0.62, 0.2), (0.02, 0, 0.52)), round_edges=False), "hay")
     rig.tag(wheel, "Wheel_L1")
     rig.tag([hay], "HayFill")
-    parts.append(hay)
+    parts += wheel + [hay]
     # Scale to the game's tray (Wheelbarrow.luau: 5 long x 3.6 wide inside); x and z scale together so
     # the wheel stays round.
     k = 5.0 / 3.4
