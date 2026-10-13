@@ -7,3 +7,4 @@ Packages/
 sourcemap.json
 node_modules/
 exports/
+__pycache__/
