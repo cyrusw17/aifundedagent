@@ -248,6 +248,41 @@ return function(SelfTest)
 			return
 		end
 
+		-- Rate limits: every spammable Land remote is wrapped, and a burst past the bucket is refused with BUSY.
+		if L.limits and L.limited then
+			for _, name in { "Crew", "CrewAnswer", "Visit", "Buy", "Expand", "Paste" } do
+				t.check(("the %s remote has a rate limit"):format(name), L.limits[name] ~= nil)
+			end
+			local RateLimit = require(game:GetService("ReplicatedStorage").Shared.RateLimit)
+			local clock = RateLimit.clock
+			local report = RateLimit.report
+			local now = 0
+			RateLimit.clock = function()
+				return now
+			end
+			RateLimit.report = function() end
+			local probe = RateLimit.new("Land.Probe", 1, 3)
+			local calls = 0
+			local fn = L.limited(probe, function()
+				calls += 1
+				return true
+			end)
+			local spammer = {}
+			for _ = 1, 10 do
+				fn(spammer)
+			end
+			local ok, why = fn(spammer)
+			now = 2
+			local again = fn(spammer)
+			RateLimit.clock = clock
+			RateLimit.report = report
+			t.check("a burst of remote calls is cut off at the bucket size", calls == 3, ("got %d calls through"):format(calls))
+			t.check("a refused call says to slow down", ok == false and why == RateLimit.BUSY)
+			t.check("the bucket refills over time", again == true and calls == 4)
+		else
+			t.check("Land.test exposes its rate limits", false)
+		end
+
 		-- Plots: six, all the same size and price, all with a bin and a mailbox.
 		local count, sizes, prices = 0, {}, {}
 		for _, plot in L.plots do
