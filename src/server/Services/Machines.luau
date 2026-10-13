@@ -219,6 +219,45 @@ function Machines.needleBin(parent, frame)
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
 	end
 
+	-- Needles in the bin, as { [needleId] = count }: everyone's, or only ownerId's.
+	function bin.contents(ownerId)
+		local byType = {}
+		for _, n in Needle.inBox(inside, insideSize) do
+			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
+				local id = n:GetAttribute("NeedleId") or Needle.default.id
+				byType[id] = (byType[id] or 0) + 1
+			end
+		end
+		return byType
+	end
+
+	-- Puts saved needles straight back in the bin, laid in rows on the floor (anchored, so a big pile can't spill).
+	function bin.fill(ownerId, byType)
+		local perRow, rows = 4, 24
+		local placed = 0
+		for id, count in byType do
+			for _ = 1, count do
+				local col = placed % perRow
+				local row = math.floor(placed / perRow) % rows
+				local layer = math.floor(placed / (perRow * rows))
+				local at = floor * CFrame.new(-1.95 + col * 1.3, 0.1 + layer * 0.16, -2.3 + row * 0.2)
+				local n = Needle.spawn(at.Position, ownerId, id)
+				n.CFrame = at
+				n.Anchored = true
+				placed += 1
+			end
+		end
+		refresh()
+	end
+
+	-- Removes every needle in the bin (the plot was given up).
+	function bin.clear()
+		for _, n in Needle.inBox(inside, insideSize) do
+			n:Destroy()
+		end
+		refresh()
+	end
+
 	bin.model = model
 	Machines.stepPad(model, (frame * CFrame.new(0, 0, T)).Position, C.pad, ("SELL NEEDLES\n$%d each"):format(needle.sortedValue), bin.sell)
 	return bin
