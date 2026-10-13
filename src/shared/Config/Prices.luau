@@ -227,7 +227,8 @@ Prices.Travel = {
 -- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
 -- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
 -- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
--- detour but never beats a steady haul.
+-- detour but never beats a steady haul. Each is worth about 5 to 10 minutes of income at the stage where you reach
+-- its region (ECONOMY.md "Region events").
 Prices.RegionEvents = {
 	EveryMinutes = 30,
 	Minutes = 5,
@@ -236,8 +237,8 @@ Prices.RegionEvents = {
 	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
 	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
 	low_tide = { bales = 10, boost = 1.5 }, -- Thimble Keys: the sand bars dry out
-	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
-	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: fallen stars in the hay
+	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
+	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
