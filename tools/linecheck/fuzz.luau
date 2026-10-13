@@ -128,6 +128,20 @@ for run = 1, 300 do
 	allTaken += out
 end
 
+-- Piece guide lines: every sorter and region machine gets a line with real numbers in it.
+local PieceGuide = require({ __path = "Shared.PieceGuide" })
+for _, id in { "hand_sieve", "shaker_table", "conveyor_sorter", "magnet_drum", "optical_sorter" } do
+	local line = PieceGuide.line({ id = id, kind = "separator" })
+	check("guide line for " .. id, string.find(line, "%d+%%") ~= nil and string.find(line, "bales a minute") ~= nil, line)
+end
+check("optical guide names its grade", string.find(PieceGuide.line({ id = "optical_sorter", kind = "separator" }), "S grade") ~= nil)
+for _, id in { "thawing_shed", "drying_rack", "ash_sifter" } do
+	local line = PieceGuide.line({ id = id, kind = "treat", blurb = "BLURB" })
+	check("guide line for " .. id, line ~= "BLURB" and #line > 20, line)
+end
+check("other pieces keep their blurb", PieceGuide.line({ id = "belt", kind = "belt", blurb = "One tile." }) == "One tile.")
+print("guide:", PieceGuide.line({ id = "magnet_drum", kind = "separator" }), "|", PieceGuide.line({ id = "ash_sifter", kind = "treat" }))
+
 print(("linecheck: %d random keys, %d pocket operations over 300 players (%d sales paying $%d, %d needles out); %d failures"):format(5000, ops, allSales, allPaid, allTaken, failures))
 check("the fuzz really sold and took needles", allSales > 100 and allPaid > 0 and allTaken > 1000)
 if failures > 0 then

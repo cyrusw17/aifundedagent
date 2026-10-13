@@ -23,6 +23,8 @@ MODULES = {
     "Shared.Config.Gloves": "shared/Config/Gloves.luau",
     "Services.Market": "server/Services/Market.luau",
     "Services.Needle": "server/Services/Needle.luau",
+    "Shared.Config.Sorters": "shared/Config/Sorters.luau",
+    "Shared.PieceGuide": "shared/PieceGuide.luau",
 }
 
 
