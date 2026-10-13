@@ -8,7 +8,9 @@ local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 
-local Trucks = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Trucks"))
+local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
+local Trucks = require(Config:WaitForChild("Trucks"))
+local Game = require(Config:WaitForChild("Game"))
 local remotes = ReplicatedStorage:WaitForChild("DealerRemotes")
 local buyRemote = remotes:WaitForChild("Buy")
 local cutsceneRemote = remotes:WaitForChild("Cutscene")
@@ -153,8 +155,9 @@ for i, def in Trucks do
 	end)
 end
 
--- Studio only: a button that adds test cash so the purchase can be tried without grinding.
-if RunService:IsStudio() then
+-- Studio only: a button that adds test cash so the purchase can be tried without grinding. Not needed while
+-- infinite money is on.
+if RunService:IsStudio() and not Game.InfiniteMoney then
 	local test = Instance.new("TextButton")
 	test.Position = UDim2.new(1, -120, 0, 38)
 	test.Size = UDim2.fromOffset(106, 20)

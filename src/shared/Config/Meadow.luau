@@ -5,7 +5,7 @@
 return {
 	-- Change Version whenever the layout or noise changes. A place that was baked in Studio with an older version
 	-- gets regenerated when you press Play.
-	Version = 1,
+	Version = 2,
 	Seed = 7, -- shifts the noise; same seed always gives the same hills
 
 	HalfSize = 512, -- the biome is 1024 x 1024 studs, centered on base camp
@@ -28,13 +28,17 @@ return {
 		{ name = "StarterBase", min = Vector2.new(40, -58), max = Vector2.new(100, 8), blend = 30 },
 		{ name = "TrailerTurn", min = Vector2.new(84, -82), max = Vector2.new(132, -26), blend = 30 },
 		{ name = "TrailerRoad", min = Vector2.new(108, -82), max = Vector2.new(132, 180), blend = 30 },
-		{ name = "Dealer", min = Vector2.new(-125, -42), max = Vector2.new(-25, 50), blend = 40 },
+		{ name = "Dealer", min = Vector2.new(-190, -70), max = Vector2.new(-55, 50), blend = 40 },
+		{ name = "LandOffice", min = Vector2.new(-45, 30), max = Vector2.new(5, 66), blend = 30 },
+		{ name = "Plots", min = Vector2.new(-155, 70), max = Vector2.new(103, 240), blend = 30 },
 	},
 
 	-- Dirt roads, painted into the terrain and leveled. Each is a list of points.
 	RoadWidth = 14,
 	Roads = {
-		{ name = "Main", points = { Vector2.new(-60, 26), Vector2.new(120, 26) } },
+		{ name = "Main", points = { Vector2.new(-120, 26), Vector2.new(120, 26) } },
+		{ name = "PlotRoad", points = { Vector2.new(18, 26), Vector2.new(18, 236) } },
+		{ name = "PlotLane", points = { Vector2.new(-150, 156), Vector2.new(98, 156) } },
 		{ name = "North", points = { Vector2.new(0, -36), Vector2.new(0, -200), Vector2.new(-30, -330), Vector2.new(-30, -512) } },
 		{ name = "South", points = { Vector2.new(120, 26), Vector2.new(120, 260), Vector2.new(150, 380), Vector2.new(150, 512) } },
 	},
@@ -44,7 +48,7 @@ return {
 		{ at = Vector2.new(150, 490), facing = Vector2.new(0, -1), text = "PINE FOREST\nCOMING SOON" },
 	},
 
-	Pond = { center = Vector2.new(-210, 170), radius = 46, depth = 10, waterLevel = -1.5 },
+	Pond = { center = Vector2.new(-250, 200), radius = 46, depth = 10, waterLevel = -1.5 },
 
 	-- Places hay bales and trees keep away from, with a margin. Rects are min/max X and Z.
 	KeepClear = {
@@ -52,7 +56,9 @@ return {
 		{ min = Vector2.new(40, -56), max = Vector2.new(100, 6) }, -- starter base and conveyor line
 		{ min = Vector2.new(84, -80), max = Vector2.new(132, -26) }, -- trailer turn
 		{ min = Vector2.new(108, -80), max = Vector2.new(132, 180) }, -- trailer road
-		{ min = Vector2.new(-110, -34), max = Vector2.new(-30, 36) }, -- truck dealer and its lot
+		{ min = Vector2.new(-185, -66), max = Vector2.new(-58, 44) }, -- truck dealer and its lot
+		{ min = Vector2.new(-40, 36), max = Vector2.new(0, 62) }, -- land office
+		{ min = Vector2.new(-150, 76), max = Vector2.new(98, 236) }, -- land plots and their lanes
 	},
 	BuildingMargin = 22, -- "not super close to things like the shop"
 	RoadMargin = 10, -- from the road's center line
@@ -68,5 +74,17 @@ return {
 	RockCount = 45,
 
 	-- The truck dealer. Its front (shop entrance and garage door) faces east toward base camp.
-	DealerCenter = Vector3.new(-85, 0, 10),
+	DealerCenter = Vector3.new(-150, 0, 6),
+
+	-- Land you can buy (built by the land shop thread). The office faces north toward the main road and spawn.
+	-- Plots are 72 x 72 and flat; a lane runs between the two rows and a road links them to the main road.
+	LandOffice = { min = Vector2.new(-40, 36), max = Vector2.new(0, 62), facing = Vector2.new(0, -1) },
+	Plots = {
+		{ id = "plot_1", min = Vector2.new(-150, 76), max = Vector2.new(-78, 148) },
+		{ id = "plot_2", min = Vector2.new(-62, 76), max = Vector2.new(10, 148) },
+		{ id = "plot_3", min = Vector2.new(26, 76), max = Vector2.new(98, 148) },
+		{ id = "plot_4", min = Vector2.new(-150, 164), max = Vector2.new(-78, 236) },
+		{ id = "plot_5", min = Vector2.new(-62, 164), max = Vector2.new(10, 236) },
+		{ id = "plot_6", min = Vector2.new(26, 164), max = Vector2.new(98, 236) },
+	},
 }

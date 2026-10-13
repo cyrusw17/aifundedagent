@@ -33,7 +33,7 @@ return {
 		fence_post_set = 12.6,
 		road_tile = 6.0,
 		-- Vehicles and trailers
-		rusty_pickup = 19.7, -- the first truck (Vehicles.luau stretches it over the part-built truck)
+		rusty_pickup = 27.5, -- the first truck (Vehicles.luau stretches it over the part-built truck)
 		farm_flatbed = 24.4,
 		box_truck = 29.4,
 		semi_rig = 25.3,
