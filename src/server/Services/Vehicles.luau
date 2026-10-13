@@ -776,6 +776,8 @@ local function updateCargo()
 				if not riding[b] then
 					b.body:SetAttribute("InTruck", true)
 				end
+				-- Whoever hauls a bale gets paid for it at the sell shop, even if it was pushed in rather than carried.
+				b.ownerId = b.ownerId or player.UserId
 				pcall(function()
 					if b.body:GetNetworkOwner() ~= player then
 						b.body:SetNetworkOwner(player)
@@ -812,19 +814,7 @@ function Vehicles.spawnOwned(player, truckId, cframe, opts)
 	Vehicles.makeDrivable(truck, player)
 	Vehicles.setOwned(player, truck)
 
-	local trailer = nil
-	local trailerDef = opts.trailer and Vehicles.getTrailer(opts.trailer)
-	if trailerDef then
-		local _, _, bedLength = trailerSize(trailerDef)
-		local behind = def.length / 2 + 0.9 + trailerDef.tongue + bedLength / 2
-		trailer = Vehicles.buildTrailer(trailerDef, cframe * CFrame.new(0, 0, behind), parent)
-		trailer.Name = player.Name .. "'s " .. trailerDef.name
-		Vehicles.makeTrailerLive(trailer, player)
-		Vehicles.setOwnedTrailer(player, trailer)
-		Vehicles.hitch(truck, trailer)
-	elseif opts.trailer then
-		warn("[Needlewood] unknown trailer " .. tostring(opts.trailer))
-	end
+	local trailer = opts.trailer and Vehicles.spawnTrailer(opts.trailer, truck)
 
 	Vehicles.release(truck, player)
 	local seat = truck:FindFirstChild("DriverSeat")
@@ -833,6 +823,26 @@ function Vehicles.spawnOwned(player, truckId, cframe, opts)
 		prompt.Enabled = true -- nobody is in it yet
 	end
 	return truck, trailer
+end
+
+-- Builds the truck owner's trailer behind a truck that is already in the world and hitches it. Returns the trailer.
+-- (For callers that place the truck themselves; spawnOwned does both.)
+function Vehicles.spawnTrailer(trailerId, truck)
+	local def = Vehicles.getTrailer(trailerId)
+	local owner = Players:GetPlayerByUserId(truck:GetAttribute("OwnerId") or 0)
+	local truckDef = Vehicles.get(truck:GetAttribute("TruckId"))
+	if not def or not owner or not truckDef then
+		warn("[Needlewood] spawnTrailer: unknown trailer or truck owner " .. tostring(trailerId))
+		return nil
+	end
+	local _, _, bedLength = trailerSize(def)
+	local behind = truckDef.length / 2 + 0.9 + def.tongue + bedLength / 2
+	local trailer = Vehicles.buildTrailer(def, Vehicles.groundCFrame(truck) * CFrame.new(0, 0, behind), truck.Parent)
+	trailer.Name = owner.Name .. "'s " .. def.name
+	Vehicles.makeTrailerLive(trailer, owner)
+	Vehicles.setOwnedTrailer(owner, trailer)
+	Vehicles.hitch(truck, trailer)
+	return trailer
 end
 
 -- folder: where player trucks and trailers go.
