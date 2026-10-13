@@ -1,6 +1,9 @@
 --!nonstrict
 -- Player state. The server owns it. Attributes mirror what the HUD needs to show.
--- Saving uses a plain DataStore for now. We will swap in a session-locked store before launch.
+-- Saves are session-locked: a slot records which server has it open (_lock), every write goes through UpdateAsync and
+-- refuses to land if another live server holds the lock, and each save carries a version (_v) that migrations bring
+-- up to date on load. The copy loaded at the start of each session is kept under a backup key, and a slot whose main
+-- copy has gone missing loads from it.
 --
 -- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
 -- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
@@ -49,6 +52,10 @@ local function slotKey(player, slot)
 	return ("Player_%d_Slot%d"):format(player.UserId, slot)
 end
 
+local function backupKey(player, slot)
+	return slotKey(player, slot) .. "_Backup"
+end
+
 local function indexKey(player)
 	return ("Player_%d_Slots"):format(player.UserId)
 end
@@ -78,6 +85,53 @@ local function write(key, value)
 	end
 	return ok
 end
+
+-- Read-modify-write. transform gets the stored value and returns the new one, or nil to leave it alone. ok is false
+-- when the store couldn't be reached.
+local function update(key, transform)
+	if not store then
+		return false
+	end
+	local ok, err = pcall(function()
+		store:UpdateAsync(key, transform)
+	end)
+	if not ok then
+		warn("[Needlewood] save failed for " .. key .. ": " .. tostring(err))
+	end
+	return ok
+end
+
+-- Session locks. In Studio every session has the same empty JobId, so a Studio test never locks itself out.
+local JOB = game.JobId
+local LOCK_TTL = math.max(Config.AutosaveSeconds * 3, 180) -- a lock no server refreshed for this long is stale
+local function heldElsewhere(saved)
+	local lock = typeof(saved) == "table" and saved._lock
+	return typeof(lock) == "table" and lock.job ~= JOB and typeof(lock.at) == "number" and os.time() - lock.at < LOCK_TTL
+end
+
+-- Save versions. MIGRATIONS[v] turns a version v save into version v + 1. Saves from before versions are version 0.
+local SAVE_VERSION = 1
+local MIGRATIONS = {
+	[0] = function(saved)
+		return saved -- version 1 is the shape version 0 already had; stateFrom fills anything missing
+	end,
+}
+-- The save brought up to SAVE_VERSION, or nil when it is from a newer version of the game than this server runs.
+local function migrate(saved)
+	local v = typeof(saved._v) == "number" and saved._v or 0
+	if v > SAVE_VERSION then
+		return nil
+	end
+	while v < SAVE_VERSION do
+		saved = MIGRATIONS[v](saved)
+		v += 1
+	end
+	saved._v = v
+	return saved
+end
+Data.SAVE_VERSION = SAVE_VERSION
+Data.migrate = migrate
+Data.heldElsewhere = heldElsewhere
 
 local function copy(value)
 	if typeof(value) ~= "table" then
@@ -220,6 +274,31 @@ local function stateFrom(saved)
 	return state
 end
 
+-- The table a state saves as. With infinite money on, the save keeps the balance the player had before, not the test
+-- cash.
+local function toSave(state)
+	return {
+		cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash,
+		trucks = state.trucks,
+		trailers = state.trailers,
+		gear = state.gear,
+		pocket = state.pocket,
+		thatch = state.thatch,
+		materials = state.materials,
+		finds = state.finds,
+		gloves = state.gloves,
+		land = state.land,
+		land2 = state.land2,
+		bank = state.bank,
+		tutorial = state.tutorial,
+		settings = state.settings,
+		quests = state.quests,
+	}
+end
+
+-- For SelfTests: the save shape without a DataStore.
+Data.test = { stateFrom = stateFrom, toSave = toSave }
+
 function Data.get(player)
 	return states[player]
 end
@@ -320,15 +399,59 @@ function Data.choose(player, slot, plot)
 		task.wait(0.1)
 	end
 	-- Always read the slot itself: the index can miss a slot whose index write failed, and a slot that looks empty
-	-- must never be started fresh over real progress.
-	local saved = nil
+	-- must never be started fresh over real progress. Reading takes the slot's session lock; when another server still
+	-- holds it (the player just left it and its last save is landing), wait a little and try again.
+	local saved, restored = nil, false
 	if not offline[player] then
-		local ok, result = read(slotKey(player, slot))
-		if not ok then
-			choosing[player] = nil
-			return false, "Couldn't read that save. Try again."
+		local locked = false
+		for try = 1, 4 do
+			locked = false
+			local seen = nil
+			local ok = update(slotKey(player, slot), function(current)
+				seen, locked = nil, false
+				if typeof(current) ~= "table" then
+					return nil
+				end
+				if heldElsewhere(current) then
+					locked = true
+					return nil
+				end
+				current._lock = { job = JOB, at = os.time() }
+				seen = current
+				return current
+			end)
+			if not ok then
+				choosing[player] = nil
+				return false, "Couldn't read that save. Try again."
+			end
+			saved = seen
+			if not locked or try == 4 or not player.Parent then
+				break
+			end
+			task.wait(3)
 		end
-		saved = typeof(result) == "table" and result or nil
+		if locked then
+			choosing[player] = nil
+			return false, "That save is still open on another server. Try again in a minute."
+		end
+		-- The slot is listed but its main copy is gone: load the backup.
+		if saved == nil and summaries[player] and summaries[player][slot] ~= nil then
+			local okBackup, backup = read(backupKey(player, slot))
+			if okBackup and typeof(backup) == "table" then
+				saved, restored = backup, true
+			end
+		end
+		if saved then
+			saved = migrate(saved)
+			if not saved then
+				choosing[player] = nil
+				return false, "That save is from a newer version of the game. Rejoin to get the update."
+			end
+			-- The copy that loaded is a known good one: keep it as the backup.
+			local good = copy(saved)
+			good._lock = nil
+			task.spawn(write, backupKey(player, slot), good)
+		end
 	end
 	local used = saved ~= nil
 	local fresh = saved == nil
@@ -349,17 +472,28 @@ function Data.choose(player, slot, plot)
 	player:SetAttribute("SaveSlot", slot)
 	Data.sync(player)
 	Data.loaded:Fire(player)
-	if fresh then
-		task.spawn(Data.save, player) -- so the slot shows as used next time
+	if fresh or restored then
+		task.spawn(Data.save, player) -- so the slot shows as used next time, or the restored copy is the main one again
+	end
+	if restored then
+		task.delay(3, function()
+			if player.Parent then
+				Data.toast(player, "Your save's main copy couldn't be found, so it was loaded from its backup.")
+			end
+		end)
 	end
 	return true, used and ("Loaded save %d."):format(slot) or ("Started save %d."):format(slot)
 end
 
 -- One write per player at a time, so an older snapshot can never land after a newer one. A save asked for while one
 -- is writing waits for it, and the writer then saves once more with the newest state.
-local saving, saveAgain = {}, {}
+local saving, saveAgain, saveFinal = {}, {}, {}
 local saveOnce
-function Data.save(player)
+-- final (on leaving) also gives up the slot's session lock.
+function Data.save(player, final)
+	if final then
+		saveFinal[player] = true
+	end
 	if saving[player] then
 		saveAgain[player] = true
 		while saving[player] do
@@ -370,15 +504,16 @@ function Data.save(player)
 	saving[player] = true
 	repeat
 		saveAgain[player] = nil
-		local ok, err = pcall(saveOnce, player)
+		local ok, err = pcall(saveOnce, player, saveFinal[player] == true)
 		if not ok then
 			warn("[Needlewood] save failed: " .. tostring(err))
 		end
 	until not saveAgain[player]
 	saving[player] = nil
+	saveFinal[player] = nil
 end
 
-saveOnce = function(player)
+saveOnce = function(player, final)
 	local state = states[player]
 	if not state or not store or not state.slot or offline[player] then
 		return
@@ -386,26 +521,26 @@ saveOnce = function(player)
 	if Data.beforeSave then
 		pcall(Data.beforeSave, player)
 	end
-	-- With infinite money on, the save keeps the balance the player had before, not the test cash.
-	local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-	local saved = {
-		cash = cash,
-		trucks = state.trucks,
-		trailers = state.trailers,
-		gear = state.gear,
-		pocket = state.pocket,
-		thatch = state.thatch,
-		materials = state.materials,
-		finds = state.finds,
-		gloves = state.gloves,
-		land = state.land,
-		land2 = state.land2,
-		bank = state.bank,
-		tutorial = state.tutorial,
-		settings = state.settings,
-		quests = state.quests,
-	}
-	if write(slotKey(player, state.slot), saved) then
+	local saved = toSave(state)
+	saved._v = SAVE_VERSION
+	saved._lock = if final then nil else { job = JOB, at = os.time() }
+	local lost = false
+	local ok = update(slotKey(player, state.slot), function(current)
+		lost = heldElsewhere(current)
+		if lost then
+			return nil
+		end
+		return saved
+	end)
+	if lost then
+		-- Another server opened this slot (this one stopped refreshing its lock): its copy wins, and this server stops
+		-- writing so the two never overwrite each other.
+		offline[player] = true
+		warn(("[Needlewood] save %d for %d is open on another server; this server stopped saving it"):format(state.slot, player.UserId))
+		Data.toast(player, "This save was opened on another server, so this server has stopped saving it.")
+		return
+	end
+	if ok then
 		local list = summaries[player] or {}
 		list[state.slot] = summarize(saved)
 		summaries[player] = list
@@ -418,7 +553,7 @@ saveOnce = function(player)
 end
 
 function Data.release(player)
-	Data.save(player)
+	Data.save(player, true)
 	states[player] = nil
 	summaries[player] = nil
 	choosing[player] = nil
@@ -466,7 +601,7 @@ function Data.start()
 	end
 	game:BindToClose(function()
 		for player in states do
-			Data.save(player)
+			Data.save(player, true)
 		end
 	end)
 	task.spawn(function()
