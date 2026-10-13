@@ -1,7 +1,8 @@
 --!nonstrict
 -- Loose hay. A broken bale spills into a pile of small straw strands with the odd needle hidden among them. The
 -- shovel scoops pieces up, the rake drags them across the ground, and pieces left on the sell pad sell. Every
--- strand is a small real part, capped at MaxLoosePieces so the server stays light.
+-- piece is a small real part, capped at MaxLoosePieces so the server stays light. A piece is one strand, a clump of
+-- a few (a burst bale spills clumps, Config.StrandsPerClump) or a raked pile; Hay.strandsIn says how many.
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -100,7 +101,7 @@ local function trimKind(isNeedle, over)
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
 			-- Piles are a player's raked work, so the cap never takes them.
-			local kindMatches = (needleSet[piece] == true) == isNeedle and not piece:GetAttribute("Strands")
+			local kindMatches = (needleSet[piece] == true) == isNeedle and not Hay.isPile(piece)
 			if born < oldestTime and kindMatches then
 				oldest, oldestTime = piece, born
 			end
@@ -117,7 +118,7 @@ local function trimPiles()
 	while true do
 		local piles, oldest, oldestTime = 0, nil, math.huge
 		for piece, born in pieces do
-			if piece:GetAttribute("Strands") then
+			if Hay.isPile(piece) then
 				piles += 1
 				if born < oldestTime then
 					oldest, oldestTime = piece, born
@@ -152,13 +153,19 @@ end
 
 -- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
 -- A strand in its region's colors and shape.
-local function makeStraw(hayType)
+-- A clump of several strands is the same strand a little longer and about twice as thick (three strands' volume).
+local function makeStraw(hayType, strands)
 	local look = Hay.look(hayType)
 	local c = look.colors[rng:NextInteger(1, #look.colors)]
-	local thick = rng:NextNumber(look.thick[1], look.thick[2])
+	local grow = strands > 1 and math.sqrt(strands) * 0.9 or 1
+	local thick = rng:NextNumber(look.thick[1], look.thick[2]) * grow
 	local piece = Instance.new("Part")
 	piece.Name = "Straw"
-	piece.Size = Vector3.new(rng:NextNumber(look.length[1], look.length[2]), thick, thick * rng:NextNumber(0.85, 1.15))
+	local length = rng:NextNumber(look.length[1], look.length[2]) * (strands > 1 and 1.15 or 1)
+	piece.Size = Vector3.new(length, thick, thick * rng:NextNumber(0.85, 1.15))
+	if strands > 1 then
+		piece:SetAttribute("Strands", strands)
+	end
 	piece.Color = Color3.fromRGB(c[1], c[2], c[3])
 	piece.Material = look.material and Enum.Material[look.material] or Enum.Material.Fabric
 	piece.CustomPhysicalProperties = PhysicalProperties.new(0.3, 1.2, 0, 1, 1)
@@ -203,11 +210,12 @@ local function makeNeedle(cframe, ownerId, hayType)
 	return piece
 end
 
--- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of hayType's straw.
-function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
+-- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of hayType's straw, or a
+-- clump of strands (default 1) worth that many.
+function Hay.spawnPiece(position, velocity, ownerId, kind, hayType, strands)
 	local cframe = CFrame.new(position)
 		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
-	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw(hayType)
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw(hayType, strands or 1)
 	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth
@@ -303,8 +311,9 @@ function Hay.strandsIn(piece)
 	return piece:GetAttribute("Strands") or 1
 end
 
+-- A raked pile (one scoop takes all of it); a clump of strands is not one.
 function Hay.isPile(piece)
-	return piece:GetAttribute("Strands") ~= nil
+	return piece.Name == "HayPile"
 end
 
 -- Sizes a pile's mound to how much hay is in it.
@@ -315,13 +324,15 @@ local function shapePile(pile, n)
 	pile:SetAttribute("Strands", n)
 end
 
--- Takes n strands off a pile (for a scoop that has less room than the pile). The rest stays.
+-- Takes n strands off a pile or clump (for a scoop that has less room than it holds). The rest stays.
 function Hay.takeFromPile(pile, n)
 	local left = Hay.strandsIn(pile) - n
 	if left <= 0 then
 		Hay.remove(pile)
-	else
+	elseif Hay.isPile(pile) then
 		shapePile(pile, left)
+	else
+		pile:SetAttribute("Strands", left > 1 and left or nil)
 	end
 end
 

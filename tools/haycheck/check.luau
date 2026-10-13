@@ -122,6 +122,54 @@ for _, power in { 0, 0.5, 1 } do
 	check(("toss at %.1f lands %.1f studs"):format(power, want), math.abs(range - want) < 1e-6, range)
 end
 
+-- Clumps: every strand of a bale spilled exactly once, none bigger than asked.
+for total = 0, 200 do
+	for per = 1, 7 do
+		local sum, ok = 0, true
+		for _, n in HayMath.clumps(total, per) do
+			sum += n
+			ok = ok and n >= 1 and n <= per
+		end
+		check(("clumps of %d from %d"):format(per, total), ok and sum == total)
+	end
+end
+check("a meadow bale is 30 clumps", #HayMath.clumps(Game.PiecesPerBale, Game.StrandsPerClump) == math.ceil(Game.PiecesPerBale / Game.StrandsPerClump))
+
+-- Scoop plans: never more than the room in your arms, strands and clumps never more than the scoop size, a pile
+-- taken whole when there is room, nothing taken below zero.
+local rng = Random.new(22)
+for _ = 1, 2000 do
+	local pieces = {}
+	for i = 1, rng:NextInteger(0, 14) do
+		local pile = rng:NextNumber() < 0.15
+		pieces[i] = { strands = pile and rng:NextInteger(40, 120) or rng:NextInteger(1, 3), pile = pile }
+	end
+	local room, scoop = rng:NextInteger(0, 80), rng:NextInteger(1, 25)
+	local takes = HayMath.scoopPlan(pieces, room, scoop)
+	local total, loose, ok = 0, 0, true
+	for i, piece in pieces do
+		local t = takes[i]
+		ok = ok and t >= 0 and t <= piece.strands
+		total += t
+		if not piece.pile then
+			loose += t
+		end
+	end
+	check("a scoop fits your arms", total <= room, total)
+	check("a scoop's strands and clumps fit the scoop size", loose <= scoop, loose)
+	check("a scoop never takes more than a piece holds", ok)
+	-- And it is greedy: hay left behind with room still in your arms is only loose hay past the scoop size.
+	local pileLeft = false
+	local held = 0
+	for i, piece in pieces do
+		held += piece.strands
+		pileLeft = pileLeft or (piece.pile and takes[i] < piece.strands)
+	end
+	if total < room and total < held then
+		check("a scoop stops short only at the scoop size", loose == scoop and not pileLeft, ("%d/%d room, %d/%d scoop"):format(total, room, loose, scoop))
+	end
+end
+
 print(("hay math: %d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	error("hay math checks failed")

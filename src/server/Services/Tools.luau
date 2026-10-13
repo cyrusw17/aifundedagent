@@ -295,21 +295,24 @@ local function useShovel(player, root, aim)
 		if #list == 0 then
 			return
 		end
+		-- How much of each piece the scoop takes (HayMath.scoopPlan): a raked pile as much as you have room for, strands
+		-- and clumps up to the scoop size. Needles are left out of the plan.
+		local hayPieces, plan = {}, {}
+		for _, piece in list do
+			if not Hay.isNeedle(piece) then
+				table.insert(hayPieces, piece)
+				table.insert(plan, { strands = Hay.strandsIn(piece), pile = Hay.isPile(piece) })
+			end
+		end
+		local takes = HayMath.scoopPlan(plan, room, Gloves.scoopSize(player, hayTier) + bonus)
 		local strands, found, unsorted, wet = 0, 0, 0, 0
-		local roomLeft = room
-		for i = #list, 1, -1 do
-			local piece = list[i]
-			if Hay.isPile(piece) then
-				-- A raked pile goes in one scoop, as much of it as you have room for.
-				local take = math.min(Hay.strandsIn(piece), math.max(roomLeft, 0))
-				if take <= 0 then
-					table.remove(list, i)
-					continue
-				end
-				roomLeft -= take
+		local flying = {} -- what leaves the ground whole and flies to you
+		for i, piece in hayPieces do
+			local take = takes[i]
+			if take > 0 then
 				strands += take
 				if not piece:GetAttribute("Sorted") then
-					unsorted += take
+					unsorted += take -- hay from a sorted bale has had its needles taken out already
 				end
 				if piece:GetAttribute("Wet") then
 					wet += take
@@ -318,29 +321,19 @@ local function useShovel(player, root, aim)
 				state.loadWeight = (state.loadWeight or 0) + weight * take
 				state.loadTier = math.max(state.loadTier or 0, tier)
 				if take < Hay.strandsIn(piece) then
-					Hay.takeFromPile(piece, take)
-					table.remove(list, i) -- the rest of the pile stays on the ground
-				end
-			elseif Hay.isNeedle(piece) then
-				if Hay.sharedNeedles then
-					table.remove(list, i) -- a shared needle is picked up by clicking it, so the shovel leaves it
+					Hay.takeFromPile(piece, take) -- the rest of the pile or clump stays on the ground
 				else
-					found += 1
+					table.insert(flying, piece)
 				end
-			else
-				strands += 1
-				roomLeft -= 1
-				if not piece:GetAttribute("Sorted") then
-					unsorted += 1 -- hay from a sorted bale has had its needles taken out already
-				end
-				if piece:GetAttribute("Wet") then
-					wet += 1
-				end
-				local weight, tier = Gloves.pieceWeight(piece)
-				state.loadWeight = (state.loadWeight or 0) + weight
-				state.loadTier = math.max(state.loadTier or 0, tier)
 			end
 		end
+		for _, piece in list do
+			if Hay.isNeedle(piece) and not Hay.sharedNeedles then
+				found += 1 -- a shared needle is picked up by clicking it, so the shovel leaves it
+				table.insert(flying, piece)
+			end
+		end
+		list = flying
 		local hay = strands * Config.HayPerPiece
 		state.loadHay += hay
 		-- What kind of hay is in your arms, so it pours back out as the same (Tools.pour).
