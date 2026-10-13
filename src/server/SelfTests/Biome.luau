@@ -121,7 +121,7 @@ return function(SelfTest)
 		local under = Vector3.new(cargoAt.X, cargoAt.Y - 4, cargoAt.Z)
 		local chute = Chutes.make(workspace, CFrame.lookAt(under, under + lane.LookVector))
 		t.cleanup(chute.model)
-		local dropping = Chutes.pull(chute, nil)
+		local dropping = Chutes.test.pullInto(chute, truck2)
 		t.equal("chute drops a full layer into the pickup bed", dropping, 9)
 		if HEADLESS then
 			t.skip("chute bales land in the bed and stay through a drive", NO_PHYSICS)
