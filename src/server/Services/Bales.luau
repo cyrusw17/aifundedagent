@@ -22,6 +22,8 @@ local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
 local Finds = require(script.Parent.Finds)
 local Announce = require(script.Parent.Announce)
+local Weather = require(script.Parent.Weather)
+local WorldRegions = require(ReplicatedStorage.Shared.WorldRegions)
 
 local Bales = {}
 
@@ -60,8 +62,10 @@ local function buildBale(position, hayType)
 	body.TopSurface = Enum.SurfaceType.Smooth
 	body.BottomSurface = Enum.SurfaceType.Smooth
 	body.Anchored = true
-	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart.
-	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
+	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart. The heavy friction and elasticity
+	-- weights make the bale's own grip and zero bounce win against whatever it rests on (a slick metal truck bed, a
+	-- springy floor), so two bales stacked in a moving pickup ride it out instead of skating or popping apart.
+	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.4, 0, 50, 100)
 
 	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
@@ -302,6 +306,7 @@ function Bales.breakOpen(player, b)
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
 		local boost = b.body:GetAttribute("NeedleBoost") or 1
+		local wet = b.body:GetAttribute("Wet") == true -- a soaked bale spills soaked hay
 		-- A golden field bale (1 in GoldenBaleOneIn) holds GoldenBaleNeedles times the needles on top of that.
 		local golden = b.body:GetAttribute("GoldenField") == true
 		if golden then
@@ -357,6 +362,9 @@ function Bales.breakOpen(player, b)
 				end
 				if sorted then
 					piece:SetAttribute("Sorted", true)
+				end
+				if wet then
+					Bales.wetPiece(piece)
 				end
 			end
 			-- Now and then a needle tumbles out with the hay.
@@ -702,6 +710,114 @@ function Bales.makeGolden(b, announce)
 	end
 end
 
+-- Wet hay (Config.WetWeather). A wet bale is darker and drips; its weight (Gloves) and price (Gameplay) follow the
+-- Wet attribute.
+local WET_DARKEN = 0.62
+
+local function tintAll(body, factor)
+	for _, d in { body, unpack(body:GetDescendants()) } do
+		if d:IsA("BasePart") and d.Name ~= "Twine" then
+			local base = d:GetAttribute("DryColor")
+			if factor < 1 then
+				if not base then
+					d:SetAttribute("DryColor", d.Color)
+					base = d.Color
+				end
+				d.Color = Color3.new(base.R * factor, base.G * factor, base.B * factor)
+			elseif base then
+				d.Color = base
+				d:SetAttribute("DryColor", nil)
+			end
+		end
+	end
+end
+
+-- Soaks a bale: heavier, worth less, darker, and dripping until it dries.
+function Bales.wet(b)
+	if b.gone or b.body:GetAttribute("Wet") then
+		return false
+	end
+	b.body:SetAttribute("Wet", true)
+	b.dryFor = 0
+	tintAll(b.body, WET_DARKEN)
+	local drips = Instance.new("ParticleEmitter")
+	drips.Name = "WetDrips"
+	drips.Rate = 6
+	drips.Lifetime = NumberRange.new(0.4, 0.7)
+	drips.Speed = NumberRange.new(0, 0.5)
+	drips.Acceleration = Vector3.new(0, -30, 0)
+	drips.EmissionDirection = Enum.NormalId.Bottom
+	drips.Size = NumberSequence.new(0.08)
+	drips.Color = ColorSequence.new(Color3.fromRGB(170, 190, 210))
+	drips.Transparency = NumberSequence.new(0.3, 1)
+	drips.Parent = b.body
+	return true
+end
+
+-- Dries a wet bale (the sun, or Conveyor's drying rack). Returns true if it was wet.
+function Bales.dry(b)
+	if b.gone or not b.body:GetAttribute("Wet") then
+		return false
+	end
+	b.body:SetAttribute("Wet", nil)
+	b.rainFor, b.dryFor = 0, 0
+	tintAll(b.body, 1)
+	local drips = b.body:FindFirstChild("WetDrips")
+	if drips then
+		drips:Destroy()
+	end
+	return true
+end
+
+-- Marks a loose strand as wet (spilled from a wet bale, or poured from a wet load).
+function Bales.wetPiece(piece)
+	piece:SetAttribute("Wet", true)
+	local c = piece.Color
+	piece.Color = Color3.new(c.R * WET_DARKEN, c.G * WET_DARKEN, c.B * WET_DARKEN)
+end
+
+-- Whether rain falls on this spot: its region is in wet weather and nothing overhead shelters it.
+local skyParams = RaycastParams.new()
+skyParams.FilterType = Enum.RaycastFilterType.Exclude
+function Bales.rainingOn(position, ignore)
+	local region = WorldRegions.at(position)
+	if not region or not Config.WetWeather[Weather.get(region.id)] then
+		return false
+	end
+	skyParams.FilterDescendantsInstances = ignore
+	return workspace:Raycast(position + Vector3.new(0, 3, 0), Vector3.new(0, 120, 0), skyParams) == nil
+end
+
+-- Every few seconds: bales out in the rain soak, wet bales out of it dry.
+local WEATHER_TICK = 5
+local function weatherTick()
+	local ignore = { folder, Hay.folder }
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(ignore, player.Character)
+		end
+	end
+	for _, b in byBody do
+		if not b.gone and not b.carriedBy and not b.breaking and b.body.Parent then
+			if Bales.rainingOn(b.body.Position, ignore) then
+				b.dryFor = 0
+				b.rainFor = (b.rainFor or 0) + WEATHER_TICK
+				if b.rainFor >= Config.WetSoakSeconds then
+					Bales.wet(b)
+				end
+			else
+				b.rainFor = 0
+				if b.body:GetAttribute("Wet") then
+					b.dryFor = (b.dryFor or 0) + WEATHER_TICK
+					if b.dryFor >= Config.WetDrySeconds then
+						Bales.dry(b)
+					end
+				end
+			end
+		end
+	end
+end
+
 -- The "Stack N" label over the top of a neat stack.
 local function stackLabel(top, n)
 	local gui = top.body:FindFirstChild("StackLabel")
@@ -801,6 +917,16 @@ end
 
 function Bales.init(worldFolder)
 	folder = worldFolder
+
+	task.spawn(function()
+		while true do
+			task.wait(WEATHER_TICK)
+			local ok, err = pcall(weatherTick)
+			if not ok then
+				warn("[Needlewood] wet bales: " .. tostring(err))
+			end
+		end
+	end)
 
 	task.spawn(function()
 		while true do

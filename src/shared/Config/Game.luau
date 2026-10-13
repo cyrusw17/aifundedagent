@@ -57,6 +57,15 @@ return {
 	TossMinPower = 0.12, -- charge below this (0..1) just sets the bale down
 	TossChargeSeconds = 0.9, -- holding this long is full power
 	TossFlightSeconds = 2.5, -- the server flies a thrown bale this long, then Roblox picks its owner again
+	-- Wet hay. A bale out under the open sky while its region rains soaks through after WetSoakSeconds: it weighs
+	-- WetWeightFactor times as much and its hay sells at WetPriceFactor of the price (needles in it are unharmed)
+	-- until it dries, in the open once the rain stops (WetDrySeconds) or at once on a drying rack. Strands spilled
+	-- from a wet bale are wet too.
+	WetWeather = { rain = true },
+	WetSoakSeconds = 20,
+	WetDrySeconds = 150,
+	WetWeightFactor = 1.5,
+	WetPriceFactor = 0.6,
 	-- Pouring the hay in your arms (shovel click on a truck bed, hopper, belt or sell pad).
 	PourStrands = 40, -- strands per click; click again for more
 	PourFlightSeconds = 0.55,
