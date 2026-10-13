@@ -289,7 +289,8 @@ end
 -- clicks (those go to the anchor) and weighs nothing.
 -- fallback is the part-built look the mesh replaces (a bale body, a Tool, or a list of such parts). When given, the
 -- mesh starts hidden and the fallback stays visible; each client swaps them once the mesh has actually loaded
--- (PropMeshes.client.luau), so a freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
+-- (PropMeshes.client.luau), so a freshly imported mesh that Roblox is still processing never leaves an invisible
+-- bale or an empty hand.
 -- loose is a list of the prop's own parts (from Props.find) to leave unwelded, so the caller can join them with a
 -- hinge or Motor6D instead (spinning wheels, an opening tailgate). They are unanchored like the rest.
 function Props.weldTo(model, anchor, fallback, loose)
