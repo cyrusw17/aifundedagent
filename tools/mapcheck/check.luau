@@ -177,6 +177,20 @@ end
 if #Discoveries.at(Vector3.new(0, 5, 0)) > 0 then discOk = false print("WARN Meadow counts as a discovery") end
 print("discoveries", #Discoveries.all(), discOk and "ok" or "WRONG")
 
+-- The Spindle door: twelve numbered sockets, one door, and the shard order from the quest collection.
+local SpindleDoor = require({ __path = "Services.SpindleDoor" })
+local CS = game:GetService("CollectionService")
+local slots = {}
+for _, socket in CS:GetTagged("ShardSocket") do
+	slots[socket:GetAttribute("Slot") or 0] = true
+end
+local spindleOk = #CS:GetTagged("SpindleDoor") == 1 and #SpindleDoor.shards >= 6
+for i = 1, 12 do
+	if not slots[i] then spindleOk = false print("WARN Spindle socket missing", i) end
+end
+print("spindle door", #SpindleDoor.shards, "shards known", spindleOk and "ok" or "WRONG")
+if not spindleOk then print("WARN spindle door") end
+
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0
 for _, d in workspace:GetDescendants() do

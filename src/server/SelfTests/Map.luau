@@ -240,6 +240,17 @@ return function(SelfTest)
 		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
 		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
 
+		-- The Spindle door ---------------------------------------------------------------------------------------
+		local SpindleDoor = require(Services.SpindleDoor)
+		local CollectionService = game:GetService("CollectionService")
+		t.equal("the Spindle door has twelve shard sockets", #CollectionService:GetTagged("ShardSocket"), 12)
+		t.check("the shard order comes from the quest collection", #SpindleDoor.shards >= 6, ("%d shards"):format(#SpindleDoor.shards))
+		SpindleDoor.refresh()
+		local who = t.player and t.player()
+		if who then
+			t.equal("a player with no shards counts none", who:GetAttribute("SpindleShards") or 0, SpindleDoor.count(who))
+		end
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")

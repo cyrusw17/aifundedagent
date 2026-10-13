@@ -35,6 +35,7 @@ MODULES = {
     "Services.RegionEvents": "server/Services/RegionEvents.luau",
     "Services.Wilds": "server/Services/Wilds.luau",
     "Services.Discoveries": "server/Services/Discoveries.luau",
+    "Services.SpindleDoor": "server/Services/SpindleDoor.luau",
 }
 
 

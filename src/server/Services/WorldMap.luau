@@ -19,6 +19,7 @@ local Weather = require(script.Parent.Weather)
 local RegionEvents = require(script.Parent.RegionEvents)
 local Wilds = require(script.Parent.Wilds)
 local Discoveries = require(script.Parent.Discoveries)
+local SpindleDoor = require(script.Parent.SpindleDoor)
 
 local WorldMap = {}
 
@@ -226,6 +227,7 @@ function WorldMap.build(worldFolder)
 	end)
 	RegionEvents.start()
 	Discoveries.start()
+	SpindleDoor.start()
 end
 
 return WorldMap
