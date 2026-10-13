@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
+local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
 local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
@@ -360,7 +361,12 @@ function Avatar.refreshSpeed(player)
 			tier = math.max(tier, baleTier)
 		end
 	end
-	rig.humanoid.WalkSpeed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	rig.humanoid.WalkSpeed = speed
+	-- How hard the load is on you, 0 (easy) to 1 (crawling), for the client's camera bob and stagger.
+	local range = math.max(rig.defaultSpeed - GloveConfig.MinWalkSpeed, 1)
+	player:SetAttribute("Strain", math.clamp((rig.defaultSpeed - speed) / range, 0, 1))
+	player:SetAttribute("UnderGeared", weight > 0 and Gloves.shortBy(player, tier) > 0)
 end
 
 function Avatar.getRoot(player)
