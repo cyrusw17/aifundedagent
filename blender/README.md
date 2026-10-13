@@ -6,7 +6,7 @@ reproducible and tweakable by editing numbers instead of hand-modeling.
 ```
 blender/
   lib/common.py            shared helpers: scene reset, materials, join, export
-  props/hay_barrel.py      hay barrel (barrel mesh + separate hay mesh)
+  props/hay_barrel.py      hay barrel (short tub overflowing with hay; separate barrel and hay meshes)
   tools/render_preview.py  renders a PNG preview of an exported .glb
   exports/                 generated .glb / .obj / .png (committed for easy import)
 ```
@@ -53,7 +53,7 @@ blender --background --python blender/tools/render_preview.py -- blender/exports
    - `HayBarrel_Barrel` — the container; give it physics / collision.
    - `HayBarrel_Hay` — the fill; hide or scale it down as hay is removed.
 3. Scale: props are modeled in meters. If the importer doesn't convert, 1 stud
-   = 0.28 m, so scale by ~3.57 (the barrel should be ~4 studs tall).
+   = 0.28 m, so scale by ~3.57 (the hay barrel should be ~4 studs tall).
 4. Colors come through as per-material vertex/material colors; set
    `MeshPart.Material` (e.g. WoodPlanks, Metal, Grass) in Studio as needed.
 
@@ -61,4 +61,4 @@ blender --background --python blender/tools/render_preview.py -- blender/exports
 
 Copy `props/hay_barrel.py`, keep the `common.parse_args / reset_scene /
 export` calls, and replace the build functions. Keep each mesh under Roblox's
-per-mesh triangle limit (the hay barrel is ~2.9k triangles total).
+per-mesh triangle limit (the hay barrel is ~3.6k triangles total).

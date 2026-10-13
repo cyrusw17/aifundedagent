@@ -1,4 +1,7 @@
-"""Hay barrel: wooden stave barrel with iron hoops, filled with a hay mound.
+"""Hay barrel: a short wooden stave tub overflowing with a tall hay heap.
+
+Mostly hay by design: the barrel is a low tub and the hay mound is wider than
+the rim and stands taller than the barrel itself.
 
 Exports two meshes so the game can treat them separately:
   HayBarrel_Barrel  - the container (physics body)
@@ -17,17 +20,19 @@ import bpy
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import common  # noqa: E402
 
-# Dimensions in meters (Roblox: 1 stud = 0.28 m, so this barrel is ~3.2 x 4 studs).
-HEIGHT = 1.1
-RADIUS_END = 0.38      # radius at top and bottom
-RADIUS_MID = 0.45      # bulge at the middle
+# Dimensions in meters (Roblox: 1 stud = 0.28 m, so the whole prop is ~3.6 x 5 studs).
+HEIGHT = 0.6           # barrel (tub) height; the hay above it is taller than this
+RADIUS_END = 0.42      # radius at top and bottom
+RADIUS_MID = 0.46      # bulge at the middle
 STAVES = 14
 STAVE_THICKNESS = 0.035
 STAVE_GAP = 0.012      # gap between staves, as arc length
-HOOP_HEIGHTS = (0.12, 0.38, 0.72, 0.98)
+HOOP_HEIGHTS = (0.09, 0.5)
 HOOP_WIDTH = 0.045
 HOOP_THICKNESS = 0.012
-HAY_TOP = HEIGHT + 0.12  # hay heaps slightly above the rim
+HAY_TOP = HEIGHT + 0.6  # top of the hay heap
+HAY_OVERHANG = 1.12      # hay bulges out past the rim by this factor
+HAY_TUFTS = 70
 SEED = 7
 
 
@@ -97,32 +102,52 @@ def build_hoops():
 
 
 def build_hay(rng):
-    """A noisy dome sitting inside the rim, plus a few loose straw tufts."""
+    """A lumpy heap that overflows the rim, plus loose straws all over it."""
     inner = RADIUS_END - STAVE_THICKNESS - 0.005
-    rim_z = HEIGHT - 0.06
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=10, radius=1.0, location=(0, 0, 0))
+    rim_z = HEIGHT
+    wide = RADIUS_END * HAY_OVERHANG
+    lumps = [(rng.uniform(0, 2 * math.pi), rng.uniform(1, 3), rng.uniform(0.015, 0.035)) for _ in range(5)]
+
+    def lump(x, y, z):
+        a = math.atan2(y, x)
+        return 1 + sum(amp * math.sin(round(f) * a + ph + z * 1.5) for ph, f, amp in lumps) + rng.uniform(-0.015, 0.015)
+
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0, location=(0, 0, 0))
     dome = bpy.context.active_object
     for v in dome.data.vertices:
         x, y, z = v.co
-        if z < 0:
-            z = 0  # flatten the lower half into a disc
-        n = 1 + rng.uniform(-0.06, 0.06)
-        v.co = (x * inner * n, y * inner * n, rim_z + z * (HAY_TOP - rim_z) * n)
+        n = lump(x, y, z)
+        if z >= 0:
+            # Upper half: a wide, tall heap sitting just above the rim.
+            v.co = (x * wide * n, y * wide * n, rim_z + 0.04 + z * (HAY_TOP - rim_z - 0.04) * (1 + (n - 1) * 0.5))
+        else:
+            # Lower half: tuck back in under the overhang and down into the tub.
+            t = -z
+            h = math.hypot(x, y)
+            r = (wide + (inner - wide) * t) * n
+            dx, dy = (x / h, y / h) if h > 1e-6 else (0.0, 0.0)
+            v.co = (dx * r, dy * r, rim_z + 0.04 - t * 0.25)
     bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.remove_doubles(threshold=0.01)
+    bpy.ops.mesh.remove_doubles(threshold=0.005)
     bpy.ops.object.mode_set(mode="OBJECT")
 
     tufts = []
-    for _ in range(18):
+    for i in range(HAY_TUFTS):
         a = rng.uniform(0, 2 * math.pi)
-        d = rng.uniform(0.05, inner * 0.85)
-        x, y = d * math.cos(a), d * math.sin(a)
-        surface = rim_z + (HAY_TOP - rim_z) * math.sqrt(max(0.0, 1 - (d / inner) ** 2))
-        length = rng.uniform(0.12, 0.22)
-        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, surface + 0.01))
+        u = rng.uniform(0, 1)
+        if i < HAY_TUFTS // 3:
+            # Straws drooping over the rim.
+            d, z = wide * rng.uniform(0.95, 1.05), rim_z + rng.uniform(0.0, 0.12)
+            rot = (rng.uniform(-0.3, 0.3), rng.uniform(0.6, 1.2), a + rng.uniform(-0.5, 0.5))
+        else:
+            # Straws lying on the heap surface.
+            d = wide * math.sqrt(u) * 0.95
+            z = rim_z + 0.04 + (HAY_TOP - rim_z - 0.04) * math.sqrt(max(0.0, 1 - (d / wide) ** 2))
+            rot = (rng.uniform(-0.5, 0.5), rng.uniform(-0.6, 0.6), rng.uniform(0, math.pi))
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(d * math.cos(a), d * math.sin(a), z))
         t = bpy.context.active_object
-        t.scale = (length, 0.008, 0.008)
-        t.rotation_euler = (rng.uniform(-0.4, 0.4), rng.uniform(-0.5, 0.5), rng.uniform(0, math.pi))
+        t.scale = (rng.uniform(0.14, 0.28), 0.009, 0.009)
+        t.rotation_euler = rot
         tufts.append(t)
     return [dome] + tufts
 
