@@ -136,7 +136,8 @@ Regions.offRoad = offRoad
 -- A wooden board on a post, readable from both sides. Never on a road: it steps to the roadside.
 local function signpost(parent, x, z, facing, text, width)
 	width = width or 11
-	x, z = offRoad(x, z, 2)
+	-- The board can stand across the road's direction, so keep half its width clear as well.
+	x, z = offRoad(x, z, width / 2 + 2)
 	local model = Instance.new("Model")
 	model.Name = "Signpost"
 	local base = spot(x, z, facing)
@@ -679,6 +680,8 @@ local function windmill(folder, x, z)
 		part(sails, "Sail", Vector3.new(4, 14, 0.15), arm * CFrame.new(2.2, 10, -0.4), Rustic.Cloth, Enum.Material.Fabric, nil, false)
 	end
 	sails.PrimaryPart = hub
+	-- Streams in whole, so the client never sees sails without their hub.
+	sails.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	sails.Parent = model
 	CollectionService:AddTag(sails, "WindmillSails")
 	model.Parent = folder
@@ -1025,7 +1028,7 @@ function LANDMARKS.desert(folder, rng)
 		claim(x, z)
 	end
 	for i = 0, 2 do
-		local base = spot(1260 + i * 16, -230, Vector2.new(0, 1))
+		local base = spot(1170 + i * 16, -222, Vector2.new(0, 1))
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, -2.5), Rustic.Cloth, Enum.Material.Fabric)
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, 2.5) * CFrame.Angles(0, math.pi, 0), Rustic.Cloth, Enum.Material.Fabric)
 	end
@@ -1034,13 +1037,13 @@ end
 
 function LANDMARKS.swamp(folder, rng)
 	-- Boardwalks out over the bog, with lily pads in the pools.
-	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1300, 545), Vector2.new(1380, 360) } } do
+	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1440, 495), Vector2.new(1500, 360) } } do
 		local a, b = walk[1], walk[2]
 		local n = math.floor((b - a).Magnitude / 6)
+		local along = CFrame.lookAt(Vector3.zero, Vector3.new(b.X - a.X, 0, b.Y - a.Y))
 		for i = 0, n do
 			local p = a:Lerp(b, i / n)
-			local look = CFrame.lookAt(Vector3.new(p.X, 0, p.Y), Vector3.new(b.X, 0, b.Y))
-			local base = look.Rotation + Vector3.new(p.X, 1.4, p.Y)
+			local base = along + Vector3.new(p.X, 1.4, p.Y)
 			part(folder, "Boardwalk", Vector3.new(6, 0.5, 6.2), base, Rustic.Wood, Enum.Material.WoodPlanks)
 			if i % 2 == 0 then
 				for _, side in { -1, 1 } do
@@ -1206,7 +1209,12 @@ local function skyline(folder)
 	} do
 		local peak = WorldShape.region(def[1]).peak
 		local top = WorldShape.heightAt(peak.center.X, peak.center.Y)
-		local anchor = part(folder, "SkylineLabel", Vector3.new(1, 1, 1), CFrame.new(peak.center.X, top + 30, peak.center.Y), Rustic.Stone, nil, nil, false)
+		-- A persistent model so the label streams to every client however far away it is.
+		local holder = Instance.new("Model")
+		holder.Name = def[2]
+		holder.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+		holder.Parent = folder
+		local anchor = part(holder, "SkylineLabel", Vector3.new(1, 1, 1), CFrame.new(peak.center.X, top + 30, peak.center.Y), Rustic.Stone, nil, nil, false)
 		anchor.Transparency = 1
 		anchor.CanQuery = false
 		billboard(anchor, def[2], Vector3.zero, 4000)
