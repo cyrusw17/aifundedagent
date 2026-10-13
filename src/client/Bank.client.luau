@@ -13,6 +13,8 @@ local openRemote = remotes:WaitForChild("Open")
 
 -- Colors from the shared Rustic theme (UI/Theme.luau): a dark wood panel with cream text.
 local Theme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Theme"))
+local Kit = require(ReplicatedStorage.Shared.UI:WaitForChild("Kit"))
+local Menus = require(ReplicatedStorage.Shared.UI:WaitForChild("Menus"))
 local DARK = Theme.Colors.Ink
 local PANEL = Theme.Colors.Wood
 local ROW = Theme.Colors.WoodLight
@@ -127,6 +129,8 @@ Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
 local stroke = Instance.new("UIStroke", panel)
 stroke.Color = BRASS
 stroke.Thickness = 2
+-- Shrinks to fit a phone screen and follows the UI size setting, like the other menus.
+Kit.fit(panel, 560, 440)
 
 local title = label(panel, "MEADOW SAVINGS & LOAN", 22, BRASS)
 title.Position = UDim2.fromOffset(18, 10)
@@ -418,13 +422,18 @@ render = function()
 	renderHistory()
 end
 
+-- One of the shared menus (UI/Menus.luau): opening the map, shop or book closes the teller, and the teller closes them.
+Menus.register("Bank", function(open)
+	panel.Visible = open
+end)
+
 close.Activated:Connect(function()
-	panel.Visible = false
+	Menus.close()
 end)
 
 openRemote.OnClientEvent:Connect(function()
 	status.Text = ""
-	panel.Visible = true
+	Menus.open("Bank")
 	show(current)
 	send("view")
 end)
@@ -442,8 +451,8 @@ task.spawn(function()
 					near = true
 				end
 			end
-			if root and not near then
-				panel.Visible = false
+			if root and not near and Menus.current() == "Bank" then
+				Menus.close()
 			end
 		end
 	end

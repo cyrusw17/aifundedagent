@@ -35,11 +35,23 @@ for _, root in { Workspace, SoundService, player:WaitForChild("PlayerGui") } do
 	root.DescendantAdded:Connect(claim)
 end
 
--- Floating name tags and signs (WorldLabel.billboard names them "WorldLabel"). Streaming adds and drops them as you
--- move, so new ones are caught as they arrive.
+-- Floating labels: every BillboardGui in the world, the WorldLabel.billboard ones ("WorldLabel") and the ones server
+-- services make by hand (price boards, mailbox, rich field, machine tags). A gui with the attribute AlwaysShow = true
+-- stays on. Only guis this script turned off are turned back on, so a label a service hid itself stays hidden.
+-- Streaming adds and drops them as you move, so new ones are caught as they arrive.
+local hiddenByUs = setmetatable({}, { __mode = "k" })
 local function setLabel(gui)
-	if gui:IsA("BillboardGui") and gui.Name == "WorldLabel" then
-		gui.Enabled = player:GetAttribute("SettingLabels") ~= false
+	if not gui:IsA("BillboardGui") or gui:GetAttribute("AlwaysShow") == true then
+		return
+	end
+	if player:GetAttribute("SettingLabels") == false then
+		if gui.Enabled then
+			gui.Enabled = false
+			hiddenByUs[gui] = true
+		end
+	elseif hiddenByUs[gui] then
+		hiddenByUs[gui] = nil
+		gui.Enabled = true
 	end
 end
 Workspace.DescendantAdded:Connect(setLabel)

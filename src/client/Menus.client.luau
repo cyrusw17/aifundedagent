@@ -986,6 +986,7 @@ local STATE_TEXT = {
 	wearing = { "WEARING", "muted" },
 	soon = { "SOON", "muted" },
 	taken = { "TAKEN", "muted" },
+	full = { "2 FARMS MAX", "muted" },
 	needland = { "BUY LAND FIRST", "wood" },
 	buy = { "SHOW ME", "go" },
 }

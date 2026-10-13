@@ -161,13 +161,15 @@ return function(SelfTest)
 			t.equal("everything bought", goal(), "done")
 
 			-- Shop rows show the one price config, never a fallback.
-			local function priceFor(tab, id)
+			local function priceFor(tab, id, state)
 				if tab == "Trucks" then
 					return Prices.Trucks[id]
 				elseif tab == "Gloves" then
 					return Prices.Gloves[id]
 				elseif tab == "Land" then
-					return Prices.Plot
+					-- With one farm, every plot but your own shows the second-farm price.
+					local farms = who:GetAttribute("FarmCount") or ((who:GetAttribute("LandPlot") or 0) > 0 and 1 or 0)
+					return if farms == 1 and state ~= "owned" then Prices.SecondPlot else Prices.Plot
 				elseif tab == "Build" then
 					return Prices.Pieces[id]
 				elseif tab == "Trailers" then
@@ -181,7 +183,7 @@ return function(SelfTest)
 				if tab ~= "Robux" then
 					for _, row in Catalog.items(tab) do
 						rows += 1
-						local want = priceFor(tab, row.id)
+						local want = priceFor(tab, row.id, row.state)
 						if want == nil or row.price ~= want then
 							table.insert(
 								wrong,

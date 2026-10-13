@@ -94,19 +94,30 @@ function Catalog.items(tab)
 				infos[info:GetAttribute("Index")] = info
 			end
 		end
+		-- A save owns up to two farms (Land.luau onBuy): the first at the plot price, the second at
+		-- LandConfig.SecondPlotPrice. FarmCount says how many this save has.
+		local farms = attr("FarmCount") or (mine > 0 and 1 or 0)
+		local who = Catalog.who
+		local myId = who and (who :: any).UserId
 		for index, def in LandConfig.Plots do
 			local info = infos[index]
 			local ownerId = info and info:GetAttribute("OwnerId") or 0
-			local rowState = index == mine and "owned" or ownerId ~= 0 and "taken" or mine > 0 and "soon" or "buy"
+			local isMine = index == mine or (myId ~= nil and ownerId == myId)
+			local rowState = isMine and "owned" or ownerId ~= 0 and "taken" or farms >= 2 and "full" or "buy"
+			local second = farms == 1 and not isMine
+			local blurb = ("%d x %d build tiles."):format(def.tiles.X, def.tiles.Y)
+			if ownerId ~= 0 and not isMine then
+				blurb ..= (" Owned by %s."):format(info:GetAttribute("OwnerName") or "someone")
+			elseif second and ownerId == 0 then
+				blurb ..= " Your second farm: more room to store and sort."
+			elseif farms >= 2 and not isMine then
+				blurb ..= " Two farms per save."
+			end
 			table.insert(rows, {
 				id = def.zone,
 				name = def.name,
-				blurb = ("%d x %d build tiles."):format(def.tiles.X, def.tiles.Y)
-					.. (ownerId ~= 0 and index ~= mine and (" Owned by %s."):format(
-						info:GetAttribute("OwnerName") or "someone"
-					) or "")
-					.. (mine > 0 and index ~= mine and " One plot per save." or ""),
-				price = Prices.Plot or def.price,
+				blurb = blurb,
+				price = second and (LandConfig.SecondPlotPrice or Prices.SecondPlot) or Prices.Plot or def.price,
 				state = rowState,
 				place = "landoffice",
 			})
