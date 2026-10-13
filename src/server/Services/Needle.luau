@@ -28,6 +28,7 @@ local Props = require(script.Parent.Props)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
 local Pity = require(ReplicatedStorage.Shared.Pity)
+local NeedleIndex = require(script.Parent.NeedleIndex)
 
 local Needle = {}
 
@@ -438,6 +439,7 @@ function Needle.spawn(position, ownerId, needleId, mult, polished)
 	n.CollisionGroup = Groups.Loose
 	n:SetAttribute("OwnerId", ownerId)
 	n:SetAttribute("NeedleId", needleId)
+	NeedleIndex.found(ownerId, needleId, mult)
 	if mult > 1 then
 		n:SetAttribute("Mutation", mult)
 		local shine = mult == WET.mult and WET_COLOR or MUTATED_COLOR

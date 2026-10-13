@@ -345,6 +345,17 @@ Prices.WetMutation = {
 	mult = 2,
 }
 
+-- Needle index (CEO "Addiction push" H10, Services/NeedleIndex): every needle type found plain, Wet and mutated
+-- (12 types x 3 = 36 entries). Each milestone pays once per slot (Bank.earn, note "Discovered ...", a one-time
+-- reward) and gives a title; 75% also unlocks the gilded sorter skin. 100% needs a mutated and a Wet Cosmic needle,
+-- so it is an end-game goal; the first 25% (9 entries) comes from the first few regions.
+Prices.NeedleIndex = {
+	{ at = 25, cash = 5000, title = "Needle Spotter" },
+	{ at = 50, cash = 40000, title = "Needle Collector" },
+	{ at = 75, cash = 250000, title = "Needle Curator", skin = "gilded" },
+	{ at = 100, cash = 1000000, title = "Master Indexer" },
+}
+
 -- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
 -- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
 -- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
