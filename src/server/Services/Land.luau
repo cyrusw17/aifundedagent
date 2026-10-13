@@ -28,6 +28,8 @@ local Tutorial = require(script.Parent.Tutorial)
 local Vehicles = require(script.Parent.Vehicles)
 local Likes = require(script.Parent.Likes)
 local Needle = require(script.Parent.Needle)
+local Press = require(script.Parent.Press)
+local Display = require(script.Parent.Display)
 
 local Land = {}
 
@@ -297,6 +299,12 @@ local function buildBlueprint(plot, item, def)
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = body
+	local thatchPrompt = prompt:Clone()
+	thatchPrompt.Name = "ThatchPrompt"
+	thatchPrompt.ActionText = "Fill with thatch"
+	thatchPrompt.KeyboardKeyCode = Enum.KeyCode.F
+	thatchPrompt.UIOffset = Vector2.new(0, 60)
+	thatchPrompt.Parent = body
 
 	local function refresh()
 		item.stored = math.clamp(item.stored or 0, 0, needed())
@@ -309,15 +317,18 @@ local function buildBlueprint(plot, item, def)
 			body.CanCollide = true
 			label.Text = ""
 			prompt.Enabled = false
+			thatchPrompt.Enabled = false
 		elseif item.fill then
 			body.Transparency = 0.45 - 0.3 * item.stored / needed()
 			label.Text = item.fill == "hay" and ("%d / %d bales"):format(item.stored, def.bales)
 				or ("%d / %d needles"):format(item.stored, def.needles)
 			prompt.Enabled = item.fill == "needle"
+			thatchPrompt.Enabled = item.fill == "hay"
 		else
 			body.Transparency = 0.5
-			label.Text = ("BLUEPRINT\n%d bales or %d needles"):format(def.bales, def.needles)
+			label.Text = ("BLUEPRINT\n%d bales, %d thatch or %d needles"):format(def.bales, def.thatch, def.needles)
 			prompt.Enabled = true
+			thatchPrompt.Enabled = true
 		end
 		return done
 	end
@@ -342,6 +353,30 @@ local function buildBlueprint(plot, item, def)
 		plot.dirty = true
 		if refresh() then
 			Data.toast(player, ("Built an iron %s."):format(def.shape))
+		end
+	end)
+
+	-- Thatch from a hay press finishes the hay fill: the share of the bales still missing, in thatch.
+	thatchPrompt.Triggered:Connect(function(player)
+		if plot.owner ~= player and not plot.crew[player.UserId] then
+			Data.toast(player, "Only the farm's owner and crew can fill its blueprints.")
+			return
+		end
+		if item.fill == "needle" then
+			Data.toast(player, "This one is being filled with needles.")
+			return
+		end
+		local missing = def.bales - (item.stored or 0)
+		local cost = math.max(1, math.ceil(def.thatch * missing / def.bales))
+		if not Press.spend(player, cost) then
+			Data.toast(player, ("This needs %d thatch. You carry %d. Press sorted bales at a hay press."):format(cost, Press.thatch(player)))
+			return
+		end
+		item.fill = "hay"
+		item.stored = def.bales
+		plot.dirty = true
+		if refresh() then
+			Data.toast(player, ("Built a thatch %s."):format(def.shape))
 		end
 	end)
 
@@ -388,10 +423,11 @@ end
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
-local function spawnItem(plot, def, gx, gz, dir, stored, fill)
+-- stored, fill and display come back from a save: a silo's bales, a blueprint's fill, a display's needles.
+local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
-	if def.kind == "belt" or def.kind == "separator" then
+	if def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir)
@@ -400,6 +436,15 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill)
 	end
 	if def.kind == "separator" then
 		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
+	elseif def.kind == "press" then
+		table.insert(item.instances, Press.build(plot.items, frame))
+	elseif def.kind == "splitter" then
+		table.insert(item.instances, Machines.splitter(plot.grid, gx, gz, dir, def.rule))
+	elseif def.kind == "display" then
+		item.wall = Display.wall(plot.items, frame, function()
+			return plot.ownerId
+		end, typeof(display) == "table" and display or nil)
+		table.insert(item.instances, item.wall.model)
 	elseif def.kind == "buyer" then
 		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER", payeeFor(plot)))
 	elseif def.kind == "silo" then
@@ -461,7 +506,7 @@ local function saveItems(player, plot)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
-		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill })
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill, display = item.wall and item.wall.contents() or nil })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -543,6 +588,13 @@ local function release(plot)
 		plotOf[plot.owner] = nil
 		plot.owner:SetAttribute("LandPlot", 0)
 	end
+	-- The owner's displayed needles are in their save; emptying the pegs first keeps them from going back to the pocket
+	-- as well.
+	for _, item in plot.list do
+		if item.wall then
+			item.wall.clear()
+		end
+	end
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
@@ -582,7 +634,7 @@ local function claim(plot, player, saved)
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
 			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
 			if fits(plot, def, gx, gz, dir) then
-				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil)
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil, s.display)
 			else
 				table.insert(plot.leftOut, s)
 			end
@@ -757,8 +809,12 @@ local function onMove(player, fromX, fromZ, gx, gz, dir)
 		return false, "That spot is taken or off your land."
 	end
 	local stored, fill, oldDir = item.stored, item.fill, item.dir
+	local display = item.wall and item.wall.contents() or nil
+	if item.wall then
+		item.wall.clear() -- the needles move with it instead of going back to the pocket
+	end
 	destroyItem(plot, item)
-	spawnItem(plot, def, gx, gz, dir, stored, fill)
+	spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	afterEdit(player, plot)
 	remember(player, { kind = "move", id = def.id, from = { gx = fromX, gz = fromZ, dir = oldDir }, to = { gx = gx, gz = gz, dir = dir } })
 	return true, ("Moved the %s."):format(def.name:lower())
@@ -878,8 +934,12 @@ local function onUndo(player)
 			return false, "Can't move it back now."
 		end
 		local stored, fill = item.stored, item.fill
+		local display = item.wall and item.wall.contents() or nil
+		if item.wall then
+			item.wall.clear()
+		end
 		destroyItem(plot, item)
-		spawnItem(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, stored, fill)
+		spawnItem(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, stored, fill, display)
 		afterEdit(player, plot)
 		return true, ("Moved the %s back."):format(def.name:lower())
 	end
