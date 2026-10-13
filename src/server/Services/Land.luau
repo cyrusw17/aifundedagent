@@ -642,7 +642,11 @@ local function claim(plot, player, saved)
 	end
 	refreshRails(plot)
 	publish(plot)
+	-- saveItems copies the bin into the save, and the bin is still empty here: keep the saved needles for
+	-- restoreNeedles, which runs right after this.
+	local keepNeedles = saved.needles
 	saveItems(player, plot)
+	saved.needles = keepNeedles
 end
 
 -- The saved plot if it is free, otherwise the smallest free plot at least as big, otherwise any free plot.
