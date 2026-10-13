@@ -255,6 +255,22 @@ return function(SelfTest)
 			end
 		end
 		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		-- Fronts (#25): rain, snow and dust only come as one front at a time; the front on now (if any) is published.
+		local frontKinds = {}
+		for _, f in WeatherConfig.Fronts do
+			frontKinds[f.kind] = true
+		end
+		local everydayFront = {}
+		for id, choices in WeatherConfig.Regions do
+			for kind in choices do
+				if frontKinds[kind] then
+					table.insert(everydayFront, id .. ":" .. kind)
+				end
+			end
+		end
+		t.check("rain, snow and dust only come as fronts", #everydayFront == 0, #everydayFront > 0 and table.concat(everydayFront, ", ") or nil)
+		local front = Weather.front()
+		t.equal("the front on the map is published", ReplicatedStorage:GetAttribute("WeatherFront"), front and front.region or nil)
 		local desertWas = Weather.get("desert")
 		Weather.force("desert", "dust", 1)
 		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")

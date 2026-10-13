@@ -111,6 +111,30 @@ end
 for _, r in Map.Regions do
 	if not SoundsConfig.RegionAmbience[r.id] then weatherOk = false print("WARN no ambience for", r.id) end
 end
+-- Fronts (#25): one at a time, warned a minute ahead, then on in its region, then gone; rain only comes as a front
+-- over Meadow or the Swamp.
+do
+	for id, choices in WeatherConfig.Regions do
+		for kind in choices do
+			for _, f in WeatherConfig.Fronts do
+				if f.kind == kind then weatherOk = false print("WARN everyday weather brings a front kind", id, kind) end
+			end
+		end
+	end
+	local t = 1000000
+	local fr = Weather.startFront(WeatherConfig.Fronts[1])
+	if fr.phase ~= "coming" or game:GetService("ReplicatedStorage"):GetAttribute("WeatherFront") ~= "meadow" then weatherOk = false print("WARN front not published") end
+	if Weather.get("meadow") == "rain" then weatherOk = false print("WARN front rained before its warning") end
+	Weather.stepFront(os.clock() + WeatherConfig.FrontWarnSeconds + 1)
+	if Weather.get("meadow") ~= "rain" or Weather.front().phase ~= "on" then weatherOk = false print("WARN front never arrived") end
+	Weather.stepFront(os.clock() + t)
+	if Weather.front() ~= nil or Weather.get("meadow") == "rain" then weatherOk = false print("WARN front never cleared") end
+	-- An event's own weather holds the next front back.
+	Weather.force("snow", "snow", t * 10)
+	Weather.stepFront(os.clock() + t * 3)
+	if Weather.front() ~= nil then weatherOk = false print("WARN a front started during an event") end
+	Weather.force("snow", "clear", 0)
+end
 print("weather", weatherOk and "ok" or "WRONG")
 
 -- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.

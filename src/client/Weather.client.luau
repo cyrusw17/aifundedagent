@@ -94,11 +94,21 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	local kind = Config.Kinds[kindId]
+	local goalTint, goalDensity, goalCloud = kind.tint, kind.density, kind.cloud
+	-- A front on its way here (Services/Weather.luau): the sky clouds over and darkens through the warning minute.
+	local frontKind = Config.Kinds[ReplicatedStorage:GetAttribute("WeatherFrontKind")]
+	if frontKind and ReplicatedStorage:GetAttribute("WeatherFront") == regionId and ReplicatedStorage:GetAttribute("WeatherFrontPhase") == "coming" then
+		local left = (ReplicatedStorage:GetAttribute("WeatherFrontAt") or 0) - workspace:GetServerTimeNow()
+		local p = math.clamp(1 - left / Config.FrontWarnSeconds, 0, 1)
+		goalTint = goalTint:Lerp(frontKind.tint, p * 0.7)
+		goalDensity = goalDensity + (frontKind.density - goalDensity) * p * 0.5
+		goalCloud = math.max(goalCloud, frontKind.cloud * (0.4 + 0.6 * p))
+	end
 	local k = math.min(1, dt * BLEND)
-	tint = tint:Lerp(kind.tint, k)
-	density += (kind.density - density) * k
+	tint = tint:Lerp(goalTint, k)
+	density += (goalDensity - density) * k
 	grip += (kind.grip - grip) * k
-	cover += (kind.cloud - cover) * k
+	cover += (goalCloud - cover) * k
 	Lighting:SetAttribute("WeatherTint", tint)
 	Lighting:SetAttribute("WeatherDensity", density)
 	Lighting:SetAttribute("WeatherGrip", grip)
