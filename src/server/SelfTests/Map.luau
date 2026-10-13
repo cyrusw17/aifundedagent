@@ -171,6 +171,21 @@ return function(SelfTest)
 		Lighting.ClockTime = was
 		t.check("the sky has an Atmosphere to tint", Lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
 
+		-- Weather ----------------------------------------------------------------------------------------------
+		local Weather = require(Services.Weather)
+		local WeatherConfig = require(Shared.Config.Weather)
+		local unset = {}
+		for _, def in Map.Regions do
+			if not WeatherConfig.Kinds[Weather.get(def.id)] or not WeatherConfig.Regions[def.id] then
+				table.insert(unset, def.id)
+			end
+		end
+		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		local desertWas = Weather.get("desert")
+		Weather.force("desert", "dust", 1)
+		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")
+		Weather.set("desert", desertWas)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")

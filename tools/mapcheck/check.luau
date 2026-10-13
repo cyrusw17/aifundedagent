@@ -90,3 +90,18 @@ if WorldClock.phase() ~= "midnight" then clockOk = false end
 Lighting.ClockTime = 18
 if WorldClock.phase() ~= "dusk" then clockOk = false end
 print("clock", clockOk and "ok" or "WRONG", "atmosphere", Lighting:FindFirstChildOfClass("Atmosphere") and "made" or "missing")
+
+-- Weather: every region has a known kind on the board, and an event can force one.
+local Weather = require({ __path = "Services.Weather" })
+local WeatherConfig = require({ __path = "Shared.Config.Weather" })
+local weatherOk = true
+for _, r in Map.Regions do
+	local kind = Weather.get(r.id)
+	if not WeatherConfig.Regions[r.id] or not WeatherConfig.Kinds[kind] then
+		weatherOk = false
+		print("WARN weather missing for region", r.id, kind)
+	end
+end
+Weather.force("desert", "dust", 60)
+if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+print("weather", weatherOk and "ok" or "WRONG")
