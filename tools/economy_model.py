@@ -89,7 +89,7 @@ def money(x):
 
 # Mirrors src/shared/Config/Prices.luau
 PRICES = {
-    "Hand sieve": 500, "Shaker table": 4000, "Conveyor sorter": 25000, "Magnet drum": 175000, "Optical sorter": 1100000,
+    "Hand sieve": 500, "Shaker table": 4000, "Conveyor sorter": 25000, "Magnet drum": 190000, "Optical sorter": 1350000,
 }
 
 if __name__ == "__main__":
@@ -163,11 +163,11 @@ if __name__ == "__main__":
         ("Box Truck", 90000, 8, "truck"),
         ("Reinforced Gloves", 45000, 9, None),
         ("Medium Trailer", 30000, 9, None),
-        ("Magnet drum", 175000, 9, None),
+        ("Magnet drum", 190000, 9, None),
         ("Iron Gauntlets", 75000, 10, None),
         ("Heavy Hauler", 350000, 10, "truck"),
         ("Large Trailer", 120000, 11, None),
-        ("Optical sorter", 1100000, 11, None),
+        ("Optical sorter", 1350000, 11, None),
         ("Starlight Gloves", 400000, 12, None),
         ("Semi Rig", 1500000, 12, "truck"),
     ]
