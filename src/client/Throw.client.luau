@@ -3,8 +3,8 @@
 -- click or G to charge a throw: a bar fills, and letting go lobs the bale up to Config.TossRange studs, so loading
 -- a pickup bed is a few quick throws. On a phone, the THROW button does the same: hold it, then let go. The server
 -- does the throwing; this only reports how long the charge was held.
--- Comfort settings (Settings.luau): "Carry a bale: HOLD F" sets the bale down when you let go of the lift key you are
--- still holding as it comes up (a quick tap of F still lifts it the usual way), and "Throw button: BIG" makes the
+-- Comfort settings (Settings.luau, UI thread): "Carry a bale: HOLD" sets the bale down when you let go of the lift
+-- key you are still holding as it comes up (a quick tap of F still lifts it the usual way), and "Big THROW" makes the
 -- phone button larger.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

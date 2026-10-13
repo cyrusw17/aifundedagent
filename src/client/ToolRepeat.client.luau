@@ -1,6 +1,6 @@
 --!nonstrict
--- Hold to keep scooping (the "Hold click to keep scooping" setting, on by default): while the click (or a gamepad's
--- right trigger) stays down with the shovel or rake out, the tool swings again each time its cooldown is up, so a
+-- Hold to keep scooping (the "Hold to keep scooping" setting on the UI thread's settings page, on by default):
+-- while the click (or a gamepad's right trigger) stays down with the shovel or rake out, the tool swings again each time its cooldown is up, so a
 -- spill can be cleared without clicking every swing. The server still runs every swing and its cooldown
 -- (Avatar.swing); this only clicks for you. Touch is left alone, since a held finger also turns the camera.
 local Players = game:GetService("Players")
