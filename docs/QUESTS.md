@@ -57,7 +57,7 @@ twelve the door opens (on that player's screen) into the Loom Room, where the fi
 | 4: The First Bale | Ask Old Wren (Homestead, by the well; her own Talk prompt answers), take the glint in the hub well at midnight | **Shard: Homestead** |
 | 5: Holding Breath | Find a breathing reed in swamp bales (1 in 40, sure within 80), offer it and 20 bog needles at the sunken stone at night | **Shard: Swamp** |
 | 6: Beads on a String | Touch the 3 bead lanterns on the Thimble Keys, take the bead from their thread at dusk | **Shard: Thimble Keys** |
-| The Master Needle | With all 12 shards: through the Spindle door, set them on the pedestal in the Loom Room | **The Master Needle**, $25,000 |
+| The Master Needle | With all 12 shards: through the Spindle door, set them on the pedestal in the Loom Room | **The Master Needle**, $100,000 |
 
 Bounty boards (the Homestead hub, the ferry promenades) open the quest log at the Bounties tab.
 
