@@ -110,6 +110,25 @@ Source of truth: `blender/mockups/rarity.py` (sheet: `/mnt/project-files/mockups
 - The light color is the needle color. Pulse tweens PointLight brightness between the value above and about 1.6x it.
 - Bundles, display walls and bins use the same tier look as the needles inside them.
 
+## New model designs (backlog Blender item 2 and 4)
+
+Block-out mockups for the Blender asset pipeline: `mockups/buildings_sheet.png`, `mockups/items_sheet.png` and
+`mockups/truck_skins.png` (scripts in `blender/mockups/`). Triangle budgets, rigs and tags are in the art director's
+`art-review/MODEL_SPECS.md`; these sheets show the look. Where the spec and the game code disagree, the sheets follow
+the game code, as below.
+
+| Model | Size used (studs) | Design notes |
+|---|---|---|
+| homestead_bank | 26 x 20 x 22 | Dressed stone ground floor, plank upper floor, cream cornice and 4 columns, green roof. Vault door shows through the left teller window. Barn-red "BANK" board is the one accent |
+| trading_post | 24 x 18 x 16 | Log walls, open front with a counter and a hanging scale, shelves of goods, plank awning on two posts, crates and barrels out front. Barn-red sign |
+| field_bale_chute | 12 x 16 x 14 | Plank hopper on four log legs with a gate at the throat (`Gate`) and `HayFill`. **Clear width 12.5, not 11**: the pickup is 10.9 wide. Clear height 10. Lever on the driver's-side front leg with a red grip (`Lever`) |
+| bounty_board | 8 x 1.5 x 9 | Plank board on two log posts, little shingle roof, red header plank, three pinned paper notices (`Notice1-3`) |
+| wheelbarrow_loaded | tray 5 x 3.6 | Game tray size (Wheelbarrow.luau), plank tray with an iron rim, one front wheel (`Wheel_L1`), leather grips. Holds 3 bales stacked, loose |
+| needle_display_wall | 6 x 1 x 7.6 | **One plot tile, as Display.luau builds it** (spec said 12 x 8): plank board between log posts, grey iron cap with a red name board, 6 pegs in 2 rows of 3 on velvet backs, brass plaques |
+| needle_bundle | 1.3 x 0.55 x 0.55 | **Game size** (Needle.luau BUNDLE_SIZE; spec said 3 long): 10 grey needles in rows of 4-3-3, eyes all at one end, two twine bands |
+| old_boot, horseshoe, rusty_key, old_radio, lost_ring, fossil | Config/Finds.luau sizes | Leather boot with a flopped shaft; grey iron shoe with nail holes; dark iron key (no rust colour); plank radio with a cloth grille and cream dial; gold ring with a blue stone (the only shiny find); stone slab with a raised cream spiral. `rusty_key` is not in MODEL_SPECS yet |
+| Robux skins | same as the cash truck | Same mesh, paint and trim only, no glow: Homestead Classic (rusty_pickup, barn red with a cream belt line), Timber Wolf 4x4 (rusty_pickup, forest green, roof light bar), Midnight Express (box_truck, navy, pale-gold stripe), Prairie Schooner (farm_flatbed, weathered wood, canvas `Cover`), Founders' Semi (semi_rig, deep green, gold pinstripes and door crest) |
+
 ## Materials
 
 - Blender: generated straw, bark, end grain, plank and metal textures from `lib/style.py`, matte

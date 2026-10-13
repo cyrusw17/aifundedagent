@@ -43,6 +43,60 @@ return function(SelfTest)
 			end
 		end
 		t.check(("all %d regions have their trees and landmarks"):format(#Map.Regions), #missing == 0, #missing > 0 and table.concat(missing, ", ") or nil)
+		-- Part budget (#21): each container within its slice of Config/WorldMap PartBudget, with the real props in.
+		local function partsIn(inst)
+			local n = 0
+			for _, d in inst:GetDescendants() do
+				if d:IsA("BasePart") then
+					n += 1
+				end
+			end
+			return n
+		end
+		local overBudget = {}
+		local containers = {}
+		for _, child in isles:GetChildren() do
+			if child.Name == "Isles" then
+				for _, sub in child:GetChildren() do
+					table.insert(containers, sub)
+				end
+			elseif child.Name ~= "WorldEdge" then
+				table.insert(containers, child)
+			end
+		end
+		for _, c in containers do
+			local cap = Map.PartBudget[c.Name]
+			local n = partsIn(c)
+			if cap and n > cap then
+				table.insert(overBudget, ("%s %d/%d"):format(c.Name, n, cap))
+			end
+		end
+		t.check("every map container is within its part budget", #overBudget == 0, #overBudget > 0 and table.concat(overBudget, ", ") or nil)
+		-- Fall safety (#22): a fall anywhere lands on a dry road, never back at camp.
+		local FallSafety = require(Services.FallSafety)
+		local wet = {}
+		for _, at in { Vector3.new(900, -100, -900), Vector3.new(-1500, -100, -600), Vector3.new(2600, -100, -1700), Vector3.new(10, -100, 10) } do
+			local ground, name = FallSafety.target(at)
+			if name == "camp" or ground.Position.Y <= Map.SeaLevel then
+				table.insert(wet, ("%d,%d -> %s"):format(at.X, at.Z, tostring(name)))
+			end
+		end
+		t.check("a fall anywhere lands on a dry road", #wet == 0, #wet > 0 and table.concat(wet, "; ") or nil)
+		-- Signpost distances (#23): every place a junction sign names is reachable by road.
+		local noRoute = {}
+		for _, j in Regions.junctions or {} do
+			local ok, text, numbers = pcall(Regions.junctionText, j)
+			local wanted = 0
+			for _, line in j[4] do
+				if line[3] then
+					wanted += 1
+				end
+			end
+			if not ok or #numbers < wanted then
+				table.insert(noRoute, ok and text or tostring(text))
+			end
+		end
+		t.check("every junction sign has a road distance to each place", #noRoute == 0, #noRoute > 0 and table.concat(noRoute, "; ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
 		local fieldless = {}
@@ -201,6 +255,22 @@ return function(SelfTest)
 			end
 		end
 		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		-- Fronts (#25): rain, snow and dust only come as one front at a time; the front on now (if any) is published.
+		local frontKinds = {}
+		for _, f in WeatherConfig.Fronts do
+			frontKinds[f.kind] = true
+		end
+		local everydayFront = {}
+		for id, choices in WeatherConfig.Regions do
+			for kind in choices do
+				if frontKinds[kind] then
+					table.insert(everydayFront, id .. ":" .. kind)
+				end
+			end
+		end
+		t.check("rain, snow and dust only come as fronts", #everydayFront == 0, #everydayFront > 0 and table.concat(everydayFront, ", ") or nil)
+		local front = Weather.front()
+		t.equal("the front on the map is published", ReplicatedStorage:GetAttribute("WeatherFront"), front and front.region or nil)
 		local desertWas = Weather.get("desert")
 		Weather.force("desert", "dust", 1)
 		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")

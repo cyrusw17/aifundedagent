@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+local ToolGuide = require(ReplicatedStorage.Shared.ToolGuide)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
@@ -217,7 +218,7 @@ local function makeTool(player)
 	tool.Name = TOOL_NAME
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "Click a bale to load it (3 max). Click a truck bed to tip the load in, or the ground to set it down."
+	tool.ToolTip = ToolGuide.tool("Wheelbarrow")
 	tool.Equipped:Connect(function()
 		local root = Avatar.getRoot(player)
 		if root and not barrows[player] then
@@ -295,7 +296,7 @@ function Wheelbarrow.buildStand(parent, cframe)
 	end
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "WheelbarrowPrompt"
-	prompt.ObjectText = "Wheelbarrow (3 bales)"
+	prompt.ObjectText = ("Wheelbarrow (%d bales)"):format(Config.WheelbarrowBales)
 	prompt.ActionText = ("Buy $%d"):format(Prices.Wheelbarrow)
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 8

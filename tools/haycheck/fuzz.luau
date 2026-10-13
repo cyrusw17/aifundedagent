@@ -29,6 +29,9 @@ do
 		if k == "Destroying" or k == "MouseClick" then
 			return { Connect = function() return { Disconnect = function() end } end }
 		end
+		if k == "Emit" or k == "SetNetworkOwner" then
+			return function() end
+		end
 		if k == "AssemblyLinearVelocity" or k == "AssemblyAngularVelocity" then
 			return rawget(o, "_props")[k] or Vector3.zero
 		end
@@ -77,6 +80,20 @@ MODULES["Services.Bank"] = function()
 			end
 			return amount, 0
 		end,
+	}
+end
+MODULES["Services.Needle"] = function()
+	return {
+		make = function(cframe, ownerId)
+			local p = Instance.new("Part")
+			p.Name = "Needle"
+			p.CFrame = cframe
+			p:SetAttribute("Needle", true)
+			p:SetAttribute("OwnerId", ownerId)
+			return p
+		end,
+		isNeedle = function(part) return part:GetAttribute("Needle") == true end,
+		value = function() return 1 end,
 	}
 end
 MODULES["Services.Weather"] = function() return { get = function() return "clear" end } end
@@ -306,7 +323,7 @@ for step = 1, STEPS do
 	elseif action == 11 then
 		-- A spill of loose hay (and the odd needle), as a burst bale makes.
 		for _ = 1, rng:NextInteger(10, 120) do
-			Hay.spawnPiece(Vector3.new(rng:NextNumber(-50, 50), 1, rng:NextNumber(-50, 50)), Vector3.zero, p.UserId, rng:NextNumber() < 0.05 and "Needle" or nil, "meadow")
+			Hay.spawnPiece(Vector3.new(rng:NextNumber(-50, 50), 1, rng:NextNumber(-50, 50)), Vector3.zero, p.UserId, rng:NextNumber() < 0.05 and "Needle" or nil, "meadow", rng:NextInteger(1, 3))
 		end
 	elseif action == 12 then
 		-- Keep a find.
@@ -334,6 +351,43 @@ for step = 1, STEPS do
 	end
 	invariants(step)
 end
+
+-- The part budget (Hay #24): a crew breaks ten bales at once. Count the parts and the strands they hold, with
+-- clumps (Config.StrandsPerClump) and with single strands, and check the clumps keep every strand under the cap.
+local function burstTen(perClump)
+	for _, piece in Hay.folder:GetChildren() do
+		Hay.remove(piece)
+	end
+	local keep = Game.StrandsPerClump
+	Game.StrandsPerClump = perClump
+	local spawn = task.spawn
+	task.spawn = function(fn, ...)
+		fn(...)
+	end
+	local breaker = players[1]
+	states[breaker] = states[breaker] or { loadHay = 0, loadNeedles = 0, finds = {}, findsPaid = {} }
+	for _ = 1, 10 do
+		Bales.breakOpen(breaker, spawnBale())
+	end
+	task.spawn = spawn
+	Game.StrandsPerClump = keep
+	local parts, strands = 0, 0
+	for _, piece in Hay.folder:GetChildren() do
+		if Hay.isPiece(piece) and not Hay.isNeedle(piece) then
+			parts += 1
+			strands += Hay.strandsIn(piece)
+		end
+	end
+	return parts, strands
+end
+local singleParts, singleStrands = burstTen(1)
+local clumpParts, clumpStrands = burstTen(Game.StrandsPerClump)
+local want = 10 * Game.PiecesPerBale
+print(("ten bales at once: single strands %d parts holding %d of %d strands; clumps of %d: %d parts holding %d"):format(
+	singleParts, singleStrands, want, Game.StrandsPerClump, clumpParts, clumpStrands))
+check("ten bales of clumps fit the loose cap", clumpParts <= Game.MaxLoosePieces)
+check("ten bales of clumps lose no hay", clumpStrands == want)
+check("clumps cut the parts to a third or less", clumpParts * Game.StrandsPerClump <= want)
 
 for _, b in bales do
 	if b.gone then

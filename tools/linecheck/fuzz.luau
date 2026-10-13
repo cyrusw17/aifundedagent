@@ -142,6 +142,144 @@ end
 check("other pieces keep their blurb", PieceGuide.line({ id = "belt", kind = "belt", blurb = "One tile." }) == "One tile.")
 print("guide:", PieceGuide.line({ id = "magnet_drum", kind = "separator" }), "|", PieceGuide.line({ id = "ash_sifter", kind = "treat" }))
 
+-- Bottleneck lamps: the rules hold for every random line state.
+local LineMathLamp = require({ __path = "Shared.LineMath" })
+local lampRng = Random.new(29)
+local seen = { green = 0, amber = 0, red = 0 }
+for _ = 1, 20000 do
+	local s = {
+		sorting = lampRng:NextNumber() < 0.5,
+		idleSeconds = lampRng:NextNumber(0, 30),
+		queued = lampRng:NextInteger(0, 6),
+		queuedSeconds = lampRng:NextNumber(0, 40),
+		jammed = lampRng:NextNumber() < 0.1,
+		refusedSeconds = lampRng:NextNumber() < 0.3 and lampRng:NextNumber(0, 30) or nil,
+		need = "thawing_shed",
+		beamDown = lampRng:NextNumber() < 0.1,
+	}
+	local color, why = LineMathLamp.lamp(s)
+	seen[color] = (seen[color] or 0) + 1
+	check("lamp is green, amber or red", color == "green" or color == "amber" or color == "red", tostring(color))
+	check("a lamp that isn't green says why", color == "green" or (typeof(why) == "string" and #why > 0))
+	if s.jammed then
+		check("a jam is red", color == "red")
+	end
+	local backedUp = s.queued >= 2 and s.queuedSeconds >= LineMathLamp.BACKUP_SECONDS
+	local refused = s.refusedSeconds and s.refusedSeconds < LineMathLamp.REFUSED_SECONDS
+	if not s.jammed and not backedUp and not refused then
+		check("only jams, refusals and backups are red", color ~= "red")
+		if s.sorting then
+			check("a sorting sorter is green", color == "green")
+		elseif s.queued == 0 and s.idleSeconds >= LineMathLamp.STARVED_SECONDS then
+			check("an idle sorter with no bales is amber", color == "amber")
+		end
+	end
+	if s.queued > 0 and not s.beamDown then
+		check("bales waiting never read as starved", why ~= "waiting for bales")
+	end
+end
+check("the lamp fuzz saw every color", seen.green > 0 and seen.amber > 0 and seen.red > 0)
+print(("lamps: green %d, amber %d, red %d"):format(seen.green, seen.amber, seen.red))
+
+-- A million found needles (CEO #32): the mutation rate, the multiplier spread and the payout match Needle.MUTATION.
+do
+	local NeedleM = require({ __path = "Services.Needle" })
+	local MarketM = require({ __path = "Services.Market" })
+	local LineMathM = require({ __path = "Shared.LineMath" })
+	local PricesM = require({ __path = "Shared.Config.Prices" })
+	local m = NeedleM.MUTATION
+	local N = 1000000
+	local mutated, multSum, lo, hi, whole = 0, 0, math.huge, 0, true
+	for _ = 1, N do
+		local mult = NeedleM.rollMutation()
+		if mult > 1 then
+			mutated += 1
+			multSum += mult
+			lo, hi = math.min(lo, mult), math.max(hi, mult)
+			whole = whole and mult == math.floor(mult)
+		end
+	end
+	local want = N * m.chance
+	local sd = math.sqrt(N * m.chance * (1 - m.chance))
+	check("mutation rate is Needle.MUTATION.chance (5 sd)", math.abs(mutated - want) <= 5 * sd, ("%d mutated, want %.0f +- %.0f"):format(mutated, want, 5 * sd))
+	local mean = multSum / math.max(mutated, 1)
+	local spread = math.sqrt(((m.max - m.min + 1) ^ 2 - 1) / 12) / math.sqrt(math.max(mutated, 1))
+	check("mutation multipliers average the middle of min..max", math.abs(mean - (m.min + m.max) / 2) <= 5 * spread, ("mean x%.2f"):format(mean))
+	check("multipliers reach both ends and are whole", lo == m.min and hi == m.max and whole, ("x%d..x%d"):format(lo, hi))
+	-- Payouts: a mutated needle sells for exactly mult times a plain one, at every market price.
+	for _, def in require({ __path = "Shared.Config.Needles" }) do
+		for _, mult in { m.min, 12, m.max } do
+			local got = NeedleM.priceOf(def.id, mult)
+			local wantPrice = LineMathM.price(def.sortedValue, mult, false, PricesM.PolishBonus, MarketM.multiplier(def.id), 0)
+			check("x" .. mult .. " " .. def.id .. " pays mult times list at today's market", got == wantPrice, ("%d vs %d"):format(got, wantPrice))
+		end
+	end
+	-- What mutation adds to a needle on average: 1 - chance + chance * mean multiplier.
+	print(("mutations: %d of %d needles (1 in %.0f), x%d..x%d, mean x%.2f; a needle is worth %.3fx list on average"):format(
+		mutated, N, N / math.max(mutated, 1), lo, hi, mean, 1 - mutated / N + multSum / N))
+end
+
+-- 8-hour soak (CEO #35): a maxed plot (six optical sorters on Star hay, the most needles a bale can hold, with a
+-- price hold so nothing is sold) throws its needles into one bin for 8 simulated hours. The bin ties and crates them
+-- with the real LineMath.pack every 10 seconds, as Needle.bundleIn does. Needle parts must stay bounded and no needle
+-- may be lost or made.
+do
+	local NeedleS = require({ __path = "Services.Needle" })
+	local LineRateS = require({ __path = "Shared.LineRate" })
+	local LineMathS = require({ __path = "Shared.LineMath" })
+	local SORTERS, HAY, TIER = 6, "star", "optical_sorter"
+	local rate = LineRateS.line(HAY, TIER).needles * SORTERS -- needles a minute into the bin
+	local needleId = LineRateS.needleFor(HAY)
+	local grade = LineRateS.line(HAY, TIER).grade
+	local parts = {} -- { key, count }
+	local thrown, peak, peakAt, keysSeen = 0, 0, 0, {}
+	local carry = 0
+	local STEP = 10
+	for t = STEP, 8 * 3600, STEP do
+		carry += rate * STEP / 60
+		while carry >= 1 do
+			carry -= 1
+			local key = LineMathS.keyOf(needleId, NeedleS.rollMutation(), false, grade)
+			keysSeen[key] = true
+			table.insert(parts, { key, 1 })
+			thrown += 1
+		end
+		-- Merge until nothing is left to merge this tick (indices shift after each merge, so plan again).
+		local plan = LineMathS.pack(parts, NeedleS.BUNDLE)
+		while #plan > 0 do
+			local m = plan[1]
+			local gone = {}
+			for _, i in m.parts do
+				gone[i] = true
+			end
+			local kept = {}
+			for i, p in parts do
+				if not gone[i] then
+					table.insert(kept, p)
+				end
+			end
+			table.insert(kept, { m.key, m.count })
+			parts = kept
+			plan = LineMathS.pack(parts, NeedleS.BUNDLE)
+		end
+		if #parts > peak then
+			peak, peakAt = #parts, t
+		end
+	end
+	local held, keys = 0, 0
+	for _, p in parts do
+		held += p[2]
+	end
+	for _ in keysSeen do
+		keys += 1
+	end
+	local bound = keys * (NeedleS.BUNDLE - 1 + 2 * (LineMathS.CRATE_AT - 1) + 1)
+	check("soak: no needle lost or made in 8 hours", held == thrown, ("%d thrown, %d in the bin"):format(thrown, held))
+	check("soak: needle parts stay bounded", peak <= bound, ("peak %d parts, bound %d for %d keys"):format(peak, bound, keys))
+	print(("soak: 8 h of %d %s sorters on %s hay = %d needles (%d keys) in %d parts at the end, peak %d parts at %.1f h (each part 2 instances with its twine)"):format(
+		SORTERS, TIER, HAY, thrown, keys, #parts, peak, peakAt / 3600))
+end
+
 print(("linecheck: %d random keys, %d pocket operations over 300 players (%d sales paying $%d, %d needles out); %d failures"):format(5000, ops, allSales, allPaid, allTaken, failures))
 check("the fuzz really sold and took needles", allSales > 100 and allPaid > 0 and allTaken > 1000)
 if failures > 0 then

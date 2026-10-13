@@ -1,7 +1,7 @@
 --!nonstrict
--- The settings page (⚙ under the HUD): sound volume, UI size, shadows, floating labels, replay the tutorial and the
--- list of controls. Values are saved with the save slot by the server (Settings.luau) and come back as "Setting<Key>"
--- player attributes; this script applies them on this screen.
+-- The settings page (⚙ under the HUD): sound volume, UI size, shadows, floating labels, hay comfort (Hay thread),
+-- replay the tutorial and the list of controls. Values are saved with the save slot by the server (Settings.luau) and
+-- come back as "Setting<Key>" player attributes; this script applies them on this screen.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -124,6 +124,9 @@ choices(row("Sound effects"), "effects", { { "OFF", 0 }, { "LOW", 0.35 }, { "MID
 choices(row("Screen size"), "uiSize", { { "SMALL", "small" }, { "NORMAL", "normal" }, { "LARGE", "large" } })
 choices(row("Shadows"), "shadows", { { "ON", true }, { "OFF", false } })
 choices(row("Floating labels"), "labels", { { "ON", true }, { "OFF", false } })
+choices(row("Hold to keep scooping"), "holdToScoop", { { "ON", true }, { "OFF", false } })
+choices(row("Carry a bale"), "holdToCarry", { { "TOGGLE", false }, { "HOLD", true } })
+choices(row("Big THROW (phone)"), "bigThrow", { { "ON", true }, { "OFF", false } })
 
 local help = row("Tutorial")
 local replay = Kit.button(help, "PLAY AGAIN", "wood", UDim2.fromOffset(130, 32))
