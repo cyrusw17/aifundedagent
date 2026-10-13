@@ -55,7 +55,7 @@ local SHAPES = {
 		bedWall = 3.2,
 		bedLen = 15.3, -- outside length: 14.6 inside plus the front wall and tailgate
 		bedGap = 0.4, -- between the cab and the bed
-		meshSize = Vector3.new(10.9, 9.2, 27.5), -- the box the Blender mesh is stretched over
+		meshSize = Vector3.new(10.9, 9.2, 27.57), -- the box the Blender mesh is stretched over
 	},
 	-- The other trucks keep the default body; these widths match their re-exported Blender meshes.
 	-- meshSize is each .glb's own box (/mnt/project-files/art-review/IN_GAME_CHECK.md), so no mesh is stretched taller
@@ -76,7 +76,7 @@ local SHAPES = {
 		bedWall = 2.8,
 		bedLen = 15.2,
 		bedGap = 0.5,
-		meshSize = Vector3.new(11.4, 8.3, 24.4),
+		meshSize = Vector3.new(11.4, 8.3, 24.49),
 	},
 	-- Box Truck: a tall box over a 4 x 3 bale bed, two layers, roll-up door up and a low tailgate across the back.
 	-- From blender/props/vehicles.py box_truck: wheels 1.45 at x 4.4, axles -12.5 and 11.1, bed center 4.2.
@@ -96,7 +96,7 @@ local SHAPES = {
 		roof = true,
 		bedLen = 19.8,
 		bedGap = 0.4,
-		meshSize = Vector3.new(11.1, 10.2, 29.4),
+		meshSize = Vector3.new(11.1, 10.2, 29.49),
 	},
 	semi_rig = { meshSize = Vector3.new(9.8, 10.4, 25.3) },
 	-- Heavy Hauler: a steel tub for 5 x 3 bales, two layers, tandem rear axles. From blender/props/vehicles.py

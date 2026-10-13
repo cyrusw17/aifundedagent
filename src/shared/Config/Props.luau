@@ -30,7 +30,7 @@ return {
 		wheelbarrow = 5.5,
 		hay_crate = 3.2,
 		log = 5.1,
-		fence_post_set = 12.6,
+		fence_post_set = 12.65,
 		road_tile = 6.0,
 		-- Gloves: one right glove each, fingers +Y, back of hand -Z (GloveLooks.luau fits them to the hand)
 		work_gloves = 1.87,
@@ -39,9 +39,9 @@ return {
 		iron_gauntlets = 2.1,
 		starlight_gloves = 1.87,
 		-- Vehicles and trailers
-		rusty_pickup = 27.5, -- the first truck (Vehicles.luau stretches it over the part-built truck)
-		farm_flatbed = 24.4,
-		box_truck = 29.4,
+		rusty_pickup = 27.57, -- the first truck (Vehicles.luau stretches it over the part-built truck)
+		farm_flatbed = 24.49,
+		box_truck = 29.49,
 		semi_rig = 25.3,
 		heavy_hauler = 36.0,
 		starlight_hauler = 25.3,
@@ -58,7 +58,7 @@ return {
 		cargo_barge = 75.8,
 		-- Conveyors and machines
 		conveyor_straight = 6.2,
-		conveyor_corner = 6.1,
+		conveyor_corner = 6.04,
 		conveyor_ramp = 8.1,
 		conveyor_sorter = 12.0,
 		merger = 6.0,
@@ -69,6 +69,7 @@ return {
 		-- the small decor versions of the first sorter tiers (Blender batch 4)
 		hand_sieve_table = 5.92,
 		shaker_table_small = 9.01,
+		magnet_drum_small = 11.82,
 		shaker_table = 13.66,
 		hopper_feeder = 10.6,
 		hay_baler = 18.6,
@@ -102,7 +103,7 @@ return {
 		silo_small = 21.2,
 		sorter_shed = 25.1,
 		warehouse = 50.0,
-		workshop = 24.4,
+		workshop = 24.45,
 
 		-- From /mnt/project-files/art-review/MODEL_SPECS.md, measured from the Blender export (02bba19).
 		-- Region scatter
@@ -126,10 +127,10 @@ return {
 		firefly = 0.3,
 		-- Landmarks and hub buildings
 		homestead_bank = 27.4,
-		bounty_board = 9,
+		bounty_board = 8.91,
 		trading_post = 24.2,
 		windmill = 29.3,
-		spindle_landmark = 120,
+		spindle_landmark = 120.06,
 		region_sign = 6,
 		road_sign = 6,
 		field_bale_chute = 15.95,
@@ -157,10 +158,10 @@ return {
 		fishing_spot = 3.04,
 		rarity_needle = 1.2, -- the one needle mesh every rarity tier shares (same length as the game's needle)
 		-- Robux truck skins: same size as the cash truck each one repaints
-		homestead_classic = 27.5,
-		timber_wolf_4x4 = 27.5,
-		midnight_express = 29.4,
-		prairie_schooner = 24.4,
+		homestead_classic = 27.57,
+		timber_wolf_4x4 = 27.57,
+		midnight_express = 29.49,
+		prairie_schooner = 24.49,
 		founders_semi = 25.3,
 
 		-- The 02bba19 batch, measured from each .glb
@@ -212,7 +213,7 @@ return {
 		starweave_gloves = 1.87,
 		-- Special vehicles
 		captains_barge = 80.1,
-		ghost_hauler = 36.0,
+		ghost_hauler = 36.06,
 		old_bessie = 32.2,
 		public_ferry = 116.2,
 		sandrunner = 28.0,
