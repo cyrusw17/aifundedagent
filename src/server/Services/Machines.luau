@@ -31,6 +31,7 @@ local Oil = Prices.SorterOil
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
+local LineStats = require(script.Parent.LineStats)
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
@@ -99,6 +100,7 @@ function Machines.pay(ownerId, amount, text, note)
 		return
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
+	LineStats.record(ownerId, "cash", amount)
 	Tutorial.mark(owner, "sold")
 	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
@@ -471,6 +473,8 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType))
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
+		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
+		LineStats.record(ownerId, "needles", found)
 		sorted += 1
 		refreshLabel()
 	end
