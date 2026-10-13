@@ -254,9 +254,9 @@ end
 
 -- Welds a placed prop onto anchor so it moves with it. The prop is only a look: it never collides, is never hit by
 -- clicks (those go to the anchor) and weighs nothing.
--- fallback is the part-built look the mesh replaces (a bale body, a Tool). When given, the mesh starts hidden and the
--- fallback stays visible; each client swaps them once the mesh has actually loaded (PropMeshes.client.luau), so a
--- freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
+-- fallback is the part-built look the mesh replaces (a bale body, a Tool, or a list of such parts). When given, the
+-- mesh starts hidden and the fallback stays visible; each client swaps them once the mesh has actually loaded
+-- (PropMeshes.client.luau), so a freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
 -- loose is a list of the prop's own parts (from Props.find) to leave unwelded, so the caller can join them with a
 -- hinge or Motor6D instead (spinning wheels, an opening tailgate). They are unanchored like the rest.
 function Props.weldTo(model, anchor, fallback, loose)
@@ -294,10 +294,12 @@ function Props.weldTo(model, anchor, fallback, loose)
 		anchorLink.Parent = model
 		model:SetAttribute("MeshOffset", anchor.CFrame:PointToObjectSpace(center))
 		model:SetAttribute("MeshLength", math.max(size.X, size.Y, size.Z))
-		local link = Instance.new("ObjectValue")
-		link.Name = "Fallback"
-		link.Value = fallback
-		link.Parent = model
+		for _, root in (typeof(fallback) == "table" and fallback or { fallback }) do
+			local link = Instance.new("ObjectValue")
+			link.Name = "Fallback"
+			link.Value = root
+			link.Parent = model
+		end
 		CollectionService:AddTag(model, "PropMesh")
 	end
 	model.Parent = anchor
