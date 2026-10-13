@@ -157,7 +157,10 @@ local function scheduleRegrow(b)
 	end
 	b.home = false
 	task.delay(Config.BaleRefillSeconds, function()
-		Bales.spawn(b.spawnPosition, true, true)
+		local fresh = Bales.spawn(b.spawnPosition, true, true, b.hayType)
+		if b.onRegrow then
+			b.onRegrow(fresh)
+		end
 	end)
 end
 
@@ -242,6 +245,8 @@ function Bales.breakOpen(player, b)
 		local center = rest.Position
 		-- Which hay this bale holds (set by whoever placed it; meadow by default). Its strands carry it on.
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
+		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
+		local boost = b.body:GetAttribute("NeedleBoost") or 1
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0))
 		Feedback.play("BaleBurst", center)
@@ -283,9 +288,12 @@ function Bales.breakOpen(player, b)
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
 				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner)
 				piece:SetAttribute("HayType", hayType)
+				if boost ~= 1 then
+					piece:SetAttribute("NeedleBoost", boost)
+				end
 			end
 			-- Now and then a needle tumbles out with the hay.
-			if rng:NextNumber() < Config.VisibleNeedleChance or (promiseNeedle and wave == waves) then
+			if rng:NextNumber() < Config.VisibleNeedleChance * boost or (promiseNeedle and wave == waves) then
 				promiseNeedle = false
 				local offset = Vector3.new(rng:NextNumber(-1, 1), 2 + wave * 0.5, rng:NextNumber(-1, 1))
 				local needle = Hay.spawnPiece(
@@ -391,10 +399,15 @@ function Bales.drop(player)
 	startDespawnTimer(b)
 end
 
--- position is the ground point under the bale. home bales regrow after being smashed or lifted.
-function Bales.spawn(position, home, fadeIn)
+-- position is the ground point under the bale. home bales regrow after being smashed or lifted, as the same hay.
+-- hayType is a Config/Gloves hay (meadow when nil). Set b.onRegrow(newBale) to hear about the bale that grows back.
+function Bales.spawn(position, home, fadeIn, hayType)
 	local body, prompt = buildBale(position)
+	if hayType then
+		body:SetAttribute("HayType", hayType)
+	end
 	local b = {
+		hayType = hayType,
 		body = body,
 		prompt = prompt,
 		home = home,

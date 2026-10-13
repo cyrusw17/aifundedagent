@@ -14,6 +14,7 @@ local Dealer = require(script.Parent.Dealer)
 local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
+local WorldMap = require(script.Parent.WorldMap)
 
 local World = {}
 
@@ -139,6 +140,9 @@ function World.build()
 
 	-- Meadow Savings & Loan, on the main road east of the plot road.
 	Bank.build(folder)
+
+	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
+	WorldMap.build(folder)
 end
 
 return World
