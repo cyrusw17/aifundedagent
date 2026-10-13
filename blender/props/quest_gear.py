@@ -57,7 +57,7 @@ def golden_shovel(f):
     """About 0.8 x 2.7 x 0.3 studs: the basic spade with a yellow-gold blade, a steel cutting edge,
     a gold collar band and a D grip."""
     parts = [C(f, "handle", 0.065, 1.72, (0, 0, 0.82 + 0.86), verts=6)]
-    parts.append(B(f, "paint_yellow", (0.24, 0.24, 0.16), (0, 0, 1.38), rounded=False))      # gold band
+    parts.append(B(f, "gold", (0.24, 0.24, 0.16), (0, 0, 1.38), rounded=False))      # gold band
     parts.append(C(f, "handle", 0.057, 0.43, (0, 0, 2.68), axis="x", verts=6))                # D grip
     for x in (-0.18, 0.18):
         parts.append(B(f, "handle", (0.07, 0.07, 0.22), (x, 0, 2.55)))
@@ -66,7 +66,7 @@ def golden_shovel(f):
     for v in blade.data.vertices:
         if v.co.z < 0.42 * STUD:
             v.co.x *= 0.8
-    parts.append(f.apply(f.shape(blade), "paint_yellow"))
+    parts.append(f.apply(f.shape(blade), "gold"))
     edge = box(s(0.52, 0.09, 0.1), s(0, 0, 0.13))
     for v in edge.data.vertices:
         if v.co.z < 0.13 * STUD:
