@@ -2028,6 +2028,95 @@ local function onVisit(player, index)
 	return true, ("Visiting %s's farm. Like it at the sign by the lane."):format(plot.ownerName)
 end
 
+-- "Fastest lines on the server" (CEO #39): a board inside the Land Office's east wall ranks farms by needles found a
+-- minute over the last five minutes (LineStats, the same numbers as each farm's stats board), with a VISIT post under
+-- each of the top three. Visiting goes through onVisit, so it is refused while you carry hay.
+local BOARD_ROWS = 3
+local visitLimit = RateLimit.new("Land.BoardVisit", 0.5, 2)
+local function buildFastestBoard(office)
+	local wall = office:FindFirstChild("RightWall")
+	if not wall then
+		return
+	end
+	local board = Instance.new("SurfaceGui")
+	board.Name = "FastestLines"
+	board.Face = Enum.NormalId.Left -- the inside of the east wall
+	board.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	board.PixelsPerStud = 40
+	board.Parent = wall
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(0.86, 0.5)
+	text.Position = UDim2.fromScale(0.07, 0.08)
+	text.BackgroundColor3 = Rustic.Cloth
+	text.TextColor3 = Color3.fromRGB(40, 34, 28)
+	text.Font = Enum.Font.GothamBold
+	text.TextScaled = true
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Text = "FASTEST LINES ON THE SERVER"
+	text.Parent = board
+
+	-- One post per rank along the wall, under the board, each with its own VISIT prompt.
+	local ranked = {} -- rank -> plot
+	local prompts = {}
+	for rank = 1, BOARD_ROWS do
+		local z = (rank - (BOARD_ROWS + 1) / 2) * 2.6
+		local post = part(office, "VisitPost", Vector3.new(0.6, 2.6, 0.6), wall.CFrame * CFrame.new(-1.2, -3.2, z), Rustic.Wood, Enum.Material.Wood)
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "Visit"
+		prompt.ActionText = "Visit"
+		prompt.ObjectText = ("#%d"):format(rank)
+		prompt.HoldDuration = 0.3
+		prompt.MaxActivationDistance = 7
+		prompt.RequiresLineOfSight = false
+		prompt.Enabled = false
+		prompt.Parent = post
+		prompts[rank] = prompt
+		prompt.Triggered:Connect(function(player)
+			local plot = ranked[rank]
+			if not plot or not visitLimit:allow(player) then
+				return
+			end
+			local _, message = onVisit(player, plot.index)
+			if message then
+				Data.toast(player, message)
+			end
+		end)
+	end
+
+	task.spawn(function()
+		while board.Parent do
+			local list = {}
+			for _, plot in plots do
+				if plot.ownerId then
+					local npm = LineStats.perMinute(plot.ownerId, "needles")
+					if npm > 0 then
+						table.insert(list, { plot = plot, npm = npm, bpm = LineStats.perMinute(plot.ownerId, "bales") })
+					end
+				end
+			end
+			table.sort(list, function(a, b)
+				return a.npm > b.npm
+			end)
+			local lines = { "FASTEST LINES ON THE SERVER", "needles a minute, last 5 minutes" }
+			for rank = 1, BOARD_ROWS do
+				local e = list[rank]
+				ranked[rank] = e and e.plot or nil
+				prompts[rank].Enabled = e ~= nil
+				if e then
+					local who = e.plot.farmName and ("%s (%s)"):format(e.plot.farmName, e.plot.ownerName) or e.plot.ownerName
+					prompts[rank].ObjectText = ("#%d %s"):format(rank, e.plot.ownerName or "")
+					table.insert(lines, ("%d. %s  %.1f needles/min, %.1f bales/min"):format(rank, who or "?", e.npm, e.bpm))
+				end
+			end
+			if #list == 0 then
+				table.insert(lines, "No lines running yet. Build a sorter on your plot.")
+			end
+			text.Text = table.concat(lines, "\n")
+			task.wait(10)
+		end
+	end)
+end
+
 -- A save was picked (with the plot the player chose in the picker, if any): set up its farm, or buy the chosen plot
 -- for a save with no land yet.
 -- Puts the needles saved in the bin back in this plot's bin. Past BinRestoreCap physical needles the rest go in the
@@ -2255,6 +2344,7 @@ function Land.build(worldFolder)
 	end
 
 	buildOffice(folder)
+	buildFastestBoard(folder:FindFirstChild("LandOffice"))
 	Blueprints.init() -- named presets for the COPY / PASTE tools
 	for i, def in LandConfig.Plots do
 		buildPlot(folder, i, def)
