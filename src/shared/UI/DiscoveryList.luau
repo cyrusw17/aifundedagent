@@ -1,6 +1,6 @@
 --!nonstrict
--- Every discovery in the order Services/Discoveries.luau keeps them (regions, Sky Island, the Crystal Cave, then the
--- landmarks of Config/WorldMap Discoveries), with a map position for each, for the map's stamps and the collection
+-- Every discovery in the order Services/Discoveries.luau keeps them (regions, Sky Island, the Crystal Cave, the
+-- landmarks of Config/WorldMap Discoveries, then each region's hidden spot), with a map position for each, for the map's stamps and the collection
 -- book's page. Which ones a player has found is the "Discovered" player attribute ("old_well,pine,...").
 -- Safe on the server too (the UI self-test uses it).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,7 +12,7 @@ local WorldRegions = require(Shared:WaitForChild("WorldRegions"))
 
 local DiscoveryList = {}
 
--- { id, name, kind = "region" | "landmark", at = Vector2, reward, near = region name (landmarks) }
+-- { id, name, kind = "region" | "landmark" | "hidden", at = Vector2 (nil for hidden), reward, near = region name }
 local list = {}
 local function rewardOf(kind)
 	local d = Prices.Discovery
@@ -46,6 +46,12 @@ for _, d in Map.Discoveries do
 	end
 	if at then
 		local region = WorldRegions.at(Vector3.new(at.X, 0, at.Y))
+		-- A landmark just past the terrain box (Ghost Isle) still stamps the map, at its edge.
+		local margin = 8
+		at = Vector2.new(
+			math.clamp(at.X, Map.Bounds.min.X + margin, Map.Bounds.max.X - margin),
+			math.clamp(at.Y, Map.Bounds.min.Y + margin, Map.Bounds.max.Y - margin)
+		)
 		table.insert(list, {
 			id = d.id,
 			name = d.name,
@@ -55,6 +61,19 @@ for _, d in Map.Discoveries do
 			near = region and region.name or "the isles",
 		})
 	end
+end
+
+-- Then one hidden spot per region (Wilds.luau adds them on the server in region order as "hidden_<region id>"). Where
+-- they are is a secret, so they have no map spot (at = nil) and no stamp; the book lists them.
+local secrets = Prices.Secrets
+for _, r in Map.Regions do
+	table.insert(list, {
+		id = "hidden_" .. r.id,
+		name = "Secret of " .. r.name,
+		kind = "hidden",
+		reward = typeof(secrets) == "table" and secrets.hidden or 0,
+		near = r.name,
+	})
 end
 
 function DiscoveryList.all()

@@ -648,6 +648,9 @@ if WorldMap then
 
 	-- Discovery stamps: a gold ◆ on each landmark you have found, a ✓ above each region you have visited.
 	for _, d in DiscoveryList.all() do
+		if not d.at then
+			continue -- hidden spots stay secret
+		end
 		local stamp = Kit.label(worldCanvas, d.kind == "region" and "✓" or "◆", {
 			size = d.kind == "region" and 12 or 11,
 			font = F.Title,
