@@ -124,17 +124,37 @@ def lost_ring(f):
 
 
 def fossil(f):
-    """Epic: a flat split stone slab, about 1.4 x 1.0, with a raised spiral ammonite shell on it."""
+    """Epic: a flat split stone slab, about 1.4 x 1.0, with one raised spiral ammonite on it: a single
+    ridged coil that widens outward over about 1.6 turns (B2-4)."""
+    import bmesh
     p = [B(f, "stone", (1.4, 1.0, 0.2), (0, 0, 0.1), rounded=False)]
-    # Ammonite: a widening spiral of short ridged segments, the ribs a shade paler than the slab.
-    n = 14
+    bm = bmesh.new()
+    n = 26
+    rings = []
     for i in range(n):
-        t0 = i / n
-        a = t0 * 3.2 * math.pi
-        rad = 0.05 + 0.38 * t0
-        w = 0.07 + 0.11 * t0
-        p.append(B(f, "paint_cream", (w, 0.08 + 0.14 * t0, 0.12 + 0.08 * t0),
-                   (rad * math.cos(a), rad * math.sin(a), 0.24 + 0.04 * t0), rot=(0, 0, a), rounded=False))
+        t0 = i / (n - 1)
+        a = t0 * 3.3 * math.pi
+        rad = 0.04 + 0.36 * t0
+        w = 0.05 + 0.12 * t0                 # coil width grows outward
+        h = 0.06 + 0.1 * t0                  # and stands taller
+        cx, cy = rad * math.cos(a), rad * math.sin(a)
+        nx, ny = math.cos(a), math.sin(a)    # outward from the coil center
+        ring = [bm.verts.new(s(cx - nx * w / 2, cy - ny * w / 2, 0.2)),
+                bm.verts.new(s(cx, cy, 0.2 + h)),
+                bm.verts.new(s(cx + nx * w / 2, cy + ny * w / 2, 0.2))]
+        rings.append(ring)
+    for r0, r1 in zip(rings, rings[1:]):
+        for k in range(2):
+            bm.faces.new((r0[k], r1[k], r1[k + 1], r0[k + 1]))
+    bm.faces.new(rings[-1])
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new("ammonite")
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new("ammonite", me)
+    bpy.context.collection.objects.link(o)
+    p.append(f.apply(o, "paint_cream", along="x"))
     return p
 
 
