@@ -9,6 +9,8 @@ local Services = script.Parent.Parent.Services
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 
 local PART_BUDGET = 40000
+-- tools/headless sets Workspace.Headless: nothing falls or drives there, so the physics checks skip with a reason.
+local HEADLESS = workspace:GetAttribute("Headless") == true
 
 return function(SelfTest)
 	SelfTest.register("Health", function(t)
@@ -77,10 +79,17 @@ return function(SelfTest)
 		local dims = { size.X, size.Y, size.Z }
 		table.sort(dims)
 		t.check("bale is 4.6 x 2.6 x 3.2", math.abs(dims[1] - 2.6) < 0.05 and math.abs(dims[2] - 3.2) < 0.05 and math.abs(dims[3] - 4.6) < 0.05, ("%.2f x %.2f x %.2f"):format(size.X, size.Y, size.Z))
-		t.check("bale is free physics (not anchored)", not b.body.Anchored)
-		t.wait(2)
-		local restY = b.body.Position.Y - spot.Position.Y
-		t.check("bale settles on the ground", restY > 0.5 and restY < 3, ("center %.2f above the pad"):format(restY))
+		-- A spawned (field) bale rests anchored until someone moves it; set down, it is loose physics.
+		t.check("a spawned bale rests anchored", b.body.Anchored)
+		Bales.releaseAt(b, CFrame.new(spot.Position + Vector3.new(0, 3, 0)))
+		t.check("a set-down bale is free physics (not anchored)", not b.body.Anchored)
+		if HEADLESS then
+			t.skip("bale settles on the ground", "headless: no physics")
+		else
+			t.wait(2)
+			local restY = b.body.Position.Y - spot.Position.Y
+			t.check("bale settles on the ground", restY > 0.5 and restY < 3, ("center %.2f above the pad"):format(restY))
+		end
 		t.equal("Bales.fromPart finds the bale", Bales.fromPart(b.body), b)
 		Bales.consume(b)
 		t.wait(0.5)
@@ -126,6 +135,10 @@ return function(SelfTest)
 	end
 
 	SelfTest.register("Driving", function(t)
+		if HEADLESS then
+			t.skip("every truck", "headless: no physics, so nothing drives")
+			return
+		end
 		local Trucks = require(Shared.Config.Trucks)
 		local seconds = 2
 		for i, def in Trucks do
@@ -143,6 +156,10 @@ return function(SelfTest)
 	end)
 
 	SelfTest.register("Driving uphill", function(t)
+		if HEADLESS then
+			t.skip("every truck", "headless: no physics, so nothing drives")
+			return
+		end
 		local Trucks = require(Shared.Config.Trucks)
 		local angle, length = 20, 50
 		local rise = math.sin(math.rad(angle)) * length
