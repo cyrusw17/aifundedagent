@@ -17,7 +17,7 @@ blender/
   lib/common.py            scene reset, materials, textures, join, export, preview render
   lib/style.py             the house style (palettes, textures, Finish) and shape helpers
   props/rustic_props.py    every game prop, one .glb each + a catalog render
-  props/hay_bale.py        square bale shape (4x2x2 studs, stackable)
+  props/hay_bale.py        square bale shape (4.6 long x 2.6 high x 3.2 deep studs, matches the game)
   styles/lt2_mockups.py    the six finishes that were compared when picking the style
   tools/render_preview.py  renders a PNG preview of any exported .glb
   exports/rustic/          the game-ready props (.glb) and catalog.png
@@ -28,7 +28,7 @@ blender/
 
 | file | size (studs) | notes |
 |---|---|---|
-| `hay_bale.glb` | 4 x 2 x 2 | stacks: two side by side = one across the top |
+| `hay_bale.glb` | 4.6 x 3.2 x 2.6 (L x D x H) | same size as the game bale; flat top and bottom so bales stack |
 | `round_bale.glb` | 3.6 x 3.4 x 3.6 | rolled hay with twine |
 | `basic_shovel.glb` | ~2.7 tall | small spade (starter tool) |
 | `wide_scoop.glb` | ~3 tall | broad grain scoop |
@@ -72,7 +72,7 @@ blender --background --python blender/tools/render_preview.py -- blender/exports
 2. Keep **Import as a model**. Textures are embedded in the .glb and come in
    with the mesh.
 3. Scale: props are modeled in meters. If the importer doesn't convert, 1 stud
-   = 0.28 m, so scale by ~3.57 (a hay bale should be 4 x 2 x 2 studs).
+   = 0.28 m, so scale by ~3.57 (a hay bale should be 4.6 long x 2.6 high x 3.2 deep).
 
 ## Adding a new prop
 

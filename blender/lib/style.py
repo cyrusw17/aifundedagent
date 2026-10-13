@@ -47,6 +47,8 @@ RUSTIC = {
     "paint_yellow": ((0.82, 0.68, 0.34), (0.72, 0.58, 0.26), (0.52, 0.40, 0.18)),
     "stone": ((0.66, 0.63, 0.58), (0.56, 0.53, 0.49), (0.40, 0.38, 0.35)),
     "cloth": ((0.84, 0.80, 0.68), (0.74, 0.70, 0.58), (0.56, 0.52, 0.42)),
+    "steel": ((0.78, 0.78, 0.76), (0.66, 0.66, 0.64), (0.50, 0.50, 0.48)),  # galvanized, unrusted
+    "dirt": ((0.58, 0.48, 0.36), (0.48, 0.39, 0.29), (0.34, 0.27, 0.20)),
     # Flat, untextured.
     "tire": (None, (0.13, 0.12, 0.11), None),
     "glass": (None, (0.20, 0.26, 0.28), None),
@@ -56,7 +58,7 @@ RUSTIC = {
 FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3},
         "glow": {"roughness": 0.4, "emission": 2.0}}
 # Kinds that use the blotchy weathered texture.
-WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth")
+WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt")
 SOFT = {
     "hay": (None, (1.00, 0.86, 0.55), None),
     "bark": (None, (0.66, 0.45, 0.34), None),
@@ -224,16 +226,19 @@ class Finish:
             bpy.context.view_layer.objects.active = obj
             bpy.ops.object.modifier_apply(modifier=m.name)
         if self.lumpy:
+            # Scale the wobble to the part so small pieces (caps, tips) don't crumple.
+            dims = [max(v.co[i] for v in obj.data.vertices) - min(v.co[i] for v in obj.data.vertices) for i in range(3)]
+            amount = min(self.lumpy, min(dims) * 0.05)
             for v in obj.data.vertices:
-                v.co += v.normal * self.rng.uniform(-self.lumpy, self.lumpy)
+                v.co += v.normal * self.rng.uniform(-amount, amount)
         for p in obj.data.polygons:
             p.use_smooth = self.name == "soft"
         return obj
 
     def apply(self, obj, kind, along="x", uv="box"):
         """Give a part its material. kind is one of the palette keys (hay, bark, wood, handle, metal,
-        twine, paint_red/green/blue/cream/yellow, stone, cloth, tire, glass, glow)."""
-        metallic = 0.5 if kind == "metal" else 0.0
+        twine, paint_red/green/blue/cream/yellow, stone, cloth, steel, dirt, tire, glass, glow)."""
+        metallic = 0.5 if kind in ("metal", "steel") else 0.0
         if kind in FLAT:
             opts = FLAT[kind]
 
