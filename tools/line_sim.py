@@ -16,6 +16,7 @@ The model is the same arithmetic the game runs (Machines.sorter, Needle.priceOf,
 
 import argparse
 import os
+import math
 import re
 import sys
 
@@ -56,13 +57,32 @@ def pairs(text):
 
 
 PRICES = read("Prices.luau")
+PACING_SCALE = number(PRICES, "PacingScale")
+PACING_FROM = number(PRICES, "PacingFrom")
+PACING_KEEP = set(re.findall(r"(\w+) = true", block(PRICES, "PacingKeep")))
+
+
+def pace(id_, price, scale=None):
+    """Prices.paced: prices at PacingFrom or more (not PacingKeep) times PacingScale, to two significant figures."""
+    scale = PACING_SCALE if scale is None else scale
+    if scale == 1 or price < PACING_FROM or id_ in PACING_KEEP:
+        return price
+    x = price * scale
+    step = 10 ** (math.floor(math.log10(x)) - 1)
+    return math.floor(x / step + 0.5) * step
+
+
+def paced(prices):
+    return {k: pace(k, v) if isinstance(v, float) else v for k, v in prices.items()}
+
+
 P = {
     "hay_per_bale": number(PRICES, "HayPerBale"),
     "hay_price": number(PRICES, "HayPrice"),
     "raw_needle": number(PRICES, "RawNeedlePrice"),
     "needles_per_bale": pairs(block(PRICES, "NeedlesPerBale")),
     "needle_value": pairs(block(PRICES, "Needles")),
-    "pieces": pairs(block(PRICES, "Pieces")),
+    "pieces": paced(pairs(block(PRICES, "Pieces"))),
     "bales_per_min": pairs(block(PRICES, "SorterBalesPerMinute")),
     "oil": pairs(block(PRICES, "SorterOil")),
     "grades": pairs(block(PRICES, "NeedleGrades")),

@@ -16,12 +16,14 @@ Checks: the week's income is at most Prices.Boosts.Cap times the plain game's at
 under half its target time (pacing_sim's targets for the early buys, the plain model's times for the rest).
 """
 
+import math
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import economy_model as em  # noqa: E402
+import line_sim  # noqa: E402
 import pacing_sim  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "shared")
@@ -119,8 +121,17 @@ def market_profit_per_hour(recovery):
     return profit * per_hour
 
 
-def boosted(i, rate):
-    """One hour at stage i with everything stacked, averaged over the week."""
+# Who the sims play. "stacked" is the worst case above. "typical" is a guess to tune PacingScale against, stated so it
+# can be argued with: the festival is on your region 1 week in 11, a friend is on your farm a quarter of the time, it
+# rains on your fields a third of the time, you're at camp for half the Hay Market restocks, and you play 2 hours a day
+# and finish all three contracts.
+STACKED = {"festival": 1, "together": 1, "rain": 1, "market": 1, "hours": 1}
+TYPICAL = {"festival": 1 / 11, "together": 0.25, "rain": 1 / 3, "market": 0.5, "hours": 2}
+TARGET_SEMI = 14.7  # hours: the plain model's climb (ECONOMY.md); Cyrus may still move it to 40
+
+
+def boosted(i, rate, who=STACKED):
+    """One hour at stage i with this player's boosts, averaged over the week (contracts and the index not included)."""
     _, supply, region, sorter = em.STAGES[i - 1]
     rec, speed = em.SORTERS[sorter]
     s = supply()
@@ -130,45 +141,66 @@ def boosted(i, rate):
     else:
         needles_part = done * 60 * (em.bale_value(region, rec) - HAY)  # $/h from sorted needles, plain game
     # Field bales carry the festival as their own boost; a friend and storms are the extras.
-    calm = value(*fit(FESTIVAL, 1, TOGETHER, 1))
-    storm = value(*fit(FESTIVAL, 1, TOGETHER, STORM_ODDS))
-    needle_mult = (1 - STORM_SHARE) * calm + STORM_SHARE * storm
-    # Wet (rain all week) and pity add on top of the roll, per needle found.
-    found = em.REGIONS[region][0] * rec * FESTIVAL
-    wet = (num(WET, "mult") - 1) / num(WET, "oneIn") / (1 + CHANCE * EXTRA)
+    needle_mult = 0.0
+    for fest, pf in ((FESTIVAL, who["festival"]), (1, 1 - who["festival"])):
+        for friend, pt in ((TOGETHER, who["together"]), (1, 1 - who["together"])):
+            calm = value(*fit(fest, 1, friend, 1))
+            storm = value(*fit(fest, 1, friend, STORM_ODDS))
+            needle_mult += pf * pt * ((1 - STORM_SHARE) * calm + STORM_SHARE * storm)
+    # Wet (while it rains) and pity add on top of the roll, per needle found.
+    found = em.REGIONS[region][0] * rec * (who["festival"] * FESTIVAL + 1 - who["festival"])
+    wet = who["rain"] * (num(WET, "mult") - 1) / num(WET, "oneIn") / (1 + CHANCE * EXTRA)
     pity = (num(PITY, "mult") - 1) / num(PITY, "bales") / max(found, 1e-9) if found else 0
-    extra = needles_part * (needle_mult - 1 + wet + pity) + market_profit_per_hour(rec)
+    extra = needles_part * (needle_mult - 1 + wet + pity) + who["market"] * market_profit_per_hour(rec)
     return rate + extra
 
 
-def tier_day(gross):
+def tier_day(gross, scale=None):
+    """A full day of contracts at this lifetime-sales mark (tier starts stretch with PacingScale, as in Prices)."""
+    scale = line_sim.PACING_SCALE if scale is None else scale
     day = 0.0
     for start, reward, bonus in TIERS:
-        if gross >= start:
+        if gross >= math.floor(start * scale + 0.5):
             day = 3 * reward + bonus
     return day
 
 
-def main():
-    plain = em.timeline()
+def week_mults(who, plain, scale=None):
+    """Income per stage for this player against the plain game, over a week (contracts and the index included)."""
     entry = {}
-    for _, _, stage, _, clock, gross, _ in plain:
+    for _, _, stage, _, _, gross, _ in plain:
         entry.setdefault(stage, gross)
-    rows, failures = [], []
     mults = {}
     for i in range(1, len(em.STAGES) + 1):
         base = em.stage_rate(i)
-        hours = DAYS * PLAY_HOURS_A_DAY
-        week = boosted(i, base) * hours + tier_day(entry.get(i, 0)) * DAYS
+        hours = DAYS * who["hours"]
+        week = boosted(i, base, who) * hours + tier_day(entry.get(i, 0), scale) * DAYS
         week += sum(cash for at, cash in INDEX if INDEX_STAGE.get(int(at)) == i)
-        mult = week / (base * hours)
-        mults[i] = mult
+        mults[i] = week / (base * hours)
+    return mults
+
+
+def semi_at(who, scale=None):
+    plain = em.timeline(scale=scale)
+    mults = week_mults(who, plain, scale)
+    return em.timeline(lambda i, rate: rate * mults[i], scale)[-1][4]
+
+
+def main():
+    plain = em.timeline(scale=1)  # the targets: the prices as written
+    rows, failures = [], []
+    mults = week_mults(STACKED, em.timeline())
+    for i in range(1, len(em.STAGES) + 1):
+        base = em.stage_rate(i)
+        hours = DAYS * STACKED["hours"]
+        mult = mults[i]
+        week = mult * base * hours
         rows.append([em.STAGES[i - 1][0], em.money(base), em.money(week / hours), f"{mult:.2f}x"])
         if mult > CAP + 1e-9:
             failures.append(f"{em.STAGES[i - 1][0]}: a stacked week is {mult:.2f}x the plain game (cap {CAP:g}x)")
     em.table(f"A week with every boost stacked ({PLAY_HOURS_A_DAY} h a day)", ["Stage", "Plain $/h", "Stacked $/h", "Times plain"], rows)
 
-    fast = em.timeline(lambda i, rate: rate * mults[i])
+    fast = em.timeline(lambda i, rate: rate * mults[i])  # at the current PacingScale
     targets = {name: target for name, _, _, target in pacing_sim.PLAN}
     rows = []
     for (name, _, _, _, clock, _, _), (_, _, _, _, quick, _, _) in zip(plain, fast):
@@ -178,6 +210,20 @@ def main():
         if not ok:
             failures.append(f"{name}: lands at {quick:.2f} h with every boost, under half its {target:.1f} h target")
     em.table("When each purchase lands with every boost stacked", ["Buy", "Target", "Stacked", ""], rows)
+    # PacingScale: where a typical player's Semi lands at each value, and the one Prices should use.
+    rows, best = [], None
+    for k in range(100, 201, 5):
+        scale = k / 100
+        semi = semi_at(TYPICAL, scale)
+        rows.append([f"{scale:.2f}", f"{semi:.1f} h", f"{em.timeline(scale=scale)[-1][4]:.1f} h"])
+        if best is None or abs(semi - TARGET_SEMI) < abs(best[1] - TARGET_SEMI):
+            best = (scale, semi)
+    em.table("PacingScale: when the Semi lands", ["PacingScale", "Typical player (boosts)", "Plain game"], rows)
+    now = semi_at(TYPICAL)
+    print(f"Prices.PacingScale = {line_sim.PACING_SCALE:g}: a typical player's Semi lands at {now:.1f} h"
+          f" (target {TARGET_SEMI} h; {best[0]:.2f} would land it at {best[1]:.1f} h)\n")
+    if abs(now - TARGET_SEMI) > 1.5:
+        failures.append(f"PacingScale {line_sim.PACING_SCALE:g} lands a typical Semi at {now:.1f} h, not about {TARGET_SEMI} h (try {best[0]:.2f})")
     if failures:
         print("FAILED:\n  " + "\n  ".join(failures))
         return 1

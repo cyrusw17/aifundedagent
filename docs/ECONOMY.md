@@ -199,15 +199,16 @@ can't be bought.
 
 ### Needle sorters
 
-Priced from the V8 payback targets, for Meadow hay with the sorter kept full:
+Priced from the V8 payback targets, for Meadow hay with the sorter kept full. "Now" includes `Prices.PacingScale` 1.2
+(H18, below), so each payback is 1.2x the V8 target:
 
 | Sorter | Finds | Bales/min | Value/bale | Extra $/hour over the public shop | Was | Now | Payback |
 |---|---|---|---|---|---|---|---|
 | Hand sieve | 15% | 2 | $75 | $3,360 | $250 | $500 | 9 min |
-| Shaker table | 35% | 4 | $115 | $16,320 | $1,500 | $4,000 | 15 min |
-| Conveyor sorter | 55% | 8 | $155 | $51,840 | $5,000 | $25,000 | 29 min |
-| Magnet drum | 75% | 16 | $210 | $156,480 | $15,000 | $190,000 | 73 min |
-| Optical sorter | 92% | 30 | $275 | $410,400 | $50,000 | $1,350,000 | 197 min |
+| Shaker table | 35% | 4 | $115 | $16,320 | $1,500 | $4,800 | 18 min |
+| Conveyor sorter | 55% | 8 | $155 | $51,840 | $5,000 | $30,000 | 35 min |
+| Magnet drum | 75% | 16 | $210 | $156,480 | $15,000 | $230,000 | 88 min |
+| Optical sorter | 92% | 30 | $275 | $410,400 | $50,000 | $1,600,000 | 234 min |
 
 The magnet drum grades its needles A (+10%) and the optical sorter grades them S (+25%) (`Prices.NeedleGrades`,
 Conveyor's line simulator `tools/line_sim.py`). Grades made both machines pay back about 20% faster than the V8 targets
@@ -641,6 +642,37 @@ Every boost is fine alone; the risk is all of them at once. Two guards:
 Result: 1.1x to 1.2x before a sorter, 1.4x to 1.96x after (the most is Swamp, where the 50% milestone lands). The
 Semi comes at 8.5 hours instead of 14.7, so 58% of the target. Away earnings aren't in it: they only sort hay you
 already hauled into your silos, and hauling is what limits income.
+
+## Pacing scale (CEO H18)
+
+The stacked-boost week showed boosts shorten the climb, so the prices now have one dial, `Prices.PacingScale`. Every
+truck, trailer, glove and build piece at $4,000 or more (`PacingFrom`) is multiplied by it and rounded to two
+significant figures. The first hour never changes: Work Gloves, the wheelbarrow, the Rusty Pickup (`PacingKeep`), the
+wagon, the plot, the hand sieve and a first line all stay as written. The daily contract tiers start at lifetime-sales
+marks, so they stretch by the same factor. The tables in this doc show the prices as written; the game charges them
+times the scale. `tools/line_sim.py`, `pacing_sim.py` and `economy_model.py` apply the same rule.
+
+The value comes from `tools/boost_sim.py`, which plays a **typical** player as well as the stacked worst case. The
+typical player gets the festival 1 week in 11, has a friend on the farm a quarter of the time, sees rain a third of the
+time, catches half the Hay Market restocks, and plays 2 hours a day and finishes all three contracts. That's a guess,
+written down so it can be argued with. Where that player's Semi lands:
+
+| PacingScale | Typical player | Plain game, no boosts |
+|---|---|---|
+| 1.00 | 12.3 h | 14.7 h |
+| 1.10 | 13.6 h | 16.2 h |
+| **1.20** | **14.6 h** | **17.4 h** |
+| 1.30 | 15.9 h | 18.9 h |
+| 1.50 | 18.1 h | 21.5 h |
+| 2.00 | 23.6 h | 28.2 h |
+
+**1.2** puts a typical player's Semi at 14.6 hours, the 14.7-hour climb this doc has planned for. Some example prices:
+shaker $4,800, conveyor sorter $30,000, flatbed $30,000, box truck $110,000, magnet drum $230,000, optical sorter
+$1.6M, Semi $1.8M. boost_sim fails if the current value lands the typical Semi more than 1.5 hours from the target,
+and the stacked week still stays under 2x. Cyrus's open question (about 15 hours or V8's 40) is separate: it moves
+the target, and then this value. For 40 hours the table above would need a scale of about 3.5, which is more than
+pricing alone should do (V8's 40 hours assumed slower hauling). The playtest stopwatch retune (the shaker and the
+rest about 1.6x) is now just a different value here.
 
 ## The Hay Market
 

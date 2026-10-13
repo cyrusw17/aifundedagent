@@ -59,9 +59,9 @@ KEEP = [tuple(float(v) for v in m) for m in re.findall(r"min = Vector2.new\((-?[
 BANK = line_sim.block(PRICES, "Bank")
 DOWN = num(BANK, "DownPayment")
 LOAN = {k: (float(i), float(r)) for k, i, r in re.findall(r"(\w+) = \{ name = \"[^\"]+\", interest = ([\d.]+), repayShare = ([\d.]+)", BANK)}
-GLOVE_PRICE = line_sim.pairs(line_sim.block(PRICES, "Gloves"))
-TRUCK_PRICE = line_sim.pairs(line_sim.block(PRICES, "Trucks"))
-TRAILER_PRICE = line_sim.pairs(line_sim.block(PRICES, "Trailers"))
+GLOVE_PRICE = line_sim.paced(line_sim.pairs(line_sim.block(PRICES, "Gloves")))
+TRUCK_PRICE = line_sim.paced(line_sim.pairs(line_sim.block(PRICES, "Trucks")))
+TRAILER_PRICE = line_sim.paced(line_sim.pairs(line_sim.block(PRICES, "Trailers")))
 WHEELBARROW = line_sim.number(PRICES, "Wheelbarrow")
 PLOT = line_sim.number(PRICES, "Plot")
 
