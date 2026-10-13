@@ -13,5 +13,6 @@ return {
 
 	NeedleId = "steel", -- Meadow hay holds steel needles (Needles.luau)
 
+	AlienWindowSeconds = 60, -- how long the Alien collector's daily beam stays up
 	LooseBaleSeconds = 180, -- a sorted bale that falls off the line disappears after this long
 }
