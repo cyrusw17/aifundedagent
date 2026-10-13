@@ -69,6 +69,7 @@ local DEFAULT_THEME = LandConfig.Themes[1]
 local plots = {} -- index -> plot record
 local farmNames = {} -- userId -> the name on their first farm, for the likes board while they are on this server
 local plotOf = {} -- player -> the plot record they build on (their active farm)
+local publishSilos -- (player) sets SiloFullIn for the HUD; defined below
 local farms = {} -- player -> { land = plot, land2 = plot }: every plot they own, by save key
 local lastAction = {} -- player -> os.clock() of their last place or remove
 local state = nil -- ReplicatedStorage.Land: remotes and what the client needs to know about every plot
@@ -333,6 +334,9 @@ local function buildSilo(plot, item, def)
 			end
 			if changed then
 				refresh()
+				if plot.owner and publishSilos then
+					publishSilos(plot.owner)
+				end
 				plot.dirty = true
 			end
 		end
@@ -2332,8 +2336,59 @@ local function limited(limiter, fn)
 	end
 end
 
+-- Silo fill for the HUD (the UI countdown strip warns before a silo is full): the player attribute SiloFullIn is the
+-- seconds until the silos and barns on their active farm are full at the rate they filled over the last minute. It
+-- is nil when they are not filling (no farm, no silo, emptying or steady), and 0 once they are full while hay still
+-- comes in.
+local SILO_WINDOW = 60 -- seconds of fill history the rate is taken over
+local SILO_MIN_SPAN = 10 -- no estimate from less history than this
+local siloHistory = {} -- player -> { { at, fill, cap }, ... }, oldest first
+
+local function siloTotals(plot)
+	local fill, cap = 0, 0
+	for _, item in plot and plot.list or {} do
+		local def = pieces[item.id]
+		if def and def.kind == "silo" then
+			fill += item.stored or 0
+			cap += def.capacity or LandConfig.SiloCapacity
+		end
+	end
+	return fill, cap
+end
+
+-- Seconds until full from the fill history, or nil. A capacity change (a silo built or sold) restarts the history.
+local function siloFullIn(history, now)
+	local last = history[#history]
+	local first = history[1]
+	if not last or last.cap <= 0 or now - first.at < SILO_MIN_SPAN then
+		return nil
+	end
+	local rate = (last.fill - first.fill) / (last.at - first.at)
+	if rate <= 0 then
+		return nil
+	end
+	return math.max(0, math.ceil((last.cap - last.fill) / rate))
+end
+
+publishSilos = function(player)
+	local now = os.clock()
+	local fill, cap = siloTotals(plotOf[player])
+	local history = siloHistory[player]
+	if not history or (history[1] and history[1].cap ~= cap) then
+		history = {}
+		siloHistory[player] = history
+	end
+	table.insert(history, { at = now, fill = fill, cap = cap })
+	while #history > 2 and now - history[2].at >= SILO_WINDOW do
+		table.remove(history, 1)
+	end
+	player:SetAttribute("SiloFullIn", siloFullIn(history, now))
+end
+
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	siloTotals = siloTotals,
+	siloFullIn = siloFullIn,
 	limits = limits,
 	limited = limited,
 	plots = plots,
@@ -2451,6 +2506,9 @@ function Land.build(worldFolder)
 	task.spawn(function()
 		while true do
 			task.wait(5)
+			for _, player in Players:GetPlayers() do
+				publishSilos(player)
+			end
 			for player, mine in farms do
 				for _, plot in mine do
 					if plot.dirty then
@@ -2468,6 +2526,7 @@ function Land.build(worldFolder)
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		crewInvites[player] = nil
+		siloHistory[player] = nil
 		lastAction[player] = nil
 		history[player] = nil
 		local mine = {}
