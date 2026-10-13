@@ -15,4 +15,15 @@ function Economy.sortedLoadValue(hay: number, needlesInside: number, recovery: n
 	return math.floor(hay * Economy.HAY_PRICE + needlesInside * recovery * sortedValue)
 end
 
+-- How many needles are hidden in a load of hay. rng is passed in so this stays testable.
+function Economy.rollNeedles(rng: Random, hay: number, chancePerHay: number): number
+	local count = 0
+	for _ = 1, hay do
+		if rng:NextNumber() < chancePerHay then
+			count += 1
+		end
+	end
+	return count
+end
+
 return Economy

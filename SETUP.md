@@ -31,3 +31,11 @@ Checked so far: `rojo build default.project.json -o test.rbxl` builds the projec
 Press Play. You spawn on a small pad at base camp. Walk to the three hay barrels, hold the prompt ("Scoop hay") and your wheelbarrow fills (HUD, top left). Walk to the hay shop on the right and press "Sell hay". The toast says how many hidden needles the shop found in your hay and paid $1 each for. Barrels refill 30 seconds after they run empty.
 
 Saving: DataStores only work in Studio if the place is published to Roblox and Game Settings > Security > "Enable Studio Access to API Services" is on. Otherwise you will see a warning in Output and progress simply will not save. The game still plays.
+
+## Scooping, carrying and dropping (current controls)
+
+- Your shovel is equipped when you spawn. The scoop swing only plays, and scooping only works, while the shovel is in your hand.
+- Hold E at a barrel to scoop. Hold F to pick the whole barrel up. While carrying you walk slower, your arms hold the barrel and the shovel is put away.
+- Press G (or tap the "Drop barrel" button) to put the barrel down. A dropped barrel keeps what is left in it and disappears after 3 minutes.
+- Walk to the hay shop and press the sell prompt. A barrel in your arms is sold together with any hay you scooped.
+- Animation and carry numbers are in `src/shared/Config/Game.luau` (DigBackDegrees, DigForwardDegrees, LiftDegrees, CarryWalkSpeed, and so on).

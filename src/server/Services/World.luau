@@ -1,7 +1,9 @@
 --!nonstrict
 -- Builds the first base camp from code so it works without hand-placing anything in Studio.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Barrels = require(script.Parent.Barrels)
 local Gameplay = require(script.Parent.Gameplay)
 
 local World = {}
@@ -49,38 +51,12 @@ local function addSign(parent, text, offset)
 	label.Parent = gui
 end
 
-local function buildBarrel(folder, position, configModule)
-	local barrel = Instance.new("Part")
-	barrel.Name = "HayBarrel"
-	barrel.Shape = Enum.PartType.Cylinder
-	barrel.Size = Vector3.new(5, 4, 4) -- cylinders run along X, so this stands it upright below
-	barrel.CFrame = CFrame.new(position + Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	barrel.Color = Color3.fromRGB(139, 90, 43)
-	barrel.Material = Enum.Material.Wood
-	barrel.Anchored = true
-	barrel.Parent = folder
-
-	local hay = Instance.new("Part")
-	hay.Name = "HayTop"
-	hay.Shape = Enum.PartType.Cylinder
-	hay.Size = Vector3.new(0.8, 3.6, 3.6)
-	hay.CFrame = CFrame.new(position + Vector3.new(0, 5.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	hay.Color = Color3.fromRGB(232, 201, 90)
-	hay.Material = Enum.Material.Fabric
-	hay.Anchored = true
-	hay.CanCollide = false
-	hay.Parent = barrel
-
-	local prompt = addPrompt(barrel, "Scoop hay", "Hay barrel", configModule.ScoopHoldSeconds)
-	Gameplay.wireBarrel(barrel, prompt)
-end
-
 function World.build()
 	local folder = Instance.new("Folder")
 	folder.Name = "Needlewood"
 	folder.Parent = Workspace
 
-	local Config = require(game:GetService("ReplicatedStorage").Shared.Config.Game)
+	local Config = require(ReplicatedStorage.Shared.Config.Game)
 
 	if not Workspace:FindFirstChild("Baseplate") then
 		newPart(
@@ -103,8 +79,9 @@ function World.build()
 	spawn.Color = Color3.fromRGB(200, 180, 120)
 	spawn.Parent = folder
 
+	Barrels.init(folder)
 	for i = 0, 2 do
-		buildBarrel(folder, Vector3.new(-18 + i * 7, 0, -18), Config)
+		Barrels.spawn(Vector3.new(-18 + i * 7, 0, -18), Config.BarrelScoops, true)
 	end
 
 	-- Hay shop: a simple building with a counter you walk up to.

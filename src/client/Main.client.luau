@@ -1,6 +1,8 @@
 --!nonstrict
 -- Client entry point. Shows the HUD only. The client never decides what was found or earned.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -62,12 +64,42 @@ toast.Visible = false
 toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
+-- Drop button for a carried barrel. Shown only while carrying, so phones can use it too.
+local dropButton = Instance.new("TextButton")
+dropButton.AnchorPoint = Vector2.new(0.5, 1)
+dropButton.Position = UDim2.new(0.5, 0, 1, -24)
+dropButton.Size = UDim2.fromOffset(220, 52)
+dropButton.BackgroundColor3 = Color3.fromRGB(240, 173, 46)
+dropButton.TextColor3 = Color3.fromRGB(27, 18, 0)
+dropButton.Font = Enum.Font.GothamBold
+dropButton.TextSize = 20
+dropButton.Text = "Drop barrel (G)"
+dropButton.Visible = false
+dropButton.Parent = gui
+Instance.new("UICorner", dropButton).CornerRadius = UDim.new(0, 12)
+
+local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
+dropButton.Activated:Connect(function()
+	dropRemote:FireServer()
+end)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.KeyCode == Enum.KeyCode.G then
+		dropRemote:FireServer()
+	end
+end)
+
 local function refresh()
 	local cash = player:GetAttribute("Cash") or 0
 	local hay = player:GetAttribute("LoadHay") or 0
 	local cap = player:GetAttribute("LoadCap") or 1
+	local barrel = player:GetAttribute("CarryScoops")
 	cashLabel.Text = ("$%d"):format(cash)
-	loadLabel.Text = ("Wheelbarrow %d / %d hay"):format(hay, cap)
+	if barrel then
+		loadLabel.Text = ("Barrel: %d scoops left"):format(barrel)
+	else
+		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
+	end
+	dropButton.Visible = barrel ~= nil
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
 end
 
@@ -88,7 +120,7 @@ local function showToast()
 	end)
 end
 
-for _, name in { "Cash", "LoadHay", "LoadCap" } do
+for _, name in { "Cash", "LoadHay", "LoadCap", "CarryScoops" } do
 	player:GetAttributeChangedSignal(name):Connect(refresh)
 end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
