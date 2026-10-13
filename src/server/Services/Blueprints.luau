@@ -11,6 +11,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
+local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
 local Data = require(script.Parent.Data)
 
 local Blueprints = {}
@@ -129,7 +130,11 @@ function Blueprints.init()
 	for name, fn in { Save = onSave, List = onList, Delete = onDelete } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
+		local limit = RateLimit.new("LineBlueprints." .. name, 1, 4) -- a few quick clicks, then one a second
 		remote.OnServerInvoke = function(player, ...)
+			if not limit:allow(player) then
+				return false, RateLimit.BUSY
+			end
 			local ok, a, b = pcall(fn, player, ...)
 			if not ok then
 				warn("[Needlewood] blueprint error: " .. tostring(a))

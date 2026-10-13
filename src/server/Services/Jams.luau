@@ -151,4 +151,9 @@ task.spawn(function()
 end)
 
 Jams.clear = clear
+-- True while this bale body is jammed (a sorter's bottleneck lamp shows it).
+function Jams.isJammed(body)
+	return jammed[body] ~= nil
+end
+
 return Jams

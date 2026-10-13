@@ -400,6 +400,28 @@ the conveyor sorter after 3 hours. Ahead is the safe side, so no prices changed.
 
 Re-run `python3 tools/pacing_sim.py` after any change to an early price.
 
+#### Simulator v2: what the game adds beyond the table (CEO #30)
+
+The second table from `tools/pacing_sim.py` turns on, one at a time, what v1 left out. It shows minutes to each buy, as the median of 20 maps.
+
+| Buy | Target | v1 (solo, hand loading) | + toss + chute | + needle market | + land loan | + 2-player crew |
+|---|---|---|---|---|---|---|
+| Work Gloves | 6 | 2 | 2 | 2 | 2 | 1 |
+| Wheelbarrow | 12 | 9 | 9 | 9 | 9 | 5 |
+| Rusty Pickup | 18 | 15 | 15 | 15 | 15 | 8 |
+| Wagon Trailer | 30 | 23 | 23 | 23 | 23 | 13 |
+| Plot + Hand sieve + first line | 60 | 50 | 34 | 34 | 28 | 16 |
+| Shaker table | 84 | 71 | 44 | 43 | 39 | 24 |
+| Leather Gloves | 108 | 92 | 58 | 57 | 55 | 36 |
+| Farm Flatbed | 120 | 103 | 64 | 63 | 62 | 41 |
+| Small Trailer | 150 | 127 | 79 | 77 | 76 | 52 |
+| Conveyor sorter | 240 | over 180 | 124 | 123 | 120 | 86 |
+
+- **Bale toss and the field chute** confirm the "nearer 43 minutes" call above. The plot lands at 34 minutes, inside the CEO's 35 to 45 minute window. From the plot onward, though, every buy lands about 40% ahead of the table: the shaker at 44 minutes against 84, the flatbed at 64 against 120. A truck stops being limited by loading, and the chute alone supplies 10 bales a minute.
+- **The needle market** does not slow a solo player. One line sells far fewer than `NormalSales`, so Steel stays above list price.
+- **A 2-player crew** roughly halves every time. The second player hauls by barrow while the first drives the shared truck.
+- **Assumed, not measured:** tossing a bale takes 3 seconds against 9 to carry one in, and each truck trip has 50 seconds of overhead. A playtest stopwatch on both would settle the toss and chute column.
+
 ## Open choices for Cyrus
 
 1. **Pickup price.** V8 proposed $600. With 90-strand bales a player earns about $110 a minute by hand, so $600 would be
