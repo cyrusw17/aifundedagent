@@ -56,7 +56,24 @@ local SHAPES = {
 	-- The other trucks keep the default body; these widths match their re-exported Blender meshes.
 	-- meshSize is each .glb's own box (/mnt/project-files/art-review/IN_GAME_CHECK.md), so no mesh is stretched taller
 	-- than it was modeled; the default body's cab and box stand taller than these meshes.
-	farm_flatbed = { bedW = 11.4, meshSize = Vector3.new(11.4, 8.3, 24.4) },
+	-- Farm Flatbed: a wooden stake bed, 3 x 3 bales a layer like the pickup, with 2.8 walls. Numbers follow
+	-- blender/props/vehicles.py farm_flatbed (wheel 1.4 at x 4.05, axles -10.15 and 7.3, bed center 4.05).
+	farm_flatbed = {
+		wheel = 1.4,
+		track = 4.05,
+		axles = { -10.15, 7.3 },
+		deck = 2.6,
+		cabW = 8.4,
+		cabH = 5.6,
+		cabD = 4.4,
+		hood = 3.75,
+		bedW = 10.8,
+		bedFloor = 3.5,
+		bedWall = 2.8,
+		bedLen = 15.2,
+		bedGap = 0.5,
+		meshSize = Vector3.new(11.4, 8.3, 24.4),
+	},
 	box_truck = { bedW = 11.1, meshSize = Vector3.new(11.1, 10.2, 29.4) },
 	semi_rig = { meshSize = Vector3.new(9.8, 10.4, 25.3) },
 	heavy_hauler = { meshW = 12.2 }, -- bed stays 10.2 inside; the mesh's extra width is fenders and racks
@@ -156,7 +173,7 @@ function Vehicles.build(def, pivot, parent)
 			table.insert(wheels, wheel)
 			add("Hub", Vector3.new(0.95, WHEEL_RADIUS * 0.8, WHEEL_RADIUS * 0.8), CFrame.new(side * (TRACK + 0.02), WHEEL_RADIUS, z), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder, false)
 			-- Rear wheels on a bed truck sit under the bed floor, so only the front ones get a fender.
-			if z < 0 or (def.style ~= "pickup" and def.style ~= "hauler") then
+			if z < 0 or (def.style ~= "pickup" and def.style ~= "hauler" and def.style ~= "flatbed") then
 				box("Fender", Vector3.new(1.2, 0.4, WHEEL_RADIUS * 2 + 0.8), side * TRACK, WHEEL_RADIUS * 2 + 0.3, z, paint, Enum.Material.Metal)
 			end
 		end
@@ -208,10 +225,11 @@ function Vehicles.build(def, pivot, parent)
 		backLength = S.bedLen
 	end
 	local backZ = backStart + backLength / 2
-	if def.style == "pickup" or def.style == "hauler" then
+	if def.style == "pickup" or def.style == "hauler" or def.style == "flatbed" then
 		-- An open bed for hay bales. Bales ride loose: the grippy floor and the walls are all that hold them, so hard
 		-- turns and bumps can still spill them. The floor top sits at S.bedFloor to meet the conveyor dock belt.
 		local wall = def.style == "hauler" and 3 or S.bedWall
+		local wooden = def.style == "hauler" or def.style == "flatbed"
 		local floorTop = math.max(S.bedFloor, DECK + 0.4)
 		local floor = box("BedFloor", Vector3.new(BED_W, 0.4, backLength), 0, floorTop - 0.2, backZ, Rustic.Metal, Enum.Material.Metal)
 		floor.CustomPhysicalProperties = BED_GRIP
@@ -227,8 +245,8 @@ function Vehicles.build(def, pivot, parent)
 				side * (BED_W / 2 - 0.175),
 				floorTop + wall / 2,
 				backZ,
-				def.style == "hauler" and Rustic.Wood or paint,
-				def.style == "hauler" and Enum.Material.WoodPlanks or Enum.Material.Metal
+				wooden and Rustic.Wood or paint,
+				wooden and Enum.Material.WoodPlanks or Enum.Material.Metal
 			)
 			bedSide.CustomPhysicalProperties = BED_GRIP
 		end
@@ -244,14 +262,6 @@ function Vehicles.build(def, pivot, parent)
 		-- The cargo zone, from the chassis center (which sits DECK - 0.4 above the ground).
 		model:SetAttribute("CargoOffset", CFrame.new(0, floorTop + 3 - (DECK - 0.4), backZ))
 		model:SetAttribute("CargoSize", Vector3.new(BED_W - 0.7, 6, backLength - 0.7))
-	elseif def.style == "flatbed" then
-		local floorTop = math.max(S.bedFloor, DECK + 0.5)
-		box("Flatbed", Vector3.new(BED_W, 0.5, backLength), 0, floorTop - 0.25, backZ, Rustic.Wood, Enum.Material.WoodPlanks)
-		for _, side in { -1, 1 } do
-			for _, z in { backStart + 0.4, backZ, L / 2 - 0.4 } do
-				box("Stake", Vector3.new(0.4, 2.8, 0.4), side * (BED_W / 2 - 0.2), floorTop + 1.4, z, Rustic.WoodDark, Enum.Material.Wood)
-			end
-		end
 	elseif def.style == "box" then
 		box("CargoBox", Vector3.new(BED_W, 8.6, backLength - 0.2), 0, DECK + 4.5, backZ + 0.1, Rustic.PaintCream, Enum.Material.Metal)
 		box("BoxStripe", Vector3.new(BED_W + 0.05, 1, backLength - 0.2), 0, DECK + 2.4, backZ + 0.1, paint, Enum.Material.Metal, false)

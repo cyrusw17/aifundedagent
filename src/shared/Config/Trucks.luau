@@ -1,6 +1,6 @@
 --!strict
--- Trucks sold at the dealer (docs/ITEMS.md). Only the first one can be bought for now; the rest are on the lot
--- with a COMING SOON tag. Prices come from Config/Prices. Lengths match the Blender meshes (Config/Props.luau).
+-- Trucks sold at the dealer (docs/ITEMS.md). The ones not yet available wait on the lot with a COMING SOON tag.
+-- Prices come from Config/Prices. Lengths match the Blender meshes (Config/Props.luau).
 local Prices = require(script.Parent.Prices)
 export type Truck = {
 	id: string,
@@ -32,8 +32,8 @@ local Trucks: { Truck } = {
 		id = "farm_flatbed",
 		name = "Farm Flatbed",
 		price = Prices.Trucks.farm_flatbed,
-		blurb = "Pulls up to a Small trailer.",
-		available = false,
+		blurb = "Wooden stake bed, 9 bales a layer. Pulls up to a Small trailer.",
+		available = true,
 		style = "flatbed",
 		paint = "PaintGreen",
 		length = 24.4,
