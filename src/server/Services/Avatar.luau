@@ -1,57 +1,83 @@
 --!nonstrict
--- What the player looks like while working: a shovel in hand, the scoop swing, and the carry pose.
--- Built from parts so no uploaded assets are needed yet. The swing only plays while the shovel is equipped.
+-- What the player looks like while working: the shovel and rake, their swings, and the carry pose.
+-- Built from parts so no uploaded assets are needed yet. Each swing only plays with its own tool equipped.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
+local Groups = require(script.Parent.Groups)
 
 local Avatar = {}
 
 local rigs = {}
 
-local function buildShovel()
+local WOOD = Color3.fromRGB(139, 90, 43)
+
+-- A tool with a wooden handle plus extra welded parts. parts is a list of { name, size, offset, color, material }.
+local function buildTool(name, tip, parts)
 	local tool = Instance.new("Tool")
-	tool.Name = "Shovel"
+	tool.Name = name
 	tool.CanBeDropped = false
-	tool.ToolTip = "Basic shovel"
+	tool.ToolTip = tip
 
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(0.4, 1.6, 0.4)
-	handle.Color = Color3.fromRGB(139, 90, 43)
+	handle.Color = WOOD
 	handle.Material = Enum.Material.Wood
 	handle.Parent = tool
 
-	local function attach(name, size, offset, color, material)
+	for _, def in parts do
 		local part = Instance.new("Part")
-		part.Name = name
-		part.Size = size
-		part.Color = color
-		part.Material = material
+		part.Name = def[1]
+		part.Size = def[2]
+		part.Color = def[4]
+		part.Material = def[5]
 		part.CanCollide = false
 		part.Massless = true
-		part.CFrame = handle.CFrame * offset
+		part.CFrame = handle.CFrame * def[3]
 		part.Parent = tool
 		local weld = Instance.new("Weld")
 		weld.Part0 = handle
 		weld.Part1 = part
-		weld.C0 = offset
+		weld.C0 = def[3]
 		weld.Parent = part
 	end
-
-	-- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
-	attach("Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), Color3.fromRGB(139, 90, 43), Enum.Material.Wood)
-	attach(
-		"Blade",
-		Vector3.new(1.2, 1.5, 0.12),
-		CFrame.new(0, 4.35, 0),
-		Color3.fromRGB(150, 158, 166),
-		Enum.Material.Metal
-	)
 	return tool
+end
+
+-- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
+local function buildShovel()
+	return buildTool("Shovel", "Scoops hay pieces. Click the hay.", {
+		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
+		{
+			"Blade",
+			Vector3.new(1.2, 1.5, 0.12),
+			CFrame.new(0, 4.35, 0),
+			Color3.fromRGB(150, 158, 166),
+			Enum.Material.Metal,
+		},
+	})
+end
+
+-- A long shaft with a crossbar and a row of teeth at the end.
+local function buildRake()
+	local steel = Color3.fromRGB(150, 158, 166)
+	local parts = {
+		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },
+		{ "Bar", Vector3.new(3.2, 0.25, 0.3), CFrame.new(0, 4.5, 0), steel, Enum.Material.Metal },
+	}
+	for i = 0, 5 do
+		table.insert(parts, {
+			"Tooth" .. i,
+			Vector3.new(0.12, 1, 0.12),
+			CFrame.new(-1.4 + i * 0.56, 5.1, 0),
+			steel,
+			Enum.Material.Metal,
+		})
+	end
+	return buildTool("Rake", "Drags hay pieces across the ground. Click where you want to rake.", parts)
 end
 
 -- Finds a shoulder joint for either rig type. side is "Right" or "Left".
@@ -80,10 +106,12 @@ local function tweenArm(rig, degrees, seconds, style)
 	tweenMotor(rig.motor, rig.base, degrees, seconds, style)
 end
 
--- The shovel is a child of the character only while it is equipped (otherwise it sits in the Backpack).
-function Avatar.hasShovelEquipped(player)
+-- A tool is a child of the character only while it is equipped (otherwise it sits in the Backpack).
+-- Returns "Shovel", "Rake", or nil for bare hands.
+function Avatar.equippedKind(player)
 	local character = player.Character
-	return character ~= nil and character:FindFirstChild("Shovel") ~= nil
+	local tool = character and character:FindFirstChildOfClass("Tool")
+	return tool and tool.Name or nil
 end
 
 local function setup(player, character)
@@ -116,26 +144,61 @@ local function setup(player, character)
 		end
 	end)
 
+	-- Characters sit in their own collision group so loose hay never trips or flings them.
+	local function groupPart(part)
+		if part:IsA("BasePart") then
+			part.CollisionGroup = Groups.Players
+		end
+	end
+	for _, part in character:GetDescendants() do
+		groupPart(part)
+	end
+	character.DescendantAdded:Connect(groupPart)
+
 	local backpack = player:WaitForChild("Backpack")
 	local shovel = buildShovel()
 	shovel.Parent = backpack
+	buildRake().Parent = backpack
 	humanoid:EquipTool(shovel)
 end
 
--- One scoop swing. onImpact runs at the moment the shovel hits the hay. Returns false if the swing could not start.
-function Avatar.scoopSwing(player, onImpact)
+-- One swing of the equipped tool. onImpact runs at the moment the tool lands. Returns false if it could not start.
+function Avatar.swing(player, kind, onImpact)
 	local rig = rigs[player]
-	if not rig or rig.carrying or not Avatar.hasShovelEquipped(player) then
+	if not rig or rig.carrying or Avatar.equippedKind(player) ~= kind then
 		return false
 	end
 	if os.clock() < rig.swingUntil then
 		return false
 	end
-	rig.swingUntil = os.clock() + Config.ScoopCooldownSeconds
+	local cooldown = kind == "Rake" and Config.RakeCooldownSeconds or Config.ScoopCooldownSeconds
+	rig.swingUntil = os.clock() + cooldown
 	rig.token += 1
 	local token = rig.token
 
 	task.spawn(function()
+		if kind == "Rake" then
+			-- Reach out over the hay, then drag the teeth back toward the body.
+			tweenArm(rig, Config.RakeReachDegrees, 0.2)
+			task.wait(0.2)
+			if rig.token ~= token then
+				return
+			end
+			tweenArm(rig, Config.RakeDragDegrees, 0.3, Enum.EasingStyle.Quad)
+			task.wait(0.1)
+			if rig.token ~= token then
+				return
+			end
+			if Avatar.equippedKind(player) == kind then
+				onImpact()
+			end
+			task.wait(0.25)
+			if rig.token == token then
+				tweenArm(rig, 0, 0.25)
+			end
+			return
+		end
+
 		tweenArm(rig, Config.DigBackDegrees, Config.DigBackSeconds)
 		task.wait(Config.DigBackSeconds)
 		if rig.token ~= token then
@@ -146,7 +209,7 @@ function Avatar.scoopSwing(player, onImpact)
 		if rig.token ~= token then
 			return
 		end
-		if Avatar.hasShovelEquipped(player) then
+		if Avatar.equippedKind(player) == kind then
 			onImpact()
 		end
 		tweenArm(rig, Config.LiftDegrees, 0.2, Enum.EasingStyle.Quad)
@@ -190,44 +253,6 @@ end
 function Avatar.getRoot(player)
 	local rig = rigs[player]
 	return rig and rig.root
-end
-
--- A clump of hay arcs from the barrel to the player's chest, where it joins the load they are carrying.
-function Avatar.flyHay(player, fromPosition)
-	local rig = rigs[player]
-	if not rig then
-		return
-	end
-
-	local clump = Instance.new("Part")
-	clump.Name = "HayClump"
-	clump.Size = Vector3.new(0.9, 0.5, 0.9)
-	clump.Color = Color3.fromRGB(232, 201, 90)
-	clump.Material = Enum.Material.Fabric
-	clump.Anchored = true
-	clump.CanCollide = false
-	clump.CanQuery = false
-	clump.CanTouch = false
-	clump.Position = fromPosition
-	clump.Parent = workspace
-
-	task.spawn(function()
-		local started = os.clock()
-		local duration = Config.HayFlightSeconds
-		while true do
-			local alpha = (os.clock() - started) / duration
-			if alpha >= 1 or not rig.root.Parent then
-				break
-			end
-			local target = rig.root.Position + Vector3.new(0, 1, 0)
-			local control = (fromPosition + target) / 2 + Vector3.new(0, 5, 0)
-			local inv = 1 - alpha
-			clump.Position = inv * inv * fromPosition + 2 * inv * alpha * control + alpha * alpha * target
-			clump.CFrame = clump.CFrame * CFrame.Angles(0.15, 0.2, 0)
-			RunService.Heartbeat:Wait()
-		end
-		clump:Destroy()
-	end)
 end
 
 function Avatar.start()

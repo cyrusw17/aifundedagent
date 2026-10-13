@@ -64,26 +64,104 @@ toast.Visible = false
 toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
--- Putting a barrel down: click or tap anywhere while carrying one (G works too). No on-screen prompt.
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+
 local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
+local useRemote = ReplicatedStorage:WaitForChild("UseTool")
+local pickupRemote = ReplicatedStorage:WaitForChild("PickUpBarrel")
+
+local function equippedTool()
+	local character = player.Character
+	return character and character:FindFirstChildOfClass("Tool")
+end
+
+-- Clicking: put a carried barrel down, or use the tool in hand where you clicked. The server decides the result.
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or player:GetAttribute("CarryScoops") == nil then
+	if gameProcessed then
 		return
 	end
 	local kind = input.UserInputType
-	if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch or input.KeyCode == Enum.KeyCode.G then
-		dropRemote:FireServer()
+	local pressed = kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch
+	if player:GetAttribute("Carrying") then
+		if pressed or input.KeyCode == Enum.KeyCode.G then
+			dropRemote:FireServer()
+		end
+		return
 	end
+	if not pressed or not equippedTool() then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local ray = camera:ViewportPointToRay(input.Position.X, input.Position.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
+	if hit then
+		useRemote:FireServer(hit.Position, hit.Instance)
+	end
+end)
+
+-- The small pick-up button above the nearest barrel. It shows only with bare hands, because only bare hands lift a barrel.
+local pickGui = Instance.new("BillboardGui")
+pickGui.Name = "PickUpButton"
+pickGui.Size = UDim2.fromOffset(104, 34)
+pickGui.StudsOffsetWorldSpace = Vector3.new(0, 3.5, 0)
+pickGui.AlwaysOnTop = true
+pickGui.Enabled = false
+pickGui.ResetOnSpawn = false
+pickGui.Parent = playerGui
+
+local pickButton = Instance.new("TextButton")
+pickButton.Size = UDim2.fromScale(1, 1)
+pickButton.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
+pickButton.BackgroundTransparency = 0.15
+pickButton.Font = Enum.Font.GothamBold
+pickButton.TextSize = 16
+pickButton.TextColor3 = Color3.new(1, 1, 1)
+pickButton.Text = "Pick up"
+pickButton.AutoButtonColor = true
+pickButton.Parent = pickGui
+Instance.new("UICorner", pickButton).CornerRadius = UDim.new(0, 10)
+
+local nearBarrel = nil
+pickButton.Activated:Connect(function()
+	if nearBarrel and nearBarrel.Parent then
+		pickupRemote:FireServer(nearBarrel)
+	end
+end)
+
+local lastCheck = 0
+RunService.Heartbeat:Connect(function()
+	if os.clock() - lastCheck < 0.15 then
+		return
+	end
+	lastCheck = os.clock()
+	nearBarrel = nil
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and not player:GetAttribute("Carrying") and not equippedTool() then
+		local best = 12
+		for _, barrel in CollectionService:GetTagged("HayBarrel") do
+			local distance = (barrel.Position - root.Position).Magnitude
+			if distance < best then
+				best, nearBarrel = distance, barrel
+			end
+		end
+	end
+	pickGui.Adornee = nearBarrel
+	pickGui.Enabled = nearBarrel ~= nil
 end)
 
 local function refresh()
 	local cash = player:GetAttribute("Cash") or 0
 	local hay = player:GetAttribute("LoadHay") or 0
 	local cap = player:GetAttribute("LoadCap") or 1
-	local barrel = player:GetAttribute("CarryScoops")
+	local carrying = player:GetAttribute("Carrying")
 	cashLabel.Text = ("$%d"):format(cash)
-	if barrel then
-		loadLabel.Text = ("Barrel: %d scoops left"):format(barrel)
+	if carrying then
+		loadLabel.Text = "Carrying a barrel"
 	else
 		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
 	end
@@ -107,7 +185,7 @@ local function showToast()
 	end)
 end
 
-for _, name in { "Cash", "LoadHay", "LoadCap", "CarryScoops" } do
+for _, name in { "Cash", "LoadHay", "LoadCap", "Carrying" } do
 	player:GetAttributeChangedSignal(name):Connect(refresh)
 end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)

@@ -38,8 +38,8 @@ function Data.sync(player)
 	end
 	player:SetAttribute("Cash", state.cash)
 	player:SetAttribute("LoadHay", state.loadHay)
-	player:SetAttribute("LoadCap", Config.WheelbarrowCapacity)
-	player:SetAttribute("CarryScoops", state.carryBarrel and state.carryBarrel.scoops or nil)
+	player:SetAttribute("LoadCap", Config.CarryCapacity)
+	player:SetAttribute("Carrying", state.carryBarrel ~= nil)
 end
 
 function Data.toast(player, text)

@@ -1,9 +1,10 @@
 --!nonstrict
 -- Builds the first base camp from code so it works without hand-placing anything in Studio.
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Barrels = require(script.Parent.Barrels)
+local Hay = require(script.Parent.Hay)
+local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
 
 local World = {}
@@ -45,8 +46,6 @@ function World.build()
 	folder.Name = "Needlewood"
 	folder.Parent = Workspace
 
-	local Config = require(ReplicatedStorage.Shared.Config.Game)
-
 	if not Workspace:FindFirstChild("Baseplate") then
 		newPart(
 			folder,
@@ -69,8 +68,10 @@ function World.build()
 	spawn.Parent = folder
 
 	Barrels.init(folder)
+	Hay.init(folder)
+	Tools.init()
 	for i = 0, 2 do
-		Barrels.spawn(Vector3.new(-18 + i * 7, 0, -18), Config.BarrelScoops, true)
+		Barrels.spawn(Vector3.new(-18 + i * 7, 0, -18), true)
 	end
 
 	-- Hay shop: a simple building with a counter you walk up to.

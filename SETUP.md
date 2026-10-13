@@ -34,10 +34,10 @@ Saving: DataStores only work in Studio if the place is published to Roblox and G
 
 ## Controls (current)
 
-No prompts or overlays. Everything is a click or a tap on the thing itself.
+Each tool does one job. Number keys (or the hotbar) switch tools; press the same number again for bare hands.
 
-- Your shovel is equipped when you spawn. Click or tap a hay barrel while holding the shovel to scoop. The swing only plays, and scooping only works, with the shovel in your hand.
-- To lift a barrel, put the shovel away (press 1 or tap its slot) so your hands are empty, then click the barrel. You carry the real barrel in front of you and walk slower.
-- To put it down, click or tap anywhere (G also works). It gets a small toss, falls, and rolls like any physical object. A dropped barrel disappears after 3 minutes.
-- The yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, or set a barrel down on it.
+- **Bare hands:** grab the whole barrel. A small "Pick up" button floats over the nearest barrel, or just click the barrel. You carry the real barrel and walk slower. Click or tap anywhere (or press G) to put it down; it falls and rolls. A dropped barrel disappears after 3 minutes.
+- **Shovel (slot 1, equipped on spawn):** click a barrel and it smashes open. The staves and hoops fly apart and the hay spills out as a pile of loose pieces. Click the pile to scoop a few pieces at a time into your arms.
+- **Rake (slot 2):** click the ground near the pile. The rake drags the pieces toward you and spreads them across the ground.
+- **Selling:** the yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole barrel on it, or rake loose pieces onto it.
 - Tuning numbers are in `src/shared/Config/Game.luau` (swing angles, carry speed, cooldowns).

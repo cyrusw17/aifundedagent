@@ -1,14 +1,17 @@
 --!nonstrict
--- Hay barrels. Each one is a real physical object: scoop it with the shovel, lift it with empty hands,
--- carry it, set it down (it falls and rolls) and sell it on the sell pad. No prompts or overlays, just clicks.
+-- Hay barrels. Bare hands lift a whole barrel and carry it. The shovel smashes it open: the staves fly apart and
+-- the hay spills into a pile of loose pieces (see Hay.luau). A set-down barrel falls and rolls like any object.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
-local Economy = require(ReplicatedStorage.Shared.Economy)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
+local Hay = require(script.Parent.Hay)
+local Groups = require(script.Parent.Groups)
 
 local Barrels = {}
 
@@ -19,6 +22,8 @@ local byBody = {} -- barrel body part -> barrel record
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X, so this stands them up
 local HAY_BASE = CFrame.new(2.6, 0, 0) -- the hay sits on the top end of the barrel, along its X axis
 local CARRY_OFFSET = CFrame.new(0, 0.3, -2.6) * UPRIGHT
+local WOOD = Color3.fromRGB(139, 90, 43)
+local HAY = Color3.fromRGB(232, 201, 90)
 
 local function buildBarrel(position)
 	local body = Instance.new("Part")
@@ -26,7 +31,7 @@ local function buildBarrel(position)
 	body.Shape = Enum.PartType.Cylinder
 	body.Size = Vector3.new(5, 4, 4)
 	body.CFrame = CFrame.new(position + Vector3.new(0, 2.5, 0)) * UPRIGHT
-	body.Color = Color3.fromRGB(139, 90, 43)
+	body.Color = WOOD
 	body.Material = Enum.Material.Wood
 	body.Anchored = true
 	body.CustomPhysicalProperties = PhysicalProperties.new(0.6, 0.8, 0.2, 1, 1)
@@ -36,7 +41,7 @@ local function buildBarrel(position)
 	hay.Shape = Enum.PartType.Cylinder
 	hay.Size = Vector3.new(0.8, 3.6, 3.6)
 	hay.CFrame = body.CFrame * HAY_BASE
-	hay.Color = Color3.fromRGB(232, 201, 90)
+	hay.Color = HAY
 	hay.Material = Enum.Material.Fabric
 	hay.CanCollide = false
 	hay.Massless = true
@@ -48,40 +53,15 @@ local function buildBarrel(position)
 	weld.C0 = HAY_BASE
 	weld.Parent = hay
 
-	local burst = Instance.new("ParticleEmitter")
-	burst.Name = "HayBurst"
-	burst.Rate = 0
-	burst.Lifetime = NumberRange.new(0.5, 0.9)
-	burst.Speed = NumberRange.new(8, 14)
-	burst.SpreadAngle = Vector2.new(40, 40)
-	burst.Acceleration = Vector3.new(0, -30, 0)
-	burst.Color = ColorSequence.new(Color3.fromRGB(232, 201, 90))
-	burst.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
-	burst.Parent = hay
-
 	local click = Instance.new("ClickDetector")
-	click.MaxActivationDistance = 14
+	click.MaxActivationDistance = Config.PickupReach
 	click.Parent = body
 
-	return body, hay, weld, burst, click
+	CollectionService:AddTag(body, "HayBarrel")
+	return body, hay, click
 end
 
-local function showFill(b, instant)
-	if b.scoops <= 0 then
-		b.hay.Transparency = 1
-		return
-	end
-	b.hay.Transparency = 0
-	local drop = (1 - b.scoops / Config.BarrelScoops) * 2.4
-	local goal = HAY_BASE * CFrame.new(-drop, 0, 0)
-	if instant then
-		b.hayWeld.C0 = goal
-	else
-		TweenService:Create(b.hayWeld, TweenInfo.new(0.2), { C0 = goal }):Play()
-	end
-end
-
--- Removes a barrel from the world for good (sold, emptied away from home, or timed out).
+-- Removes a barrel from the world for good (sold, smashed, or timed out).
 function Barrels.consume(b)
 	if b.gone then
 		return
@@ -92,7 +72,7 @@ function Barrels.consume(b)
 end
 
 function Barrels.fromPart(part)
-	return byBody[part]
+	return byBody[part] or (part.Parent and byBody[part.Parent]) or nil
 end
 
 local function startDespawnTimer(b)
@@ -105,59 +85,155 @@ local function startDespawnTimer(b)
 	end)
 end
 
-local function scoopClick(player, b)
-	local state = Data.get(player)
-	if not state then
+-- A home barrel is gone from its spot (smashed or lifted), so a fresh one grows back there.
+local function scheduleRegrow(b)
+	if not b.home then
 		return
 	end
-	local hay = Config.ShovelHayPerScoop
-	if state.loadHay + hay > Config.WheelbarrowCapacity then
-		Data.toast(player, "You are carrying all the hay you can. Sell it at the pad by the shop.")
-		return
-	end
-	if b.scoops <= 0 then
-		return
-	end
+	b.home = false
+	task.delay(Config.BarrelRefillSeconds, function()
+		Barrels.spawn(b.spawnPosition, true, true)
+	end)
+end
 
-	Avatar.scoopSwing(player, function()
-		-- The swing takes a moment, so check everything again when the shovel lands.
-		if b.gone or b.carriedBy or b.scoops <= 0 or state.loadHay + hay > Config.WheelbarrowCapacity then
-			return
+local function debrisPart(shape, size, cframe, color, material, velocity)
+	local part = Instance.new("Part")
+	part.Shape = shape
+	part.Size = size
+	part.CFrame = cframe
+	part.Color = color
+	part.Material = material
+	part.CollisionGroup = Groups.Loose
+	part.AssemblyLinearVelocity = velocity
+	part.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-10, 10), rng:NextNumber(-10, 10), rng:NextNumber(-10, 10))
+	part.Parent = Hay.folder
+	task.delay(7, function()
+		if part.Parent then
+			TweenService:Create(part, TweenInfo.new(1), { Transparency = 1 }):Play()
+			Debris:AddItem(part, 1.1)
 		end
-		b.scoops -= 1
-		b.body:SetAttribute("Scoops", b.scoops)
-		state.loadHay += hay
-		state.loadNeedles += Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
-		Data.sync(player)
-		showFill(b, false)
-		b.burst:Emit(14)
-		Avatar.flyHay(player, b.hay.Position)
+	end)
+	return part
+end
 
-		if b.scoops <= 0 then
-			b.click.MaxActivationDistance = 0
-			if b.home then
-				task.delay(Config.BarrelRefillSeconds, function()
-					if b.gone or not b.home then
-						return
-					end
-					b.scoops = Config.BarrelScoops
-					b.body:SetAttribute("Scoops", b.scoops)
-					showFill(b, true)
-					b.click.MaxActivationDistance = 14
-				end)
-			else
-				task.delay(2, function()
-					Barrels.consume(b)
-				end)
+-- Straw and dust thrown up when the barrel bursts.
+local function burstEffects(position)
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.Position = position
+	anchor.Parent = Hay.folder
+
+	local straw = Instance.new("ParticleEmitter")
+	straw.Rate = 0
+	straw.Lifetime = NumberRange.new(0.6, 1.1)
+	straw.Speed = NumberRange.new(10, 22)
+	straw.SpreadAngle = Vector2.new(180, 180)
+	straw.Acceleration = Vector3.new(0, -25, 0)
+	straw.Color = ColorSequence.new(HAY)
+	straw.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	straw.Parent = anchor
+
+	local dust = Instance.new("ParticleEmitter")
+	dust.Rate = 0
+	dust.Lifetime = NumberRange.new(0.8, 1.4)
+	dust.Speed = NumberRange.new(3, 8)
+	dust.SpreadAngle = Vector2.new(180, 180)
+	dust.Color = ColorSequence.new(Color3.fromRGB(200, 180, 140))
+	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+	dust.Parent = anchor
+
+	straw:Emit(40)
+	dust:Emit(18)
+	Debris:AddItem(anchor, 2.5)
+end
+
+-- The shovel smashes a barrel open: it shudders, the staves and hoops burst outward, and the hay
+-- pours out in three waves into a pile.
+function Barrels.breakOpen(player, b)
+	if b.gone or b.carriedBy or b.breaking then
+		return
+	end
+	b.breaking = true
+	b.click.MaxActivationDistance = 0
+	scheduleRegrow(b)
+
+	task.spawn(function()
+		local body = b.body
+		body.Anchored = true
+		body.AssemblyLinearVelocity = Vector3.zero
+		local rest = body.CFrame
+		for _ = 1, 6 do
+			body.CFrame = rest * CFrame.new(rng:NextNumber(-0.2, 0.2), rng:NextNumber(-0.1, 0.1), rng:NextNumber(-0.2, 0.2))
+			task.wait(0.04)
+		end
+
+		local center = rest.Position
+		Barrels.consume(b)
+		burstEffects(center + Vector3.new(0, 1.5, 0))
+
+		local barrelOwner = player.UserId
+		for i = 1, 12 do
+			local angle = (i / 12) * math.pi * 2
+			local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			local cframe = CFrame.new(center + radial * 1.85) * CFrame.Angles(0, -angle, 0)
+			debrisPart(
+				Enum.PartType.Block,
+				Vector3.new(0.35, 4.6, 1.0),
+				cframe,
+				WOOD,
+				Enum.Material.Wood,
+				radial * rng:NextNumber(10, 18) + Vector3.new(0, rng:NextNumber(8, 16), 0)
+			)
+		end
+		for _, y in { -1.4, 1.4 } do
+			debrisPart(
+				Enum.PartType.Cylinder,
+				Vector3.new(0.25, 4.3, 4.3),
+				CFrame.new(center + Vector3.new(0, y, 0)) * UPRIGHT,
+				Color3.fromRGB(70, 70, 76),
+				Enum.Material.Metal,
+				Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(6, 10), rng:NextNumber(-4, 4))
+			)
+		end
+		debrisPart(
+			Enum.PartType.Cylinder,
+			Vector3.new(0.4, 3.8, 3.8),
+			CFrame.new(center + Vector3.new(0, -2.2, 0)) * UPRIGHT,
+			WOOD,
+			Enum.Material.Wood,
+			Vector3.new(rng:NextNumber(-3, 3), 3, rng:NextNumber(-3, 3))
+		)
+
+		-- The hay pours out in waves so it looks like it spills, not like it teleports.
+		local waves = 3
+		local perWave = math.ceil(Config.PiecesPerBarrel / waves)
+		for wave = 1, waves do
+			for _ = 1, perWave do
+				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
+				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
+				Hay.spawnPiece(center + offset, velocity, barrelOwner)
 			end
+			task.wait(0.22)
 		end
 	end)
 end
 
-local function pickupClick(player, b)
+function Barrels.pickup(player, b)
 	local state = Data.get(player)
 	local root = Avatar.getRoot(player)
-	if not state or not root or state.carryBarrel or b.scoops <= 0 then
+	if not state or not root or state.carryBarrel or b.gone or b.carriedBy or b.breaking then
+		return
+	end
+	if Avatar.equippedKind(player) ~= nil then
+		return -- only bare hands lift a whole barrel
+	end
+	if (b.body.Position - root.Position).Magnitude > Config.PickupReach + 4 then
 		return
 	end
 
@@ -180,14 +256,7 @@ local function pickupClick(player, b)
 	b.carryWeld = weld
 	b.click.MaxActivationDistance = 0
 
-	-- A home barrel left its spot, so a fresh one grows back there.
-	if b.home then
-		b.home = false
-		task.delay(Config.BarrelRefillSeconds, function()
-			Barrels.spawn(b.spawnPosition, Config.BarrelScoops, true)
-		end)
-	end
-
+	scheduleRegrow(b)
 	Avatar.setCarry(player)
 	Data.sync(player)
 end
@@ -220,7 +289,7 @@ function Barrels.drop(player)
 	b.body.CanCollide = true
 	b.body.Anchored = false
 	b.body.AssemblyLinearVelocity = look * 8 + Vector3.new(0, 4, 0)
-	b.click.MaxActivationDistance = 14
+	b.click.MaxActivationDistance = Config.PickupReach
 	pcall(function()
 		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same barrel
 	end)
@@ -229,50 +298,43 @@ function Barrels.drop(player)
 	startDespawnTimer(b)
 end
 
--- position is the ground point under the barrel. home barrels refill, and regrow after being picked up.
-function Barrels.spawn(position, scoops, home)
-	local body, hay, hayWeld, burst, click = buildBarrel(position)
+-- position is the ground point under the barrel. home barrels regrow after being smashed or lifted.
+function Barrels.spawn(position, home, fadeIn)
+	local body, hay, click = buildBarrel(position)
 	local b = {
 		body = body,
 		hay = hay,
-		hayWeld = hayWeld,
-		burst = burst,
 		click = click,
-		scoops = scoops,
 		home = home,
 		spawnPosition = position,
 		carriedBy = nil,
 		ownerId = nil,
 		carryWeld = nil,
 		dropToken = 0,
+		breaking = false,
 		gone = false,
 	}
 	byBody[body] = b
-	body:SetAttribute("Scoops", scoops)
-	showFill(b, true)
 	body.Parent = folder
 
+	if fadeIn then
+		body.Transparency = 1
+		hay.Transparency = 1
+		local info = TweenInfo.new(0.7)
+		TweenService:Create(body, info, { Transparency = 0 }):Play()
+		TweenService:Create(hay, info, { Transparency = 0 }):Play()
+	end
+
+	-- Clicking with bare hands lifts the barrel. Tools are handled by Tools.luau.
 	click.MouseClick:Connect(function(player)
-		if b.gone or b.carriedBy then
-			return
-		end
-		if Avatar.hasShovelEquipped(player) then
-			scoopClick(player, b)
-		else
-			pickupClick(player, b)
+		if Avatar.equippedKind(player) == nil then
+			Barrels.pickup(player, b)
 		end
 	end)
 end
 
 function Barrels.init(worldFolder)
 	folder = worldFolder
-
-	local remote = Instance.new("RemoteEvent")
-	remote.Name = "DropBarrel"
-	remote.Parent = ReplicatedStorage
-	remote.OnServerEvent:Connect(function(player)
-		Barrels.drop(player)
-	end)
 
 	local function watch(player)
 		local function onCharacter(character)
