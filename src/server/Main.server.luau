@@ -7,11 +7,15 @@ local Services = script.Parent.Services
 require(Services.Props).has("hay_bale")
 
 local Data = require(Services.Data)
+local Bank = require(Services.Bank)
 local World = require(Services.World)
 local Avatar = require(Services.Avatar)
 local GloveLooks = require(Services.GloveLooks)
+local Tutorial = require(Services.Tutorial)
 
 Data.start()
+Bank.start()
+Tutorial.start()
 Avatar.start()
 GloveLooks.start()
 World.build()

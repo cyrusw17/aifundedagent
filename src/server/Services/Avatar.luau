@@ -65,6 +65,8 @@ local function addMesh(tool, prop)
 	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
 	if model then
 		Props.weldTo(model, handle, tool)
+	elseif Props.has(prop) then
+		warn(("[Needlewood] %s mesh was found but could not be copied, so the %s uses parts"):format(prop, tool.Name))
 	end
 	return tool
 end
@@ -201,11 +203,31 @@ local function setup(player, character)
 		return tool
 	end
 
-	local backpack = player:WaitForChild("Backpack")
+	local backpack = player:WaitForChild("Backpack", 10)
+	if not backpack then
+		warn(("[Needlewood] %s has no Backpack, so no shovel or rake was given"):format(player.Name))
+		return
+	end
 	local shovel = hook(buildShovel())
 	shovel.Parent = backpack
 	hook(buildRake()).Parent = backpack
 	humanoid:EquipTool(shovel)
+
+	-- Tools fail quietly when they do, so say in the log where one was lost.
+	task.delay(1, function()
+		if not character.Parent or rig.carrying then
+			return
+		end
+		if shovel.Parent ~= character and shovel.Parent ~= backpack then
+			warn(("[Needlewood] %s's shovel left their backpack (now in %s)"):format(player.Name, shovel:GetFullName()))
+		elseif shovel.Parent ~= character and not character:FindFirstChildOfClass("Tool") then
+			warn(("[Needlewood] %s's shovel did not equip"):format(player.Name))
+		end
+		local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+		if shovel.Parent == character and hand and not hand:FindFirstChild("RightGrip") then
+			warn(("[Needlewood] %s holds the shovel but no RightGrip joins it to the hand"):format(player.Name))
+		end
+	end)
 end
 
 -- One swing of the equipped tool. onImpact runs at the moment the tool lands. Returns false if it could not start.

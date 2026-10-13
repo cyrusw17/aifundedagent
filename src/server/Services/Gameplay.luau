@@ -1,7 +1,7 @@
 --!nonstrict
 -- The sell pad by the hay shop. Step on it with hay, set a whole bale on it, or rake loose hay onto it.
 -- No buttons or prompts. Every sale is decided here, never on the client. Needles in your pocket sell here too,
--- at Economy.HAND_NEEDLE_SHARE of their full value, so a new player is never stuck holding one.
+-- at Prices.HandFoundNeedleShare of their full value, so a new player is never stuck holding one.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -9,18 +9,24 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Economy = require(Shared.Economy)
+local Prices = require(Shared.Config.Prices)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Feedback = require(script.Parent.Feedback)
 -- The shared needle (from the conveyor work) when present: needles clicked up into a pocket sell here too.
 local NeedleModule = script.Parent:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
+local Tutorial = require(script.Parent.Tutorial)
 
 local Gameplay = {}
 
 local rng = Random.new()
 local lastHaySale = {}
+Players.PlayerRemoving:Connect(function(player)
+	lastHaySale[player] = nil
+end)
 
 local function hasPocketNeedles(player)
 	return Needle ~= nil and Needle.heldCount(player) > 0
@@ -45,12 +51,13 @@ local function sellHay(player)
 	if hasPocketNeedles(player) then
 		local count, full = Needle.sellHeld(player)
 		pocketCount = count
-		pocketValue = math.floor(full * Economy.HAND_NEEDLE_SHARE)
+		pocketValue = math.floor(full * Prices.HandFoundNeedleShare)
 	end
 	value += pocketValue
-	state.cash += value
-	Data.sync(player)
+	Bank.earn(player, value, "Hay shop")
 	Feedback.sale(player, value)
+	Tutorial.mark(player, "sold")
+	Tutorial.earned(player, value)
 
 	local parts = {}
 	if hay > 0 then
@@ -66,31 +73,37 @@ local function sellBale(b)
 	if b.gone or b.carriedBy or b.breaking then
 		return
 	end
-	local hay = Config.PiecesPerBale * Config.HayPerPiece
-	local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+	local hay = b.sortedHay or Config.PiecesPerBale * Config.HayPerPiece
+	-- A sorted bale's needles were already taken out (and paid for) by the sorter.
+	local needles = if b.sorted then 0 else Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 	local value = Economy.rawLoadValue(hay, needles)
 	local owner = b.ownerId and Players:GetPlayerByUserId(b.ownerId)
 	Bales.consume(b)
 
 	local state = owner and Data.get(owner)
 	if state then
-		state.cash += value
-		Data.sync(owner)
+		Bank.earn(owner, value, "Hay shop")
 		Feedback.sale(owner, value)
+		Tutorial.mark(owner, "sold")
+		Tutorial.earned(owner, value)
 		Data.toast(owner, ("+$%d · a bale"):format(value))
 	end
 end
 
 -- Loose hay on the pad is paid to whoever last scooped, raked or smashed it.
 local function sellPieces(pieces)
-	local byOwner, needlesByOwner = {}, {}
+	local byOwner, unsortedByOwner, needlesByOwner = {}, {}, {}
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
 		if Hay.isNeedle(piece) then
-			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0) + Hay.needleValue(piece)
+			needlesByOwner[ownerId] = (needlesByOwner[ownerId] or 0)
+				+ math.floor(Hay.needleValue(piece) * Prices.HandFoundNeedleShare)
 			byOwner[ownerId] = byOwner[ownerId] or 0
 		else
 			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
+			if not piece:GetAttribute("Sorted") then
+				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + 1
+			end
 		end
 		Hay.remove(piece)
 	end
@@ -99,11 +112,12 @@ local function sellPieces(pieces)
 		local state = owner and Data.get(owner)
 		if state then
 			local hay = n * Config.HayPerPiece
-			-- Hidden needles in loose hay pay the raw price; needles lying in plain sight pay their full value.
-			local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+			-- Hidden needles in loose hay pay the raw price; needles lying in plain sight pay their full value. Hay
+			-- from a sorted bale has no hidden needles left.
+			local needles =
+				Economy.rollNeedles(rng, (unsortedByOwner[ownerId] or 0) * Config.HayPerPiece, Config.NeedleChancePerHay)
 			local value = Economy.rawLoadValue(hay, needles) + (needlesByOwner[ownerId] or 0)
-			state.cash += value
-			Data.sync(owner)
+			Bank.earn(owner, value, "Hay shop")
 			Feedback.sale(owner, value)
 			Data.toast(owner, ("+$%d · %d loose hay"):format(value, hay))
 		end

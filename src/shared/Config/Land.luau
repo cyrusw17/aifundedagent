@@ -2,11 +2,12 @@
 -- Land plots, what can be built on them, and preset saves. Placeholders to tune from playtests.
 -- Positions are world studs on Meadow Farm's flat ground (Y = 0). The flat zone, keep-clear rect and plot road that
 -- make room for all this are in Meadow.luau ("Plots").
-local PRICE = 1500 -- every plot costs the same
+local Prices = require(script.Parent.Prices)
+local PRICE = Prices.Plot -- every plot costs the same (Config/Prices explains why)
 local TILES = Vector2.new(12, 10) -- and has the same grid
 
 return {
-	RefundShare = 0.5, -- removing a piece gives back this share of its price
+	RefundShare = Prices.RefundShare, -- removing a piece gives back this share of its price
 
 	-- Every plot is the same: the same price, the same grid of 6 stud conveyor tiles (tiles.X across by tiles.Y deep) and
 	-- the same layout, so a save rebuilds the same on whichever free plot a player gets on any server. The six plot zones
@@ -22,6 +23,9 @@ return {
 		{ zone = "plot_6", name = "Plot 6", price = PRICE, tiles = TILES, open = "N" },
 	},
 	StripDepth = 8,
+	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
+	ExpansionRows = 2,
+	ExpansionPrice = Prices.PlotExpansion,
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
 	OfficeCenter = Vector3.new(-20, 0, 49),
@@ -30,15 +34,24 @@ return {
 	-- Separators are the Machines.luau needle sorter; their id is the tier in Sorters.luau, which sets how many needles
 	-- they find and how fast they work.
 	Pieces = {
-		{ id = "belt", kind = "belt", name = "Conveyor belt", price = 20, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
-		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = 150, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
-		{ id = "silo", kind = "silo", name = "Hay silo", price = 3000, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
-		{ id = "parking", kind = "parking", name = "Parking pad", price = 100, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
-		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = 250, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
-		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = 1500, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
-		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = 5000, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
-		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = 15000, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
-		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = 50000, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "belt", kind = "belt", name = "Conveyor belt", price = Prices.Pieces.belt, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
+		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = Prices.Pieces.hay_buyer, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
+		{ id = "silo", kind = "silo", name = "Hay silo", price = Prices.Pieces.silo, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
+		{ id = "parking", kind = "parking", name = "Parking pad", price = Prices.Pieces.parking, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
+		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = Prices.Pieces.hand_sieve, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
+		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = Prices.Pieces.shaker_table, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
+		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
+		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
+		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "splitter", kind = "splitter", rule = "alternate", name = "Splitter", price = Prices.Pieces.splitter, size = { 1, 1 }, blurb = "Sends loads out its left and right sides in turn. Put belts on both sides." },
+		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
+		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
+		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
+		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
+		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
+		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },
+		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, thatch = 4, blurb = "A wall along the back of the tile. Fill with 3 bales, 4 thatch or 12 needles." },
+		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, thatch = 2, blurb = "Fill with 2 bales, 2 thatch or 8 needles." },
 	},
 
 	SiloCapacity = 60, -- bales
@@ -56,6 +69,7 @@ return {
 			land = {
 				owned = true,
 				plot = 4,
+				expansions = 2, -- the whole plot
 				items = ({
 					-- Silo -> belts -> magnet drum -> belts -> hay buyer, along the back fence.
 					{ id = "silo", gx = 1, gz = 1, dir = "E", stored = 20 },

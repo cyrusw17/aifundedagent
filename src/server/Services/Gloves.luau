@@ -9,7 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
+local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local GloveLooks = require(script.Parent.GloveLooks)
 
 local Gloves = {}
@@ -144,6 +146,7 @@ local function load(player)
 	end
 	owned[player] = { bare = true }
 	worn[player] = "bare"
+	brokeFirstBale[player] = nil
 	if typeof(saved) == "table" then
 		brokeFirstBale[player] = saved.brokeFirstBale == true or nil
 		for _, id in (typeof(saved.owned) == "table" and saved.owned or {}) do
@@ -170,13 +173,12 @@ function Gloves.buyOrWear(player, id)
 		return
 	end
 	if not owned[player][id] then
-		if state.cash < def.price then
-			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, state.cash))
+		local paid = Bank.charge(player, def.price, def.name)
+		if not paid then
+			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, Bank.spendable(state)))
 			return
 		end
-		state.cash -= def.price
 		owned[player][id] = true
-		Data.sync(player)
 		Data.toast(player, ("Bought %s. Heavier hay slows you less and you scoop more."):format(def.name))
 	elseif worn[player] == id then
 		return
@@ -256,20 +258,7 @@ function Gloves.buildStand(parent, cframe)
 		leg.Parent = stand
 	end
 
-	local sign = Instance.new("BillboardGui")
-	sign.Size = UDim2.fromOffset(200, 40)
-	sign.StudsOffset = Vector3.new(0, 3, 0)
-	sign.MaxDistance = 60
-	sign.Parent = top
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = "GLOVES"
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = sign
+	WorldLabel.billboard(top, "GLOVES", { offset = Vector3.new(0, 3, 0), kind = "status" })
 
 	local slot = 0
 	for _, def in GloveConfig.Tiers do

@@ -1,7 +1,10 @@
 --!nonstrict
 -- The land office panel and build mode. Stand on the rug at the land office counter to see every plot and buy one.
 -- Once you own land, the BUILD button opens a bar of pieces: pick one, aim at your plot and click (or tap the spot
--- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. The server checks everything.
+-- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. CREW lets other players on the
+-- server drive your truck and run hay through your line for you. UNDO (Z) takes back the last action, MOVE (M) picks
+-- a piece up and puts it somewhere else for free, COPY (C) copies an area and PASTE (V) builds it again. At the office, VISIT takes you to someone else's
+-- farm, where you can like it at its sign. The server checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,36 +19,44 @@ local state = ReplicatedStorage:WaitForChild("Land")
 local buyRemote = state:WaitForChild("Buy")
 local placeRemote = state:WaitForChild("Place")
 local removeRemote = state:WaitForChild("Remove")
+local crewRemote = state:WaitForChild("Crew")
+local visitRemote = state:WaitForChild("Visit")
+local expandRemote = state:WaitForChild("Expand")
+local pickRemote = state:WaitForChild("Pick")
+local moveRemote = state:WaitForChild("Move")
+local copyRemote = state:WaitForChild("Copy")
+local pasteRemote = state:WaitForChild("Paste")
+local undoRemote = state:WaitForChild("Undo")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
 local DIRS = { "N", "E", "S", "W" }
 local DIR_VECTORS = { N = Vector3.new(0, 0, -1), E = Vector3.new(1, 0, 0), S = Vector3.new(0, 0, 1), W = Vector3.new(-1, 0, 0) }
 
-local INK = Color3.fromRGB(40, 34, 28)
-local PANEL = Color3.fromRGB(199, 186, 153)
-local CARD = Color3.fromRGB(222, 212, 184)
-local RED = Color3.fromRGB(133, 61, 48)
-local GREEN = Color3.fromRGB(87, 107, 71)
-local MUTED = Color3.fromRGB(150, 140, 120)
-local PICKED = Color3.fromRGB(176, 146, 82)
+local Kit = require(Shared:WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local F = Theme.Fonts
+local INK = Theme.Colors.Ink
+local PANEL = Theme.Colors.Paper
+local CARD = Theme.Colors.Card
+local RED = Theme.Colors.Red
+local GREEN = Theme.Colors.Green
+local MUTED = Theme.Colors.Muted
+local PICKED = Theme.Colors.Picked
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "LandGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = Kit.screen("LandGui", 10, true)
 
-local function corner(instance, radius)
-	Instance.new("UICorner", instance).CornerRadius = UDim.new(0, radius or 8)
-end
+local corner = Kit.corner
+
+local panelBody -- the land office panel's body, set below
 
 local function text(parent, value, size, y, height, color, font)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(14, y)
-	label.Size = UDim2.new(1, -28, 0, height)
-	label.Font = font or Enum.Font.GothamBold
+	local inset = parent == panelBody and 0 or 14
+	label.Position = UDim2.fromOffset(inset, y)
+	label.Size = UDim2.new(1, -inset * 2, 0, height)
+	label.Font = font or F.Bold
 	label.TextSize = size
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -57,10 +68,10 @@ end
 
 local function button(parent, label, color)
 	local b = Instance.new("TextButton")
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 14
 	b.Text = label
-	b.TextColor3 = Color3.new(1, 1, 1)
+	b.TextColor3 = Theme.Colors.Cream
 	b.BackgroundColor3 = color or GREEN
 	b.Parent = parent
 	corner(b, 6)
@@ -79,25 +90,22 @@ end
 
 -- Land office panel ---------------------------------------------------------------------------------------------------
 
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -16, 0.5, 0)
-panel.Size = UDim2.fromOffset(340, 440)
-panel.BackgroundColor3 = PANEL
+local panel
+panel, panelBody = Kit.panel(gui, {
+	title = "MEADOW LAND OFFICE",
+	width = 340,
+	height = 490,
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(1, -16, 0.5, 0),
+})
 panel.Visible = false
-panel.Parent = gui
-corner(panel, 12)
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = INK
-stroke.Thickness = 2
 
-text(panel, "MEADOW LAND OFFICE", 22, 10, 28)
-local ownedLabel = text(panel, "", 14, 38, 20, GREEN)
-local panelMessage = text(panel, "", 14, 404, 30, RED, Enum.Font.Gotham)
+local ownedLabel = text(panelBody, "", 14, 0, 20, GREEN)
+local panelMessage = text(panelBody, "", 14, 400, 30, RED, F.Body)
 
 local list = Instance.new("ScrollingFrame")
-list.Position = UDim2.fromOffset(10, 62)
-list.Size = UDim2.new(1, -20, 0, 338)
+list.Position = UDim2.fromOffset(0, 26)
+list.Size = UDim2.new(1, 0, 0, 368)
 list.BackgroundTransparency = 1
 list.BorderSizePixel = 0
 list.ScrollBarThickness = 6
@@ -125,8 +133,8 @@ local function refreshPanel()
 			b.Text = "YOURS"
 			b.BackgroundColor3 = GREEN
 		elseif ownerId ~= 0 then
-			b.Text = "OWNED BY " .. string.upper(info:GetAttribute("OwnerName") or "?")
-			b.BackgroundColor3 = MUTED
+			b.Text = ("VISIT %s  ♥%d"):format(string.upper(info:GetAttribute("OwnerName") or "?"), info:GetAttribute("Likes") or 0)
+			b.BackgroundColor3 = PICKED
 		elseif mine > 0 then
 			b.Text = ("$%d"):format(price)
 			b.BackgroundColor3 = MUTED
@@ -148,7 +156,7 @@ for index, def in LandConfig.Plots do
 	card.Parent = list
 	corner(card)
 	text(card, def.name, 17, 6, 22)
-	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, Enum.Font.Gotham)
+	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, F.Body)
 	local b = button(card, "", GREEN)
 	b.AnchorPoint = Vector2.new(1, 1)
 	b.Position = UDim2.new(1, -8, 1, -8)
@@ -160,8 +168,11 @@ for index, def in LandConfig.Plots do
 		end
 		busy = true
 		panelMessage.Text = "..."
+		local info = plotInfos()[index]
+		local ownerId = info and info:GetAttribute("OwnerId") or 0
+		local remote = (ownerId ~= 0 and ownerId ~= player.UserId) and visitRemote or buyRemote
 		local ok, bought, message = pcall(function()
-			return buyRemote:InvokeServer(index)
+			return remote:InvokeServer(index)
 		end)
 		busy = false
 		panelMessage.TextColor3 = ok and bought and GREEN or RED
@@ -226,7 +237,7 @@ local barStroke = Instance.new("UIStroke", bar)
 barStroke.Color = INK
 barStroke.Thickness = 2
 
-local infoLabel = text(bar, "", 13, 6, 34, INK, Enum.Font.Gotham)
+local infoLabel = text(bar, "", 13, 6, 34, INK, F.Body)
 infoLabel.Size = UDim2.new(1, -28, 0, 34)
 
 local pieceRow = Instance.new("ScrollingFrame")
@@ -244,10 +255,15 @@ rowLayout.FillDirection = Enum.FillDirection.Horizontal
 rowLayout.Padding = UDim.new(0, 6)
 rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local actions = Instance.new("Frame")
+local actions = Instance.new("ScrollingFrame")
 actions.Position = UDim2.new(0, 10, 1, -44)
-actions.Size = UDim2.new(1, -20, 0, 36)
+actions.Size = UDim2.new(1, -20, 0, 40)
 actions.BackgroundTransparency = 1
+actions.BorderSizePixel = 0
+actions.ScrollBarThickness = 3
+actions.ScrollingDirection = Enum.ScrollingDirection.X
+actions.AutomaticCanvasSize = Enum.AutomaticSize.X
+actions.CanvasSize = UDim2.new()
 actions.Parent = bar
 local actionLayout = Instance.new("UIListLayout", actions)
 actionLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -260,14 +276,155 @@ local rotateButton = button(actions, "TURN (R)", INK)
 rotateButton.Size = UDim2.fromOffset(96, 34)
 local removeButton = button(actions, "REMOVE (X)", RED)
 removeButton.Size = UDim2.fromOffset(110, 34)
+local undoButton = button(actions, "UNDO (Z)", INK)
+undoButton.Size = UDim2.fromOffset(92, 34)
+local moveButton = button(actions, "MOVE (M)", MUTED)
+moveButton.Size = UDim2.fromOffset(92, 34)
+local copyButton = button(actions, "COPY (C)", MUTED)
+copyButton.Size = UDim2.fromOffset(92, 34)
+local pasteButton = button(actions, "PASTE (V)", MUTED)
+pasteButton.Size = UDim2.fromOffset(98, 34)
+local expandButton = button(actions, "EXPAND", GREEN)
+expandButton.Size = UDim2.fromOffset(130, 34)
+expandButton.Visible = false
+local crewButton = button(actions, "CREW", PICKED)
+crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
 doneButton.Size = UDim2.fromOffset(80, 34)
+
+-- Crew panel: everyone else on the server, each with ADD or REMOVE.
+local crewPanel = Instance.new("Frame")
+crewPanel.AnchorPoint = Vector2.new(0.5, 1)
+crewPanel.Position = UDim2.new(0.5, 0, 1, -172)
+crewPanel.Size = UDim2.fromOffset(320, 260)
+crewPanel.BackgroundColor3 = PANEL
+crewPanel.Visible = false
+crewPanel.Parent = gui
+corner(crewPanel, 12)
+local crewStroke = Instance.new("UIStroke", crewPanel)
+crewStroke.Color = INK
+crewStroke.Thickness = 2
+text(crewPanel, "FARM CREW", 16, 8, 20)
+local crewMessage = text(crewPanel, "Crew can drive your truck. Hay they run through your line pays you.", 12, 28, 30, INK, Enum.Font.Gotham)
+local crewList = Instance.new("ScrollingFrame")
+crewList.Position = UDim2.fromOffset(10, 62)
+crewList.Size = UDim2.new(1, -20, 1, -72)
+crewList.BackgroundTransparency = 1
+crewList.BorderSizePixel = 0
+crewList.ScrollBarThickness = 4
+crewList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+crewList.CanvasSize = UDim2.new()
+crewList.Parent = crewPanel
+local crewLayout = Instance.new("UIListLayout", crewList)
+crewLayout.Padding = UDim.new(0, 4)
+
+local function myCrew()
+	local index = player:GetAttribute("LandPlot") or 0
+	local info = state:FindFirstChild("Plot" .. index)
+	local set = {}
+	for id in string.gmatch(info and info:GetAttribute("Crew") or "", "%d+") do
+		set[tonumber(id)] = true
+	end
+	return set
+end
+
+local crewBusy = false
+local function refreshCrew()
+	for _, child in crewList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local crew = myCrew()
+	local others = 0
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			others += 1
+			local row = Instance.new("Frame")
+			row.Size = UDim2.new(1, -6, 0, 36)
+			row.BackgroundColor3 = CARD
+			row.Parent = crewList
+			corner(row, 6)
+			local name = text(row, other.DisplayName, 14, 8, 20)
+			name.Size = UDim2.new(1, -110, 0, 20)
+			local on = crew[other.UserId] == true
+			local b = button(row, on and "REMOVE" or "ADD", on and RED or GREEN)
+			b.AnchorPoint = Vector2.new(1, 0.5)
+			b.Position = UDim2.new(1, -6, 0.5, 0)
+			b.Size = UDim2.fromOffset(84, 28)
+			b.Activated:Connect(function()
+				if crewBusy then
+					return
+				end
+				crewBusy = true
+				local ok, _, message = pcall(function()
+					return crewRemote:InvokeServer(other.UserId, not on)
+				end)
+				crewBusy = false
+				crewMessage.Text = ok and (message or "") or "Couldn't reach the server."
+				task.defer(refreshCrew)
+			end)
+		end
+	end
+	if others == 0 then
+		crewMessage.Text = "Nobody else is on this server yet."
+	end
+end
+
+local function refreshExpand()
+	local index = player:GetAttribute("LandPlot") or 0
+	local info = state:FindFirstChild("Plot" .. index)
+	local locked = info and info:GetAttribute("LockedRows") or 0
+	expandButton.Visible = locked > 0
+	expandButton.Text = ("EXPAND  $%d"):format(LandConfig.ExpansionPrice)
+end
+for _, info in state:GetChildren() do
+	if info:IsA("Configuration") then
+		info:GetAttributeChangedSignal("LockedRows"):Connect(refreshExpand)
+	end
+end
+player:GetAttributeChangedSignal("LandPlot"):Connect(refreshExpand)
+refreshExpand()
+local expandBusy = false
+expandButton.Activated:Connect(function()
+	if expandBusy then
+		return
+	end
+	expandBusy = true
+	local ok, _, message = pcall(function()
+		return expandRemote:InvokeServer()
+	end)
+	expandBusy = false
+	infoLabel.Text = ok and (message or "") or "Couldn't reach the server."
+	refreshExpand()
+end)
+
+crewButton.Activated:Connect(function()
+	crewPanel.Visible = not crewPanel.Visible
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerAdded:Connect(function()
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerRemoving:Connect(function()
+	if crewPanel.Visible then
+		task.defer(refreshCrew)
+	end
+end)
 
 local building = false
 local selected = nil -- piece def, or nil while removing
 local removing = false
 local dirIndex = 2 -- E
 local pieceButtons = {}
+local tool = nil -- nil (place or remove), "move", "copy" or "paste"
+local moving = nil -- { id, gx, gz, dir } of the piece picked up to move
+local copyStart = nil -- first corner { gx, gz } of a copy
+local clipboard = nil -- { list = { { id, dx, dz, dir } }, total } from the last copy
 local aim = nil -- screen point { x, y, viewport = bool } the ghost follows
 local target = nil -- { gx, gz, valid } under the aim
 
@@ -281,7 +438,14 @@ local function setInfo(value, color)
 end
 
 local function describeSelection()
-	if removing then
+	if tool == "move" then
+		setInfo(moving and "Move: click where it goes. R turns it." or "Move: click a piece to pick it up.")
+	elseif tool == "copy" then
+		setInfo(copyStart and "Copy: click the opposite corner." or "Copy: click one corner of the area to copy.")
+	elseif tool == "paste" then
+		setInfo(clipboard and ("Paste: click where the copy's top-left corner goes. $%d for %d pieces."):format(clipboard.total, #clipboard.list)
+			or "Copy an area first.")
+	elseif removing then
 		setInfo("Remove: click a piece on your land to take it back for half its price.")
 	elseif selected then
 		setInfo(("%s  ($%d): %s"):format(selected.name, selected.price, selected.blurb))
@@ -292,9 +456,17 @@ end
 
 local function refreshPieceButtons()
 	for id, b in pieceButtons do
-		b.BackgroundColor3 = (selected and selected.id == id and not removing) and PICKED or CARD
+		b.BackgroundColor3 = (selected and selected.id == id and not removing and not tool) and PICKED or CARD
 	end
-	removeButton.BackgroundColor3 = removing and PICKED or RED
+	removeButton.BackgroundColor3 = removing and not tool and PICKED or RED
+	moveButton.BackgroundColor3 = tool == "move" and PICKED or MUTED
+	copyButton.BackgroundColor3 = tool == "copy" and PICKED or MUTED
+	pasteButton.BackgroundColor3 = tool == "paste" and PICKED or MUTED
+end
+
+local pieceDefs = {}
+for _, def in LandConfig.Pieces do
+	pieceDefs[def.id] = def
 end
 
 for i, def in LandConfig.Pieces do
@@ -302,7 +474,7 @@ for i, def in LandConfig.Pieces do
 	b.LayoutOrder = i
 	b.Size = UDim2.fromOffset(118, 52)
 	b.BackgroundColor3 = CARD
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK
@@ -313,6 +485,7 @@ for i, def in LandConfig.Pieces do
 	b.Activated:Connect(function()
 		selected = def
 		removing = false
+		tool, moving, copyStart = nil, nil, nil
 		refreshPieceButtons()
 		describeSelection()
 	end)
@@ -388,7 +561,7 @@ end
 
 local function updateGhost()
 	local info = myPlot()
-	if not building or not info or (not selected and not removing) then
+	if not building or not info or (not selected and not removing and not tool) then
 		hideGhost()
 		return
 	end
@@ -403,27 +576,71 @@ local function updateGhost()
 	local gz = math.floor((point.Z - origin.Z) / T)
 	local taken = takenSet(info)
 	local dir = DIRS[dirIndex]
-	local cells = removing and { { gx, gz } } or cellsFor(selected, gx, gz, dir)
-	local valid = true
+	local locked = info:GetAttribute("LockedRows") or 0
+	local open = info:GetAttribute("Open")
+	local function onPlot(x, z)
+		local fromBack = open == "S" and z or tilesZ - 1 - z
+		return x >= 0 and z >= 0 and x < tilesX and z < tilesZ and fromBack >= locked
+	end
+	-- What the ghost covers, and whether the click would work. picking = the cells must hold something.
+	local cells, valid, picking, cost, showArrow = {}, true, false, 0, true
+	local own = {}
+	if tool == "move" and moving then
+		local def = pieceDefs[moving.id]
+		for _, cell in cellsFor(def, moving.gx, moving.gz, moving.dir) do
+			own[cell[1] .. "," .. cell[2]] = true
+		end
+		cells = cellsFor(def, gx, gz, dir)
+	elseif tool == "copy" then
+		local sx, sz = copyStart and copyStart.gx or gx, copyStart and copyStart.gz or gz
+		for x = math.min(sx, gx), math.max(sx, gx) do
+			for z = math.min(sz, gz), math.max(sz, gz) do
+				table.insert(cells, { x, z })
+			end
+		end
+		showArrow = false
+	elseif tool == "paste" then
+		if clipboard then
+			for _, entry in clipboard.list do
+				for _, cell in cellsFor(pieceDefs[entry.id], gx + entry.dx, gz + entry.dz, entry.dir) do
+					table.insert(cells, cell)
+				end
+			end
+			cost = clipboard.total
+		else
+			cells = { { gx, gz } }
+			valid = false
+		end
+		showArrow = false
+	elseif tool == "move" or removing then
+		cells = { { gx, gz } }
+		picking = true
+		showArrow = false
+	else
+		cells = cellsFor(selected, gx, gz, dir)
+		cost = selected.price
+	end
 	for _, cell in cells do
 		local x, z = cell[1], cell[2]
-		local onPlot = x >= 0 and z >= 0 and x < tilesX and z < tilesZ
-		local free = not taken[x .. "," .. z]
-		if not onPlot or (removing and free) or (not removing and not free) then
+		local k = x .. "," .. z
+		local free = not taken[k] or own[k]
+		if not onPlot(x, z) or (picking and free) or (not picking and tool ~= "copy" and not free) then
 			valid = false
 		end
 	end
-	if not removing and (player:GetAttribute("Cash") or 0) < selected.price then
+	if cost > 0 and (player:GetAttribute("Cash") or 0) < cost then
 		valid = false
 	end
 	local color = valid and Color3.fromRGB(120, 200, 120) or Color3.fromRGB(220, 90, 80)
-	if removing and valid then
-		color = Color3.fromRGB(230, 150, 60)
+	if picking and valid then
+		color = removing and not tool and Color3.fromRGB(230, 150, 60) or Color3.fromRGB(110, 160, 230)
+	elseif tool == "copy" then
+		color = Color3.fromRGB(110, 160, 230)
 	end
 	for i, cell in cells do
 		local p = ghostPart(i)
-		p.Size = Vector3.new(T - 0.4, removing and 4.2 or 0.5, T - 0.4)
-		p.CFrame = CFrame.new(origin + Vector3.new((cell[1] + 0.5) * T, removing and 2.1 or 0.35, (cell[2] + 0.5) * T))
+		p.Size = Vector3.new(T - 0.4, picking and 4.2 or 0.5, T - 0.4)
+		p.CFrame = CFrame.new(origin + Vector3.new((cell[1] + 0.5) * T, picking and 2.1 or 0.35, (cell[2] + 0.5) * T))
 		p.Color = color
 		p.Transparency = 0.55
 	end
@@ -434,7 +651,7 @@ local function updateGhost()
 	arrow.Size = Vector3.new(1, 0.3, 3.5)
 	arrow.CFrame = CFrame.lookAt(first, first + d)
 	arrow.Color = color
-	arrow.Transparency = removing and 1 or 0.2
+	arrow.Transparency = showArrow and 0.2 or 1
 	for i = #cells + 2, #ghostParts do
 		ghostParts[i].Transparency = 1
 	end
@@ -442,24 +659,84 @@ local function updateGhost()
 	target = { gx = gx, gz = gz, valid = valid }
 end
 
+local function call(remote, ...)
+	busy = true
+	local out = table.pack(pcall(remote.InvokeServer, remote, ...))
+	busy = false
+	if not out[1] then
+		setInfo("Couldn't reach the server. Try again.", RED)
+		return false
+	end
+	return table.unpack(out, 2, out.n)
+end
+
+local function report(done, message)
+	if message then
+		setInfo(message, done and GREEN or RED)
+	end
+end
+
 local function act()
 	if not building or not target or busy then
 		return
 	end
 	local t = target
-	busy = true
-	local ok, done, message = pcall(function()
-		if removing then
-			return removeRemote:InvokeServer(t.gx, t.gz)
+	if tool == "move" then
+		if not moving then
+			local ok, info = call(pickRemote, t.gx, t.gz)
+			if ok and typeof(info) == "table" and pieceDefs[info.id] then
+				moving = info
+				selected = pieceDefs[info.id]
+				dirIndex = table.find(DIRS, info.dir) or dirIndex
+				describeSelection()
+			end
+			return
 		end
-		return placeRemote:InvokeServer(selected.id, t.gx, t.gz, DIRS[dirIndex])
-	end)
-	busy = false
-	if not ok then
-		setInfo("Couldn't reach the server. Try again.", RED)
-	elseif message then
-		setInfo(message, done and GREEN or RED)
+		local done, message = call(moveRemote, moving.gx, moving.gz, t.gx, t.gz, DIRS[dirIndex])
+		report(done, message)
+		if done then
+			moving = nil
+		end
+	elseif tool == "copy" then
+		if not copyStart then
+			copyStart = { gx = t.gx, gz = t.gz }
+			describeSelection()
+			return
+		end
+		local ok, list, total = call(copyRemote, copyStart.gx, copyStart.gz, t.gx, t.gz)
+		copyStart = nil
+		if ok and typeof(list) == "table" then
+			clipboard = { list = list, total = total or 0 }
+			tool = "paste"
+			refreshPieceButtons()
+			describeSelection()
+		else
+			report(false, list)
+		end
+	elseif tool == "paste" then
+		if clipboard then
+			report(call(pasteRemote, clipboard.list, t.gx, t.gz))
+		end
+	elseif removing then
+		report(call(removeRemote, t.gx, t.gz))
+	else
+		report(call(placeRemote, selected.id, t.gx, t.gz, DIRS[dirIndex]))
 	end
+end
+
+local function setTool(name)
+	tool = tool ~= name and name or nil
+	moving, copyStart = nil, nil
+	removing = false
+	refreshPieceButtons()
+	describeSelection()
+end
+
+local function undo()
+	if busy then
+		return
+	end
+	report(call(undoRemote))
 end
 
 local function rotate()
@@ -467,6 +744,7 @@ local function rotate()
 end
 
 local function toggleRemove()
+	tool, moving, copyStart = nil, nil, nil
 	removing = not removing
 	refreshPieceButtons()
 	describeSelection()
@@ -475,6 +753,9 @@ end
 local function setBuilding(on)
 	building = on
 	bar.Visible = on
+	if not on then
+		crewPanel.Visible = false
+	end
 	buildButton.Visible = not on and (player:GetAttribute("LandPlot") or 0) > 0
 	if on then
 		aim = nil
@@ -494,6 +775,16 @@ end)
 placeButton.Activated:Connect(act)
 rotateButton.Activated:Connect(rotate)
 removeButton.Activated:Connect(toggleRemove)
+undoButton.Activated:Connect(undo)
+moveButton.Activated:Connect(function()
+	setTool("move")
+end)
+copyButton.Activated:Connect(function()
+	setTool("copy")
+end)
+pasteButton.Activated:Connect(function()
+	setTool("paste")
+end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not building or gameProcessed then
@@ -509,6 +800,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		rotate()
 	elseif input.KeyCode == Enum.KeyCode.X then
 		toggleRemove()
+	elseif input.KeyCode == Enum.KeyCode.Z then
+		undo()
+	elseif input.KeyCode == Enum.KeyCode.M then
+		setTool("move")
+	elseif input.KeyCode == Enum.KeyCode.C then
+		setTool("copy")
+	elseif input.KeyCode == Enum.KeyCode.V then
+		setTool("paste")
 	end
 end)
 
