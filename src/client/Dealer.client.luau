@@ -17,41 +17,36 @@ local cutsceneRemote = remotes:WaitForChild("Cutscene")
 local studioCashRemote = remotes:WaitForChild("StudioCash")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
-local INK = Color3.fromRGB(40, 34, 28)
-local PANEL = Color3.fromRGB(199, 186, 153) -- Rustic cream
-local CARD = Color3.fromRGB(222, 212, 184)
-local RED = Color3.fromRGB(133, 61, 48)
-local GREEN = Color3.fromRGB(87, 107, 71)
-local MUTED = Color3.fromRGB(150, 140, 120)
+local Kit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local F = Theme.Fonts
+local INK = Theme.Colors.Ink
+local CARD = Theme.Colors.Card
+local RED = Theme.Colors.Red
+local GREEN = Theme.Colors.Green
+local MUTED = Theme.Colors.Muted
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "DealerGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
+local gui = Kit.screen("DealerGui", 10, true)
 
 -- Panel ----------------------------------------------------------------------------------------------------------
 
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -16, 0.5, 0)
-panel.Size = UDim2.fromOffset(340, 420)
-panel.BackgroundColor3 = PANEL
+local panel, body = Kit.panel(gui, {
+	title = "HOMESTEAD MOTORS",
+	width = 340,
+	height = 470,
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(1, -16, 0.5, 0),
+})
 panel.Visible = false
-panel.Parent = gui
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = INK
-stroke.Thickness = 2
 
 local function text(parent, value, size, y, height, color, font)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(14, y)
-	label.Size = UDim2.new(1, -28, 0, height)
-	label.Font = font or Enum.Font.GothamBold
+	local inset = parent == body and 0 or 14
+	label.Position = UDim2.fromOffset(inset, y)
+	label.Size = UDim2.new(1, -inset * 2, 0, height)
+	label.Font = font or F.Bold
 	label.TextSize = size
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -61,13 +56,12 @@ local function text(parent, value, size, y, height, color, font)
 	return label
 end
 
-text(panel, "HOMESTEAD MOTORS", 22, 10, 28)
-local cashLabel = text(panel, "", 16, 38, 20, GREEN)
-local messageLabel = text(panel, "", 14, 386, 28, RED, Enum.Font.Gotham)
+local cashLabel = text(body, "", 16, 0, 20, GREEN)
+local messageLabel = text(body, "", 14, 382, 28, RED, F.Body)
 
 local list = Instance.new("ScrollingFrame")
-list.Position = UDim2.fromOffset(10, 64)
-list.Size = UDim2.new(1, -20, 0, 318)
+list.Position = UDim2.fromOffset(0, 28)
+list.Size = UDim2.new(1, 0, 0, 350)
 list.BackgroundTransparency = 1
 list.BorderSizePixel = 0
 list.ScrollBarThickness = 6
@@ -122,18 +116,18 @@ for i, def in Trucks do
 	card.Size = UDim2.new(1, -8, 0, 92)
 	card.BackgroundColor3 = CARD
 	card.Parent = list
-	Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+	Kit.corner(card, 6)
 	text(card, def.name, 18, 6, 22)
-	text(card, def.blurb, 13, 28, 32, INK, Enum.Font.Gotham)
+	text(card, def.blurb, 13, 28, 32, INK, F.Body)
 	local button = Instance.new("TextButton")
 	button.AnchorPoint = Vector2.new(1, 1)
 	button.Position = UDim2.new(1, -8, 1, -8)
 	button.Size = UDim2.fromOffset(150, 28)
-	button.Font = Enum.Font.GothamBold
+	button.Font = F.Bold
 	button.TextSize = 14
-	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextColor3 = Theme.Colors.Cream
 	button.Parent = card
-	Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+	Kit.corner(button, 6)
 	buttons[def.id] = button
 	button.Activated:Connect(function()
 		if busy or not def.available then
@@ -159,14 +153,14 @@ end
 -- infinite money is on.
 if RunService:IsStudio() and not Game.InfiniteMoney then
 	local test = Instance.new("TextButton")
-	test.Position = UDim2.new(1, -120, 0, 38)
+	test.Position = UDim2.new(1, -106, 0, 0)
 	test.Size = UDim2.fromOffset(106, 20)
-	test.Font = Enum.Font.Gotham
+	test.Font = F.Body
 	test.TextSize = 12
 	test.Text = "Studio: +$6,000"
 	test.TextColor3 = INK
 	test.BackgroundColor3 = CARD
-	test.Parent = panel
+	test.Parent = body
 	Instance.new("UICorner", test).CornerRadius = UDim.new(0, 6)
 	test.Activated:Connect(function()
 		studioCashRemote:FireServer()
@@ -219,9 +213,9 @@ title.AnchorPoint = Vector2.new(0.5, 1)
 title.Position = UDim2.new(0.5, 0, 1, -24)
 title.Size = UDim2.fromOffset(600, 40)
 title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBold
+title.Font = F.Bold
 title.TextSize = 30
-title.TextColor3 = Color3.fromRGB(235, 225, 200)
+title.TextColor3 = Theme.Colors.Cream
 title.TextTransparency = 1
 title.Parent = gui
 

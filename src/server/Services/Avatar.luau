@@ -56,14 +56,30 @@ end
 
 -- Gives a part-built tool the Rustic Blender prop's look when it was imported. The part tool stays as the fallback,
 -- shown until the mesh has loaded on each client (see Props.weldTo). The prop is turned blade-up (it is modeled
--- blade-down) so the blade leads like the part tools, with the end of its handle just below the hand.
+-- blade-down) so the blade leads like the part tools, and it spans the same length as the part tool, from the end
+-- of the handle to the tip of the blade, so the swap never shrinks what is in your hand.
 local function addMesh(tool, prop)
 	local handle = tool.Handle
-	local length = PropsConfig.Sizes[prop]
-	local center = CFrame.new(0, length / 2 - PropsConfig.GripFromEnd, 0)
+	local low, high = math.huge, -math.huge
+	for _, part in tool:GetDescendants() do
+		if part:IsA("BasePart") then
+			local y = handle.CFrame:ToObjectSpace(part.CFrame).Y
+			local half = part.Size.Y / 2
+			low = math.min(low, y - half)
+			high = math.max(high, y + half)
+		end
+	end
+	local length = high - low
+	if length <= 0 then
+		length = PropsConfig.Sizes[prop]
+		low = -PropsConfig.GripFromEnd
+	end
+	local center = CFrame.new(0, low + length / 2, 0)
 	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
 	if model then
 		Props.weldTo(model, handle, tool)
+	elseif Props.has(prop) then
+		warn(("[Needlewood] %s mesh was found but could not be copied, so the %s uses parts"):format(prop, tool.Name))
 	end
 	return tool
 end
@@ -200,11 +216,31 @@ local function setup(player, character)
 		return tool
 	end
 
-	local backpack = player:WaitForChild("Backpack")
+	local backpack = player:WaitForChild("Backpack", 10)
+	if not backpack then
+		warn(("[Needlewood] %s has no Backpack, so no shovel or rake was given"):format(player.Name))
+		return
+	end
 	local shovel = hook(buildShovel())
 	shovel.Parent = backpack
 	hook(buildRake()).Parent = backpack
 	humanoid:EquipTool(shovel)
+
+	-- Tools fail quietly when they do, so say in the log where one was lost.
+	task.delay(1, function()
+		if not character.Parent or rig.carrying then
+			return
+		end
+		if shovel.Parent ~= character and shovel.Parent ~= backpack then
+			warn(("[Needlewood] %s's shovel left their backpack (now in %s)"):format(player.Name, shovel:GetFullName()))
+		elseif shovel.Parent ~= character and not character:FindFirstChildOfClass("Tool") then
+			warn(("[Needlewood] %s's shovel did not equip"):format(player.Name))
+		end
+		local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+		if shovel.Parent == character and hand and not hand:FindFirstChild("RightGrip") then
+			warn(("[Needlewood] %s holds the shovel but no RightGrip joins it to the hand"):format(player.Name))
+		end
+	end)
 end
 
 -- One swing of the equipped tool. onImpact runs at the moment the tool lands. Returns false if it could not start.

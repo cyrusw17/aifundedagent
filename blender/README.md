@@ -67,6 +67,24 @@ across. Every truck bed is three across (10.8 outside); trailers keep 7 except t
 | double trailer | 2 x (14.6 x 7.0 x 2.8) | 12 |
 | bale rack trailer | 23.8 x 7.0 x 8.0 | 30 |
 
+### Rigged props (vehicles, belts, machines)
+
+Props with moving parts export as one model with separate, named meshes (`lib/rig.py`). The body
+keeps the prop's name (for example `RustyPickup`), so the game still finds it, and the moving
+parts are its children:
+
+| part | where | pivot (MeshPart position) |
+|---|---|---|
+| `Wheel_L1`, `Wheel_R1`, `Wheel_L2`, ... | every truck, trailer, cart and wagon | the axle center; numbered front to back, L/R from the driver's seat; a dual wheel is one mesh |
+| `Tailgate`, `Tailgate2` | every bed | bottom edge center (the hinge) |
+| `Coupler`, `Coupler2` | trailers | the hitch point |
+| `Belt`, `Roller`, `Roller2` | conveyors and line machines | belt center / roller axle |
+| `Drum`, `Shaker`, `Crank`, `Reel`, `Flywheel` | magnet drum, shaker table, hay baler | axle or deck center |
+
+Every vehicle (trucks, trailers, carts and boats) faces **-Z with +Y up** in the .glb, which
+is Roblox's forward (LookVector) and up, so it imports facing forward with no extra turn. Wheels
+spin about X. Other props keep their old orientation.
+
 ## Build
 
 With Blender installed (4.2+ / 5.x):
