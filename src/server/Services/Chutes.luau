@@ -1,11 +1,11 @@
 --!nonstrict
 -- Field bale chutes (V8 plan). A wooden hopper on four posts stands over a lane beside each big hay field, and one
--- on the meadow's trailer road. Park a truck or trailer bed under it and pull the lever: it drops loose bales into the
--- free spots of the bed, one layer at a time, in about three seconds. Loading 9 bales by hand was the slow part of a
--- truck trip, so this is what makes a truck beat the wheelbarrow.
+-- on the meadow's trailer road. Park a truck or trailer bed under it and pull the lever: it pours a bale's worth of loose
+-- hay into each free spot of the bed, one layer at a time, in about three seconds. Shovelling a bed full by hand was
+-- the slow part of a truck trip, so this is what makes a truck beat the wheelbarrow.
 --
--- The bales are ordinary loose bales (Bales.spawn), never welded: the truck's cargo loop picks them up like any
--- other. Each chute holds Config/Chutes Stock bales and refills one every RefillSeconds.
+-- No bales: fields grow loose hay, so the chute pours ordinary loose clumps (Hay.spawnPiece), never welded, that the
+-- dock unloads like any other hay. Each chute holds Config/Chutes Stock loads and refills one every RefillSeconds.
 --
 --   Chutes.build(worldFolder) -- after WorldMap.build, so Regions.fields is filled
 local Workspace = game:GetService("Workspace")
@@ -20,6 +20,7 @@ local WorldLabel = require(Shared.WorldLabel)
 local Bales = require(script.Parent.Bales)
 local Data = require(script.Parent.Data)
 local Feedback = require(script.Parent.Feedback)
+local Hay = require(script.Parent.Hay)
 local Vehicles = require(script.Parent.Vehicles)
 local Props = require(script.Parent.Props)
 
@@ -27,6 +28,8 @@ local Chutes = {}
 
 local BALE = Vector3.new(4.6, 2.6, 3.2) -- Bales.luau SIZE: lying lengthwise in a bed, 3.2 across and 4.6 along
 local SLOT_ACROSS, SLOT_ALONG = 3.25, 4.7
+local CLUMPS = 3 -- clumps poured per bale slot
+local STRANDS = math.floor(require(Shared.Config.Game).FieldPileStrands / CLUMPS) -- a bale's worth across the clumps
 local GATE_OPEN = math.rad(70) -- the flap swings out toward the front while bales drop
 local LEVER_PULLED = math.rad(45) -- the lever's top swings back toward the hopper
 local ROAD_CLEAR = 18 -- from a road's center line to a field chute's center: half a road plus the chute's half width
@@ -92,7 +95,7 @@ local function freeSlots(bed)
 				local cf = bed.cframe * local_ * CFrame.Angles(0, math.pi / 2, 0)
 				local taken = false
 				for _, p in Workspace:GetPartBoundsInBox(cf, BALE * 0.85, params) do
-					if Bales.fromPart(p) then
+					if Bales.fromPart(p) or Hay.isPiece(p) then
 						taken = true
 						break
 					end
@@ -143,16 +146,6 @@ function Chutes.pull(chute, player, only)
 	chute.busy = true
 	local field = chute.field
 	local hayType = field and field.hayType or nil
-	-- Field bales are tinted by their hay; copy the tint from one still standing in the field.
-	local color
-	if field then
-		for b in field.bales do
-			if b.body and b.body.Parent then
-				color = b.body.Color
-				break
-			end
-		end
-	end
 	if chute.swingLever then
 		chute.swingLever(LEVER_PULLED, 0.25)
 	end
@@ -170,17 +163,19 @@ function Chutes.pull(chute, player, only)
 			local offset = bed.model:GetAttribute("CargoOffset")
 			local now = chassis and offset and chassis.CFrame * offset
 			local cf = now and now * bed.cframe:ToObjectSpace(slot) or slot
-			local b = Bales.spawn(Vector3.zero, false, false, hayType)
-			b.ownerId = player and player.UserId
-			if color then
-				b.body.Color = color
+			-- Fields grow loose hay, never bales, so the chute pours a bale's worth of loose clumps into each slot.
+			local at = cf.Position + Vector3.new(0, 1.2, 0)
+			local first
+			for _ = 1, CLUMPS do
+				local spread = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5) * 2
+				local piece = Hay.spawnPiece(at + spread, Vector3.new(0, -4, 0), player and player.UserId, nil, hayType, STRANDS)
+				piece:SetAttribute("HayType", hayType or "meadow")
+				if field and field.rich then
+					piece:SetAttribute("NeedleBoost", 2)
+				end
+				first = first or piece
 			end
-			if field and field.rich then
-				b.body:SetAttribute("NeedleBoost", 2)
-			end
-			b.body.CFrame = cf + Vector3.new(0, 1.2, 0)
-			b.body.Anchored = false
-			Feedback.play("BaleLift", b.body)
+			Feedback.play("BaleLift", first)
 			chute.stock -= 1
 			dropped += 1
 			refreshLabel(chute)
@@ -194,7 +189,7 @@ function Chutes.pull(chute, player, only)
 		end
 		chute.busy = false
 		if dropped > 0 then
-			tell(player, ("%d bales in the bed."):format(dropped))
+			tell(player, ("%d loads of hay in the bed."):format(dropped))
 		end
 	end)
 	return math.min(#slots, chute.stock)

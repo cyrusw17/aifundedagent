@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Services = script.Parent.Parent.Services
+local GameConfig = require(ReplicatedStorage.Shared.Config.Game)
 -- tools/headless sets Workspace.Headless: nothing falls or drives there, so the checks that need bales to settle or
 -- trucks to roll skip with a reason (as Conveyor and Health do).
 local HEADLESS = workspace:GetAttribute("Headless") == true
@@ -16,6 +17,7 @@ return function(SelfTest)
 	local Vehicles = require(Services.Vehicles)
 	local Bales = require(Services.Bales)
 	local Chutes = require(Services.Chutes)
+	local Hay = require(Services.Hay)
 	local Dock = require(Services.Dock)
 	local Data = require(Services.Data)
 
@@ -46,6 +48,20 @@ return function(SelfTest)
 			n += 1
 		end
 		return n, found
+	end
+
+	-- The loose hay clumps inside a truck's cargo box, and how many strands they hold.
+	local function hayIn(model)
+		local chassis = model.PrimaryPart
+		local offset, size = model:GetAttribute("CargoOffset"), model:GetAttribute("CargoSize")
+		local found, strands = {}, 0
+		for _, p in workspace:GetPartBoundsInBox(chassis.CFrame * offset, size + Vector3.new(0, 4, 0)) do
+			if Hay.isPiece(p) and not found[p] then
+				found[p] = true
+				strands += Hay.strandsIn(p)
+			end
+		end
+		return strands, found
 	end
 
 	-- Drives straight ahead like Truck.client.luau (steer frame on the ground normal, full plane velocity).
@@ -123,22 +139,23 @@ return function(SelfTest)
 		t.cleanup(chute.model)
 		local dropping = Chutes.test.pullInto(chute, truck2)
 		t.equal("chute drops a full layer into the pickup bed", dropping, 9)
+		local want = 9 * math.floor(GameConfig.FieldPileStrands / 3) * 3
 		if HEADLESS then
-			t.skip("chute bales land in the bed and stay through a drive", NO_PHYSICS)
+			t.skip("chute hay lands in the bed and stays through a drive", NO_PHYSICS)
 			t.wait(9 * 0.35 + 0.5)
-			for b in select(2, balesIn(truck2)) do
-				t.cleanup(b.body) -- the dropped bales still go when the suite ends
+			for p in select(2, hayIn(truck2)) do
+				t.cleanup(p) -- the poured hay still goes when the suite ends
 			end
 		else
 			t.wait(9 * 0.35 + 2.5)
-			local n, loaded = balesIn(truck2)
-			t.equal("9 bales lie in the bed", n, 9)
-			for b in loaded do
-				t.cleanup(b.body)
+			local n, loaded = hayIn(truck2)
+			for p in loaded do
+				t.cleanup(p)
 			end
-			t.check("chute bales are loose physics, never welded", (function()
-				for b in loaded do
-					if b.body.Anchored or b.body:FindFirstChildWhichIsA("WeldConstraint") then
+			t.check("chute pours 9 loads of loose hay into the bed", n >= want * 0.9, ("%d of %d strands"):format(n, want))
+			t.check("chute hay is loose physics, never welded", (function()
+				for p in loaded do
+					if p.Anchored or p:FindFirstChildWhichIsA("WeldConstraint") then
 						return false
 					end
 				end
@@ -147,8 +164,8 @@ return function(SelfTest)
 			local moved = driveFor(truck2, 3, 24)
 			t.wait(1)
 			t.check("loaded pickup drives forward", moved > 20, ("%.1f studs in 3 s"):format(moved))
-			local kept = balesIn(truck2)
-			t.equal("all 9 bales are still in the bed after the drive", kept, 9)
+			local kept = hayIn(truck2)
+			t.check("most of the hay stays in the bed through the drive", kept >= want * 0.8, ("%d of %d strands"):format(kept, want))
 		end
 
 		-- The haul: 9 bales backed up to the dock, unloaded, paid --------------------------------------------
