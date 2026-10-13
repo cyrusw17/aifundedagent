@@ -61,6 +61,21 @@ Prices.FinderRewards = {
 	fossil = 4000, -- 1 in 2,000, doubled
 }
 
+-- NPC buyer orders (Services/Orders.luau). Three local buyers post an order each, new ones every RotateSeconds. Every
+-- unit delivered pays at once: its normal price times mult, up to the order's amount per player. Plain bales pay 1.5x
+-- the public shop ($71 a bale), sorted bales 2x their hay ($90, double what a hay buyer pays, since the sorting is
+-- done), and steel needles 1.25x list ($125). A full order is worth a few hundred to a thousand dollars over selling
+-- normally: a 5 to 10 minute bonus at the pickup stage, and a reason to haul somewhere other than your own line.
+Prices.Orders = {
+	RotateSeconds = 1200,
+	Buyers = { "Miller Joe", "Widow Hale", "Old Tobias", "Mabel at the feed store", "The Thatcher twins", "Pastor Reed" },
+	Kinds = {
+		bales = { amount = { 8, 16 }, mult = 1.5 },
+		sorted = { amount = { 10, 20 }, mult = 2 },
+		needles = { amount = { 6, 15 }, mult = 1.25 },
+	},
+}
+
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
 -- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
 -- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
@@ -162,6 +177,38 @@ Prices.SorterBalesPerMinute = {
 	conveyor_sorter = 8,
 	magnet_drum = 16,
 	optical_sorter = 30,
+}
+
+-- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
+-- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
+-- Longstitch Highway, stay free.
+Prices.Travel = {
+	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
+	barge = 0, -- the Captain's Barge is earned by quest and free to use
+	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
+-- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+Prices.Robux = {
+	Trucks = {
+		homestead_classic = 399, -- skin of the Rusty Pickup tier
+		timber_wolf = 799, -- Farm Flatbed tier
+		midnight_express = 1199, -- Box Truck tier
+		prairie_schooner = 1799, -- Heavy Hauler tier
+		founders_semi = 2499, -- Semi tier, launch edition
+	},
+	Passes = {
+		vip = 249,
+		auto_dock = 299,
+		big_silo = 199,
+		paint_studio = 149,
+		plot_themes = 199,
+		truck_radio = 99,
+	},
+	HarvestPass = 499,
+	ServerBoost = 99,
+	PrivateServer = 100, -- a month
 }
 
 -- The bank -----------------------------------------------------------------------------------------------------------
