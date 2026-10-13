@@ -176,6 +176,9 @@ Prices.Pieces = {
 	decor_bench = 350,
 	decor_lantern = 500,
 	decor_scarecrow = 900,
+	-- Late-game decor: pure show for players with money to spare (Economy: $10k-$50k sinks).
+	decor_fountain = 15000,
+	decor_windmill = 45000,
 }
 Prices.RefundShare = 0.5
 

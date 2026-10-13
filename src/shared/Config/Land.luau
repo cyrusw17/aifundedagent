@@ -68,6 +68,8 @@ return {
 		{ id = "decor_bench", kind = "decor", look = "bench", name = "Hay-bale bench", price = Prices.Pieces.decor_bench, size = { 1, 1 }, blurb = "Two bales and a plank for visitors to sit on." },
 		{ id = "decor_lantern", kind = "decor", look = "lantern", name = "Lantern post", price = Prices.Pieces.decor_lantern, size = { 1, 1 }, blurb = "A warm light for your farm at night." },
 		{ id = "decor_scarecrow", kind = "decor", look = "scarecrow", name = "Scarecrow", price = Prices.Pieces.decor_scarecrow, size = { 1, 1 }, blurb = "Keeps watch over your line. Just for looks." },
+		{ id = "decor_fountain", kind = "decor", look = "fountain", name = "Stone fountain", price = Prices.Pieces.decor_fountain, size = { 2, 2 }, blurb = "A splashing fieldstone fountain. Just for looks." },
+		{ id = "decor_windmill", kind = "decor", look = "windmill", name = "Windmill", price = Prices.Pieces.decor_windmill, size = { 2, 2 }, blurb = "A tall farm windmill with turning sails. The showpiece of a rich farm." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },
