@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 import line_sim  # noqa: E402
 import run  # noqa: E402
 
-run.MODULES["Shared.LineRate"] = "shared/LineRate.luau"
 
 # hay, sorter, feed (None = kept full), oiled, treated
 LAYOUTS = [
