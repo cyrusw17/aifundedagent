@@ -7,6 +7,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Services = script.Parent.Parent.Services
+-- tools/headless sets Workspace.Headless: nothing falls or drives there, so the checks that need bales to settle or
+-- trucks to roll skip with a reason (as Conveyor and Health do).
+local HEADLESS = workspace:GetAttribute("Headless") == true
+local NO_PHYSICS = "headless run: no physics, so bales do not fall and trucks do not roll"
 
 return function(SelfTest)
 	local Vehicles = require(Services.Vehicles)
@@ -116,31 +120,41 @@ return function(SelfTest)
 		t.cleanup(chute.model)
 		local dropping = Chutes.pull(chute, nil)
 		t.equal("chute drops a full layer into the pickup bed", dropping, 9)
-		t.wait(9 * 0.35 + 2.5)
-		local n, loaded = balesIn(truck2)
-		t.equal("9 bales lie in the bed", n, 9)
-		for b in loaded do
-			t.cleanup(b.body)
-		end
-		t.check("chute bales are loose physics, never welded", (function()
-			for b in loaded do
-				if b.body.Anchored or b.body:FindFirstChildWhichIsA("WeldConstraint") then
-					return false
-				end
+		if HEADLESS then
+			t.skip("chute bales land in the bed and stay through a drive", NO_PHYSICS)
+			t.wait(9 * 0.35 + 0.5)
+			for b in select(2, balesIn(truck2)) do
+				t.cleanup(b.body) -- the dropped bales still go when the suite ends
 			end
-			return true
-		end)())
-		local moved = driveFor(truck2, 3, 24)
-		t.wait(1)
-		t.check("loaded pickup drives forward", moved > 20, ("%.1f studs in 3 s"):format(moved))
-		local kept = balesIn(truck2)
-		t.equal("all 9 bales are still in the bed after the drive", kept, 9)
+		else
+			t.wait(9 * 0.35 + 2.5)
+			local n, loaded = balesIn(truck2)
+			t.equal("9 bales lie in the bed", n, 9)
+			for b in loaded do
+				t.cleanup(b.body)
+			end
+			t.check("chute bales are loose physics, never welded", (function()
+				for b in loaded do
+					if b.body.Anchored or b.body:FindFirstChildWhichIsA("WeldConstraint") then
+						return false
+					end
+				end
+				return true
+			end)())
+			local moved = driveFor(truck2, 3, 24)
+			t.wait(1)
+			t.check("loaded pickup drives forward", moved > 20, ("%.1f studs in 3 s"):format(moved))
+			local kept = balesIn(truck2)
+			t.equal("all 9 bales are still in the bed after the drive", kept, 9)
+		end
 
 		-- The haul: 9 bales backed up to the dock, unloaded, paid --------------------------------------------
 		local player = t.player(5)
 		local park = Dock.parkFrame(Vehicles.get("rusty_pickup").length)
 		if not park then
 			t.skip("dock haul", "no dock in this place")
+		elseif HEADLESS then
+			t.skip("dock haul: unload and payout", NO_PHYSICS)
 		else
 			local truck3 = spawnPickup(t, park)
 			t.wait(1)
@@ -211,6 +225,8 @@ return function(SelfTest)
 		humanoid.Sit = false
 		t.wait(0.6)
 		t.check("player leaves the seat", seat.Occupant == nil)
+		-- The seat rests 1.5 s after the driver gets out (Vehicles makeDrivable) before the prompt comes back.
+		t.wait(1.5)
 		local prompt = seat:FindFirstChild("DrivePrompt")
 		t.check("Drive prompt is back after leaving", not prompt or prompt.Enabled)
 
@@ -293,6 +309,10 @@ return function(SelfTest)
 	-- Loaded climbs: every buyable bale truck with a full bottom layer, and the pickup pulling a loaded Small Trailer,
 	-- up a 20 degree ramp with physics alone. The bales must stay in and the truck must rise half the ramp.
 	SelfTest.register("Biome loaded climb", function(t)
+		if HEADLESS then
+			t.skip("loaded trucks climb a 20 degree ramp", NO_PHYSICS)
+			return
+		end
 		local angle, length = 20, 50
 		local rise = math.sin(math.rad(angle)) * length
 		local runs = {}
@@ -374,6 +394,10 @@ return function(SelfTest)
 
 	-- Side-slope hold: parked across a 15 degree slope with no throttle, the truck must not creep sideways.
 	SelfTest.register("Biome side slope", function(t)
+		if HEADLESS then
+			t.skip("truck holds a 15 degree side slope", NO_PHYSICS)
+			return
+		end
 		local angle = 15
 		local slope = Instance.new("Part")
 		slope.Name = "SelfTestSlope"
