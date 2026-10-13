@@ -18,8 +18,8 @@ local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
-local Finds = require(script.Parent.Finds)
 local Events = require(script.Parent.Events)
+local Finds = require(script.Parent.Finds)
 
 local Bales = {}
 
@@ -32,6 +32,13 @@ local SIZE = Vector3.new(4.6, 2.6, 3.2) -- length, height, depth of one bale
 local CARRY_OFFSET = CFrame.new(0, 0.4, -2.8)
 local TWINE = Color3.fromRGB(97, 84, 66)
 local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
+
+-- Turns a bale's Pick up button on or off for everyone. The Usable attribute tells each client too, since clients
+-- also hide the buttons locally while a tool is out (Main.client.luau).
+local function setUsable(b, on)
+	b.prompt:SetAttribute("Usable", on)
+	b.prompt.Enabled = on
+end
 
 -- The bale's own color: the first of its hay's colors (Config/HayLooks).
 local function hayColor(hayType)
@@ -269,7 +276,7 @@ function Bales.breakOpen(player, b)
 		return
 	end
 	b.breaking = true
-	b.prompt.Enabled = false
+	setUsable(b, false)
 	Tutorial.mark(player, "broke")
 	scheduleRegrow(b)
 
@@ -375,7 +382,7 @@ function Bales.pickup(player, b)
 	end
 
 	b.carriedBy = player
-	b.ownerId = player.UserId
+	b.ownerId = b.ownerId or player.UserId -- the first to haul it keeps it, so nobody can lift another's bale to sell
 	b.dropToken += 1
 	state.carryBale = b
 
@@ -431,7 +438,14 @@ end
 function Bales.drop(player)
 	local state = Data.get(player)
 	local b = state and state.carryBale
-	if not b or b.gone then
+	if not b then
+		return
+	end
+	if b.gone then
+		-- The bale went away while carried: free the player's hands rather than leave them stuck carrying nothing.
+		state.carryBale = nil
+		Data.sync(player)
+		Avatar.clearCarry(player)
 		return
 	end
 	local root = Avatar.getRoot(player)
@@ -462,9 +476,9 @@ function Bales.stow(player, b, anchor, offset)
 		return false
 	end
 	b.carriedBy = player
-	b.ownerId = player.UserId
+	b.ownerId = b.ownerId or player.UserId -- the first to haul it keeps it, so nobody can lift another's bale to sell
 	b.dropToken += 1
-	b.prompt.Enabled = false
+	setUsable(b, false)
 	b.body.Anchored = false
 	b.body.CanCollide = false
 	b.body.CanQuery = false -- so bales set down from the same barrow stack on the ground, not on this one
@@ -482,6 +496,31 @@ function Bales.stow(player, b, anchor, offset)
 	return true
 end
 
+-- Takes a stowed bale out and drops it loose at cframe (into a truck bed, say), with real physics from there.
+function Bales.releaseAt(b, cframe)
+	if b.gone then
+		return
+	end
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+	setUsable(b, true)
+	b.body.CFrame = cframe
+	b.body.Massless = false
+	b.body.CanCollide = true
+	b.body.CanQuery = true
+	b.body.Anchored = false
+	b.body.AssemblyLinearVelocity = Vector3.zero
+	b.body.AssemblyAngularVelocity = Vector3.zero
+	pcall(function()
+		b.body:SetNetworkOwnershipAuto()
+	end)
+	Feedback.play("BaleSetDown", b.body)
+	startDespawnTimer(b)
+end
+
 -- Takes a stowed bale out and sets it down in front of the player (or gets rid of it if the player is gone).
 function Bales.release(b, root)
 	if b.gone then
@@ -492,7 +531,7 @@ function Bales.release(b, root)
 		b.carryWeld = nil
 	end
 	b.carriedBy = nil
-	b.prompt.Enabled = true
+	setUsable(b, true)
 	if not root or not root.Parent then
 		Bales.consume(b)
 		return

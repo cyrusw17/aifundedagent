@@ -22,10 +22,10 @@ local Data = require(script.Parent.Data)
 local Announce = require(script.Parent.Announce)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
+local Events = require(script.Parent.Events)
 local Market = require(script.Parent.Market)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
-local Events = require(script.Parent.Events)
 
 local Needle = {}
 
@@ -296,9 +296,29 @@ function Needle.collect(player, n)
 	return pickUp(player, n, true, true)
 end
 
--- Quests' name for takeFromPocket: takes count plain needles of one type for an offering, or none and false.
+-- How many unmutated needles of one type are in the pocket, polished or not (what quest offerings take).
+function Needle.plainCount(player, id)
+	local pocket = pocketOf(player)
+	return (pocket[id] or 0) + (pocket[Needle.keyOf(id, 1, true)] or 0)
+end
+
+-- Takes count unmutated needles of one type out of the pocket for a quest offering, plain ones before polished.
+-- Takes none and returns false if there aren't enough.
 function Needle.take(player, id, count)
-	return Needle.takeFromPocket(player, id, count)
+	if Needle.plainCount(player, id) < count then
+		return false
+	end
+	local pocket = pocketOf(player)
+	for _, key in { id, Needle.keyOf(id, 1, true) } do
+		local used = math.min(pocket[key] or 0, count)
+		count -= used
+		pocket[key] = (pocket[key] or 0) - used
+		if pocket[key] <= 0 then
+			pocket[key] = nil
+		end
+	end
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
 end
 
 -- Polishes a needle part (or bundle): worth Prices.PolishBonus more, and it shines.

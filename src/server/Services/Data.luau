@@ -162,6 +162,25 @@ local function summarize(saved)
 	}
 end
 
+-- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, savedAt }.
+local function landFrom(land)
+	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
+		return nil
+	end
+	return {
+		owned = land.owned == true,
+		plot = typeof(land.plot) == "number" and land.plot or nil,
+		items = land.items,
+		needles = countMap(land.needles),
+		crew = typeof(land.crew) == "table" and land.crew or {}, -- farm crew user ids
+		expansions = typeof(land.expansions) == "number" and land.expansions or nil, -- rows bought
+		binSorted = land.binSorted == true or nil, -- the needle bin has type dividers
+		binPolisher = land.binPolisher == true or nil, -- the needle bin has a polishing wheel
+		theme = typeof(land.theme) == "string" and land.theme or nil, -- plot theme id
+		savedAt = typeof(land.savedAt) == "number" and land.savedAt or nil, -- os.time() of the last save
+	}
+end
+
 -- A fresh state from a saved table (or an empty one).
 local function stateFrom(saved)
 	saved = typeof(saved) == "table" and saved or {}
@@ -197,19 +216,8 @@ local function stateFrom(saved)
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 	}
 	state.savedCash = state.cash
-	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
-		state.land = {
-			owned = saved.land.owned == true,
-			plot = typeof(saved.land.plot) == "number" and saved.land.plot or nil,
-			items = saved.land.items,
-			needles = countMap(saved.land.needles),
-			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
-			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
-			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
-			theme = typeof(saved.land.theme) == "string" and saved.land.theme or nil, -- plot theme id
-			savedAt = typeof(saved.land.savedAt) == "number" and saved.land.savedAt or nil, -- os.time() of the last save
-		}
-	end
+	state.land = landFrom(saved.land)
+	state.land2 = landFrom(saved.land2) -- a second farm, bought once the first one is outgrown
 	return state
 end
 
@@ -312,16 +320,22 @@ function Data.choose(player, slot, plot)
 		return false, "No such save."
 	end
 	choosing[player] = true
-	local used = summaries[player] and summaries[player][slot] ~= nil and not offline[player]
+	-- Wait for the slot list, so offline is known before anything can be written.
+	while summaries[player] == nil and player.Parent do
+		task.wait(0.1)
+	end
+	-- Always read the slot itself: the index can miss a slot whose index write failed, and a slot that looks empty
+	-- must never be started fresh over real progress.
 	local saved = nil
-	if used then
+	if not offline[player] then
 		local ok, result = read(slotKey(player, slot))
 		if not ok then
 			choosing[player] = nil
 			return false, "Couldn't read that save. Try again."
 		end
-		saved = result
+		saved = typeof(result) == "table" and result or nil
 	end
+	local used = saved ~= nil
 	local fresh = saved == nil
 	if fresh then
 		local preset = presetFor(player)
@@ -346,7 +360,30 @@ function Data.choose(player, slot, plot)
 	return true, used and ("Loaded save %d."):format(slot) or ("Started save %d."):format(slot)
 end
 
+-- One write per player at a time, so an older snapshot can never land after a newer one. A save asked for while one
+-- is writing waits for it, and the writer then saves once more with the newest state.
+local saving, saveAgain = {}, {}
+local saveOnce
 function Data.save(player)
+	if saving[player] then
+		saveAgain[player] = true
+		while saving[player] do
+			task.wait(0.1)
+		end
+		return
+	end
+	saving[player] = true
+	repeat
+		saveAgain[player] = nil
+		local ok, err = pcall(saveOnce, player)
+		if not ok then
+			warn("[Needlewood] save failed: " .. tostring(err))
+		end
+	until not saveAgain[player]
+	saving[player] = nil
+end
+
+saveOnce = function(player)
 	local state = states[player]
 	if not state or not store or not state.slot or offline[player] then
 		return
@@ -367,6 +404,7 @@ function Data.save(player)
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
+		land2 = state.land2,
 		bank = state.bank,
 		tutorial = state.tutorial,
 		settings = state.settings,

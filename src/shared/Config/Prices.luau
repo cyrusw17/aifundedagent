@@ -109,9 +109,10 @@ Prices.Trailers = {
 	bale_rack_trailer = 200000,
 }
 
--- The wheelbarrow carries 3 bales at a push: about three times a hand haul, well short of a truck. Priced at a few
--- minutes of hand hauling so it is the first big upgrade, before the pickup.
-Prices.Wheelbarrow = 400
+-- The wheelbarrow carries 3 bales a push: about 4.7 bales a minute to the sell pad, double what you carry by hand.
+-- Doubling your income should cost about 10 minutes of hand hauling, so it lands about 12 minutes in, between Work
+-- Gloves and the pickup (docs/ECONOMY.md).
+Prices.Wheelbarrow = 1000
 
 -- Gloves (Config/Gloves Tiers, by id). Each pair costs about 30 minutes of what you earn just before you need it for
 -- the next region's heavier hay. Work Gloves are the first purchase, two or three minutes in.
@@ -132,6 +133,10 @@ Prices.Plot = 2500
 -- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
 -- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
 Prices.PlotExpansion = 5000
+-- A second farm per save. Hauling, not sorting, limits income at almost every stage, so a second plot buys room more
+-- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
+-- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
+Prices.SecondPlot = 60000
 Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.

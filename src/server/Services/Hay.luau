@@ -17,7 +17,24 @@ local Hay = {}
 
 local rng = Random.new()
 local pieces = {} -- piece part -> time it last moved or was made
-local count = 0
+local count = 0 -- loose straw strands (needles are counted apart, so they never crowd out new hay)
+local needleCount = 0
+local needleSet = {} -- piece -> true for the visible needles among the pieces
+
+-- Forgets a piece however it leaves the world. Returns true if it was still known.
+local function forget(piece)
+	if not pieces[piece] then
+		return false
+	end
+	pieces[piece] = nil
+	if needleSet[piece] then
+		needleSet[piece] = nil
+		needleCount -= 1
+	else
+		count -= 1
+	end
+	return true
+end
 local overlap = OverlapParams.new()
 
 local HayLooks = require(ReplicatedStorage.Shared.Config.HayLooks)
@@ -43,8 +60,9 @@ function Hay.init(parent)
 			task.wait(3)
 			local now = os.clock()
 			for piece, born in pieces do
-				-- Needles never fade: they stay physical until someone picks them up.
-				if now - born > Config.LooseHayLifetime and not Hay.isNeedle(piece) then
+				-- Needles stay much longer than straw, so there is time to find them, but not forever.
+				local life = if needleSet[piece] then Config.LooseNeedleLifetime else Config.LooseHayLifetime
+				if now - born > life then
 					Hay.fadeOut(piece)
 				end
 			end
@@ -57,19 +75,14 @@ function Hay.isPiece(part)
 end
 
 function Hay.remove(piece)
-	if pieces[piece] then
-		pieces[piece] = nil
-		count -= 1
-	end
+	forget(piece)
 	piece:Destroy()
 end
 
 function Hay.fadeOut(piece)
-	if not pieces[piece] then
+	if not forget(piece) then
 		return
 	end
-	pieces[piece] = nil
-	count -= 1
 	piece.CanCollide = false
 	local tween = TweenService:Create(piece, TweenInfo.new(0.6), { Size = Vector3.new(0.05, 0.05, 0.05), Transparency = 1 })
 	tween:Play()
@@ -78,11 +91,12 @@ function Hay.fadeOut(piece)
 	end)
 end
 
-local function trim()
-	while count > Config.MaxLoosePieces do
+-- Past the caps the oldest strand (or, for needles, the oldest needle) goes, so the server never fills up.
+local function trimKind(isNeedle, over)
+	while over() do
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
-			if born < oldestTime and not Hay.isNeedle(piece) then
+			if born < oldestTime and (needleSet[piece] == true) == isNeedle then
 				oldest, oldestTime = piece, born
 			end
 		end
@@ -91,6 +105,15 @@ local function trim()
 		end
 		Hay.remove(oldest)
 	end
+end
+
+local function trim()
+	trimKind(false, function()
+		return count > Config.MaxLoosePieces
+	end)
+	trimKind(true, function()
+		return needleCount > Config.MaxLooseNeedles
+	end)
 end
 
 -- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
@@ -159,13 +182,15 @@ function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
 	piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
 	piece:SetAttribute("OwnerId", ownerId)
 	pieces[piece] = os.clock()
-	count += 1
+	if kind == "Needle" then
+		needleSet[piece] = true
+		needleCount += 1
+	else
+		count += 1
+	end
 	-- A needle can be clicked up and destroyed elsewhere, so forget a piece however it leaves.
 	piece.Destroying:Connect(function()
-		if pieces[piece] then
-			pieces[piece] = nil
-			count -= 1
-		end
+		forget(piece)
 	end)
 	piece.Parent = Hay.folder
 	-- The server simulates loose hay. Otherwise a nearby player's client owns each strand's physics and quietly
@@ -212,10 +237,7 @@ end
 -- The scooped pieces leave the world at once and arc into the player's chest.
 function Hay.flyToPlayer(root, list)
 	for i, piece in list do
-		if pieces[piece] then
-			pieces[piece] = nil
-			count -= 1
-		end
+		forget(piece)
 		piece.Anchored = true
 		piece.CanCollide = false
 		local from = piece.Position
@@ -245,7 +267,10 @@ end
 function Hay.rake(center, gatherAt, radius, ownerId)
 	local list = Hay.near(center, radius, nil)
 	for _, piece in list do
-		piece:SetAttribute("OwnerId", ownerId)
+		-- Raked straw is paid to the raker; a visible needle stays with whoever's bale it came from.
+		if not needleSet[piece] then
+			piece:SetAttribute("OwnerId", ownerId)
+		end
 		pieces[piece] = os.clock()
 		-- Each strand stops a slightly different distance short of the gather spot, so they pile in a row, not a point.
 		piece:SetAttribute("RakeStop", rng:NextNumber(0.6, 2.2))

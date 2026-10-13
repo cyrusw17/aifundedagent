@@ -133,30 +133,39 @@ local function sellPieces(pieces)
 	end
 end
 
+-- One look at what is on the pad, selling it all.
+local function sweepPad(pad)
+	local box = pad.CFrame * CFrame.new(0, 3.5, 0)
+	local parts = Workspace:GetPartBoundsInBox(box, Vector3.new(pad.Size.X, 7, pad.Size.Z))
+	local doneBales, donePlayers, loose = {}, {}, {}
+	for _, part in parts do
+		if Hay.isPiece(part) then
+			table.insert(loose, part)
+		end
+		local bale = Bales.fromPart(part)
+		if bale and not doneBales[bale] then
+			doneBales[bale] = true
+			sellBale(bale)
+		end
+		local player = part.Parent and Players:GetPlayerFromCharacter(part.Parent)
+		if player and not donePlayers[player] then
+			donePlayers[player] = true
+			sellHay(player)
+		end
+	end
+	if #loose > 0 then
+		sellPieces(loose)
+	end
+end
+
 function Gameplay.wireSellPad(pad)
 	task.spawn(function()
 		while pad.Parent do
 			task.wait(0.25)
-			local box = pad.CFrame * CFrame.new(0, 3.5, 0)
-			local parts = Workspace:GetPartBoundsInBox(box, Vector3.new(pad.Size.X, 7, pad.Size.Z))
-			local doneBales, donePlayers, loose = {}, {}, {}
-			for _, part in parts do
-				if Hay.isPiece(part) then
-					table.insert(loose, part)
-				end
-				local bale = Bales.fromPart(part)
-				if bale and not doneBales[bale] then
-					doneBales[bale] = true
-					sellBale(bale)
-				end
-				local player = part.Parent and Players:GetPlayerFromCharacter(part.Parent)
-				if player and not donePlayers[player] then
-					donePlayers[player] = true
-					sellHay(player)
-				end
-			end
-			if #loose > 0 then
-				sellPieces(loose)
+			-- One bad sale must not stop the pad for the rest of the server's life.
+			local ok, err = pcall(sweepPad, pad)
+			if not ok then
+				warn("[Needlewood] sell pad: " .. tostring(err))
 			end
 		end
 	end)

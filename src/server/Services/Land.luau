@@ -31,8 +31,12 @@ local Tutorial = require(script.Parent.Tutorial)
 local Vehicles = require(script.Parent.Vehicles)
 local Likes = require(script.Parent.Likes)
 local Needle = require(script.Parent.Needle)
+local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Display = require(script.Parent.Display)
+local Mixer = require(script.Parent.Mixer)
+local LineStats = require(script.Parent.LineStats)
+local Quests = require(script.Parent.Quests)
 
 local Land = {}
 
@@ -53,7 +57,8 @@ end
 local DEFAULT_THEME = LandConfig.Themes[1]
 
 local plots = {} -- index -> plot record
-local plotOf = {} -- player -> plot record
+local plotOf = {} -- player -> the plot record they build on (their active farm)
+local farms = {} -- player -> { land = plot, land2 = plot }: every plot they own, by save key
 local lastAction = {} -- player -> os.clock() of their last place or remove
 local state = nil -- ReplicatedStorage.Land: remotes and what the client needs to know about every plot
 local vehiclesFolder = nil
@@ -304,7 +309,20 @@ end
 local function takeNeedles(player, n)
 	local pocket = Needle.held(player)
 	local took = 0
-	for key, count in pocket do
+	-- Plain needles first, so a mutated or polished one isn't spent as one unit of iron.
+	local keys = {}
+	for key in pocket do
+		table.insert(keys, key)
+	end
+	local function worth(key)
+		local _, mult, polished = Needle.parseKey(key)
+		return mult + (polished and 0.5 or 0)
+	end
+	table.sort(keys, function(a, b)
+		return worth(a) < worth(b)
+	end)
+	for _, key in keys do
+		local count = pocket[key]
 		local use = math.min(count, n - took)
 		pocket[key] = count - use > 0 and count - use or nil
 		took += use
@@ -470,7 +488,7 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "ramp" then
 		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
-	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "starbeam" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
@@ -481,6 +499,12 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
 	elseif def.kind == "press" then
 		table.insert(item.instances, Press.build(plot.items, frame))
+	elseif def.kind == "starbeam" then
+		table.insert(item.instances, Starbeam.build(plot.items, frame, function()
+			return plot.ownerId
+		end))
+	elseif def.kind == "mixer" then
+		table.insert(item.instances, Mixer.build(plot.items, frame))
 	elseif def.kind == "splitter" then
 		table.insert(item.instances, Machines.splitter(plot.grid, gx, gz, dir, def.rule))
 	elseif def.kind == "display" then
@@ -563,11 +587,8 @@ local function fits(plot, def, gx, gz, dir, ignore)
 end
 
 -- What gets saved: the plot and the pieces by id, anchor cell and direction (and a silo's bales).
-local function saveItems(player, plot)
-	local s = Data.get(player)
-	if not s or not s.land then
-		return
-	end
+-- Writes a plot into its save table (plot-local, so it loads onto any free plot). ownerId picks whose bin needles go in.
+local function writeLand(land, plot, ownerId)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
@@ -577,18 +598,28 @@ local function saveItems(player, plot)
 	for _, saved in plot.leftOut or {} do
 		table.insert(items, saved)
 	end
-	s.land.items = items
-	s.land.plot = plot.index
-	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
-	s.land.binSorted = plot.binSorted or nil
-	s.land.theme = plot.theme
-	s.land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
-	s.land.needles = plot.bin.contents(player.UserId)
+	land.items = items
+	land.plot = plot.index
+	land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
+	land.binSorted = plot.binSorted or nil
+	land.binPolisher = plot.binPolisher or nil
+	land.theme = plot.theme
+	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
+	land.needles = plot.bin.contents(ownerId)
 	local crew = {}
 	for userId in plot.crew do
 		table.insert(crew, userId)
 	end
-	s.land.crew = crew
+	land.crew = crew
+end
+
+local function saveItems(player, plot)
+	local s = Data.get(player)
+	local land = s and s[plot.landKey or "land"]
+	if not land then
+		return
+	end
+	writeLand(land, plot, player.UserId)
 	plot.dirty = false
 end
 
@@ -688,13 +719,53 @@ addBinPrompt = function(plot)
 		Data.toast(player, "Your needle bin now sorts needles into a corner per type.")
 	end)
 	plot.binPrompt = prompt
+
+	-- And a polishing wheel on its side: polished needles sell for more.
+	local polish = Instance.new("ProximityPrompt")
+	polish.Name = "PolisherPrompt"
+	polish.ActionText = ("Fit a needle polisher $%d"):format(LandConfig.PolisherPrice)
+	polish.ObjectText = "Needle bin"
+	polish.HoldDuration = 0.5
+	polish.MaxActivationDistance = 10
+	polish.RequiresLineOfSight = false
+	polish.UIOffset = Vector2.new(0, 80) -- below the dividers prompt
+	polish.Parent = floor
+	polish.Triggered:Connect(function(player)
+		if plot.owner ~= player then
+			Data.toast(player, "Only the farm's owner can fit a polisher to its bin.")
+			return
+		end
+		if plot.binPolisher then
+			return
+		end
+		local paid, why = Bank.charge(player, LandConfig.PolisherPrice, "Land: needle polisher")
+		if not paid then
+			Data.toast(player, why or "Not enough money.")
+			return
+		end
+		plot.binPolisher = true
+		plot.bin.fitPolisher()
+		polish.Enabled = false
+		saveItems(player, plot)
+		Data.toast(player, "Needles resting in your bin now get polished, and polished needles sell for more.")
+	end)
+	plot.polishPrompt = polish
 end
 
 local function release(plot)
-	if plot.owner then
-		plotOf[plot.owner] = nil
-		plot.owner:SetAttribute("LandPlot", 0)
+	local owner = plot.owner
+	if owner then
+		local mine = farms[owner]
+		if mine then
+			mine[plot.landKey or "land"] = nil
+		end
+		if plotOf[owner] == plot then
+			plotOf[owner] = mine and (mine.land or mine.land2) or nil
+		end
+		owner:SetAttribute("LandPlot", plotOf[owner] and plotOf[owner].index or 0)
+		owner:SetAttribute("FarmCount", mine and ((mine.land and 1 or 0) + (mine.land2 and 1 or 0)) or 0)
 	end
+	plot.landKey = nil
 	-- The owner's displayed needles are in their save; emptying the pegs first keeps them from going back to the pocket
 	-- as well.
 	for _, item in plot.list do
@@ -703,12 +774,26 @@ local function release(plot)
 		end
 	end
 	clearPlot(plot)
+	-- Visitors who sorted here keep what their hay gave up: it goes to their pockets before the bin empties.
+	for _, other in Players:GetPlayers() do
+		local s = other ~= owner and Data.get(other)
+		if s then
+			local theirs = plot.bin.contents(other.UserId)
+			if next(theirs) then
+				for k, count in theirs do
+					s.pocket[k] = (s.pocket[k] or 0) + count
+				end
+				Data.sync(other)
+			end
+		end
+	end
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
-	if plot.binSorted then
-		-- Dividers belong to the owner's save; the next owner gets a plain bin.
+	if plot.binSorted or plot.binPolisher then
+		-- Dividers and the polisher belong to the owner's save; the next owner gets a plain bin.
 		plot.bin.model:Destroy()
 		plot.bin = Machines.needleBin(plot.model, plot.binFrame)
 		plot.binSorted = nil
+		plot.binPolisher = nil
 		addBinPrompt(plot)
 	end
 	plot.leftOut = nil
@@ -722,9 +807,17 @@ local function release(plot)
 end
 
 -- Gives a plot to a player and rebuilds what they saved on it. Pieces that don't fit (an older save) are skipped but kept.
-local function claim(plot, player, saved)
+-- landKey is the save's key for this farm: "land" (the first) or "land2" (a second plot).
+local function claim(plot, player, saved, landKey)
+	landKey = landKey or "land"
 	plot.owner, plot.ownerId, plot.ownerName = player, player.UserId, player.DisplayName
-	plotOf[player] = plot
+	plot.landKey = landKey
+	farms[player] = farms[player] or {}
+	farms[player][landKey] = plot
+	if not plotOf[player] or landKey == "land" then
+		plotOf[player] = plot
+	end
+	player:SetAttribute("FarmCount", (farms[player].land and 1 or 0) + (farms[player].land2 and 1 or 0))
 	plot.likes = 0
 	task.spawn(function()
 		local count = Likes.count(player.UserId)
@@ -733,7 +826,7 @@ local function claim(plot, player, saved)
 			publish(plot)
 		end
 	end)
-	player:SetAttribute("LandPlot", plot.index)
+	player:SetAttribute("LandPlot", plotOf[player].index)
 	plot.leftOut = {}
 	plot.crew = {}
 	-- Saves from before expansions existed get the whole plot.
@@ -746,6 +839,13 @@ local function claim(plot, player, saved)
 		plot.bin.splitByType()
 		if plot.binPrompt then
 			plot.binPrompt.Enabled = false
+		end
+	end
+	if saved.binPolisher then
+		plot.binPolisher = true
+		plot.bin.fitPolisher()
+		if plot.polishPrompt then
+			plot.polishPrompt.Enabled = false
 		end
 	end
 	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
@@ -800,9 +900,15 @@ local function onBuy(player, index)
 	if not s then
 		return false, "Pick a save first."
 	end
+	-- A save with a farm can buy one more plot, at the second-plot price.
+	local landKey = "land"
+	local price = nil
 	if s.land and s.land.owned then
-		local mine = plotOf[player]
-		return false, mine and ("You already own %s."):format(mine.def.name) or "This save already owns land."
+		if (s.land2 and s.land2.owned) or not plotOf[player] then
+			return false, "This save already owns all the land it can."
+		end
+		landKey = "land2"
+		price = LandConfig.SecondPlotPrice
 	end
 	local plot = typeof(index) == "number" and plots[index]
 	if not plot then
@@ -811,12 +917,17 @@ local function onBuy(player, index)
 	if plot.ownerId then
 		return false, ("%s already belongs to %s."):format(plot.def.name, plot.ownerName)
 	end
-	local paid, why = Bank.charge(player, plot.def.price, "Land: " .. plot.def.name)
+	local paid, why = Bank.charge(player, price or plot.def.price, "Land: " .. plot.def.name)
 	if not paid then
 		return false, why
 	end
-	s.land = { owned = true, plot = index, items = {}, expansions = 0 }
-	claim(plot, player, s.land)
+	s[landKey] = { owned = true, plot = index, items = {}, expansions = 0 }
+	claim(plot, player, s[landKey], landKey)
+	if landKey == "land2" then
+		Data.sync(player)
+		task.spawn(Data.save, player)
+		return true, ("%s is your second farm. Press SWITCH FARM in build mode to build there."):format(plot.def.name)
+	end
 	Data.sync(player)
 	task.spawn(Data.save, player)
 	Data.toast(player, ("%s is yours! Walk down the plot road and press BUILD."):format(plot.def.name))
@@ -863,8 +974,7 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
-	local s = Data.get(player)
-	if def.quest and not (s and typeof(s.quests) == "table" and typeof(s.quests.earned) == "table" and s.quests.earned[def.id]) then
+	if def.quest and not Quests.has(player, def.quest) then
 		return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
 	end
 	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
@@ -991,6 +1101,9 @@ local function onPaste(player, list, gx, gz)
 		if not def or not isCell(entry.dx) or not isCell(entry.dz) or typeof(entry.dir) ~= "string" or not Conveyors.Dirs[entry.dir] then
 			return false, "Nothing to paste."
 		end
+		if def.quest and not Quests.has(player, def.quest) then
+			return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
+		end
 		local ax, az = gx + entry.dx, gz + entry.dz
 		if not fits(plot, def, ax, az, entry.dir) then
 			return false, "Part of that doesn't fit there."
@@ -1106,6 +1219,18 @@ local function onExpand(player)
 	publish(plot)
 	Data.sync(player)
 	return true, ("Your plot grew by a row of %d tiles."):format(plot.tiles.X)
+end
+
+-- Switches which of the player's two farms build mode works on.
+local function onSwitch(player)
+	local mine = farms[player]
+	if not mine or not (mine.land and mine.land2) then
+		return false, "You have one farm."
+	end
+	plotOf[player] = plotOf[player] == mine.land and mine.land2 or mine.land
+	history[player] = nil -- undo steps belong to the other farm
+	player:SetAttribute("LandPlot", plotOf[player].index)
+	return true, ("Now building on %s."):format(plotOf[player].def.name)
 end
 
 -- Puts the owner's plot in another theme (free).
@@ -1329,6 +1454,13 @@ local function buildPlot(parent, index, def)
 	}
 	plots[index] = plot
 	addBinPrompt(plot)
+	-- The line stats board at the other end of the strip from the bin, facing the lane: the owner's bales, needles and
+	-- dollars a minute.
+	local statsX = if def.open == "S" then x1 - T * 0.5 - 0.5 else x0 + T * 0.5 + 0.5
+	local statsAt = Vector3.new(statsX, 0, stripZ)
+	LineStats.board(model, CFrame.lookAt(statsAt, Vector3.new(statsX, 0, plot.laneZ)), function()
+		return plot.ownerId
+	end)
 	dress(plot, DEFAULT_THEME.id)
 	likePrompt.Triggered:Connect(function(player)
 		local ownerId = plot.ownerId
@@ -1574,6 +1706,25 @@ local function onLoaded(player)
 	claim(plot, player, s.land)
 	restoreNeedles(player, plot, s.land)
 	plot.mailLabel.Text = letter and ("MAILBOX\n" .. letter) or "MAILBOX\nNo mail."
+	-- A second farm goes on another free plot, if one is left.
+	if s.land2 and s.land2.owned then
+		local second = pickPlot(s.land2.plot)
+		if second then
+			local letter2 = mailbox(player, s.land2)
+			claim(second, player, s.land2, "land2")
+			restoreNeedles(player, second, s.land2)
+			second.mailLabel.Text = letter2 and ("MAILBOX\n" .. letter2) or "MAILBOX\nNo mail."
+			if letter2 then
+				letter = letter and (letter .. " " .. letter2) or letter2
+			end
+		else
+			task.delay(6, function()
+				if player.Parent then
+					Data.toast(player, "No second plot is free on this server, so your second farm waits in your save.")
+				end
+			end)
+		end
+	end
 	parkVehicles(player, plot)
 	task.spawn(sendHome, player, plot)
 	local message = ("Your farm is on %s."):format(plot.def.name)
@@ -1590,6 +1741,28 @@ local function onLoaded(player)
 	end
 end
 
+-- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
+Land.test = {
+	plots = plots,
+	pieces = pieces,
+	farms = farms,
+	plotOf = plotOf,
+	key = key,
+	levelsOf = levelsOf,
+	turnFor = turnFor,
+	fits = fits,
+	spawnItem = spawnItem,
+	destroyItem = destroyItem,
+	writeLand = writeLand,
+	claim = claim,
+	release = release,
+	pickPlot = pickPlot,
+	restoreNeedles = restoreNeedles,
+	mailbox = mailbox,
+	onPlace = onPlace,
+	onUndo = onUndo,
+}
+
 function Land.build(worldFolder)
 	local folder = Instance.new("Folder")
 	folder.Name = "Land"
@@ -1601,7 +1774,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1636,10 +1809,15 @@ function Land.build(worldFolder)
 	remotes.Paste.OnServerInvoke = guard(onPaste)
 	remotes.Undo.OnServerInvoke = guard(onUndo)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
+	remotes.Switch.OnServerInvoke = guard(onSwitch)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
-		local plot = plotOf[owner]
-		return plot ~= nil and plot.crew[driver.UserId] == true
+		for _, plot in farms[owner] or {} do
+			if plot.crew[driver.UserId] then
+				return true
+			end
+		end
+		return false
 	end
 
 	Data.loaded.Event:Connect(onLoaded)
@@ -1652,28 +1830,34 @@ function Land.build(worldFolder)
 	task.spawn(function()
 		while true do
 			task.wait(5)
-			for player, plot in plotOf do
-				if plot.dirty then
-					saveItems(player, plot)
+			for player, mine in farms do
+				for _, plot in mine do
+					if plot.dirty then
+						saveItems(player, plot)
+					end
 				end
 			end
 		end
 	end)
 	-- Save the plot before Data saves the player on leaving, then free it.
 	Data.beforeSave = function(player)
-		local plot = plotOf[player]
-		if plot then
+		for _, plot in farms[player] or {} do
 			saveItems(player, plot)
 		end
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastAction[player] = nil
 		history[player] = nil
-		local plot = plotOf[player]
-		if plot then
+		local mine = {}
+		for _, plot in farms[player] or {} do
+			table.insert(mine, plot)
+		end
+		for _, plot in mine do
 			saveItems(player, plot)
 			release(plot)
 		end
+		farms[player] = nil
+		plotOf[player] = nil
 	end)
 end
 

@@ -76,13 +76,13 @@ end
 local function buildShovel()
 	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
 	return addMesh(buildTool("Shovel", tip, {
-		-- A small hand spade, about 3.3 studs end to end (handle -0.8 to blade tip 2.5). Its reach comes from
-		-- Config ShovelReach/ToolReach, not from its length.
-		{ "Shaft", Vector3.new(0.3, 0.8, 0.3), CFrame.new(0, 1.2, 0), WOOD, Enum.Material.Wood },
+		-- A small hand spade matching the Blender basic_shovel at true size: blade tip at y 2.1, blade from 1.4 up.
+		-- Its reach comes from Config ShovelReach/ToolReach, not from its length.
+		{ "Shaft", Vector3.new(0.3, 0.6, 0.3), CFrame.new(0, 1.1, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
-			Vector3.new(0.9, 0.9, 0.12),
-			CFrame.new(0, 2.05, 0),
+			Vector3.new(0.6, 0.7, 0.12),
+			CFrame.new(0, 1.75, 0),
 			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
@@ -358,7 +358,9 @@ end
 
 function Avatar.getRoot(player)
 	local rig = rigs[player]
-	return rig and rig.root
+	-- Right after a respawn the rig can still point at the old, removed character until setup catches up.
+	local root = rig and rig.root
+	return root and root.Parent and root or nil
 end
 
 function Avatar.start()

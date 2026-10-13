@@ -1,8 +1,9 @@
 --!nonstrict
 -- The wheelbarrow: bought once at its stand by the sell pad (Prices.Wheelbarrow), then kept in the save slot's gear
 -- and handed out as a tool. With it out, a barrow rolls in front of you. Click a bale to load it (up to
--- Config.WheelbarrowBales, stacked), click anywhere else to set the load down in front of you. A loaded barrow slows
--- you a little (Config.WheelbarrowLoadFactor of the bales' weight). Putting the barrow away sets its load down.
+-- Config.WheelbarrowBales, stacked), click a truck or trailer to tip the load into its bed, or anywhere else to set it
+-- down in front of you. A loaded barrow slows you a little (Config.WheelbarrowLoadFactor of the bales' weight).
+-- Putting the barrow away sets its load down.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -30,7 +31,7 @@ local function owns(player)
 	return state ~= nil and table.find(state.gear or {}, GEAR_ID) ~= nil
 end
 
-local function part(model, name, size, cframe, color, material, shape)
+local function makePart(model, name, size, cframe, color, material, shape)
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Size = size
@@ -52,11 +53,11 @@ local function buildBarrow(root)
 	local model = Instance.new("Model")
 	model.Name = "Barrow"
 	local base = root.CFrame * TRAY
-	local floor = part(model, "Tray", Vector3.new(5, 0.25, 3.6), base, METAL, Enum.Material.Metal)
-	part(model, "SideL", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(-2.5, 0.4, 0), METAL, Enum.Material.Metal)
-	part(model, "SideR", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(2.5, 0.4, 0), METAL, Enum.Material.Metal)
-	part(model, "Front", Vector3.new(5, 0.8, 0.2), base * CFrame.new(0, 0.4, -1.8), METAL, Enum.Material.Metal)
-	part(
+	local floor = makePart(model, "Tray", Vector3.new(5, 0.25, 3.6), base, METAL, Enum.Material.Metal)
+	makePart(model, "SideL", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(-2.5, 0.4, 0), METAL, Enum.Material.Metal)
+	makePart(model, "SideR", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(2.5, 0.4, 0), METAL, Enum.Material.Metal)
+	makePart(model, "Front", Vector3.new(5, 0.8, 0.2), base * CFrame.new(0, 0.4, -1.8), METAL, Enum.Material.Metal)
+	makePart(
 		model,
 		"Wheel",
 		Vector3.new(0.4, 1.4, 1.4),
@@ -66,7 +67,7 @@ local function buildBarrow(root)
 		Enum.PartType.Cylinder
 	)
 	for _, x in { -1, 1 } do
-		part(model, "Handle", Vector3.new(0.2, 0.2, 3.2), base * CFrame.new(x * 1.2, 0.9, 2.8) * CFrame.Angles(math.rad(12), 0, 0), WOOD, Enum.Material.Wood)
+		makePart(model, "Handle", Vector3.new(0.2, 0.2, 3.2), base * CFrame.new(x * 1.2, 0.9, 2.8) * CFrame.Angles(math.rad(12), 0, 0), WOOD, Enum.Material.Wood)
 	end
 	for _, p in model:GetChildren() do
 		local weld = Instance.new("Weld")
@@ -85,6 +86,43 @@ local function slot(n)
 	return TRAY * CFrame.new(0, 0.125 + BALE_SIZE.Y * (n - 0.5) + 0.05, 0)
 end
 
+-- The cargo box of the truck or trailer a part belongs to (Vehicles sets CargoOffset/CargoSize on the model), as
+-- its center CFrame and size, or nil.
+local function cargoOf(part)
+	local node = part
+	while node and node ~= workspace do
+		if node:IsA("Model") and node:GetAttribute("CargoOffset") and node.PrimaryPart then
+			return node.PrimaryPart.CFrame * node:GetAttribute("CargoOffset"), node:GetAttribute("CargoSize")
+		end
+		node = node.Parent
+	end
+	return nil
+end
+
+-- Tips the whole load into a truck bed in one go: the bales drop in side by side, loose, and settle with physics.
+local function tipInto(player, box, size)
+	local state = Data.get(player)
+	local load = state and state.barrow
+	if not load or #load == 0 then
+		return 0
+	end
+	state.barrow = {}
+	-- Lay them flat across the bed from the back of the box, wrapping to a second row (and up a layer) as needed.
+	local across = math.max(1, math.floor(size.X / (BALE_SIZE.Z + 0.2)))
+	local rows = math.max(1, math.floor(size.Z / (BALE_SIZE.X + 0.2)))
+	local floorY = -size.Y / 2 + BALE_SIZE.Y / 2 + 0.3
+	for i, b in load do
+		local n = i - 1
+		local col, row, layer = n % across, math.floor(n / across) % rows, math.floor(n / (across * rows))
+		local x = -size.X / 2 + (BALE_SIZE.Z + 0.2) * (col + 0.5)
+		local z = size.Z / 2 - (BALE_SIZE.X + 0.2) * (row + 0.5)
+		local y = floorY + layer * (BALE_SIZE.Y + 0.1)
+		Bales.releaseAt(b, box * CFrame.new(x, y, z) * CFrame.Angles(0, math.pi / 2, 0))
+	end
+	Avatar.refreshSpeed(player)
+	return #load
+end
+
 local function unloadAll(player)
 	local state = Data.get(player)
 	local load = state and state.barrow
@@ -101,6 +139,35 @@ local function unloadAll(player)
 	return #load
 end
 
+-- Loads a bale into the player's barrow (it must be out and have room). Returns true if it went in.
+function Wheelbarrow.load(player, bale)
+	local state = Data.get(player)
+	local root = Avatar.getRoot(player)
+	if not state or not root or not barrows[player] or bale.carriedBy then
+		return false
+	end
+	state.barrow = state.barrow or {}
+	if #state.barrow >= Config.WheelbarrowBales then
+		return false
+	end
+	if Bales.stow(player, bale, root, slot(#state.barrow + 1)) then
+		table.insert(state.barrow, bale)
+		Avatar.refreshSpeed(player)
+		return true
+	end
+	return false
+end
+
+-- Sets the whole load down in front of the player. Returns how many bales came out.
+function Wheelbarrow.unload(player)
+	return unloadAll(player)
+end
+
+-- True while the player has the barrow out.
+function Wheelbarrow.isOut(player)
+	return barrows[player] ~= nil
+end
+
 local function use(player)
 	local state = Data.get(player)
 	local root = Avatar.getRoot(player)
@@ -114,15 +181,19 @@ local function use(player)
 		bale = nil
 	end
 	if bale and not bale.carriedBy then
-		if #state.barrow >= Config.WheelbarrowBales then
+		if not Wheelbarrow.load(player, bale) and #state.barrow >= Config.WheelbarrowBales then
 			Data.toast(player, "The barrow is full. Click the ground to set the load down.")
-			return
-		end
-		if Bales.stow(player, bale, root, slot(#state.barrow + 1)) then
-			table.insert(state.barrow, bale)
-			Avatar.refreshSpeed(player)
 		end
 		return
+	end
+	-- Clicking a truck or trailer close by tips the load straight into its bed.
+	if #state.barrow > 0 and aim and aim.part then
+		local box, size = cargoOf(aim.part)
+		if box and (box.Position - root.Position).Magnitude <= Config.ToolReach + size.Magnitude / 2 then
+			tipInto(player, box, size)
+			Data.toast(player, "Tipped the load into the bed.")
+			return
+		end
 	end
 	if unloadAll(player) == 0 then
 		Data.toast(player, "Click a bale to load it into the barrow.")
@@ -134,7 +205,7 @@ local function makeTool(player)
 	tool.Name = TOOL_NAME
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "Click a bale to load it (3 max). Click the ground to set the load down."
+	tool.ToolTip = "Click a bale to load it (3 max). Click a truck bed to tip the load in, or the ground to set it down."
 	tool.Equipped:Connect(function()
 		local root = Avatar.getRoot(player)
 		if root and not barrows[player] then
@@ -167,6 +238,11 @@ local function give(player)
 	makeTool(player).Parent = backpack
 end
 
+-- Gives the tool to a player who owns a barrow (for after a purchase, or the self-test).
+function Wheelbarrow.give(player)
+	give(player)
+end
+
 local function buy(player)
 	local state = Data.get(player)
 	if not state then
@@ -194,11 +270,11 @@ function Wheelbarrow.buildStand(parent, cframe)
 	local model = Instance.new("Model")
 	model.Name = "WheelbarrowStand"
 	local base = cframe * CFrame.new(0, 1.2, 0)
-	local tray = part(model, "Tray", Vector3.new(4, 0.25, 3), base, METAL, Enum.Material.Metal)
-	part(model, "Wheel", Vector3.new(0.4, 1.4, 1.4), base * CFrame.new(0, -0.5, -1.8), Color3.fromRGB(60, 52, 44), Enum.Material.Fabric, Enum.PartType.Cylinder)
+	local tray = makePart(model, "Tray", Vector3.new(4, 0.25, 3), base, METAL, Enum.Material.Metal)
+	makePart(model, "Wheel", Vector3.new(0.4, 1.4, 1.4), base * CFrame.new(0, -0.5, -1.8), Color3.fromRGB(60, 52, 44), Enum.Material.Fabric, Enum.PartType.Cylinder)
 	for _, x in { -1, 1 } do
-		part(model, "Leg", Vector3.new(0.25, 1, 0.25), base * CFrame.new(x * 1.2, -0.6, 1.2), WOOD, Enum.Material.Wood)
-		part(model, "Handle", Vector3.new(0.2, 0.2, 3), base * CFrame.new(x * 1.2, 0.4, 2.6), WOOD, Enum.Material.Wood)
+		makePart(model, "Leg", Vector3.new(0.25, 1, 0.25), base * CFrame.new(x * 1.2, -0.6, 1.2), WOOD, Enum.Material.Wood)
+		makePart(model, "Handle", Vector3.new(0.2, 0.2, 3), base * CFrame.new(x * 1.2, 0.4, 2.6), WOOD, Enum.Material.Wood)
 	end
 	for _, p in model:GetChildren() do
 		p.Anchored = true
