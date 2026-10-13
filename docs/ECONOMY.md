@@ -174,6 +174,28 @@ There is no loan for it: the land loan only covers a first plot.
 
 Removing a piece still refunds half its price.
 
+### Pieces and upgrades added by other threads (reviewed)
+
+These were priced by the threads that built them. I checked each against the stage table and kept them; the reasons
+are below so the whole list lives in one place.
+
+| Piece | Price | Why it fits |
+|---|---|---|
+| Raised belt, ramps | $60, $150 each | Belts that cross a line. A few of them cost a few minutes; they are layout, not income. |
+| Splitter, sort splitter | $300, $600 | Layout pieces. The sorting one costs more because it routes sorted bales away from plain ones. |
+| Display wall | $1,000 | Shows off needles; no income. A small early sink. |
+| Hay baler | $3,000 | Packs loose strands back into bales. A convenience you want early, about 25 minutes by hand. |
+| Needle vault | $6,000 | Stores needles with no parts. It also lets you hold a flooded needle type until the market recovers (prices fade back in about 10 minutes), worth at most 20% on what you hold. About 15 minutes at the shaker stage. |
+| Hay press | $8,000 | Makes thatch for building, not money, so it is priced like a mid-game toy. |
+| Needle polisher (bin upgrade) | $12,000 | +25% on up to 30 needles a minute. At the shaker stage it pays back in about 3 hours, and at the conveyor sorter in about 1.5, so it is a mid-game upgrade like the sorters. |
+| Bin dividers (bin upgrade) | $1,500 | Sorts the bin by needle type. Tidiness, so it is cheap. |
+| Alloy mixer | $20,000 | Turns needles into building alloy. Its cost is mostly the needles it eats, so the machine itself sits beside the conveyor sorter. |
+| Decor: flowers, bench, lantern, scarecrow | $200, $350, $500, $900 | Looks only. Each is a few minutes of early income, so a new farm can look lived in. Later decor should cost more (a fountain or a windmill at $10,000 to $50,000) so rich players still have something to spend on. |
+| Sorter oil | $250 a can | 10% faster for 25 bales. It only pays when the sorter holds the line back, so it is a small treat. |
+
+Quest rewards (the five quest gloves, the Alien Collector, the Starbeam Collector) cost $0 because you earn them; they
+can't be bought.
+
 ### Needle sorters
 
 Priced from the V8 payback targets, for Meadow hay with the sorter kept full:
@@ -351,7 +373,7 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
-| Plot, expansion rows, second farm, pieces, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
+| Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
