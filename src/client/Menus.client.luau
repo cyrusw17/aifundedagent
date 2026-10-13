@@ -21,6 +21,7 @@ local Meadow = require(Config:WaitForChild("Meadow"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Rustic = require(Config:WaitForChild("Rustic"))
 local GameConfig = require(Config:WaitForChild("Game"))
+local Prices = require(Config:WaitForChild("Prices"))
 
 local Theme = Kit.Theme
 local C, F, T = Theme.Colors, Theme.Fonts, Theme.Text
@@ -78,11 +79,21 @@ local function refreshGoal()
 	end
 	local cash = player:GetAttribute("Cash") or 0
 	goalTitle.Text = "NEXT: " .. currentGoal.name
-	goalFill.Size = UDim2.fromScale(math.clamp(cash / math.max(currentGoal.price, 1), 0, 1), 1)
+	-- Trucks are meant to be bought on a bank loan, so for those the bar fills toward the down payment.
+	local target = currentGoal.price
+	local down = currentGoal.loan and math.floor(currentGoal.price * (Prices.Bank.DownPayment or 1)) or nil
+	if down and cash < down then
+		target = down
+	end
+	goalFill.Size = UDim2.fromScale(math.clamp(cash / math.max(target, 1), 0, 1), 1)
 	if GameConfig.InfiniteMoney then
 		goalMoney.Text = ("%s  ·  test cash is on"):format(Kit.money(currentGoal.price))
 	elseif cash >= currentGoal.price then
 		goalMoney.Text = ("%s  ·  you can buy it now!"):format(Kit.money(currentGoal.price))
+	elseif down and cash >= down then
+		goalMoney.Text = ("%s  ·  bank loan ready"):format(Kit.money(currentGoal.price))
+	elseif down then
+		goalMoney.Text = ("%s / %s down"):format(Kit.money(cash), Kit.money(down))
 	else
 		goalMoney.Text = ("%s / %s"):format(Kit.money(cash), Kit.money(currentGoal.price))
 	end
@@ -92,7 +103,9 @@ goalButton.Activated:Connect(function()
 		Waypoint.set(Places.get(currentGoal.place), Places.name(currentGoal.place))
 	end
 end)
-for _, name in { "Cash", "OwnedTrucks", "GlovesOwned", "LandPlot", "TutorialFlags", "SaveSlot" } do
+for _, name in
+	{ "Cash", "OwnedTrucks", "OwnedTrailers", "Gear", "GlovesOwned", "LandPlot", "TutorialFlags", "SaveSlot" }
+do
 	player:GetAttributeChangedSignal(name):Connect(refreshGoal)
 end
 refreshGoal()
@@ -982,7 +995,7 @@ Menus.register("Shop", function(open)
 		selectTab(currentTab)
 	end
 end)
-for _, name in { "Cash", "OwnedTrucks", "GlovesOwned", "GloveId", "LandPlot" } do
+for _, name in { "Cash", "OwnedTrucks", "OwnedTrailers", "GlovesOwned", "GloveId", "LandPlot" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
 		if shopOpen then
 			renderShop()

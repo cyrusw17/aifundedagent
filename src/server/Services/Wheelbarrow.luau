@@ -261,6 +261,7 @@ local function buy(player)
 	end
 	state.gear = state.gear or {}
 	table.insert(state.gear, GEAR_ID)
+	Data.sync(player) -- publishes the "Gear" attribute the goal bar reads
 	give(player)
 	Data.toast(player, "Bought a wheelbarrow. Hauls 3 bales at a time.")
 end

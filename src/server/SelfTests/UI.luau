@@ -49,19 +49,107 @@ return function(SelfTest)
 				local step = Catalog.nextGoal()
 				return step and step.name or "done"
 			end
-			t.equal("first goal", goal(), "Work Gloves")
-			t.equal("Work Gloves price", Catalog.nextGoal().price, Prices.Gloves.work)
-			who.attrs.GlovesOwned = "bare,work"
-			t.equal("after Work Gloves", goal(), "the Rusty Pickup")
-			t.equal("pickup price", Catalog.nextGoal().price, Prices.Trucks.rusty_pickup)
-			who.attrs.OwnedTrucks = "rusty_pickup"
-			t.equal("after the pickup", goal(), "your first plot")
-			t.equal("plot price", Catalog.nextGoal().price, Prices.Plot)
-			who.attrs.LandPlot = 2
-			t.equal("after the plot", goal(), "a Hand Sieve")
-			who.attrs.TutorialFlags = "broke,sold,sorter"
-			t.equal("after a sieve", goal(), "Leather Gloves")
-			who.attrs.GlovesOwned = "bare,work,leather,reinforced,iron,starlight"
+			-- Walk the ladder in ECONOMY.md order: each purchase moves the goal to the next step, at Prices' price.
+			local A = who.attrs
+			local walk = {
+				{
+					"Work Gloves",
+					Prices.Gloves.work,
+					function()
+						A.GlovesOwned = "bare,work"
+					end,
+				},
+				{
+					"a Wheelbarrow",
+					Prices.Wheelbarrow,
+					function()
+						A.Gear = "wheelbarrow"
+					end,
+				},
+				{
+					"the Rusty Pickup",
+					Prices.Trucks.rusty_pickup,
+					function()
+						A.OwnedTrucks = "rusty_pickup"
+					end,
+				},
+				{
+					"a Wagon Trailer",
+					Prices.Trailers.wagon_trailer,
+					function()
+						A.OwnedTrailers = "wagon_trailer"
+					end,
+				},
+				{
+					"your first plot",
+					Prices.Plot,
+					function()
+						A.LandPlot = 2
+					end,
+				},
+				{
+					"a Hand Sieve",
+					Prices.Pieces.hand_sieve,
+					function()
+						A.TutorialFlags = "built_hand_sieve,sorter"
+					end,
+				},
+				{
+					"a Shaker Table",
+					Prices.Pieces.shaker_table,
+					function()
+						A.TutorialFlags = "built_hand_sieve,built_shaker_table,sorter"
+					end,
+				},
+				{
+					"Leather Gloves",
+					Prices.Gloves.leather,
+					function()
+						A.GlovesOwned = "bare,work,leather"
+					end,
+				},
+				{
+					"the Farm Flatbed",
+					Prices.Trucks.farm_flatbed,
+					function()
+						A.OwnedTrucks = "rusty_pickup,farm_flatbed"
+					end,
+				},
+				{
+					"a Conveyor Sorter",
+					Prices.Pieces.conveyor_sorter,
+					function()
+						A.TutorialFlags = "built_conveyor_sorter,built_hand_sieve,built_shaker_table,sorter"
+					end,
+				},
+				{
+					"Reinforced Gloves",
+					Prices.Gloves.reinforced,
+					function()
+						A.GlovesOwned = "bare,work,leather,reinforced"
+					end,
+				},
+				{
+					"Iron Gauntlets",
+					Prices.Gloves.iron,
+					function()
+						A.GlovesOwned = "bare,work,leather,reinforced,iron"
+					end,
+				},
+				{
+					"Starlight Gloves",
+					Prices.Gloves.starlight,
+					function()
+						A.GlovesOwned = "bare,work,leather,reinforced,iron,starlight"
+					end,
+				},
+			}
+			for i, step in walk do
+				t.equal(("goal %d"):format(i), goal(), step[1])
+				local now = Catalog.nextGoal()
+				t.equal(("goal %d price (%s)"):format(i, step[1]), now and now.price, step[2])
+				step[3]()
+			end
 			t.equal("everything bought", goal(), "done")
 
 			-- Shop rows show the one price config, never a fallback.
@@ -132,12 +220,14 @@ return function(SelfTest)
 			return string.find("," .. (player:GetAttribute("TutorialFlags") or "") .. ",", "," .. flag .. ",", 1, true)
 				~= nil
 		end
-		local had = { sorter = hasFlag("sorter"), broke = hasFlag("broke") }
+		local had =
+			{ sorter = hasFlag("sorter"), broke = hasFlag("broke"), built_hand_sieve = hasFlag("built_hand_sieve") }
 		Tutorial.unmark(player, "sorter")
 		Tutorial.placed(player, "belt")
 		t.check("Tutorial: placing a belt is not a sorter", not hasFlag("sorter"))
 		Tutorial.placed(player, "hand_sieve")
 		t.check("Tutorial: placing a hand sieve marks sorter", hasFlag("sorter"))
+		t.check("Tutorial: placing a hand sieve counts it for the goal bar", hasFlag("built_hand_sieve"))
 		-- The real shovel path: a bale on this suite's pad, cut open as this player.
 		local Bales = require(Services.Bales)
 		Tutorial.unmark(player, "broke")

@@ -333,6 +333,7 @@ function Data.sync(player)
 	player:SetAttribute("Carrying", state.carryBale ~= nil)
 	player:SetAttribute("OwnedTrucks", table.concat(state.trucks, ","))
 	player:SetAttribute("OwnedTrailers", table.concat(state.trailers, ","))
+	player:SetAttribute("Gear", table.concat(state.gear or {}, ",")) -- bought gear such as "wheelbarrow" (goal bar)
 	local held = 0
 	for _, count in state.pocket do
 		held += count
