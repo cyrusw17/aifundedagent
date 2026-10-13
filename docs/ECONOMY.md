@@ -562,6 +562,11 @@ to the whole server. The average mutation is 14x, so mutations add about 2.6% to
 moment, not an income source: a mutated Steel needle is worth $300 to $2,500, and a mutated Cosmic one up to $125,000.
 Mutated needles stay in your pocket at NPC orders and trade like any other item.
 
+**Wet mutation** (`Prices.WetMutation`, Conveyor 814a73f): in a region while it rains, a plain needle has a 1 in 100
+chance to come out Wet at 2x. That adds 1% to needle income, and only while it rains, so with the pity rule
+(under 4%) free rolls stay inside the 5% budget. tests/pity.luau holds storm + Wet + pity at 1.2x to 1.5x of the
+plain mutation value and fails above 2x.
+
 ## The Hay Market
 
 A stall at base camp (`Services/HayMarket.luau`, CEO backlog H6) restocks every 5 minutes with three rare bales, three
@@ -606,9 +611,9 @@ on. Together that's up to about 8% at the conveyor stage for the most dedicated 
 paid for, though, since the price includes them; the net gain is the 15% margin above. So the 5% budget stays for
 free rolls like pity. Paid rolls are counted in the pacing check above instead.
 
-**For Conveyor.** The sorter must read two attributes from a bought bale: `NeedleBoost` (and `GoldenField`, which
-Bales turns into 3x) for how many needles it hides, and `MutationBoost` for each found needle's mutation chance.
-Until it does, a rare bale sorts like a normal one; hand-breaking one already uses `NeedleBoost` for the needles that
+**Sorter.** Since Conveyor 814a73f the sorter reads `NeedleBoost` (and `GoldenField`, which Bales turns into 3x)
+for how many needles a bale hides, and `MutationBoost` for each found needle's mutation chance, so a bought bale pays
+what its price assumes. Hand-breaking one uses `NeedleBoost` for the needles that
 spill. ReplicatedStorage attribute `HayMarketRestockAt` is the server time of the next restock, for the HUD
 countdown (UI H2).
 
