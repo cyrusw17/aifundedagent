@@ -30,7 +30,7 @@ function RateLimit.new(name: string, perSecond: number, burst: number)
 		name = name,
 		perSecond = perSecond,
 		burst = burst,
-		buckets = setmetatable({}, { __mode = "k" }) :: { [any]: Bucket },
+		buckets = (setmetatable({}, { __mode = "k" }) :: any) :: { [any]: Bucket },
 	}, RateLimit)
 end
 
