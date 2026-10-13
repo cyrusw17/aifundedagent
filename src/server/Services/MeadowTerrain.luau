@@ -275,4 +275,29 @@ function MeadowTerrain.groundAt(x, z)
 	return MeadowTerrain.heightAt(x, z), Vector3.yAxis, nil
 end
 
+-- Turns any Grass voxel left anywhere in the world into LeafyGrass, once the world map's terrain has finished writing.
+-- Grass is the one material Roblox grows tall blades on, and a place baked or hand-painted before the switch can still
+-- hold some. Runs in the background in 512-stud blocks; ReplaceMaterial is quick over air.
+function MeadowTerrain.sweepGrass(bounds)
+	task.spawn(function()
+		local terrain = Workspace.Terrain
+		local waited = 0
+		while terrain:GetAttribute("WorldMapVersion") == nil and waited < 180 do
+			waited += task.wait(2)
+		end
+		local started = os.clock()
+		local STEP, LOW, HIGH = 512, -128, 1024
+		for x = bounds.min.X, bounds.max.X - 1, STEP do
+			for z = bounds.min.Y, bounds.max.Y - 1, STEP do
+				for y = LOW, HIGH - 1, 576 do
+					local region = Region3.new(Vector3.new(x, y, z), Vector3.new(x + STEP, y + 576, z + STEP)):ExpandToGrid(RES)
+					pcall(terrain.ReplaceMaterial, terrain, region, RES, Enum.Material.Grass, Enum.Material.LeafyGrass)
+				end
+				task.wait()
+			end
+		end
+		print(("[Needlewood] grass sweep done in %.1fs"):format(os.clock() - started))
+	end)
+end
+
 return MeadowTerrain

@@ -160,6 +160,8 @@ return {
 		farm_tractor = 8.68,
 		ferry_snack_stand = 9.04,
 		fishing_spot = 3.04,
+		needle_lite = 1.2, -- low-poly ground needle (46 tris), one shared mesh tinted per needle
+		needle_tiny = 1.2, -- the 26-tri one, no eye
 		rarity_needle = 1.2, -- the one needle mesh every rarity tier shares (same length as the game's needle)
 		-- Robux truck skins: same size as the cash truck each one repaints
 		homestead_classic = 27.57,

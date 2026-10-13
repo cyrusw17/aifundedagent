@@ -685,7 +685,90 @@ def bale_thread(f):
     return parts
 
 
+# ---------------------------------------------------------------- lite needles (thousands on the ground)
+
+def _lite_mesh(eye_hole):
+    """One-material needle at game size (1.2 x 0.15 studs) along x, resting on z = 0, point toward +x.
+    Four-sided shaft and point; the eye is a flat plate, with a real slot when eye_hole is set."""
+    r = NEEDLE_T / 2
+    z = r
+    verts, faces = [], []
+
+    def quad_ring(x, hy, hz):
+        i = len(verts)
+        verts.extend([(x, 0, z + hz), (x, hy, z), (x, 0, z - hz), (x, -hy, z)])
+        return i
+
+    def band(a, b):
+        for k in range(4):
+            faces.append((a + k, a + (k + 1) % 4, b + (k + 1) % 4, b + k))
+
+    x0, x1 = -NEEDLE_L / 2, NEEDLE_L / 2
+    # Shaft: starts inside the eye plate, swells to full width, then a sharp point.
+    r0 = quad_ring(x0 + 0.16, r * 0.7, r * 0.7)
+    r1 = quad_ring(x1 - 0.34, r, r)
+    faces.append((r0 + 3, r0 + 2, r0 + 1, r0))
+    band(r0, r1)
+    tipv = len(verts)
+    verts.append((x1, 0, z))
+    for k in range(4):
+        faces.append((r1 + k, r1 + (k + 1) % 4, tipv))
+    # Eye plate, 0.24 long x 0.17 wide x 0.07 thick.
+    ex0, ex1, hw, ht = x0, x0 + 0.24, 0.085, 0.035
+    if eye_hole:
+        ix0, ix1, ihw = x0 + 0.05, x0 + 0.19, 0.035
+        base = len(verts)
+        for zz in (z + ht, z - ht):
+            verts.extend([(ex0, -hw, zz), (ex1, -hw, zz), (ex1, hw, zz), (ex0, hw, zz),
+                          (ix0, -ihw, zz), (ix1, -ihw, zz), (ix1, ihw, zz), (ix0, ihw, zz)])
+        t, b = base, base + 8
+        for k in range(4):
+            n = (k + 1) % 4
+            faces.append((t + k, t + n, t + 4 + n, t + 4 + k))            # top ring
+            faces.append((b + k, b + 4 + k, b + 4 + n, b + n))            # bottom ring
+            faces.append((t + k, b + k, b + n, t + n))                    # outer wall
+            faces.append((t + 4 + k, t + 4 + n, b + 4 + n, b + 4 + k))    # slot wall
+    else:
+        base = len(verts)
+        for zz in (z + ht, z - ht):
+            verts.extend([(ex0, -hw, zz), (ex1, -hw, zz), (ex1, hw, zz), (ex0, hw, zz)])
+        t, b = base, base + 4
+        faces.append((t, t + 1, t + 2, t + 3))
+        faces.append((b + 3, b + 2, b + 1, b))
+        for k in range(4):
+            n = (k + 1) % 4
+            faces.append((t + k, b + k, b + n, t + n))
+    me = bpy.data.meshes.new("needle_lite")
+    me.from_pydata([tuple(c * STUD for c in v) for v in verts], [], faces)
+    me.update()
+    o = bpy.data.objects.new("needle_lite", me)
+    bpy.context.collection.objects.link(o)
+    bpy.context.view_layer.objects.active = o
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    return o
+
+
+def needle_lite(f):
+    """Mass needle for the ground (Cyrus, 2026-10-13: "thousands in game without issue"): one mesh, one
+    plain light-steel material ("tint") so the game sets each needle's rarity or region color with
+    MeshPart.Color and every needle shares one MeshId. 1.2 x 0.17 x 0.15 studs, 46 triangles, with a
+    real eye slot."""
+    return [f.apply(_lite_mesh(True), "tint", along="x")]
+
+
+def needle_tiny(f):
+    """needle_lite without the eye slot, 26 triangles: for far piles and very dense fields."""
+    return [f.apply(_lite_mesh(False), "tint", along="x")]
+
+
 PROPS = {
+    "needle_lite": needle_lite,
+    "needle_tiny": needle_tiny,
     "needle_common": needle_common,
     "rarity_needle": needle_common,  # the name Config/Props registers; tiers recolor it in game
     "needle_uncommon": needle_uncommon,

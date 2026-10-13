@@ -71,11 +71,12 @@ RUSTIC = {
     "glow": (None, (0.55, 0.95, 0.90), None),
     "lava": (None, (1.00, 0.45, 0.12), None),  # orange glow for fire and lava
     "firefly": (None, (0.70, 0.76, 0.36), None),  # Swamp accent glow
+    "tint": (None, (0.86, 0.86, 0.88), None),     # plain light steel the game recolors (MeshPart.Color)
 }
 # Kinds that stay flat even in textured finishes, and their extra material settings.
 FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3},
         "glow": {"roughness": 0.4, "emission": 2.0}, "lava": {"roughness": 0.5, "emission": 2.5},
-        "firefly": {"roughness": 0.4, "emission": 3.0}}
+        "firefly": {"roughness": 0.4, "emission": 3.0}, "tint": {"roughness": 0.45, "metallic": 0.4}}
 # Kinds that use the blotchy weathered texture.
 WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt", "leather", "greywood",
              "leaf_oak", "leaf_pine", "leaf_snow", "leaf_desert", "leaf_swamp", "bark_pine", "bark_swamp", "snow", "sand", "lilac", "gold",

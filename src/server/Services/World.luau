@@ -156,6 +156,8 @@ function World.build()
 	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
 	WorldMap.build(folder)
 	Chutes.build(folder) -- after the world map, so its hay fields get chutes
+	-- No tall grass blades anywhere: clear any Grass a baked or hand-painted place still holds (MeadowTerrain).
+	MeadowTerrain.sweepGrass(require(game:GetService("ReplicatedStorage").Shared.Config.WorldMap).Bounds)
 	-- Quests, rituals and the places they send you, plus the day and night cycle.
 	Quests.build(folder)
 end
