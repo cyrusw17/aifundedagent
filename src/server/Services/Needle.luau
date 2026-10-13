@@ -230,6 +230,13 @@ function Needle.give(player, n)
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 end
 
+-- Puts count needles of one pocket key (keyOf) in the player's pocket at once.
+function Needle.giveKey(player, key, count)
+	local pocket = pocketOf(player)
+	pocket[key] = (pocket[key] or 0) + count
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+end
+
 -- How a needle of this type looks: its color and material (mutated needles are gold and glow).
 function Needle.look(id, mult)
 	local look = LOOKS[id] or LOOKS.steel
