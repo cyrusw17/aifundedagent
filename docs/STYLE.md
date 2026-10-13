@@ -91,6 +91,25 @@ Each cell is light / mid / dark hex; the game-side RGB is the mid shade. A dash 
 - Use the accent sparingly: one sign, trim or highlight per building, never a whole wall.
 - Sky / fog is the `Atmosphere` and fog tint for that region in game.
 
+## Needle rarity glow
+
+One shared look per rarity tier, so value reads at a glance. Glow is the only place colors get bright.
+Source of truth: `blender/mockups/rarity.py` (sheet: `/mnt/project-files/mockups/needle_rarity.png`).
+
+| Tier | Needles | Material | PointLight range / brightness | Pulse | Extras |
+|---|---|---|---|---|---|
+| Common | Steel (150, 158, 166), Pine (96, 140, 84), Sand (214, 186, 120) | Metal | none | steady | none |
+| Uncommon | Ice (170, 220, 240), Bog (110, 128, 70) | Metal | 3 / 0.5 | steady | soft light only, no Neon |
+| Rare | Obsidian (96, 64, 112), Geode (170, 110, 220) | Neon | 5 / 1 | steady | steady glow |
+| Epic | Cloud (240, 244, 255), Phantom (120, 230, 210) | Neon | 7 / 1.5 | 2 s | slow pulse (brightness 1.0 to 1.8) |
+| Legendary | Cosmic (80, 70, 220) | Neon | 9 / 2.2 | 1.5 s | pulse + star motes (ParticleEmitter, 4/s) |
+| Mythic (mutated) | any type, gold (255, 210, 60) | Neon | 8 / 2 | 1 s | gold, 1.6x size, Sparkles, server banner |
+
+- Changes from `Needle.luau` LOOKS today: Ice moves from Neon to Metal with a soft light (uncommon), Bog gains a soft light,
+  and Obsidian lifts to (96, 64, 112) so its glow shows. The other colors are unchanged.
+- The light color is the needle color. Pulse tweens PointLight brightness between the value above and about 1.6x it.
+- Bundles, display walls and bins use the same tier look as the needles inside them.
+
 ## Materials
 
 - Blender: generated straw, bark, end grain, plank and metal textures from `lib/style.py`, matte
