@@ -109,6 +109,10 @@ Prices.Trailers = {
 	bale_rack_trailer = 200000,
 }
 
+-- The wheelbarrow carries 3 bales at a push: about three times a hand haul, well short of a truck. Priced at a few
+-- minutes of hand hauling so it is the first big upgrade, before the pickup.
+Prices.Wheelbarrow = 400
+
 -- Gloves (Config/Gloves Tiers, by id). Each pair costs about 30 minutes of what you earn just before you need it for
 -- the next region's heavier hay. Work Gloves are the first purchase, two or three minutes in.
 Prices.Gloves = {
@@ -157,6 +161,8 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_polisher = 12000,
+	alloy_mixer = 20000,
 }
 Prices.RefundShare = 0.5
 
@@ -165,6 +171,11 @@ Prices.RefundShare = 0.5
 Prices.Starbeam = {
 	minutes = 10,
 }
+
+-- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
+-- PolishPerMinute needles a minute; the rest stay plain.
+Prices.PolishBonus = 0.25
+Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.

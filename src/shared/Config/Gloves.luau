@@ -40,4 +40,15 @@ return {
 		{ id = "iron", prop = "iron_gauntlets", name = "Iron Gauntlets", tier = 4, price = Prices.Gloves.iron, relief = 0.62, scoopBonus = 9, carryBonus = 80, color = { 107, 94, 84 } },
 		{ id = "starlight", prop = "starlight_gloves", name = "Starlight Gloves", tier = 5, price = Prices.Gloves.starlight, relief = 0.78, scoopBonus = 14, carryBonus = 140, color = { 70, 72, 96 } },
 	},
+
+	-- Quest gloves: earned from quests and rituals (Config/Quests.luau Rewards), never sold, so they are not on the
+	-- glove stand. Each is a little better than the shop pair of the same tier, as a thank-you for the quest. They wear
+	-- the shop pair's Blender mesh (prop) until they get their own.
+	QuestTiers = {
+		{ id = "scarecrow_gloves", prop = "leather_gloves", name = "Scarecrow Gloves", tier = 2, price = 0, quest = true, relief = 0.4, scoopBonus = 5, carryBonus = 35, color = { 189, 168, 112 } },
+		{ id = "frostbite_mitts", prop = "reinforced_gloves", name = "Frostbite Mitts", tier = 3, price = 0, quest = true, relief = 0.55, scoopBonus = 7, carryBonus = 55, color = { 190, 210, 225 } },
+		{ id = "magma_grips", prop = "iron_gauntlets", name = "Magma Grips", tier = 4, price = 0, quest = true, relief = 0.66, scoopBonus = 10, carryBonus = 90, color = { 140, 70, 50 } },
+		{ id = "kraken_gauntlets", prop = "iron_gauntlets", name = "Kraken Gauntlets", tier = 5, price = 0, quest = true, relief = 0.8, scoopBonus = 15, carryBonus = 150, color = { 60, 96, 110 } },
+		{ id = "starweave_gloves", prop = "starlight_gloves", name = "Starweave Gloves", tier = 6, price = 0, quest = true, relief = 0.9, scoopBonus = 18, carryBonus = 180, color = { 120, 140, 210 } },
+	},
 }

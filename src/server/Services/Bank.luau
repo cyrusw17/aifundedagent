@@ -569,6 +569,12 @@ function Bank.start()
 		lastRequest[player] = nil
 	end)
 
+	-- Other bank buildings (the Homestead branch on the world map) tag their counter "BankCounter".
+	for _, counter in CollectionService:GetTagged("BankCounter") do
+		Bank.addTeller(counter)
+	end
+	CollectionService:GetInstanceAddedSignal("BankCounter"):Connect(Bank.addTeller)
+
 	task.spawn(function()
 		while true do
 			task.wait(15)

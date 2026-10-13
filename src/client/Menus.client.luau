@@ -1,5 +1,5 @@
 --!nonstrict
--- The goal bar, the MAP / SHOP / HELP buttons under the HUD, the map screen, the shop page and the "+$63" pops.
+-- The goal bar, the MAP / SHOP / BOOK / HELP / settings buttons under the HUD, the map screen, the shop page and the "+$63" pops.
 -- Nothing here buys anything: the shop shows prices and points you to the counter that sells each thing.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +16,7 @@ local Menus = require(UI:WaitForChild("Menus"))
 local Waypoint = require(UI:WaitForChild("Waypoint"))
 local Places = require(UI:WaitForChild("Places"))
 local Catalog = require(UI:WaitForChild("Catalog"))
+local Hud = require(UI:WaitForChild("Hud"))
 local Meadow = require(Config:WaitForChild("Meadow"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Rustic = require(Config:WaitForChild("Rustic"))
@@ -28,15 +29,15 @@ local player = Players.LocalPlayer
 local gui = Kit.screen("NeedlewoodMenus", 5)
 
 -- Goal bar ---------------------------------------------------------------------------------------------------------
--- Sits under the HUD card (Main.client.luau, 14,14 230x112) and the bank line (Bank.client.luau, y 132..180).
+-- Sits in the HUD column (UI/Hud.luau) under the cash card and the bank line.
 
 local goal = Instance.new("Frame")
 goal.Name = "GoalBar"
-goal.Position = UDim2.fromOffset(14, 184)
+goal.LayoutOrder = Hud.Order.Goal
 goal.Size = UDim2.fromOffset(230, 54)
 goal.BackgroundColor3 = C.Wood
 goal.BackgroundTransparency = 0.1
-goal.Parent = gui
+goal.Parent = Hud.column()
 Kit.corner(goal, 10)
 Kit.stroke(goal, C.Ink, 1.5)
 local goalTitle = Kit.label(goal, "", { size = T.Small, font = F.Bold, color = C.Cream, wrap = false })
@@ -99,19 +100,19 @@ refreshGoal()
 -- Menu buttons -----------------------------------------------------------------------------------------------------
 
 local rail = Instance.new("Frame")
-rail.Position = UDim2.fromOffset(14, 246)
+rail.LayoutOrder = Hud.Order.Buttons
 rail.Size = UDim2.fromOffset(230, 36)
 rail.BackgroundTransparency = 1
-rail.Parent = gui
+rail.Parent = Hud.column()
 local railLayout = Instance.new("UIListLayout")
 railLayout.FillDirection = Enum.FillDirection.Horizontal
-railLayout.Padding = UDim.new(0, 8)
+railLayout.Padding = UDim.new(0, 5)
 railLayout.SortOrder = Enum.SortOrder.LayoutOrder
 railLayout.Parent = rail
 local railButtons = {}
-for i, def in { { "MAP", "Map", "M" }, { "SHOP", "Shop", "B" }, { "HELP", "Help" } } do
-	local b =
-		Kit.button(rail, def[3] and ("%s (%s)"):format(def[1], def[3]) or def[1], "wood", UDim2.fromOffset(71, 34))
+-- Hotkeys are listed in Settings > Controls; the buttons stay short so five fit a phone-width column.
+for i, def in { { "MAP", "Map" }, { "SHOP", "Shop" }, { "BOOK", "Book" }, { "HELP", "Help" }, { "⚙", "Settings" } } do
+	local b = Kit.button(rail, def[1], "wood", UDim2.fromOffset(42, 34))
 	b.LayoutOrder = i
 	b.TextSize = T.Small
 	railButtons[def[2]] = b
@@ -140,10 +141,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or not player:GetAttribute("SaveSlot") then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.M then
+	if input.KeyCode == Enum.KeyCode.M and not player:GetAttribute("Building") then
 		Menus.toggle("Map")
 	elseif input.KeyCode == Enum.KeyCode.B then
 		Menus.toggle("Shop")
+	elseif input.KeyCode == Enum.KeyCode.K then
+		Menus.toggle("Book")
 	elseif input.KeyCode == Enum.KeyCode.Escape then
 		Menus.close()
 	end

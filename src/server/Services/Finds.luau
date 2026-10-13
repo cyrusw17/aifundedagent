@@ -9,6 +9,7 @@ local Debris = game:GetService("Debris")
 local FindsConfig = require(ReplicatedStorage.Shared.Config.Finds)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
+local Announce = require(script.Parent.Announce)
 local Feedback = require(script.Parent.Feedback)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
@@ -56,6 +57,9 @@ local function keep(player, part, def)
 		Bank.earn(player, def.reward, "Finder's reward")
 		Feedback.sale(player, def.reward)
 		Data.toast(player, ("New find: %s! +$%d"):format(def.name, def.reward))
+		if def.oneIn >= 1000 then
+			Announce.say(("%s found a %s!"):format(player.DisplayName, def.name:lower()), "gold")
+		end
 	else
 		Data.toast(player, ("%s (you have %d)"):format(def.name, state.finds[def.id]))
 	end

@@ -186,7 +186,7 @@ return {
 		{ name = "PineMill", min = Vector2.new(-1240, 160), max = Vector2.new(-1180, 220), height = 18, blend = 40 },
 		{ name = "Pyramid", min = Vector2.new(1440, -640), max = Vector2.new(1560, -520), height = 10, blend = 50 },
 		{ name = "Oasis", min = Vector2.new(1160, -330), max = Vector2.new(1240, -250), height = 6, blend = 40 },
-		{ name = "Quarry", min = Vector2.new(640, -1290), max = Vector2.new(740, -1200), height = 30, blend = 50 },
+		{ name = "Quarry", min = Vector2.new(690, -1350), max = Vector2.new(790, -1250), height = 30, blend = 50 },
 		{ name = "Wreck", min = Vector2.new(-1800, -900), max = Vector2.new(-1730, -820), height = -2, blend = 30 },
 		{ name = "SwampPort", min = Vector2.new(1640, 470), max = Vector2.new(1730, 570), height = 2, blend = 40 },
 		{ name = "AshDock", min = Vector2.new(1540, -1280), max = Vector2.new(1630, -1170), height = 2, blend = 40 },
@@ -233,7 +233,7 @@ return {
 			name = "Pine Road", -- Pine Forest north through Haunted Grove to Homestead
 			points = {
 				Vector2.new(-1150, 160), Vector2.new(-1200, -120), Vector2.new(-1180, -420), Vector2.new(-1120, -760),
-				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1440), Vector2.new(-230, -1480),
+				Vector2.new(-900, -1060), Vector2.new(-620, -1300), Vector2.new(-360, -1420), Vector2.new(-180, -1400),
 			},
 		},
 		{
@@ -242,12 +242,12 @@ return {
 		},
 		{
 			name = "Snow Road",
-			points = { Vector2.new(-620, -1300), Vector2.new(-640, -1460), Vector2.new(-650, -1600) },
+			points = { Vector2.new(-620, -1300), Vector2.new(-640, -1460), Vector2.new(-650, -1595) },
 		},
 		{
 			name = "Volcano Road", -- Homestead east to the quarry, then round the volcano's foot to Ash Dock
 			points = {
-				Vector2.new(230, -1480), Vector2.new(460, -1420), Vector2.new(620, -1300), Vector2.new(690, -1245),
+				Vector2.new(130, -1445), Vector2.new(230, -1450), Vector2.new(460, -1420), Vector2.new(620, -1300), Vector2.new(690, -1245),
 				Vector2.new(760, -1120), Vector2.new(980, -1020), Vector2.new(1260, -1010), Vector2.new(1480, -1150),
 				Vector2.new(1585, -1225),
 			},
