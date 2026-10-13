@@ -86,6 +86,10 @@ Prices.Gloves = {
 -- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
 -- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
 Prices.Plot = 2500
+-- Each extra row of 12 tiles at the back of a plot (two rows to buy). A new plot's 96 tiles hold a first line easily;
+-- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
+-- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
+Prices.PlotExpansion = 5000
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -104,8 +108,29 @@ Prices.Pieces = {
 	blueprint_post = 10,
 	blueprint_wall = 10,
 	blueprint_floor = 10,
+	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
+	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	splitter = 300,
+	sort_splitter = 600,
+	display_wall = 1000,
+	hay_press = 8000,
 }
 Prices.RefundShare = 0.5
+
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
+
+-- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
+-- change on a big one; it only pays when the sorter is what holds the line back.
+Prices.SorterOil = {
+	price = 250,
+	bales = 25, -- the next this many bales sort faster
+	speedup = 0.1, -- 10% faster
+	maxBales = 75, -- at most three cans stacked
+}
 
 -- Sorter speeds, in bales a minute (Config/Sorters turns them into hay per minute). Each tier doubles the last.
 Prices.SorterBalesPerMinute = {

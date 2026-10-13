@@ -236,8 +236,8 @@ function showSlots()
 		message.Text = ""
 	else
 		message.TextColor3 = C.Red
-		message.Text = "Saving is off, so this game won't be kept. In Studio, turn on Game Settings > Security > "
-			.. "Enable Studio Access to API Services."
+		message.Text = "Your saves couldn't be loaded, so this game won't be saved. Rejoin to try again. In Studio, "
+			.. "turn on Game Settings > Security > Enable Studio Access to API Services."
 	end
 end
 

@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
 local GloveConfig = require(Shared.Config.Gloves)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local WorldShape = require(script.Parent.WorldShape)
 local Bales = require(script.Parent.Bales)
 local Props = require(script.Parent.Props)
@@ -92,42 +93,20 @@ local function spot(x, z, facing, y)
 end
 
 -- A label floating over a part, seen from a distance.
-local function billboard(parent, text, offset, distance, size)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = size or UDim2.fromOffset(260, 56)
-	gui.StudsOffset = offset or Vector3.new(0, 6, 0)
-	gui.MaxDistance = distance or 140
-	gui.LightInfluence = 0
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(240, 232, 210)
-	label.TextStrokeTransparency = 0.4
-	label.Text = text
-	label.Parent = gui
-	return label
+local function billboard(parent, text, offset, distance)
+	return WorldLabel.billboard(parent, text, {
+		offset = offset or Vector3.new(0, 6, 0),
+		kind = "sign",
+		distance = distance or 140,
+		color = Color3.fromRGB(240, 232, 210),
+		-- Landmarks read from far away get bigger letters.
+		studs = (distance or 140) > 300 and 10 or nil,
+	})
 end
 Regions.billboard = billboard
 
 local function boardText(board, text, faces)
-	for _, face in faces or { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(board.Size.X * 50, board.Size.Y * 50)
-		gui.LightInfluence = 1
-		gui.Parent = board
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(40, 34, 28)
-		label.Text = text
-		label.Parent = gui
-	end
+	return WorldLabel.surface(board, text, faces or { Enum.NormalId.Front, Enum.NormalId.Back })
 end
 
 -- Moves a point off any road, out to clearance studs past its edge (signs placed by hand must never stand in a lane).
@@ -242,7 +221,7 @@ local function townsperson(parent, id, name, cframe, shirt, lines)
 	for _, p in model:GetChildren() do
 		p.CanCollide = false
 	end
-	billboard(head, name, Vector3.new(0, 2.2, 0), 60, UDim2.fromOffset(180, 34))
+	billboard(head, name, Vector3.new(0, 2.2, 0), 60)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Talk"
 	prompt.ObjectText = name
@@ -1005,7 +984,7 @@ function LANDMARKS.volcano(folder, rng)
 	local glow = part(folder, "LavaGlow", Vector3.new(peak.crater * 1.4, 1, peak.crater * 1.4), CFrame.new(c.X, floor + 1.5, c.Y), Color3.fromRGB(230, 110, 40), Enum.Material.Neon, nil, false)
 	glow.Transparency = 0.35
 	light(glow, Color3.fromRGB(255, 120, 50), 60, 2)
-	billboard(spire, "VOLCANO", Vector3.new(0, 30, 0), 900, UDim2.fromOffset(200, 50))
+	billboard(spire, "VOLCANO", Vector3.new(0, 30, 0), 900)
 
 	-- The Old Quarry at the foot: cut stone, a cracked mine cart track and a locked chest.
 	local q = CFrame.new(740, 30, -1300)
@@ -1230,7 +1209,7 @@ local function skyline(folder)
 		local anchor = part(folder, "SkylineLabel", Vector3.new(1, 1, 1), CFrame.new(peak.center.X, top + 30, peak.center.Y), Rustic.Stone, nil, nil, false)
 		anchor.Transparency = 1
 		anchor.CanQuery = false
-		billboard(anchor, def[2], Vector3.zero, 4000, UDim2.fromOffset(240, 50))
+		billboard(anchor, def[2], Vector3.zero, 4000)
 	end
 end
 

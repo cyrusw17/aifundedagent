@@ -45,7 +45,8 @@ function Hay.init(parent)
 			task.wait(3)
 			local now = os.clock()
 			for piece, born in pieces do
-				if now - born > Config.LooseHayLifetime then
+				-- Needles never fade: they stay physical until someone picks them up.
+				if now - born > Config.LooseHayLifetime and not Hay.isNeedle(piece) then
 					Hay.fadeOut(piece)
 				end
 			end
@@ -83,7 +84,7 @@ local function trim()
 	while count > Config.MaxLoosePieces do
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
-			if born < oldestTime then
+			if born < oldestTime and not Hay.isNeedle(piece) then
 				oldest, oldestTime = piece, born
 			end
 		end
@@ -122,9 +123,11 @@ local function addGlint(piece)
 end
 
 -- A needle hiding in the hay: a thin steel sliver that catches the light now and then, so a sharp eye can spot it.
-local function makeNeedle(cframe, ownerId)
+-- hayType picks the needle kind (a Pine bale spills Pine needles) when the shared needle knows how.
+local function makeNeedle(cframe, ownerId, hayType)
 	if Needle then
-		local piece = Needle.make(cframe, ownerId)
+		local needleId = hayType and Needle.forHay and Needle.forHay(hayType) or nil
+		local piece = Needle.make(cframe, ownerId, needleId)
 		addGlint(piece)
 		return piece
 	end
@@ -141,11 +144,11 @@ local function makeNeedle(cframe, ownerId)
 	return piece
 end
 
--- kind is "Needle" for a visible needle, otherwise a strand of straw.
-function Hay.spawnPiece(position, velocity, ownerId, kind)
+-- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of straw.
+function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
 	local cframe = CFrame.new(position)
 		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
-	local piece = kind == "Needle" and makeNeedle(cframe, ownerId) or makeStraw()
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw()
 	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth

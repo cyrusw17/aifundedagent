@@ -17,6 +17,7 @@ local Debris = game:GetService("Debris")
 
 local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Needles = require(ReplicatedStorage.Shared.Config.Needles)
+local HayTypes = require(ReplicatedStorage.Shared.Config.Gloves).HayTypes
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
@@ -61,6 +62,17 @@ folder.Parent = Workspace
 
 local held = {} -- player -> { [key] = count }, only until a save slot is loaded (then Data state.pocket)
 
+-- The needle type hidden in a hay type (Config/Gloves HayTypes): the one from the same map, so Pine straw holds Pine
+-- needles and Star hay holds Cosmic ones.
+local byMap = {}
+for _, n in Needles do
+	byMap[n.map] = n.id
+end
+function Needle.forHay(hayType)
+	local hay = HayTypes[hayType or "meadow"]
+	return hay and byMap[hay.map] or Needle.default.id
+end
+
 function Needle.info(id)
 	return types[id] or Needle.default
 end
@@ -76,26 +88,32 @@ local function pocketOf(player)
 	local state = Data.get(player)
 	if state then
 		state.pocket = state.pocket or {}
+		-- Needles picked up before a save slot was chosen join the slot's pocket the first time it is there.
+		local early = held[player]
+		if early then
+			held[player] = nil
+			for key, count in early do
+				state.pocket[key] = (state.pocket[key] or 0) + count
+			end
+		end
 		return state.pocket
 	end
 	held[player] = held[player] or {}
 	return held[player]
 end
 
-local function keyOf(id, mult)
+-- Pocket and save key for a needle: its id, or "id*mult" when mutated.
+function Needle.keyOf(id, mult)
 	return (mult and mult > 1) and ("%s*%d"):format(id, mult) or id
 end
 
-local function parseKey(key)
+function Needle.parseKey(key)
 	local id, mult = string.match(key, "^(.-)%*(%d+)$")
 	if id then
 		return id, tonumber(mult)
 	end
 	return key, 1
 end
--- Pocket and saved-bin counts are keyed "id", or "id*mult" for a mutated needle.
-Needle.keyOf = keyOf
-Needle.parseKey = parseKey
 
 -- Needles in this player's pocket, as { [key] = count } (see keyOf).
 function Needle.held(player)
@@ -137,7 +155,7 @@ end
 function Needle.takeHeld(player)
 	local list = {}
 	for key, count in pocketOf(player) do
-		local id, mult = parseKey(key)
+		local id, mult = Needle.parseKey(key)
 		for _ = 1, count do
 			table.insert(list, { id = id, mult = mult })
 		end
@@ -163,27 +181,45 @@ end
 
 -- Takes the most valuable needle out of the player's pocket, for putting it on show. Returns { id, mult } or nil.
 function Needle.takeBest(player)
-	local pocket = held[player]
-	if not pocket or #pocket == 0 then
-		return nil
-	end
-	local best = 1
-	for i, n in pocket do
-		if Needle.priceOf(n.id, n.mult) > Needle.priceOf(pocket[best].id, pocket[best].mult) then
-			best = i
+	local pocket = pocketOf(player)
+	local bestKey, bestValue = nil, -1
+	for key, count in pocket do
+		local id, mult = Needle.parseKey(key)
+		if count > 0 and Needle.priceOf(id, mult) > bestValue then
+			bestKey, bestValue = key, Needle.priceOf(id, mult)
 		end
 	end
-	local n = table.remove(pocket, best)
-	player:SetAttribute("NeedlesHeld", #pocket)
-	return n
+	if not bestKey then
+		return nil
+	end
+	pocket[bestKey] -= 1
+	if pocket[bestKey] <= 0 then
+		pocket[bestKey] = nil
+	end
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	local id, mult = Needle.parseKey(bestKey)
+	return { id = id, mult = mult }
+end
+
+-- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
+-- false and takes none when they have too few.
+function Needle.takeFromPocket(player, needleId, count)
+	local pocket = pocketOf(player)
+	local have = pocket[needleId] or 0
+	if have < count then
+		return false
+	end
+	pocket[needleId] = have - count > 0 and have - count or nil
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
 end
 
 -- Puts a needle ({ id, mult }) into the player's pocket.
 function Needle.give(player, n)
-	local pocket = held[player] or {}
-	table.insert(pocket, { id = n.id, mult = n.mult or 1 })
-	held[player] = pocket
-	player:SetAttribute("NeedlesHeld", #pocket)
+	local pocket = pocketOf(player)
+	local key = Needle.keyOf(n.id, n.mult)
+	pocket[key] = (pocket[key] or 0) + 1
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 end
 
 -- How a needle of this type looks: its color and material (mutated needles are gold and glow).
@@ -231,7 +267,7 @@ local function pickUp(player, n)
 	local count = Needle.count(n)
 	local value = Needle.value(n)
 	local pocket = pocketOf(player)
-	local key = keyOf(id, mult)
+	local key = Needle.keyOf(id, mult)
 	pocket[key] = (pocket[key] or 0) + count
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	n:Destroy()
@@ -366,6 +402,33 @@ function Needle.inBox(cframe, size)
 	return found
 end
 
+-- A bundle of 10 plain needles of one type at cframe.
+function Needle.bundle(cframe, ownerId, needleId)
+	local b = Needle.spawn(cframe.Position, ownerId, needleId)
+	b.Name = "NeedleBundle"
+	b.Size = BUNDLE_SIZE
+	b.CFrame = cframe
+	b:SetAttribute("Count", BUNDLE)
+	local band = Instance.new("Part")
+	band.Name = "Twine"
+	band.Shape = Enum.PartType.Cylinder
+	band.Size = Vector3.new(0.2, BUNDLE_SIZE.Y + 0.08, BUNDLE_SIZE.Z + 0.08)
+	band.CFrame = b.CFrame
+	band.Color = TWINE
+	band.Material = Enum.Material.Fabric
+	band.CanCollide = false
+	band.CanQuery = false
+	band.CanTouch = false
+	band.Massless = true
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = b
+	weld.Part1 = band
+	weld.Parent = band
+	band.Parent = b
+	return b
+end
+Needle.BUNDLE = BUNDLE
+
 -- Ties every 10 plain needles of one type and owner resting in a box into one bundle. Needles still flying in
 -- (anchored), mutated needles and bundles are left alone. Returns how many bundles it tied.
 function Needle.bundleIn(cframe, size)
@@ -387,28 +450,9 @@ function Needle.bundleIn(cframe, size)
 			end
 			local ownerId, needleId = first:GetAttribute("OwnerId"), first:GetAttribute("NeedleId")
 			for _ = 1, BUNDLE do
-				table.remove(list, 1):Destroy()
+				(table.remove(list, 1) :: BasePart):Destroy()
 			end
-			local b = Needle.spawn(center + Vector3.new(0, 0.3, 0), ownerId, needleId)
-			b.Name = "NeedleBundle"
-			b.Size = BUNDLE_SIZE
-			b:SetAttribute("Count", BUNDLE)
-			local band = Instance.new("Part")
-			band.Name = "Twine"
-			band.Shape = Enum.PartType.Cylinder
-			band.Size = Vector3.new(0.2, BUNDLE_SIZE.Y + 0.08, BUNDLE_SIZE.Z + 0.08)
-			band.CFrame = b.CFrame
-			band.Color = TWINE
-			band.Material = Enum.Material.Fabric
-			band.CanCollide = false
-			band.CanQuery = false
-			band.CanTouch = false
-			band.Massless = true
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = b
-			weld.Part1 = band
-			weld.Parent = band
-			band.Parent = b
+			local b = Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId, needleId)
 			glint(b, 10)
 			tied += 1
 		end

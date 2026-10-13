@@ -6,17 +6,13 @@ return {
 	TileSize = 6,
 	BeltTop = 3.5, -- height of the belt surface above the ground
 	BeltSpeed = 6, -- studs per second
+	-- A raised belt (level 1) is this much higher, so a bale standing on its end still clears it on the belt below.
+	LevelRise = 5,
 
 	WalkingFloorSpeed = 4, -- the dock slides a parked truck's load out the back at this speed
 
 	NeedleId = "steel", -- Meadow hay holds steel needles (Needles.luau)
 
-	LooseBaleSeconds = 180,
-
-	-- Sorter oil: click the oil can on a sorter to buy a can. It sorts faster for the next OilBales bales.
-	-- (Price to move into the central price config once Economy has one.)
-	OilPrice = 250,
-	OilBales = 25,
-	OilSpeedup = 0.1, -- 10% faster
-	OilMaxBales = 75, -- at most three cans' worth stacked -- a sorted bale that falls off the line disappears after this long
+	AlienWindowSeconds = 60, -- how long the Alien collector's daily beam stays up
+	LooseBaleSeconds = 180, -- a sorted bale that falls off the line disappears after this long
 }
