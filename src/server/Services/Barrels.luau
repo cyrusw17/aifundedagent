@@ -17,6 +17,7 @@ local Barrels = {}
 
 local rng = Random.new()
 local folder = nil
+local dropOff = nil -- the pad where set-down barrels are kept for later
 local byBody = {} -- barrel body part -> barrel record
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X, so this stands them up
@@ -75,14 +76,34 @@ function Barrels.fromPart(part)
 	return byBody[part] or (part.Parent and byBody[part.Parent]) or nil
 end
 
+-- True when the barrel rests on the drop-off pad (checked in the pad's own flat space, ignoring height).
+function Barrels.isAtDropOff(b)
+	if not dropOff or b.gone then
+		return false
+	end
+	local spot = dropOff.CFrame:PointToObjectSpace(b.body.Position)
+	return math.abs(spot.X) <= dropOff.Size.X / 2 and math.abs(spot.Z) <= dropOff.Size.Z / 2 and spot.Y < 8
+end
+
+-- Barrels left out in the world disappear after a while. Barrels on the drop-off pad are kept.
 local function startDespawnTimer(b)
 	b.dropToken += 1
 	local token = b.dropToken
-	task.delay(Config.DroppedBarrelSeconds, function()
-		if not b.gone and not b.carriedBy and not b.home and b.dropToken == token then
-			Barrels.consume(b)
+	local function check()
+		if b.gone or b.carriedBy or b.home or b.dropToken ~= token then
+			return
 		end
-	end)
+		if Barrels.isAtDropOff(b) then
+			task.delay(Config.DroppedBarrelSeconds, check) -- still stored, look again later
+			return
+		end
+		Barrels.consume(b)
+	end
+	task.delay(Config.DroppedBarrelSeconds, check)
+end
+
+function Barrels.setDropOff(part)
+	dropOff = part
 end
 
 -- A home barrel is gone from its spot (smashed or lifted), so a fresh one grows back there.

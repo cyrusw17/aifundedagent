@@ -13,7 +13,7 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local panel = Instance.new("Frame")
-panel.Size = UDim2.fromOffset(230, 92)
+panel.Size = UDim2.fromOffset(230, 112)
 panel.Position = UDim2.fromOffset(14, 14)
 panel.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
 panel.BackgroundTransparency = 0.25
@@ -49,6 +49,11 @@ bar.Size = UDim2.fromScale(0, 1)
 bar.BackgroundColor3 = Color3.fromRGB(240, 173, 46)
 bar.Parent = barBack
 Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 5)
+
+-- One line saying what a click does with what is in your hands right now.
+local hintLabel = makeLabel(84, 20)
+hintLabel.Font = Enum.Font.Gotham
+hintLabel.TextColor3 = Color3.fromRGB(214, 226, 218)
 
 local toast = Instance.new("TextLabel")
 toast.AnchorPoint = Vector2.new(0.5, 0)
@@ -154,7 +159,13 @@ RunService.Heartbeat:Connect(function()
 	pickGui.Enabled = nearBarrel ~= nil
 end)
 
+local HINTS = {
+	Shovel = "Shovel: click a barrel or hay",
+	Rake = "Rake: click to spread hay",
+}
+
 local function refresh()
+	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
 	local cash = player:GetAttribute("Cash") or 0
 	local hay = player:GetAttribute("LoadHay") or 0
 	local cap = player:GetAttribute("LoadCap") or 1
@@ -162,7 +173,9 @@ local function refresh()
 	cashLabel.Text = ("$%d"):format(cash)
 	if carrying then
 		loadLabel.Text = "Carrying a barrel"
+		hintLabel.Text = "Click or G: set it down"
 	else
+		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: pick up a barrel"
 		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
@@ -189,6 +202,17 @@ for _, name in { "Cash", "LoadHay", "LoadCap", "Carrying" } do
 	player:GetAttributeChangedSignal(name):Connect(refresh)
 end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
+
+-- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
+local function watchCharacter(character)
+	character.ChildAdded:Connect(refresh)
+	character.ChildRemoved:Connect(refresh)
+	refresh()
+end
+player.CharacterAdded:Connect(watchCharacter)
+if player.Character then
+	watchCharacter(player.Character)
+end
 refresh()
 
 print("[Needlewood] client started")

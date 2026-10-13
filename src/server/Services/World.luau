@@ -119,6 +119,18 @@ function World.build()
 	pad.Transparency = 0.35
 	addSign(pad, "SELL HERE", Vector3.new(0, 5, 0))
 	Gameplay.wireSellPad(pad)
+
+	-- Barrel drop-off between the barrels and the shop. Barrels set down here stay until you smash or sell them.
+	local dropOff = newPart(
+		folder,
+		"BarrelDropOff",
+		Vector3.new(14, 0.2, 10),
+		CFrame.new(0, 0.1, -4),
+		Color3.fromRGB(150, 110, 70),
+		Enum.Material.WoodPlanks
+	)
+	addSign(dropOff, "BARREL DROP-OFF", Vector3.new(0, 5, 0))
+	Barrels.setDropOff(dropOff)
 end
 
 return World
