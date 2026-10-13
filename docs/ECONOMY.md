@@ -492,6 +492,19 @@ is under 2% of a box-truck load, but the crossing takes time, so the island has 
 mainland beside it. Bobbin Rock fits between Volcano and Cave on value and weight, as an island alternative to the
 crater.
 
+## Quest cash
+
+Quest rewards live in `Config/Quests` (Quests thread) and pay with a "Quest: " note, so they count for credit but not
+toward the trade-cash `sold` total. The ladder runs from $150 for the first errand to $15,000 for the last Weaver
+chapter before the finale, each sized against the next thing the player is saving for (the second quest pays back
+the Work Gloves, the fourth half a plot). Daily bounties pay $150 to $1,200 and daily maze runs $300 to $400.
+
+The Weaver finale (all twelve Master Needle shards) pays **$100,000** with the Master Needle. Twelve shards take a
+player through Swamp, Thimble Keys and the late regions, where income is $150,000 to $440,000 an hour, so Quests'
+first $25,000 was 3 to 10 minutes of play: less than the Ember Cache. $100,000 is about 15 minutes at the Volcano
+stage, the biggest one-time payout in the game, and still short of any late machine, so the Master Needle stays the
+prize. (Asked of the Quests thread for PR #38.)
+
 ## Region secrets
 
 Map's four one-time secrets (`Prices.Secrets`) pay once per save slot through `Bank.earn`. Map's first numbers were
