@@ -17,9 +17,9 @@ local Bales = require(script.Parent.Bales)
 
 local Vehicles = {}
 
-local WHEEL_RADIUS = 1.4
+local WHEEL_RADIUS = 1.75
 local TRACK = 2.6 -- wheel center distance from the middle, sideways
-local DECK = 2.2 -- chassis top
+local DECK = 3.1 -- chassis top; the bed floor lands at 3.5, level with the conveyor dock belt
 local CAB_W, CAB_H, CAB_D = 5.6, 5.4, 4.8
 local HOOD = 3.6
 local BED_W = 6.2 -- outside width of a truck bed
