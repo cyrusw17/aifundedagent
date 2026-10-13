@@ -259,6 +259,14 @@ Prices.RegionEvents = {
 	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
+-- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward.
+Prices.Secrets = {
+	ember_cache = 3000, -- in the volcano's crater, past the heat (tier 4 gloves)
+	captains_lantern = 2500, -- on Ghost Isle, at the end of the night-only Ghost Road
+	geode_heart = 2000, -- behind the crystals on the Crystal Cave's far wall
+	lost_kite = 3000, -- on a ledge under Sky Island's west rim (a zeppelin fare away)
+}
+
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
 -- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
 Prices.Robux = {

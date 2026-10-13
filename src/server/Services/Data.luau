@@ -253,6 +253,7 @@ local function stateFrom(saved)
 		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
 		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
+		secrets = countMap(saved.secrets), -- region secrets found, { [secretId] = 1 } (Wilds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -291,6 +292,7 @@ local function toSave(state)
 		materials = state.materials,
 		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
+		secrets = state.secrets,
 		gloves = state.gloves,
 		land = state.land,
 		land2 = state.land2,
