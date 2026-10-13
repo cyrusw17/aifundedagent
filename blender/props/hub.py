@@ -482,6 +482,17 @@ def bounty_board(f):
     p.append(B(f, "bark", (7.4, 0.4, 0.3), (0, 0, 7.6), rnd=False))
     for s in (-1, 1):
         p.append(plate(f, "bark", (s * 0.75, 8.0), (0, 8.75), 0.2, "x", 8.0, rnd=False))
+    # Mid detail: plank seams, knee braces, post caps and footings, shingle courses, a pinned map scrap.
+    for x in (-2.35, -1.2, 0.0, 1.2, 2.35):
+        p.append(B(f, "bark", (0.08, 0.1, 4.4), (x + 0.6, -0.17, 5.3), along="z", rnd=False))
+    for s in (-1, 1):
+        p.append(brace(f, "bark", (s * 3.6, 0, 2.0), (s * 2.6, 0, 3.0), 0.3))
+        p.append(B(f, "stone", (0.9, 0.9, 0.4), (s * 3.6, 0, 0.2)))
+        for k in (1, 2):
+            z = 8.0 + 0.75 * k / 3
+            p.append(B(f, "bark", (8.0, 0.08, 0.1), (0, s * (0.75 - 0.75 * k / 3) - s * 0.05, z + 0.12), rnd=False))
+    p.append(B(f, "bark", (8.2, 0.3, 0.25), (0, 0, 8.78), rnd=False))                      # ridge cap
+    p.append(B(f, "paint_cream", (1.1, 0.08, 0.9), (2.6, -0.2, 3.65), rot=(0, 0.12, 0), rnd=False))
     for i, x in enumerate((-2.2, 0.0, 2.2)):
         rot = (0, (-0.06, 0.04, -0.03)[i], 0)
         p += tag([B(f, "paint_cream", (1.8, 0.1, 2.4), (x, -0.2, 5.3), rot=rot, rnd=False),
@@ -604,8 +615,18 @@ def region_sign(f):
     """Region welcome sign, 6 wide x 5 tall x 0.5 deep: two posts and a plank board. The Board is its
     own mesh (painted in the region accent in game; text goes on as a SurfaceGui)."""
     p = [post(f, "bark", x, 0, 0, 5.0, 0.4, rnd=False) for x in (-2.7, 2.7)]
-    p += tag([B(f, "paint_green", (5.6, 0.25, 2.6), (0, -0.12, 3.4), rnd=False)], "Board")
-    p.append(B(f, "bark", (6.0, 0.5, 0.25), (0, 0, 4.85), rnd=False))
+    board = [B(f, "paint_green", (5.6, 0.25, 2.6), (0, -0.12, 3.4))]
+    for z in (2.55, 3.4, 4.25):                                                            # plank seams
+        board.append(B(f, "paint_green", (5.4, 0.06, 0.08), (0, -0.26, z - 0.42), rnd=False))
+    p += tag(board, "Board")
+    p.append(B(f, "bark", (6.0, 0.5, 0.25), (0, 0, 4.85)))
+    for x in (-2.7, 2.7):
+        p.append(B(f, "bark", (0.5, 0.5, 0.25), (x, 0, 5.12), rot=(0, 0, math.pi / 4)))       # post caps
+        p.append(B(f, "stone", (0.9, 0.9, 0.35), (x, 0, 0.17)))                             # footings
+        p.append(brace(f, "bark", (x, 0.05, 1.2), (x * 0.78, 0.05, 2.05), 0.25))            # knee braces
+        for z in (2.6, 4.2):                                                              # iron bolts
+            p.append(C(f, "metal", 0.09, 0.12, (x, -0.24, z), verts=6, rot=(math.pi / 2, 0, 0), rnd=False))
+    p.append(B(f, "bark", (6.0, 0.35, 0.22), (0, 0.05, 1.95)))                            # lower rail
     return p
 
 
@@ -618,7 +639,11 @@ def road_sign(f):
         pts = [(d * (u - 1.0), z + v) for u, v in pts]
         if d < 0:
             pts = pts[::-1]
-        p += tag([prism(f, "handle", "x", -0.25, 0.15, pts, rnd=False)], f"Arrow{i + 1}")
+        nails = [C(f, "handle", 0.07, 0.06, (d * -0.8, -0.35, z), verts=6, rot=(math.pi / 2, 0, 0), rnd=False)]
+        p += tag([prism(f, "handle", "x", -0.25, 0.15, pts)] + nails, f"Arrow{i + 1}")
+    p.append(B(f, "bark", (0.45, 0.45, 0.2), (0, 0, 6.1), rot=(0, 0, math.pi / 4)))          # post cap
+    for k, (x, y, r) in enumerate(((0.45, 0.2, 0.35), (-0.4, 0.25, 0.3), (0.1, -0.45, 0.3), (-0.2, -0.3, 0.25))):
+        p.append(C(f, "stone", r, 0.4, (x, y, 0.2), verts=7, rot=(0, 0, k)))                # rock pile
     return p
 
 
