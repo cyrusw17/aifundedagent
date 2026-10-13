@@ -156,6 +156,8 @@ return {
 		bale_snow = 4.69,
 		bale_star = 4.68,
 		bale_swamp = 4.69,
+		bale_seagrass = 4.68, -- Thimble Keys (hay type "keys")
+		bale_thread = 4.69, -- Bobbin Rock (hay type "bobbin")
 		bale_volcano = 4.69,
 		golden_hay_bale = 4.63,
 		-- Needles: the 12 types and the rarity set share one shape; the bin has a NeedleFill mesh
@@ -165,6 +167,8 @@ return {
 		needle_bog = 1.2,
 		needle_cloud = 1.21,
 		needle_common = 1.2,
+		needle_coral = 1.21,
+		needle_brass = 1.2,
 		needle_cosmic = 1.2,
 		needle_epic = 1.2,
 		needle_geode = 1.21,
@@ -233,6 +237,12 @@ return {
 		thimble_lighthouse = 43.2,
 		volcano_forge = 30.7,
 		zeppelin_dock = 47.2,
+	},
+
+	-- Hay types whose bale mesh is named differently from the hay type (Bales.luau looks for bale_<hayType>).
+	BaleForHay = {
+		keys = "bale_seagrass",
+		bobbin = "bale_thread",
 	},
 
 	-- Held tools: how far below the hand the end of the handle sits.

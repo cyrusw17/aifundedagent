@@ -179,8 +179,8 @@ return function(SelfTest)
 		end
 
 		-- 2d. Every region bale fits the canonical 4.6 x 2.6 x 3.2 bale box, long side along X.
-		for _, hay in { "pine", "desert", "snow", "swamp", "volcano", "cave", "sky", "haunted", "star" } do
-			local name = "bale_" .. hay
+		for _, hay in { "pine", "desert", "snow", "swamp", "volcano", "cave", "sky", "haunted", "star", "keys", "bobbin" } do
+			local name = Config.BaleForHay[hay] or ("bale_" .. hay)
 			if Props.has(name) then
 				local spot = t.place()
 				local model = Props.make(name, spot, Vector3.new(4.6, 2.6, 3.2))
