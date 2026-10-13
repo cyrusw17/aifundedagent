@@ -80,3 +80,19 @@ Write a builder in `props/rustic_props.py` that makes parts with
 `cyl()` / `box()`, passes each through `f.shape(part)` and
 `f.apply(part, kind)` (kind is hay, bark, wood, handle, metal or twine), and
 add it to `PROPS`. Keep each prop under a few thousand triangles.
+
+## Mockups
+
+`mockups/` renders preview sheets from the props above, in studs (see `docs/STYLE.md`):
+
+```
+mockups/mock.py       shared helpers: props scaled to studs, bale stacks, labels, camera
+mockups/map.py        top-down base camp map from src/server/Services/World.luau
+mockups/tools.py      bare hands, shovel and rake (in game) plus the other modeled tools
+mockups/hay_types.py  one hay per map as bale stacks, matching src/shared/Config/Needles.luau
+mockups/renders/      the rendered PNGs
+```
+
+```sh
+.bpyenv/bin/python blender/mockups/map.py blender/mockups/renders
+```
