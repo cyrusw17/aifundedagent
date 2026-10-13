@@ -444,6 +444,39 @@ function Machines.needleBin(parent, frame)
 		end
 	end)
 
+	-- Take all (CEO #33): every needle of yours in the bin goes into your pocket in one go, to carry to a vault, the
+	-- trading post or an order board. The SELL NEEDLES pad already sells the bin where it stands, so this is the trip.
+	local takePrompt = Instance.new("ProximityPrompt")
+	takePrompt.Name = "TakeAll"
+	takePrompt.ActionText = "Take your needles"
+	takePrompt.ObjectText = "Needle bin"
+	takePrompt.KeyboardKeyCode = Enum.KeyCode.T
+	takePrompt.HoldDuration = 0.6
+	takePrompt.MaxActivationDistance = 9
+	takePrompt.RequiresLineOfSight = false
+	takePrompt.UIOffset = Vector2.new(0, 60) -- below the price hold prompt
+	takePrompt.Parent = model.Floor
+	takePrompt.Triggered:Connect(function(player)
+		if not holdLimit:allow(player) or not Data.get(player) then
+			return
+		end
+		local taken = 0
+		for _, n in Needle.inBox(inside, insideSize) do
+			if n:GetAttribute("OwnerId") == player.UserId then
+				local count = Needle.count(n)
+				Needle.giveKey(player, Needle.keyOfPart(n), count)
+				taken += count
+				n:Destroy()
+			end
+		end
+		refresh()
+		if taken == 0 then
+			Data.toast(player, "None of the needles in this bin are yours.")
+			return
+		end
+		Data.toast(player, ("Took %d needles out of the bin. Any SELL pad, vault or order board takes them from your pocket."):format(taken))
+	end)
+
 	-- Cycles the player's price hold: off, then at list price, then 5%, 10% and 15% over it.
 	local holdPrompt = Instance.new("ProximityPrompt")
 	holdPrompt.Name = "PriceHold"
