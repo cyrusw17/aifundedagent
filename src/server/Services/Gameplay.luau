@@ -23,7 +23,7 @@ local rng = Random.new()
 local lastHaySale = {}
 
 local function hasPocketNeedles(player)
-	return Needle ~= nil and next(Needle.held(player)) ~= nil
+	return Needle ~= nil and Needle.heldCount(player) > 0
 end
 
 local function sellHay(player)
@@ -43,10 +43,9 @@ local function sellHay(player)
 
 	local pocketCount, pocketValue = 0, 0
 	if hasPocketNeedles(player) then
-		for id, count in Needle.takeHeld(player) do
-			pocketCount += count
-			pocketValue += count * math.floor(Needle.info(id).sortedValue * Economy.HAND_NEEDLE_SHARE)
-		end
+		local count, full = Needle.sellHeld(player)
+		pocketCount = count
+		pocketValue = math.floor(full * Economy.HAND_NEEDLE_SHARE)
 	end
 	value += pocketValue
 	state.cash += value
