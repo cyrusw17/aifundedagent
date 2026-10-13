@@ -23,6 +23,8 @@ local Needles = require(Shared.Config.Needles)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
+local Oil = require(Shared.Config.Prices).SorterOil
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
@@ -98,14 +100,14 @@ function Machines.sign(parent, text, offset)
 end
 local sign = Machines.sign
 
-function Machines.pay(ownerId, amount, text)
+-- note is the short line for the bank history (Bank.luau); text is the toast.
+function Machines.pay(ownerId, amount, text, note)
 	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 	local state = owner and Data.get(owner)
 	if not state then
 		return
 	end
-	state.cash += amount
-	Data.sync(owner)
+	Bank.earn(owner, amount, note or "Farm sale")
 	Data.toast(owner, text)
 	Feedback.sale(owner, amount)
 end
@@ -216,7 +218,7 @@ function Machines.needleBin(parent, frame)
 			Data.toast(player, "You have no needles in this bin or your pocket. Run some hay through a sorter.")
 			return
 		end
-		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
+		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
 	end
 
 	-- Needles in the bin, as { [needleId] = count }: everyone's, or only ownerId's.
@@ -269,7 +271,7 @@ function Machines.sortSeconds(tierId, hay)
 	if not tier or tier.hayPerMin == math.huge then
 		return 0.4
 	end
-	return math.clamp(hay / tier.hayPerMin * 60, 0.5, 20)
+	return math.max(hay / tier.hayPerMin * 60, 0.5) -- no upper clamp, so every tier's speed is felt
 end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
@@ -341,24 +343,19 @@ function Machines.sorter(parent, frame, tierId, bin)
 	end
 
 	oilClick.MouseClick:Connect(function(player)
-		local state = Data.get(player)
-		if not state then
-			return
-		end
-		if oiled + Factory.OilBales > Factory.OilMaxBales then
+		if oiled + Oil.bales > Oil.maxBales then
 			Data.toast(player, ("This sorter is already well oiled (%d bales)."):format(oiled))
 			return
 		end
-		if state.cash < Factory.OilPrice then
-			Data.toast(player, ("Sorter oil costs $%d. You have $%d."):format(Factory.OilPrice, state.cash))
+		local ok, why = Bank.charge(player, Oil.price, "Sorter oil")
+		if not ok then
+			Data.toast(player, ("Sorter oil costs $%d. %s"):format(Oil.price, why or ""))
 			return
 		end
-		state.cash -= Factory.OilPrice
-		Data.sync(player)
-		oiled += Factory.OilBales
+		oiled += Oil.bales
 		refreshLabel()
 		Feedback.play("Scoop", can)
-		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Factory.OilSpeedup * 100), Factory.OilBales))
+		Data.toast(player, ("Oiled the %s: %d%% faster for the next %d bales."):format(tier.name:lower(), math.round(Oil.speedup * 100), Oil.bales))
 	end)
 
 	local function sort(hay, ownerId)
@@ -368,7 +365,7 @@ function Machines.sorter(parent, frame, tierId, bin)
 		local started = os.clock()
 		local seconds = Machines.sortSeconds(tier.id, hay)
 		if oiled > 0 then
-			seconds /= 1 + Factory.OilSpeedup
+			seconds /= 1 + Oil.speedup
 			oiled -= 1
 		end
 		while os.clock() - started < seconds do
@@ -449,7 +446,7 @@ function Machines.hayBuyer(parent, frame, title)
 					local value = math.floor(hay * Economy.HAY_PRICE)
 					local ownerId = sortedBale.ownerId
 					Bales.consume(sortedBale)
-					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay))
+					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId = 0, nil
