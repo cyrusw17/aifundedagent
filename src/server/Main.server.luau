@@ -45,3 +45,6 @@ local function countParts(when)
 end
 countParts("at start")
 task.delay(60, countParts, "a minute in")
+
+-- Studio only: set the Workspace attribute RunSelfTests = true and every suite in src/server/SelfTests runs.
+require(Services.SelfTest).start()
