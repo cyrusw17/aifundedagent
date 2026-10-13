@@ -28,6 +28,7 @@ local copyRemote = state:WaitForChild("Copy")
 local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
 local switchRemote = state:WaitForChild("Switch")
+local nameRemote = state:WaitForChild("FarmName")
 local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
@@ -299,10 +300,14 @@ switchButton.Size = UDim2.fromOffset(120, 34)
 switchButton.Visible = false
 local themeButton = button(actions, "THEME", PICKED)
 themeButton.Size = UDim2.fromOffset(150, 34)
+local nameButton = button(actions, "NAME", PICKED)
+nameButton.Size = UDim2.fromOffset(80, 34)
 local crewButton = button(actions, "CREW", PICKED)
 crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
 doneButton.Size = UDim2.fromOffset(80, 34)
+
+local namePanel -- the farm name box, made with the NAME button below
 
 -- Crew panel: everyone else on the server, each with ADD or REMOVE.
 local crewPanel = Instance.new("Frame")
@@ -916,6 +921,9 @@ local function setBuilding(on)
 	bar.Visible = on
 	if not on then
 		crewPanel.Visible = false
+		if namePanel then
+			namePanel.Visible = false
+		end
 	end
 	buildButton.Visible = not on and (player:GetAttribute("LandPlot") or 0) > 0
 	if on then
@@ -1004,6 +1012,77 @@ end)
 
 player:GetAttributeChangedSignal("LandPlot"):Connect(function()
 	task.delay(0.2, refreshThemeButton)
+end)
+
+-- NAME: a small box above the action bar to name the farm. The server filters it before anyone sees it.
+namePanel = Instance.new("Frame")
+namePanel.AnchorPoint = Vector2.new(0.5, 1)
+namePanel.Position = UDim2.new(0.5, 0, 1, -172)
+namePanel.Size = UDim2.fromOffset(320, 112)
+namePanel.BackgroundColor3 = PANEL
+namePanel.Visible = false
+namePanel.Parent = gui
+corner(namePanel, 12)
+local nameStroke = Instance.new("UIStroke", namePanel)
+nameStroke.Color = INK
+nameStroke.Thickness = 2
+text(namePanel, "NAME YOUR FARM", 16, 8, 20)
+local nameBox = Instance.new("TextBox")
+nameBox.Position = UDim2.fromOffset(14, 36)
+nameBox.Size = UDim2.new(1, -28, 0, 30)
+nameBox.Font = F.Bold
+nameBox.TextSize = 15
+nameBox.TextColor3 = INK
+nameBox.BackgroundColor3 = CARD
+nameBox.PlaceholderText = "Up to 24 letters"
+nameBox.ClearTextOnFocus = false
+nameBox.Text = ""
+nameBox.Parent = namePanel
+corner(nameBox, 6)
+local nameSave = button(namePanel, "SAVE NAME", GREEN)
+nameSave.Position = UDim2.fromOffset(14, 72)
+nameSave.Size = UDim2.fromOffset(140, 30)
+local nameCancel = button(namePanel, "CANCEL", MUTED)
+nameCancel.Position = UDim2.new(1, -114, 0, 72)
+nameCancel.Size = UDim2.fromOffset(100, 30)
+
+local function submitName()
+	if busy then
+		return
+	end
+	local value = string.sub(nameBox.Text, 1, 60)
+	busy = true
+	local ok, done, message = pcall(function()
+		return nameRemote:InvokeServer(value)
+	end)
+	busy = false
+	if not ok then
+		setInfo("Couldn't reach the server. Try again.", RED)
+		return
+	end
+	if message then
+		setInfo(message, done and GREEN or RED)
+	end
+	if done then
+		namePanel.Visible = false
+	end
+end
+nameButton.Activated:Connect(function()
+	namePanel.Visible = not namePanel.Visible
+	if namePanel.Visible then
+		local info = myPlot()
+		nameBox.Text = info and info:GetAttribute("FarmName") or ""
+		nameBox:CaptureFocus()
+	end
+end)
+nameSave.Activated:Connect(submitName)
+nameCancel.Activated:Connect(function()
+	namePanel.Visible = false
+end)
+nameBox.FocusLost:Connect(function(enter)
+	if enter then
+		submitName()
+	end
 end)
 local function refreshSwitch()
 	switchButton.Visible = (player:GetAttribute("FarmCount") or 0) >= 2

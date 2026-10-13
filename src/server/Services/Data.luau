@@ -216,7 +216,7 @@ local function summarize(saved)
 	}
 end
 
--- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, savedAt }.
+-- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, name, savedAt }.
 local function landFrom(land)
 	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
 		return nil
@@ -231,6 +231,7 @@ local function landFrom(land)
 		binSorted = land.binSorted == true or nil, -- the needle bin has type dividers
 		binPolisher = land.binPolisher == true or nil, -- the needle bin has a polishing wheel
 		theme = typeof(land.theme) == "string" and land.theme or nil, -- plot theme id
+		name = typeof(land.name) == "string" and #land.name <= 40 and land.name or nil, -- the farm's name, already filtered
 		savedAt = typeof(land.savedAt) == "number" and land.savedAt or nil, -- os.time() of the last save
 	}
 end
