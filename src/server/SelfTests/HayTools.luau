@@ -268,7 +268,7 @@ local function noPlayerChecks(t)
 	local juice = ReplicatedStorage:FindFirstChild("Juice")
 	t.check("the Juice event is there for hit-stop and shake", juice ~= nil and juice:IsA("RemoteEvent"))
 	local dustAt = t.place().Position + Vector3.new(0, 0.5, 0)
-	local before = #workspace.Terrain:GetChildren()
+	local terrainBefore = #workspace.Terrain:GetChildren()
 	Feedback.dust(dustAt)
 	local puffed = false
 	for _, a in workspace.Terrain:GetChildren() do
@@ -276,7 +276,7 @@ local function noPlayerChecks(t)
 			puffed = true
 		end
 	end
-	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > before)
+	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
 
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
 	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.
