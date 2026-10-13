@@ -21,6 +21,7 @@ local HayTypes = require(ReplicatedStorage.Shared.Config.Gloves).HayTypes
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
 local Feedback = require(script.Parent.Feedback)
+local Market = require(script.Parent.Market)
 
 local Needle = {}
 
@@ -78,8 +79,9 @@ function Needle.info(id)
 end
 
 -- Dollars one needle of this type and multiplier sells for at a SELL NEEDLES pad.
+-- Follows this server's needle market (Market.luau), so it can drift 20% either side of the list price.
 function Needle.priceOf(id, mult)
-	return Needle.info(id).sortedValue * (mult or 1)
+	return math.floor(Needle.info(id).sortedValue * (mult or 1) * Market.multiplier(id) + 0.5)
 end
 
 -- The pocket lives in the player's save slot (Data state.pocket) so it saves and loads with the slot. It counts
@@ -175,6 +177,7 @@ function Needle.sellHeld(player)
 	for _, n in Needle.takeHeld(player) do
 		count += 1
 		value += Needle.priceOf(n.id, n.mult)
+		Market.sold(n.id, 1)
 	end
 	return count, value
 end
@@ -199,6 +202,19 @@ function Needle.takeBest(player)
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	local id, mult = Needle.parseKey(bestKey)
 	return { id = id, mult = mult }
+end
+
+-- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
+-- false and takes none when they have too few.
+function Needle.takeFromPocket(player, needleId, count)
+	local pocket = pocketOf(player)
+	local have = pocket[needleId] or 0
+	if have < count then
+		return false
+	end
+	pocket[needleId] = have - count > 0 and have - count or nil
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
 end
 
 -- Puts a needle ({ id, mult }) into the player's pocket.

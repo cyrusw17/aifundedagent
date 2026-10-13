@@ -34,6 +34,7 @@ local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
+local Market = require(script.Parent.Market)
 
 local Machines = {}
 
@@ -55,6 +56,7 @@ Machines.Colors = {
 local C = Machines.Colors
 
 local rng = Random.new()
+local alienUsedDay = {} -- UserId -> UTC day the Alien collector beam was last used (per server)
 
 local needle = Needles[1]
 for _, n in Needles do
@@ -259,6 +261,7 @@ function Machines.needleBin(parent, frame)
 			if n:GetAttribute("OwnerId") == player.UserId then
 				count += Needle.count(n)
 				value += Needle.value(n)
+				Market.sold(n:GetAttribute("NeedleId"), Needle.count(n))
 				n:Destroy()
 			end
 		end
@@ -474,9 +477,50 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		refreshLabel()
 	end
 
+	-- The Alien collector (quest only) sorts everything instantly at 100%, but only while its beam is up: a player
+	-- steps on BEAM UP once a day (UTC) to open a window of Factory.AlienWindowSeconds. Bales wait at the flap otherwise.
+	local isAlien = tier.hayPerMin == math.huge
+	local beamUntil = 0
+	if isAlien then
+		local beam = part(model, "Beam", Vector3.new(T - 1.6, 60, T - 1.6), center * CFrame.new(0, TOP + height + 31, 0), C.go, Enum.Material.Neon)
+		beam.Shape = Enum.PartType.Cylinder
+		beam.CFrame = center * CFrame.new(0, TOP + height + 31, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		beam.Size = Vector3.new(60, T - 1.6, T - 1.6)
+		beam.CanCollide = false
+		beam.CanQuery = false
+		beam.Transparency = 1
+		local padAt = (center * CFrame.new(T / 2 + 2.5, 0, -T / 2 - 1)).Position
+		Machines.stepPad(model, padAt, C.go, "BEAM UP\nonce a day", function(player)
+			if os.clock() < beamUntil then
+				return
+			end
+			local today = math.floor(os.time() / 86400)
+			if alienUsedDay[player.UserId] == today then
+				local left = (today + 1) * 86400 - os.time()
+				Data.toast(player, ("The collector is recharging. Next beam in %dh %dm."):format(left // 3600, (left % 3600) // 60))
+				return
+			end
+			alienUsedDay[player.UserId] = today
+			beamUntil = os.clock() + Factory.AlienWindowSeconds
+			beam.Transparency = 0.6
+			Data.toast(player, ("The beam is up for %d seconds. Feed it everything you have."):format(Factory.AlienWindowSeconds))
+			task.spawn(function()
+				while os.clock() < beamUntil and model.Parent do
+					label.Text = ("ALIEN COLLECTOR\nBEAM UP: %ds"):format(math.ceil(beamUntil - os.clock()))
+					task.wait(0.5)
+				end
+				beam.Transparency = 1
+				refreshLabel()
+			end)
+		end)
+	end
+
 	task.spawn(function()
 		while model.Parent do
-			task.wait(0.2)
+			task.wait(isAlien and 0.05 or 0.2)
+			if isAlien and os.clock() >= beamUntil then
+				continue
+			end
 			local bale, loose = nil, {}
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)

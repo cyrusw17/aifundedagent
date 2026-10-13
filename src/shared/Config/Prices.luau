@@ -49,6 +49,29 @@ Prices.Needles = {
 	cosmic = 5000,
 }
 
+-- Finder's rewards for foreign objects in hay (Config/Finds, by id), paid once for the first of each kind. About $1
+-- for every bale it takes on average to turn one up (Finds oneIn), with the two rarest doubled because they are the
+-- finds players talk about. They are a moment, not an income: all six together are under an hour of pickup earnings.
+Prices.FinderRewards = {
+	boot = 50, -- 1 in 50 bales
+	horseshoe = 150, -- 1 in 150
+	key = 300, -- 1 in 300
+	radio = 600, -- 1 in 600
+	ring = 1500, -- 1 in 1,000, doubled
+	fossil = 4000, -- 1 in 2,000, doubled
+}
+
+-- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
+-- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
+-- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
+-- MinNormalSales. A quiet type pays up to 20% more, which nudges players toward regions nobody is farming.
+Prices.Market = {
+	Swing = 0.2,
+	HalfLifeSeconds = 600,
+	NormalSales = 40,
+	MinNormalSales = 5,
+}
+
 -- Buying ------------------------------------------------------------------------------------------------------------
 
 -- Trucks, at Homestead Motors. Each costs one to two hours of what you earn at the stage before it, so it is a real
@@ -120,6 +143,12 @@ Prices.Pieces = {
 	hay_press = 8000,
 }
 Prices.RefundShare = 0.5
+
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.
