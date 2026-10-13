@@ -245,16 +245,18 @@ def homestead_classic(f):
 
 
 def timber_wolf_4x4(f):
-    """Rusty pickup skin: forest green with gunmetal trim, tinted windows, a roof light bar and
-    chunky-tread tires (texture only, same radius)."""
+    """Farm flatbed skin (sold as the Flatbed tier, so it is cut on the flatbed: 24.5 long): forest green
+    with a gunmetal stake bed and trim, tinted windows, a roof light bar and chunky-tread tires
+    (texture only, same radius)."""
     def remap(o, kind):
-        if kind == "paint_red":
-            return "lamp" if is_taillight(o) else "forest"
-        return {"metal": "gunmetal", "glass": "tire", "paint_cream": "lamp"}.get(kind, kind)
-    parts, sf = build("timber_wolf_4x4", "rusty_pickup", recording(remap),
+        if kind == "paint_green":
+            return "forest"
+        return {"metal": "gunmetal", "handle": "gunmetal", "glass": "tire", "paint_cream": "lamp",
+                "paint_red": "lamp", "paint_yellow": "lamp"}.get(kind, kind)
+    parts, sf = build("timber_wolf_4x4", "farm_flatbed", recording(remap),
                       wheel_texture("rustic_tread", tread=True, hub=(0.36, 0.37, 0.38)))
     # Light bar across the front of the roof panel (the cab roof is the highest paint part).
-    roof = max(by_kind0(parts, "paint_red"), key=lambda o: bounds(o)[1][2])
+    roof = max(by_kind0(parts, "paint_green"), key=lambda o: bounds(o)[1][2])
     lo, hi = bounds(roof)
     z, y = hi[2], lo[1] + 0.5
     w = (hi[0] - lo[0]) * 0.8
@@ -318,16 +320,18 @@ def cover(f, kind, Wo, y0, y1, z0, rise, hoops=4, n=12, t=0.12):
 
 
 def prairie_schooner(f):
-    """Farm flatbed skin, 11.4 x ~10.3 x 24.4 studs: faded prairie-blue cab, sun-bleached plank bed
-    walls and floor, and a canvas hoop cover over the bed as its own `Cover` mesh."""
+    """Heavy hauler skin (sold as the Heavy Hauler tier, so it is cut on the hauler: 36 long): faded
+    prairie-blue cab and stakes, a sun-bleached plank tub (floor and walls), and a canvas hoop cover
+    over the bed as its own `Cover` mesh."""
     def remap(o, kind):
-        if kind == "paint_red":
-            return "metal"   # taillights share the metal slot
-        return {"paint_green": "prairie_blue", "handle": "old_wood", "glass": "tire",
-                "paint_cream": "metal"}.get(kind, kind)
-    parts, sf = build("prairie_schooner", "farm_flatbed", recording(remap))
+        if kind == "metal" and bounds(o)[0][2] >= FLOOR - vehicles.WALL_T - 0.02 and max(dims(o)) > 8.0:
+            return "old_wood"   # the tub's floor and walls
+        if kind in ("paint_red", "paint_cream"):
+            return "metal"      # taillights and lenses share the metal slot
+        return {"paint_yellow": "prairie_blue", "paint_green": "prairie_blue", "glass": "tire"}.get(kind, kind)
+    parts, sf = build("prairie_schooner", "heavy_hauler", recording(remap))
     Li, Wi, wall_h, _ = BEDS["prairie_schooner"]
-    floor = max(by_kind0(parts, "handle"), key=lambda o: dims(o)[0] * dims(o)[1])
+    floor = max(by_kind0(parts, "metal"), key=lambda o: dims(o)[0] * dims(o)[1])
     lo, hi = bounds(floor)
     Wo = hi[0] - lo[0]
     c = cover(sf, "canvas", Wo, lo[1] + 0.5, hi[1] - 0.15, FLOOR + wall_h, rise=3.4)
