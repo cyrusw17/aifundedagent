@@ -25,6 +25,7 @@ local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
 local Tools = require(Services.Tools)
 local Weather = require(Services.Weather)
+local Feedback = require(Services.Feedback)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
@@ -262,6 +263,20 @@ local function noPlayerChecks(t)
 			Hay.remove(p)
 		end
 	end
+
+	-- Tool juice: the Juice remote exists for the client's hit-stop and shake, and the rake's dust puff appears.
+	local juice = ReplicatedStorage:FindFirstChild("Juice")
+	t.check("the Juice event is there for hit-stop and shake", juice ~= nil and juice:IsA("RemoteEvent"))
+	local dustAt = t.place().Position + Vector3.new(0, 0.5, 0)
+	local before = #workspace.Terrain:GetChildren()
+	Feedback.dust(dustAt)
+	local puffed = false
+	for _, a in workspace.Terrain:GetChildren() do
+		if a:IsA("Attachment") and (a.WorldPosition - dustAt).Magnitude < 0.01 and a:FindFirstChildOfClass("ParticleEmitter") then
+			puffed = true
+		end
+	end
+	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > before)
 
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
 	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.

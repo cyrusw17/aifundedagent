@@ -99,6 +99,7 @@ local function comboBonus(player, root)
 		return 0
 	end
 	comboPop(root, combo.count)
+	Feedback.juice(player, "combo", combo.count - Config.ComboStart + 1)
 	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
 end
 
@@ -351,6 +352,9 @@ local function useRake(player, root, aim)
 		if not belt then
 			belt, landAt = Hay.beltNear(gatherAt - Vector3.new(0, 1, 0), Config.RakeBeltReach)
 		end
+		-- Dust kicks up where the tines drag, and along the way back toward you.
+		Feedback.dust(center, nil, 8)
+		Feedback.dust(center:Lerp(gatherAt, 0.5) - Vector3.new(0, 1.5, 0), nil, 5)
 		if belt then
 			Hay.rakeOntoBelt(center, belt, landAt, Config.RakeRadius, player.UserId)
 			Events.fire(player, "raked_onto_belt", 1, { center = center })

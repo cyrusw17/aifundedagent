@@ -316,6 +316,7 @@ function Bales.breakOpen(player, b)
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)
 		Feedback.play("BaleBurst", center)
+		Feedback.juice(player, "burst")
 		Events.fire(player, "bale_broken", 1, { position = center, hayType = hayType })
 		-- The first bale a player ever breaks always shows them a glinting needle: that is the hook.
 		-- A sorted bale has had its needles taken out, so it spills none.
