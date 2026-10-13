@@ -54,12 +54,21 @@ local function buildBarrel(position)
 	weld.C0 = HAY_BASE
 	weld.Parent = hay
 
-	local click = Instance.new("ClickDetector")
-	click.MaxActivationDistance = Config.PickupReach
-	click.Parent = body
+	-- The small Pick up / Put down button. Click or tap it (or press its key). It lives on the barrel, so
+	-- while you carry it the button travels with you and puts it down.
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pick up"
+	prompt.ObjectText = "Hay barrel"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = Config.PickupReach
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.UIOffset = Vector2.new(0, 24)
+	prompt.Parent = body
 
 	CollectionService:AddTag(body, "HayBarrel")
-	return body, hay, click
+	return body, hay, prompt
 end
 
 -- Removes a barrel from the world for good (sold, smashed, or timed out).
@@ -70,6 +79,24 @@ function Barrels.consume(b)
 	b.gone = true
 	byBody[b.body] = nil
 	b.body:Destroy()
+end
+
+-- The nearest barrel standing within reach and roughly in front of the player, or nil.
+function Barrels.inFront(root, reach)
+	local look = root.CFrame.LookVector
+	local best, bestDistance = nil, reach
+	for body, b in byBody do
+		if not b.gone and not b.carriedBy and not b.breaking then
+			local offset = body.Position - root.Position
+			local flat = Vector3.new(offset.X, 0, offset.Z)
+			local distance = flat.Magnitude
+			local facing = distance < 0.01 or flat.Unit:Dot(Vector3.new(look.X, 0, look.Z).Unit) > 0.3
+			if distance < bestDistance and facing then
+				best, bestDistance = b, distance
+			end
+		end
+	end
+	return best
 end
 
 function Barrels.fromPart(part)
@@ -181,7 +208,7 @@ function Barrels.breakOpen(player, b)
 		return
 	end
 	b.breaking = true
-	b.click.MaxActivationDistance = 0
+	b.prompt.Enabled = false
 	scheduleRegrow(b)
 
 	task.spawn(function()
@@ -272,7 +299,7 @@ function Barrels.pickup(player, b)
 	weld.C0 = CARRY_OFFSET
 	weld.Parent = b.body
 	b.carryWeld = weld
-	b.click.MaxActivationDistance = 0
+	b.prompt.ActionText = "Put down"
 
 	scheduleRegrow(b)
 	Avatar.setCarry(player) -- puts any tool away, since a barrel takes both hands
@@ -307,7 +334,7 @@ function Barrels.drop(player)
 	b.body.CanCollide = true
 	b.body.Anchored = false
 	b.body.AssemblyLinearVelocity = look * 8 + Vector3.new(0, 4, 0)
-	b.click.MaxActivationDistance = Config.PickupReach
+	b.prompt.ActionText = "Pick up"
 	pcall(function()
 		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same barrel
 	end)
@@ -318,11 +345,11 @@ end
 
 -- position is the ground point under the barrel. home barrels regrow after being smashed or lifted.
 function Barrels.spawn(position, home, fadeIn)
-	local body, hay, click = buildBarrel(position)
+	local body, hay, prompt = buildBarrel(position)
 	local b = {
 		body = body,
 		hay = hay,
-		click = click,
+		prompt = prompt,
 		home = home,
 		spawnPosition = position,
 		carriedBy = nil,
@@ -343,9 +370,10 @@ function Barrels.spawn(position, home, fadeIn)
 		TweenService:Create(hay, info, { Transparency = 0 }):Play()
 	end
 
-	-- Clicking with bare hands lifts the barrel. Tools are handled by Tools.luau.
-	click.MouseClick:Connect(function(player)
-		if Avatar.equippedKind(player) == nil then
+	prompt.Triggered:Connect(function(player)
+		if b.carriedBy == player then
+			Barrels.drop(player)
+		elseif not b.carriedBy then
 			Barrels.pickup(player, b)
 		end
 	end)

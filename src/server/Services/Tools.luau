@@ -1,8 +1,9 @@
 --!nonstrict
--- What each tool can do. The client only says where it clicked; the server decides what happens.
---   bare hands: lift a whole barrel
---   shovel:     smash a barrel open, or scoop a few loose pieces
---   rake:       drag loose pieces across the ground
+-- What each tool does when you click with it. Everything runs on the server from the tool's own Activated
+-- signal, so a click works no matter what the client scripts do. The target is whatever is in front of you.
+--   shovel: smash the barrel in front of you, or scoop a few loose pieces in front of you
+--   rake:   drag the loose pieces in front of you back toward you, spreading them across the ground
+-- Bare hands lift a whole barrel with its Pick up prompt (see Barrels.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
@@ -16,9 +17,19 @@ local Tools = {}
 
 local rng = Random.new()
 
-local function useShovel(player, root, position, target)
-	local barrel = target and Barrels.fromPart(target)
-	if barrel and not barrel.carriedBy then
+-- The spot on the ground a little in front of the player.
+local function spotInFront(root, distance)
+	local look = root.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude < 0.01 then
+		flat = Vector3.new(0, 0, -1)
+	end
+	return root.Position + flat.Unit * distance - Vector3.new(0, 2, 0)
+end
+
+local function useShovel(player, root)
+	local barrel = Barrels.inFront(root, Config.ShovelReach)
+	if barrel then
 		Avatar.swing(player, "Shovel", function()
 			Barrels.breakOpen(player, barrel)
 		end)
@@ -26,7 +37,12 @@ local function useShovel(player, root, position, target)
 	end
 
 	local state = Data.get(player)
-	if not state or #Hay.near(position, Config.ShovelRadius, 1) == 0 then
+	local spot = spotInFront(root, Config.ShovelReach / 2)
+	if not state then
+		return
+	end
+	if #Hay.near(spot, Config.ShovelRadius, 1) == 0 then
+		Data.toast(player, "Nothing to scoop here. Face a barrel or a pile of hay and click.")
 		return
 	end
 	if state.loadHay + Config.HayPerPiece > Config.CarryCapacity then
@@ -36,8 +52,9 @@ local function useShovel(player, root, position, target)
 
 	Avatar.swing(player, "Shovel", function()
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
+		local landed = spotInFront(root, Config.ShovelReach / 2)
 		local room = math.floor((Config.CarryCapacity - state.loadHay) / Config.HayPerPiece)
-		local list = Hay.near(position, Config.ShovelRadius, math.min(Config.ShovelPieces, room))
+		local list = Hay.near(landed, Config.ShovelRadius, math.min(Config.ShovelPieces, room))
 		if #list == 0 then
 			return
 		end
@@ -49,45 +66,26 @@ local function useShovel(player, root, position, target)
 	end)
 end
 
-local function useRake(player, root, position)
+local function useRake(player, root)
 	Avatar.swing(player, "Rake", function()
-		Hay.rake(position, root.Position, Config.RakeRadius, player.UserId)
+		Hay.rake(spotInFront(root, Config.RakeRadius), root.Position, Config.RakeRadius, player.UserId)
 	end)
 end
 
 function Tools.init()
-	local useRemote = Instance.new("RemoteEvent")
-	useRemote.Name = "UseTool"
-	useRemote.Parent = ReplicatedStorage
-	useRemote.OnServerEvent:Connect(function(player, position, target)
-		if typeof(position) ~= "Vector3" or (target ~= nil and typeof(target) ~= "Instance") then
-			return
-		end
+	Avatar.onToolActivated = function(player, kind)
 		local root = Avatar.getRoot(player)
-		local kind = Avatar.equippedKind(player)
-		if not root or not kind or (position - root.Position).Magnitude > Config.ToolReach then
+		if not root or (Data.get(player) and Data.get(player).carryBarrel) then
 			return
 		end
 		if kind == "Shovel" then
-			useShovel(player, root, position, target)
+			useShovel(player, root)
 		elseif kind == "Rake" then
-			useRake(player, root, position)
+			useRake(player, root)
 		end
-	end)
+	end
 
-	local pickupRemote = Instance.new("RemoteEvent")
-	pickupRemote.Name = "PickUpBarrel"
-	pickupRemote.Parent = ReplicatedStorage
-	pickupRemote.OnServerEvent:Connect(function(player, body)
-		if typeof(body) ~= "Instance" then
-			return
-		end
-		local barrel = Barrels.fromPart(body)
-		if barrel then
-			Barrels.pickup(player, barrel)
-		end
-	end)
-
+	-- Putting a carried barrel down from the keyboard (G) or a click. The barrel's own prompt does the same.
 	local dropRemote = Instance.new("RemoteEvent")
 	dropRemote.Name = "DropBarrel"
 	dropRemote.Parent = ReplicatedStorage

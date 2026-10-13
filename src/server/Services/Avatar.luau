@@ -10,6 +10,8 @@ local Groups = require(script.Parent.Groups)
 
 local Avatar = {}
 
+Avatar.onToolActivated = nil -- set by Tools.init: function(player, kind) for each click with a tool
+
 local rigs = {}
 
 local WOOD = Color3.fromRGB(139, 90, 43)
@@ -49,7 +51,7 @@ end
 
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
-	return buildTool("Shovel", "Scoops hay pieces. Click the hay.", {
+	return buildTool("Shovel", "Face a barrel to smash it, or a pile to scoop it, and click.", {
 		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
@@ -77,7 +79,7 @@ local function buildRake()
 			Enum.Material.Metal,
 		})
 	end
-	return buildTool("Rake", "Drags hay pieces across the ground. Click where you want to rake.", parts)
+	return buildTool("Rake", "Face loose hay and click to drag it toward you.", parts)
 end
 
 -- Finds a shoulder joint for either rig type. side is "Right" or "Left".
@@ -155,10 +157,20 @@ local function setup(player, character)
 	end
 	character.DescendantAdded:Connect(groupPart)
 
+	-- A click with a tool in hand fires its Activated signal on the server too, so tools need no client code.
+	local function hook(tool)
+		tool.Activated:Connect(function()
+			if Avatar.onToolActivated then
+				Avatar.onToolActivated(player, tool.Name)
+			end
+		end)
+		return tool
+	end
+
 	local backpack = player:WaitForChild("Backpack")
-	local shovel = buildShovel()
+	local shovel = hook(buildShovel())
 	shovel.Parent = backpack
-	buildRake().Parent = backpack
+	hook(buildRake()).Parent = backpack
 	humanoid:EquipTool(shovel)
 end
 

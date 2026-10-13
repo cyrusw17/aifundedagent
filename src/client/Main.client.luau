@@ -69,137 +69,24 @@ toast.Visible = false
 toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
-local CollectionService = game:GetService("CollectionService")
-local RunService = game:GetService("RunService")
-
 local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
-local useRemote = ReplicatedStorage:WaitForChild("UseTool")
-local pickupRemote = ReplicatedStorage:WaitForChild("PickUpBarrel")
 
-local function equippedTool()
-	local character = player.Character
-	return character and character:FindFirstChildOfClass("Tool")
-end
-
--- What is under a screen point (mouse or tap), ignoring your own character.
-local function aimAt(x, y)
-	local ray = workspace.CurrentCamera:ScreenPointToRay(x, y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { player.Character }
-	return workspace:Raycast(ray.Origin, ray.Direction * 300, params)
-end
-
-local function barrelFrom(part)
-	if CollectionService:HasTag(part, "HayBarrel") then
-		return part
-	end
-	local parent = part.Parent
-	if parent and parent:IsA("BasePart") and CollectionService:HasTag(parent, "HayBarrel") then
-		return parent
-	end
-	return nil
-end
-
--- A tool in hand uses its own Activated signal. Roblox marks clicks as game-processed while a tool is
--- equipped, so InputBegan alone never sees them. The server decides what the click does.
-local mouse = player:GetMouse()
-local hookedTools = setmetatable({}, { __mode = "k" })
-
-local function useTool()
-	if player:GetAttribute("Carrying") then
-		return
-	end
-	local hit = aimAt(mouse.X, mouse.Y)
-	if hit then
-		useRemote:FireServer(hit.Position, hit.Instance)
-	end
-end
-
-local function hookTool(child)
-	if child:IsA("Tool") and not hookedTools[child] then
-		hookedTools[child] = true
-		child.Activated:Connect(useTool)
-	end
-end
-
--- Bare hands: click a barrel to lift it. While carrying, click anywhere (or press G) to set it down.
+-- Tools and the Pick up button are handled entirely on the server. The only input here: while carrying a barrel,
+-- a click on the world or G puts it down (its Put down button does the same).
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then
+	if gameProcessed or not player:GetAttribute("Carrying") then
 		return
 	end
 	local kind = input.UserInputType
 	local pressed = kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch
-	if player:GetAttribute("Carrying") then
-		if pressed or input.KeyCode == Enum.KeyCode.G then
-			dropRemote:FireServer()
-		end
-		return
+	if pressed or input.KeyCode == Enum.KeyCode.G then
+		dropRemote:FireServer()
 	end
-	if not pressed or equippedTool() then
-		return
-	end
-	local hit = aimAt(input.Position.X, input.Position.Y)
-	local barrel = hit and barrelFrom(hit.Instance)
-	if barrel then
-		pickupRemote:FireServer(barrel)
-	end
-end)
-
--- The small pick-up button above the nearest barrel. Lifting takes both hands, so the server puts away any tool first.
-local pickGui = Instance.new("BillboardGui")
-pickGui.Name = "PickUpButton"
-pickGui.Size = UDim2.fromOffset(104, 34)
-pickGui.StudsOffsetWorldSpace = Vector3.new(0, 3.5, 0)
-pickGui.AlwaysOnTop = true
-pickGui.Enabled = false
-pickGui.ResetOnSpawn = false
-pickGui.Parent = playerGui
-
-local pickButton = Instance.new("TextButton")
-pickButton.Size = UDim2.fromScale(1, 1)
-pickButton.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
-pickButton.BackgroundTransparency = 0.15
-pickButton.Font = Enum.Font.GothamBold
-pickButton.TextSize = 16
-pickButton.TextColor3 = Color3.new(1, 1, 1)
-pickButton.Text = "Pick up"
-pickButton.AutoButtonColor = true
-pickButton.Parent = pickGui
-Instance.new("UICorner", pickButton).CornerRadius = UDim.new(0, 10)
-
-local nearBarrel = nil
-pickButton.Activated:Connect(function()
-	if nearBarrel and nearBarrel.Parent then
-		pickupRemote:FireServer(nearBarrel)
-	end
-end)
-
-local lastCheck = 0
-RunService.Heartbeat:Connect(function()
-	if os.clock() - lastCheck < 0.15 then
-		return
-	end
-	lastCheck = os.clock()
-	nearBarrel = nil
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root and not player:GetAttribute("Carrying") then
-		local best = 12
-		for _, barrel in CollectionService:GetTagged("HayBarrel") do
-			local distance = (barrel.Position - root.Position).Magnitude
-			if distance < best then
-				best, nearBarrel = distance, barrel
-			end
-		end
-	end
-	pickGui.Adornee = nearBarrel
-	pickGui.Enabled = nearBarrel ~= nil
 end)
 
 local HINTS = {
-	Shovel = "Shovel: click a barrel or hay",
-	Rake = "Rake: click to spread hay",
+	Shovel = "Shovel: face a barrel or hay, click",
+	Rake = "Rake: face loose hay, click",
 }
 
 local function refresh()
@@ -213,7 +100,7 @@ local function refresh()
 		loadLabel.Text = "Carrying a barrel"
 		hintLabel.Text = "Click or G: set it down"
 	else
-		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: pick up a barrel"
+		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a barrel"
 		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
@@ -243,13 +130,7 @@ player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 
 -- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
 local function watchCharacter(character)
-	for _, child in character:GetChildren() do
-		hookTool(child)
-	end
-	character.ChildAdded:Connect(function(child)
-		hookTool(child)
-		refresh()
-	end)
+	character.ChildAdded:Connect(refresh)
 	character.ChildRemoved:Connect(refresh)
 	refresh()
 end
