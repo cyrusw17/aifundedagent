@@ -26,6 +26,12 @@ return {
 	ShovelPieces = 12, -- strands per scoop
 	ShovelRadius = 3, -- pieces this close to the clicked spot get scooped, nearest first
 	ScoopCooldownSeconds = 0.85,
+	-- Scoop combo: scoops landing within ComboWindowSeconds of each other chain. From ComboStart scoops on, each
+	-- scoop takes ComboBonusPieces more strands per link past the start, up to ComboMaxBonus.
+	ComboWindowSeconds = 1.6,
+	ComboStart = 3,
+	ComboBonusPieces = 2,
+	ComboMaxBonus = 10,
 	RakeRadius = 6, -- strands this close to the click get gathered
 	RakeGatherDistance = 2.5, -- the rake pulls hay to this far in front of you
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling

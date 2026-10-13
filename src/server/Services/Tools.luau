@@ -7,6 +7,8 @@
 -- Bare hands lift a whole bale with its Pick up button (see Bales.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -22,6 +24,7 @@ local Tools = {}
 
 local rng = Random.new()
 local aims = {} -- player -> { position, part, time } from the latest click
+local combos = {} -- player -> { count, last } for the scoop combo
 
 local AIM_FRESH = 0.4 -- seconds an aim counts as belonging to the current click
 local AIM_WAIT = 0.15 -- how long a click waits for its aim to arrive
@@ -53,6 +56,45 @@ local function currentAim(player, root)
 		end
 		task.wait()
 	end
+end
+
+-- A little "+3 combo" that floats up over the player and fades.
+local function comboPop(root, count)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(140, 40)
+	gui.StudsOffset = Vector3.new(0, 3.5, 0)
+	gui.MaxDistance = 60
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = ("+%d combo"):format(count)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(240, 214, 140)
+	label.TextStrokeTransparency = 0.3
+	label.Parent = gui
+	gui.Parent = root
+	TweenService:Create(gui, TweenInfo.new(0.8), { StudsOffset = Vector3.new(0, 5.5, 0) }):Play()
+	TweenService:Create(label, TweenInfo.new(0.8), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(gui, 0.9)
+end
+
+-- Counts this scoop into the player's combo and returns the extra strands it earns.
+local function comboBonus(player, root)
+	local now = os.clock()
+	local combo = combos[player]
+	if combo and now - combo.last <= Config.ComboWindowSeconds then
+		combo.count += 1
+	else
+		combo = { count = 1 }
+		combos[player] = combo
+	end
+	combo.last = now
+	if combo.count < Config.ComboStart then
+		return 0
+	end
+	comboPop(root, combo.count)
+	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
 end
 
 local function useShovel(player, root, aim)
@@ -102,11 +144,12 @@ local function useShovel(player, root, aim)
 		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
 		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
 		local first = targetPieces(1)[1]
-		local hayTier = 0
-		if first then
-			hayTier = select(2, Gloves.pieceWeight(first))
+		if not first then
+			return
 		end
-		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier), room))
+		local hayTier = select(2, Gloves.pieceWeight(first))
+		local bonus = comboBonus(player, root)
+		local list = targetPieces(math.min(Gloves.scoopSize(player, hayTier) + bonus, room))
 		if #list == 0 then
 			return
 		end
@@ -179,6 +222,7 @@ function Tools.init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		aims[player] = nil
+		combos[player] = nil
 	end)
 
 	Avatar.onToolActivated = function(player, kind)
