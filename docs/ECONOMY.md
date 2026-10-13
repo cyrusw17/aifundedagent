@@ -462,6 +462,25 @@ buy, and for one who arrives on schedule it's a few minutes of income. Secrets b
 | Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
 | Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
 
+Map's twelve hidden spots, one per region and each found from an Old Sign clue, also pay through `Prices.Secrets`
+(`hidden_<region>`). Map's placeholder was $4,000 each, which was a pickup's worth for the four Meadow spots a new player
+can walk to in the first ten minutes. They're scaled to the region instead, at about 5 minutes of income at the stage
+you reach it, and stay smaller than the four big secrets:
+
+| Region | Hidden spot | Reward |
+|---|---|---|
+| Meadow Shore, Mirror Lake Valley, Homestead, Spindle | Driftwood Oak, Willow, Founders' Cairn, Echo Cairn | $500 each |
+| Pine Forest | Hollow Pine | $1,500 |
+| Desert | Prospector's Shed | $2,500 |
+| Snow Peak | Buried Ski Shed | $4,000 |
+| Thimble Keys | Castaway's Chest | $5,000 |
+| Swamp | Sunken Bog Chest | $6,000 |
+| Volcano | Ash Cairn | $10,000 |
+| Bobbin Rock | Spool Shed | $12,000 |
+| Haunted Grove | Whispering Oak | $15,000 |
+
+All twelve together come to $58,000. Like every one-time reward, they count as earnings but not as `sold`.
+
 ## Wet hay
 
 The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
@@ -514,6 +533,14 @@ a slot can hand over cash at the trading post only after it has made $25,000 fro
 and credit, but not toward that $25,000, which Bank tracks separately as `sold`. Items can always be traded, and saves
 from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
 a clock nobody can game; sales already are one.
+
+Two kinds of repeatable pay count as selling on purpose. **Daily bounties** ("Bounty: ", $300 to $450 each, three a
+day) are paid for real farming (sell 15 bales, break 12, pick up 8 needles), so they're sales with a bonus; reaching
+$25,000 on bounties alone would take about three weeks of daily play, which is real progress, not an alt trick.
+**Offline pay** ("While you were away") is what your own sorter line made while you were gone, so it needs a built
+farm first. Daily maze runs ("Maze: ") stay out of `sold` because they pay for running, not farming. The health
+check's contract rule 6 reads the one-time list from Bank.luau, so any new reward note must either match a one-time
+prefix or be a known sale.
 
 ## Where each number lives
 
