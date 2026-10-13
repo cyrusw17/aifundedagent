@@ -14,6 +14,9 @@ local Regions = require(script.Parent.Regions)
 local Highway = require(script.Parent.Highway)
 local Ferry = require(script.Parent.Ferry)
 local WorldShape = require(script.Parent.WorldShape)
+local WorldClock = require(script.Parent.WorldClock)
+local Weather = require(script.Parent.Weather)
+local RegionEvents = require(script.Parent.RegionEvents)
 
 local WorldMap = {}
 
@@ -178,6 +181,9 @@ function WorldMap.build(worldFolder)
 
 	openMeadow(worldFolder)
 	worldWalls(folder)
+	-- Day and night (the clock, the lamps; the sky colors are client side).
+	WorldClock.start()
+	Weather.start()
 
 	-- The terrain takes a while, nearest Meadow first; everything on top only needs the shape, so it goes up now.
 	task.spawn(function()
@@ -215,6 +221,7 @@ function WorldMap.build(worldFolder)
 			task.wait(Map.RichMinutes * 60)
 		end
 	end)
+	RegionEvents.start()
 end
 
 return WorldMap

@@ -160,6 +160,54 @@ return function(SelfTest)
 			truck:Destroy()
 		end
 
+		-- Clock ------------------------------------------------------------------------------------------------
+		local Lighting = game:GetService("Lighting")
+		local WorldClock = require(Services.WorldClock)
+		local was = Lighting.ClockTime
+		Lighting.ClockTime = 0
+		t.check("midnight is night", WorldClock.isNight() and WorldClock.lampsOn())
+		Lighting.ClockTime = 12
+		t.check("noon is day, lamps off", not WorldClock.isNight() and not WorldClock.lampsOn())
+		Lighting.ClockTime = was
+		t.check("the sky has an Atmosphere to tint", Lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
+
+		-- Weather ----------------------------------------------------------------------------------------------
+		local Weather = require(Services.Weather)
+		local WeatherConfig = require(Shared.Config.Weather)
+		local unset = {}
+		for _, def in Map.Regions do
+			if not WeatherConfig.Kinds[Weather.get(def.id)] or not WeatherConfig.Regions[def.id] then
+				table.insert(unset, def.id)
+			end
+		end
+		t.check("every region has weather", #unset == 0, #unset > 0 and table.concat(unset, ", ") or nil)
+		local desertWas = Weather.get("desert")
+		Weather.force("desert", "dust", 1)
+		t.equal("an event can force a region's weather", ReplicatedStorage:GetAttribute("Weather_desert"), "dust")
+		Weather.set("desert", desertWas)
+
+		-- Region events ----------------------------------------------------------------------------------------
+		local RegionEvents = require(Services.RegionEvents)
+		local dropped = RegionEvents.run("sandstorm", 1)
+		local count, strong = 0, 0
+		for b in dropped do
+			count += 1
+			if b.body:GetAttribute("NeedleBoost") == Prices.RegionEvents.sandstorm.boost then
+				strong += 1
+			end
+		end
+		t.check("a Sandstorm drops boosted bales on the Dunes", count > 0 and strong == count, ("%d bales, %d boosted"):format(count, strong))
+		t.equal("...and blows dust there", Weather.get("desert"), "dust")
+		RegionEvents.finish()
+		local left = 0
+		for b in dropped do
+			if not b.gone then
+				left += 1
+			end
+		end
+		t.equal("untouched event bales are taken away when it ends", left, 0)
+		Weather.set("desert", desertWas)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")

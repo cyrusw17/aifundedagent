@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Factory = require(Shared.Config.Factory)
 local LineMath = require(Shared.LineMath)
 
+local T2 = Factory.TileSize
 local GHOST = -7357 -- an owner who is never in the game
 
 return function(SelfTest)
@@ -27,6 +28,11 @@ return function(SelfTest)
 		local whole, rest = LineMath.bundles(23, 10)
 		t.check("23 needles pack as 2 bundles + 3", whole == 2 and rest == 3)
 		t.near("optical sorter takes 2 s a bale", Machines.sortSeconds("optical_sorter", 90), 2, 0.01)
+
+		-- Line blueprints keep good copies and refuse bad ones.
+		local Blueprints = require(Services.Blueprints)
+		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
+		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
 
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
@@ -115,11 +121,43 @@ return function(SelfTest)
 			t.skip("SELL NEEDLES pays", "needs a player with a loaded save")
 		end
 
+		-- The hay baler packs 90 loose strands of one owner into one bale.
+		local Baler = require(Services.Baler)
+		local Hay = require(Services.Hay)
+		local Config = require(Shared.Config.Game)
+		local grid2 = Conveyors.newGrid(folder, t.place().Position)
+		Conveyors.run(grid2, 0, 0, "E", 4)
+		Conveyors.finish(grid2)
+		local baler = Baler.build(folder, Conveyors.frame(grid2, 1, 0, "E"))
+		local drop = Conveyors.cellCenter(grid2, 1, 0) + Vector3.new(0, Factory.BeltTop + 1.5, 0)
+		for i = 1, Config.PiecesPerBale do
+			Hay.spawnPiece(drop + Vector3.new(((i % 5) - 2) * 0.6, (i // 30) * 0.4, 0), Vector3.zero, GHOST, nil, "meadow")
+			if i % 30 == 0 then
+				t.wait(0.3)
+			end
+		end
+		local balerDeadline = os.clock() + 10
+		while os.clock() < balerDeadline and (baler:GetAttribute("Baled") or 0) < 1 do
+			t.wait(0.25)
+		end
+		t.equal("baler packs 90 strands into one bale", baler:GetAttribute("Baled") or 0, 1)
+		t.wait(1)
+		local madeBale = false
+		for _, p in Workspace:GetPartBoundsInBox(CFrame.new(Conveyors.cellCenter(grid2, 3, 0) + Vector3.new(0, 4, 0)), Vector3.new(T2 * 3, 10, T2 * 2)) do
+			local found = Bales.fromPart(p)
+			if found and found.ownerId == GHOST and not found.sorted then
+				madeBale = true
+			end
+		end
+		t.check("the baled bale rides out, owned by the strands' owner", madeBale)
+
 		-- Tear down and check nothing is left behind.
 		for _, p in Workspace:GetPartBoundsInBox(box, boxSize) do
 			local found = Bales.fromPart(p)
 			if found and not found.gone then
 				Bales.consume(found)
+			elseif Hay.isPiece(p) and p.Parent then
+				Hay.remove(p)
 			end
 		end
 		for _, bale in bales do

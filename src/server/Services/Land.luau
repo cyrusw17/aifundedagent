@@ -9,6 +9,7 @@
 -- is rebuilt on that plot, or on the next free one big enough, and the save's truck and trailer park on its parking
 -- pad. The server checks every purchase and placement.
 local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
@@ -33,7 +34,11 @@ local Likes = require(script.Parent.Likes)
 local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
+local Baler = require(script.Parent.Baler)
+local Vault = require(script.Parent.Vault)
+local Blueprints = require(script.Parent.Blueprints)
 local Display = require(script.Parent.Display)
+local Skins = require(script.Parent.Skins)
 local Mixer = require(script.Parent.Mixer)
 local LineStats = require(script.Parent.LineStats)
 local Quests = require(script.Parent.Quests)
@@ -57,6 +62,7 @@ end
 local DEFAULT_THEME = LandConfig.Themes[1]
 
 local plots = {} -- index -> plot record
+local farmNames = {} -- userId -> the name on their first farm, for the likes board while they are on this server
 local plotOf = {} -- player -> the plot record they build on (their active farm)
 local farms = {} -- player -> { land = plot, land2 = plot }: every plot they own, by save key
 local lastAction = {} -- player -> os.clock() of their last place or remove
@@ -174,10 +180,12 @@ local function publish(plot)
 	info:SetAttribute("Likes", plot.likes or 0)
 	info:SetAttribute("LockedRows", plot.locked or 0)
 	info:SetAttribute("Theme", plot.theme or "")
+	info:SetAttribute("FarmName", plot.farmName or "")
 	plot.likePrompt.Enabled = plot.ownerId ~= nil
 	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
-		plot.label.Text = ("%s\n%s's farm\n♥ %d this week"):format(plot.def.name:upper(), plot.ownerName, plot.likes or 0)
+		local title = plot.farmName and ("%s\n%s's farm"):format(plot.farmName:upper(), plot.ownerName) or ("%s's farm"):format(plot.ownerName)
+		plot.label.Text = ("%s\n%s\n♥ %d this week"):format(plot.def.name:upper(), title, plot.likes or 0)
 	else
 		plot.label.Text = ("%s FOR SALE\n$%d at the Land Office"):format(plot.def.name:upper(), plot.def.price)
 	end
@@ -206,32 +214,62 @@ local function buildSilo(plot, item, def)
 	model.Name = "HaySilo"
 	model.Parent = plot.items
 
-	local height = 20
-	local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
-	body.Shape = Enum.PartType.Cylinder
-	local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
-	cap.Shape = Enum.PartType.Ball
-	part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
-	-- The chute comes out over the anchor lane at belt height.
+	local capacity = def.capacity or LandConfig.SiloCapacity
 	local laneX = -(def.size[1] - 1) * T / 2
-	part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
-	local label = sign(cap, "", Vector3.new(0, 4, 0))
-
-	local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
-	if mesh then
-		Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
-		for _, p in mesh:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.CanCollide = false
-			end
+	local label
+	if def.look == "barn" then
+		-- A red barn: plank walls, a pitched roof, white trim, and big doors at the front over the chute.
+		model.Name = "HayBarn"
+		local wallH = 10
+		local body = part(model, "Body", Vector3.new(w - 1, wallH, l - 1), frame * CFrame.new(0, wallH / 2, 0), Rustic.PaintRed, Enum.Material.WoodPlanks)
+		local pitch = math.rad(35)
+		local roofW = (w - 1) / 2 / math.cos(pitch) + 0.6
+		for _, side in { -1, 1 } do
+			part(model, "Roof", Vector3.new(roofW, 0.6, l), frame * CFrame.new(side * (w - 1) / 4, wallH + (w - 1) / 4 * math.tan(pitch), 0) * CFrame.Angles(0, 0, -side * pitch), Rustic.Metal, Enum.Material.Metal)
 		end
-		-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
-		Props.weldTo(mesh, body, { body, cap })
+		for _, x in { -(w - 1) / 2, (w - 1) / 2 } do
+			part(model, "Trim", Vector3.new(0.3, wallH, 0.3), frame * CFrame.new(x, wallH / 2, -(l - 1) / 2 - 0.1), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		end
+		part(model, "Doors", Vector3.new(w * 0.5, wallH * 0.7, 0.3), frame * CFrame.new(0, wallH * 0.35, -(l - 1) / 2 - 0.15), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(body, "", Vector3.new(0, wallH / 2 + (w - 1) / 4 + 3, 0))
+		local mesh = Props.make("barn", frame * CFrame.new(0, wallH / 2, 0), Vector3.new(w - 0.5, wallH + (w - 1) / 2, l - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y)
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			Props.weldTo(mesh, body, { body })
+		end
+	else
+		local height = 20
+		local body = part(model, "Body", Vector3.new(height, w - 1, w - 1), frame * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.PaintCream, Enum.Material.Metal)
+		body.Shape = Enum.PartType.Cylinder
+		local cap = part(model, "Cap", Vector3.new(w - 1.6, 2.4, w - 1.6), frame * CFrame.new(0, height + 1.2, 0), Rustic.Metal, Enum.Material.Metal)
+		cap.Shape = Enum.PartType.Ball
+		part(model, "Band", Vector3.new(0.4, w - 0.6, w - 0.6), frame * CFrame.new(0, 6, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.WoodDark, Enum.Material.Wood).Shape = Enum.PartType.Cylinder
+		-- The chute comes out over the anchor lane at belt height.
+		part(model, "Chute", Vector3.new(4, 3.2, 3), frame * CFrame.new(laneX, TOP + 1.6, -l / 2 + 1), Rustic.Metal, Enum.Material.Metal)
+		label = sign(cap, "", Vector3.new(0, 4, 0))
+
+		local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
+		if mesh then
+			Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
+			for _, p in mesh:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+				end
+			end
+			-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
+			Props.weldTo(mesh, body, { body, cap })
+		end
 	end
 
-	item.stored = math.clamp(item.stored or 0, 0, LandConfig.SiloCapacity)
+	item.stored = math.clamp(item.stored or 0, 0, capacity)
 	local function refresh()
-		label.Text = ("HAY SILO\n%d / %d bales"):format(item.stored, LandConfig.SiloCapacity)
+		label.Text = ("%s\n%d / %d bales"):format(def.name:upper(), item.stored, capacity)
 	end
 	refresh()
 
@@ -247,7 +285,7 @@ local function buildSilo(plot, item, def)
 			local changed = false
 			for _, p in Workspace:GetPartBoundsInBox(intake, intakeSize) do
 				local b = Bales.fromPart(p)
-				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < LandConfig.SiloCapacity then
+				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < capacity then
 					Bales.consume(b)
 					item.stored += 1
 					changed = true
@@ -479,6 +517,66 @@ local function buildParking(plot, item, def)
 	return model
 end
 
+-- Decor: looks only, built from parts in the Rustic palette (the scarecrow wears its Blender mesh when imported).
+local function buildDecor(plot, item, def)
+	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
+	local model = Instance.new("Model")
+	model.Name = "Decor_" .. def.look
+	model.Parent = plot.items
+	if def.look == "flowers" then
+		part(model, "Box", Vector3.new(4, 1.4, 1.6), frame * CFrame.new(0, 0.7, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+		part(model, "Soil", Vector3.new(3.6, 0.2, 1.2), frame * CFrame.new(0, 1.45, 0), Rustic.Mud, Enum.Material.Ground)
+		local colors = { Rustic.PaintRed, Rustic.PaintYellow, Rustic.PaintCream, Rustic.PaintBlue }
+		for i = 0, 5 do
+			local x = -1.5 + i * 0.6
+			part(model, "Stem", Vector3.new(0.12, 0.8, 0.12), frame * CFrame.new(x, 1.9, (i % 2 - 0.5) * 0.4), Rustic.PaintGreen)
+			local bloom = part(model, "Bloom", Vector3.new(0.45, 0.45, 0.45), frame * CFrame.new(x, 2.35, (i % 2 - 0.5) * 0.4), colors[i % #colors + 1], Enum.Material.Fabric)
+			bloom.Shape = Enum.PartType.Ball
+			bloom.CanCollide = false
+		end
+	elseif def.look == "bench" then
+		for _, x in { -1.6, 1.6 } do
+			part(model, "Bale", Vector3.new(1.6, 1.6, 2.4), frame * CFrame.new(x, 0.8, 0), Rustic.Hay, Enum.Material.Fabric)
+			part(model, "Twine", Vector3.new(1.66, 1.66, 0.15), frame * CFrame.new(x, 0.8, 0.5), Rustic.Twine, Enum.Material.Fabric).CanCollide = false
+		end
+		local seat = part(model, "Seat", Vector3.new(4.8, 0.3, 1.8), frame * CFrame.new(0, 1.75, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+		local sit = Instance.new("Seat")
+		sit.Name = "Sit"
+		sit.Size = Vector3.new(1.6, 0.2, 1.4)
+		sit.CFrame = seat.CFrame * CFrame.new(0, 0.25, 0)
+		sit.Transparency = 1
+		sit.Anchored = true
+		sit.Parent = model
+	elseif def.look == "lantern" then
+		part(model, "Post", Vector3.new(0.5, 7, 0.5), frame * CFrame.new(0, 3.5, 0), Rustic.WoodDark, Enum.Material.Wood)
+		part(model, "Arm", Vector3.new(0.3, 0.3, 1.6), frame * CFrame.new(0, 6.8, -0.8), Rustic.WoodDark, Enum.Material.Wood)
+		part(model, "Cap", Vector3.new(0.9, 0.3, 0.9), frame * CFrame.new(0, 6.5, -1.5), Rustic.Metal, Enum.Material.Metal)
+		local glass = part(model, "Lamp", Vector3.new(0.7, 0.9, 0.7), frame * CFrame.new(0, 5.9, -1.5), Rustic.PaintYellow, Enum.Material.Neon)
+		glass.CanCollide = false
+		glass.Transparency = 0.2
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 200, 130)
+		light.Range = 16
+		light.Brightness = 1.2
+		light.Parent = glass
+		CollectionService:AddTag(glass, "NightLamp")
+	elseif def.look == "scarecrow" then
+		local post = part(model, "Post", Vector3.new(0.4, 6.5, 0.4), frame * CFrame.new(0, 3.25, 0), Rustic.WoodDark, Enum.Material.Wood)
+		local body = Instance.new("Model")
+		body.Name = "Body"
+		body.Parent = model
+		part(body, "Arms", Vector3.new(4.2, 0.35, 0.35), frame * CFrame.new(0, 4.8, 0), Rustic.WoodDark, Enum.Material.Wood)
+		part(body, "Shirt", Vector3.new(1.8, 2, 0.9), frame * CFrame.new(0, 4.3, 0), Rustic.PaintRed, Enum.Material.Fabric)
+		part(body, "Sleeves", Vector3.new(3.6, 0.6, 0.6), frame * CFrame.new(0, 4.8, 0), Rustic.PaintRedDark, Enum.Material.Fabric)
+		local head = part(body, "Head", Vector3.new(1.2, 1.2, 1.2), frame * CFrame.new(0, 5.95, 0), Rustic.Cloth, Enum.Material.Fabric)
+		head.Shape = Enum.PartType.Ball
+		part(body, "Hat", Vector3.new(1.8, 0.15, 1.8), frame * CFrame.new(0, 6.6, 0), Rustic.Hay, Enum.Material.Fabric)
+		part(body, "Crown", Vector3.new(1, 0.6, 1), frame * CFrame.new(0, 6.95, 0), Rustic.Hay, Enum.Material.Fabric)
+		Skins.dress("scarecrow", post, body, frame, CFrame.Angles(0, 0, 0))
+	end
+	return model
+end
+
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
@@ -488,7 +586,7 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "ramp" then
 		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
-	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "starbeam" then
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" or def.kind == "baler" or def.kind == "starbeam" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
 			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
@@ -499,6 +597,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
 	elseif def.kind == "press" then
 		table.insert(item.instances, Press.build(plot.items, frame))
+	elseif def.kind == "baler" then
+		table.insert(item.instances, Baler.build(plot.items, frame))
 	elseif def.kind == "starbeam" then
 		table.insert(item.instances, Starbeam.build(plot.items, frame, function()
 			return plot.ownerId
@@ -512,6 +612,12 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 			return plot.ownerId
 		end, typeof(display) == "table" and display or nil)
 		table.insert(item.instances, item.wall.model)
+	elseif def.kind == "vault" then
+		-- Saved and cleared like the display (item.wall): contents() goes in the save, clear() before freeing a plot.
+		item.wall = Vault.build(plot.items, frame, function()
+			return plot.ownerId
+		end, typeof(display) == "table" and display or nil)
+		table.insert(item.instances, item.wall.model)
 	elseif def.kind == "buyer" then
 		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER", payeeFor(plot)))
 	elseif def.kind == "silo" then
@@ -520,6 +626,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, buildParking(plot, item, def))
 	elseif def.kind == "blueprint" then
 		table.insert(item.instances, buildBlueprint(plot, item, def))
+	elseif def.kind == "decor" then
+		table.insert(item.instances, buildDecor(plot, item, def))
 	end
 	for _, cell in item.cells do
 		for _, level in levelsOf(def) do
@@ -604,6 +712,7 @@ local function writeLand(land, plot, ownerId)
 	land.binSorted = plot.binSorted or nil
 	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
+	land.name = plot.farmName or plot.pendingName -- a saved name still being re-filtered stays saved
 	land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
 	land.needles = plot.bin.contents(ownerId)
 	local crew = {}
@@ -752,6 +861,23 @@ addBinPrompt = function(plot)
 	plot.polishPrompt = polish
 end
 
+-- Farm names. Anything another player will read goes through Roblox's text filter first, as the owner's own words.
+local NAME_MAX = 24
+local function filterName(raw, userId)
+	local ok, result = pcall(function()
+		return TextService:FilterStringAsync(raw, userId, Enum.TextFilterContext.PublicChat):GetNonChatStringForBroadcastAsync()
+	end)
+	return ok and result or nil
+end
+
+local function setFarmName(plot, name)
+	plot.farmName = name
+	plot.pendingName = nil
+	if plot.ownerId and plot.landKey == "land" then
+		farmNames[plot.ownerId] = name
+	end
+end
+
 local function release(plot)
 	local owner = plot.owner
 	if owner then
@@ -797,6 +923,10 @@ local function release(plot)
 		addBinPrompt(plot)
 	end
 	plot.leftOut = nil
+	if plot.ownerId and farmNames[plot.ownerId] == plot.farmName then
+		farmNames[plot.ownerId] = nil
+	end
+	plot.farmName, plot.pendingName = nil, nil
 	plot.crew = {}
 	plot.locked = 0
 	dress(plot, nil)
@@ -834,6 +964,19 @@ local function claim(plot, player, saved, landKey)
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
 	dress(plot, saved.theme)
+	plot.farmName, plot.pendingName = nil, nil
+	if typeof(saved.name) == "string" and saved.name ~= "" then
+		-- Saved names were filtered when they were set; filter again before showing it, in case the filter changed.
+		local raw = saved.name
+		plot.pendingName = raw
+		task.spawn(function()
+			local clean = filterName(raw, player.UserId)
+			if clean and clean ~= "" and plot.owner == player and plot.landKey == landKey and plot.pendingName == raw then
+				setFarmName(plot, clean)
+				publish(plot)
+			end
+		end)
+	end
 	if saved.binSorted then
 		plot.binSorted = true
 		plot.bin.splitByType()
@@ -1252,6 +1395,45 @@ local function onTheme(player, id)
 	return true, ("Your farm is now %s."):format(themes[id].name:lower())
 end
 
+-- Names the owner's active farm. An empty name clears it.
+local function onName(player, raw)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(raw) ~= "string" then
+		return false, nil
+	end
+	if os.clock() - (lastAction[player] or 0) < 3 then
+		return false, "Wait a moment before renaming again."
+	end
+	lastAction[player] = os.clock()
+	raw = raw:gsub("[%c]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if raw == "" then
+		setFarmName(plot, nil)
+		saveItems(player, plot)
+		publish(plot)
+		return true, "Your farm's name is cleared."
+	end
+	if utf8.len(raw) == nil or utf8.len(raw) > NAME_MAX then
+		return false, ("Farm names are up to %d letters."):format(NAME_MAX)
+	end
+	local clean = filterName(raw, player.UserId)
+	if not clean then
+		return false, "Couldn't check that name right now. Try again."
+	end
+	if plot.owner ~= player then
+		return false, nil
+	end
+	setFarmName(plot, clean)
+	saveItems(player, plot)
+	publish(plot)
+	if clean ~= raw then
+		return true, ("Some of that name was filtered. Your farm is %s."):format(clean)
+	end
+	return true, ("Your farm is now called %s."):format(clean)
+end
+
 -- Adds (on = true) or removes a player from the owner's farm crew.
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
@@ -1311,6 +1493,7 @@ local function lamp(parent, at, theme)
 	light.Range = 18
 	light.Brightness = 1.2
 	light.Parent = lantern
+	CollectionService:AddTag(lantern, "NightLamp") -- lit from dusk to dawn (WorldClock)
 end
 
 -- Builds the plot's fence, sign and lamps in a theme (an id from LandConfig.Themes; unknown ids get the default).
@@ -1541,7 +1724,9 @@ local function buildOffice(parent)
 			local lines = { "BEST FARMS THIS WEEK" }
 			if ok and #top > 0 then
 				for i, entry in top do
-					table.insert(lines, ("%d. %s  ♥ %d"):format(i, entry.name, entry.likes))
+					local farm = farmNames[entry.userId]
+					local who = farm and ("%s (%s)"):format(farm, entry.name) or entry.name
+					table.insert(lines, ("%d. %s  ♥ %d"):format(i, who, entry.likes))
 				end
 			else
 				table.insert(lines, "No likes yet. Visit a farm and like it at its sign.")
@@ -1774,7 +1959,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1782,6 +1967,7 @@ function Land.build(worldFolder)
 	end
 
 	buildOffice(folder)
+	Blueprints.init() -- named presets for the COPY / PASTE tools
 	for i, def in LandConfig.Plots do
 		buildPlot(folder, i, def)
 	end
@@ -1809,6 +1995,7 @@ function Land.build(worldFolder)
 	remotes.Paste.OnServerInvoke = guard(onPaste)
 	remotes.Undo.OnServerInvoke = guard(onUndo)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
+	remotes.FarmName.OnServerInvoke = guard(onName)
 	remotes.Switch.OnServerInvoke = guard(onSwitch)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)

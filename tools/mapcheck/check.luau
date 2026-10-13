@@ -73,3 +73,59 @@ for r, road in Map.Roads do
 	end
 end
 print("loose road starts", loose)
+
+-- The clock: night is night, noon is not, lamps follow.
+local WorldClock = require({ __path = "Services.WorldClock" })
+local Lighting = game:GetService("Lighting")
+local clockOk = true
+for _, case in { { 0, true, true }, { 12, false, false }, { 18.5, false, true }, { 21, true, true }, { 6.5, false, false } } do
+	Lighting.ClockTime = case[1]
+	if WorldClock.isNight() ~= case[2] or WorldClock.lampsOn() ~= case[3] then
+		clockOk = false
+		print("WARN clock wrong at hour", case[1], WorldClock.isNight(), WorldClock.lampsOn())
+	end
+end
+Lighting.ClockTime = 23.5
+if WorldClock.phase() ~= "midnight" then clockOk = false end
+Lighting.ClockTime = 18
+if WorldClock.phase() ~= "dusk" then clockOk = false end
+print("clock", clockOk and "ok" or "WRONG", "atmosphere", Lighting:FindFirstChildOfClass("Atmosphere") and "made" or "missing")
+
+-- Weather: every region has a known kind on the board, and an event can force one.
+local Weather = require({ __path = "Services.Weather" })
+local WeatherConfig = require({ __path = "Shared.Config.Weather" })
+local weatherOk = true
+for _, r in Map.Regions do
+	local kind = Weather.get(r.id)
+	if not WeatherConfig.Regions[r.id] or not WeatherConfig.Kinds[kind] then
+		weatherOk = false
+		print("WARN weather missing for region", r.id, kind)
+	end
+end
+Weather.force("desert", "dust", 60)
+if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+print("weather", weatherOk and "ok" or "WRONG")
+
+-- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
+local RegionEvents = require({ __path = "Services.RegionEvents" })
+local Prices = require({ __path = "Shared.Config.Prices" })
+local WorldShapeE = require({ __path = "Services.WorldShape" })
+local eventsOk = true
+for _, e in RegionEvents.List do
+	local reward = Prices.RegionEvents[e.id]
+	local dropped = RegionEvents.run(e.id, 1)
+	local n, onRoad = 0, 0
+	for b in dropped do
+		n += 1
+		local d = WorldShapeE.nearestRoad(b.spawnPosition.X, b.spawnPosition.Z)
+		if d and d < 6 then onRoad += 1 end
+		if b.body:GetAttribute("NeedleBoost") ~= reward.boost then eventsOk = false end
+	end
+	if n < reward.bales * 0.6 or onRoad > 0 then
+		eventsOk = false
+		print("WARN event", e.id, "dropped", n, "of", reward.bales, "on road", onRoad)
+	end
+	print(("event %-14s %2d bales"):format(e.id, n))
+end
+RegionEvents.finish()
+print("events", eventsOk and "ok" or "WRONG")

@@ -98,7 +98,7 @@ local function randomSave(rng, big)
 		return {
 			owned = true, plot = rng:NextInteger(1, 6), items = items, needles = needles, crew = { rng:NextInteger(1, 1e9) },
 			expansions = rng:NextInteger(0, 2), binSorted = rng:NextNumber() < 0.5 or nil, binPolisher = rng:NextNumber() < 0.5 or nil,
-			theme = "fieldstone", savedAt = os.time() - rng:NextInteger(0, 1e5),
+			theme = "fieldstone", name = "Needle Acres", savedAt = os.time() - rng:NextInteger(0, 1e5),
 		}
 	end
 	local pocket = {}
@@ -143,6 +143,25 @@ local function registerSaves(SelfTest)
 		t.check("this server's own lock never blocks it", not Data.heldElsewhere({ _lock = { job = game.JobId, at = os.time() } }))
 		t.check("an unlocked save is free", not Data.heldElsewhere({ cash = 1 }))
 
+		-- Shutdown saves run side by side: 12 two-second saves finish in about 2 seconds, and a stuck one can't hold
+		-- shutdown past the deadline.
+		local list = {}
+		for i = 1, 12 do
+			table.insert(list, i)
+		end
+		local started = os.clock()
+		local finished = Data.saveAll(list, 10, function()
+			task.wait(2)
+		end)
+		local took = os.clock() - started
+		t.check(("12 shutdown saves run in parallel (%.1f s)"):format(took), finished == 12 and took < 4)
+		started = os.clock()
+		finished = Data.saveAll({ 1, 2 }, 1, function(i)
+			task.wait(i == 1 and 0 or 30)
+		end)
+		took = os.clock() - started
+		t.check(("a stuck save stops at the deadline (%.1f s, %d of 2 done)"):format(took, finished), finished == 1 and took < 2)
+
 		-- Round trips: save, JSON (what the DataStore keeps), load, save again. The second save must equal the first,
 		-- and what the player had must survive.
 		local rng = Random.new(1337)
@@ -172,6 +191,9 @@ local function registerSaves(SelfTest)
 				end
 				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
 					error("second farm lost")
+				end
+				if first.land.name ~= original.land.name then
+					error("farm name lost")
 				end
 				if first.land.binPolisher ~= original.land.binPolisher or first.land.binSorted ~= original.land.binSorted then
 					error("bin upgrades lost")

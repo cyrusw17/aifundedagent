@@ -137,7 +137,7 @@ Prices.PlotExpansion = 5000
 -- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
 -- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
 Prices.SecondPlot = 60000
-Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -165,8 +165,16 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
+	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
+	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
+	decor_flowers = 200,
+	decor_bench = 350,
+	decor_lantern = 500,
+	decor_scarecrow = 900,
 }
 Prices.RefundShare = 0.5
 
@@ -206,6 +214,22 @@ Prices.Travel = {
 	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
 	barge = 0, -- the Captain's Barge is earned by quest and free to use
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul.
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Thimble Keys: the sand bars dry out
+	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
+	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: fallen stars in the hay
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

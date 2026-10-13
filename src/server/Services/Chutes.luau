@@ -199,6 +199,13 @@ function Chutes.make(parent, frame, field, name)
 	local rope = part(model, "PullRope", Vector3.new(0.3, H - 8.5, 0.3), frame * CFrame.new(-2, 8.5 + (H - 8.5) / 2, -Lz * 0.3 + 1), Rustic.Wood, Enum.Material.Fabric, false)
 	local handle = part(model, "Handle", Vector3.new(1.2, 0.5, 0.5), frame * CFrame.new(-2, 8.4, -Lz * 0.3 + 1), Rustic.PaintRed, Enum.Material.Wood, false)
 	rope.CanQuery = false
+	-- A lantern on a front post so the chute is easy to find at night (WorldClock lights anything named Lantern).
+	local lantern = part(model, "Lantern", Vector3.new(0.8, 1.2, 0.8), frame * CFrame.new(-postX, H - 1, -postZ - 0.8), Rustic.PaintCream, Enum.Material.Neon, false)
+	local light = Instance.new("PointLight")
+	light.Range = 22
+	light.Brightness = 1.4
+	light.Color = Color3.fromRGB(255, 214, 150)
+	light.Parent = lantern
 	model.Parent = parent
 
 	local prompt = Instance.new("ProximityPrompt")

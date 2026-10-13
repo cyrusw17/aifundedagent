@@ -1,13 +1,12 @@
 --!nonstrict
 -- Shows the name of the region you've just entered ("PINE FOREST") across the top of the screen for a few seconds.
--- Regions are the ovals in Config/WorldMap.luau; Meadow is its square. Purely a label: nothing here decides anything.
+-- Which region: Shared/WorldRegions.luau. Purely a label: nothing here decides anything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Map = require(Shared.Config.WorldMap)
-local Meadow = require(Shared.Config.Meadow)
+local WorldRegions = require(Shared.WorldRegions)
 
 local player = Players.LocalPlayer
 
@@ -30,29 +29,8 @@ label.TextStrokeTransparency = 1
 label.Parent = gui
 
 local function regionAt(position)
-	if position.Y > Map.SkyIsland.top - 60 then
-		local d = Vector2.new(position.X, position.Z) - Map.SkyIsland.center
-		if d.Magnitude < Map.SkyIsland.radius + 40 then
-			return "Sky Island"
-		end
-	end
-	local cave = Map.Cave.chamber
-	if (position - cave.center).Magnitude < cave.radius * 1.2 then
-		return "Crystal Cave"
-	end
-	if math.abs(position.X) < Meadow.HalfSize and math.abs(position.Z) < Meadow.HalfSize then
-		return "Meadow Farm"
-	end
-	local best, bestValue = nil, 0
-	for _, r in Map.Regions do
-		local dx = (position.X - r.center.X) / r.radius.X
-		local dz = (position.Z - r.center.Y) / r.radius.Y
-		local value = 1 - math.sqrt(dx * dx + dz * dz)
-		if value > bestValue then
-			best, bestValue = r.name, value
-		end
-	end
-	return best
+	local region = WorldRegions.at(position)
+	return region and region.name
 end
 
 local shown = nil

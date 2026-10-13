@@ -26,6 +26,12 @@ MODULES = {
     "Services.Highway": "server/Services/Highway.luau",
     "Services.Ferry": "server/Services/Ferry.luau",
     "Services.WorldMap": "server/Services/WorldMap.luau",
+    "Services.DayNight": "server/Services/DayNight.luau",
+    "Services.WorldClock": "server/Services/WorldClock.luau",
+    "Shared.Config.Quests": "shared/Config/Quests.luau",
+    "Shared.Config.Weather": "shared/Config/Weather.luau",
+    "Services.Weather": "server/Services/Weather.luau",
+    "Services.RegionEvents": "server/Services/RegionEvents.luau",
 }
 
 

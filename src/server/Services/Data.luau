@@ -216,7 +216,7 @@ local function summarize(saved)
 	}
 end
 
--- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, savedAt }.
+-- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, name, savedAt }.
 local function landFrom(land)
 	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
 		return nil
@@ -231,6 +231,7 @@ local function landFrom(land)
 		binSorted = land.binSorted == true or nil, -- the needle bin has type dividers
 		binPolisher = land.binPolisher == true or nil, -- the needle bin has a polishing wheel
 		theme = typeof(land.theme) == "string" and land.theme or nil, -- plot theme id
+		name = typeof(land.name) == "string" and #land.name <= 40 and land.name or nil, -- the farm's name, already filtered
 		savedAt = typeof(land.savedAt) == "number" and land.savedAt or nil, -- os.time() of the last save
 	}
 end
@@ -249,6 +250,8 @@ local function stateFrom(saved)
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
 		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
+		-- named line presets, { { name, list } } (Blueprints.luau checks every entry when it reads them)
+		lineBlueprints = typeof(saved.lineBlueprints) == "table" and saved.lineBlueprints or {},
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
@@ -286,6 +289,7 @@ local function toSave(state)
 		pocket = state.pocket,
 		thatch = state.thatch,
 		materials = state.materials,
+		lineBlueprints = state.lineBlueprints,
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
@@ -557,6 +561,31 @@ saveOnce = function(player, final)
 	end
 end
 
+-- Saves every player in list at once (each a final save) and returns when all are done or after deadline seconds,
+-- whichever is first, with how many finished. Shutdown has 30 seconds in all, so one at a time could run out of time
+-- on a full server. save is for SelfTests; it defaults to a final Data.save.
+function Data.saveAll(list, deadline, save)
+	save = save or function(player)
+		Data.save(player, true)
+	end
+	local left, done = #list, 0
+	for _, player in list do
+		task.spawn(function()
+			local ok, err = pcall(save, player)
+			if not ok then
+				warn("[Needlewood] shutdown save failed: " .. tostring(err))
+			end
+			left -= 1
+			done += 1
+		end)
+	end
+	local stop = os.clock() + deadline
+	while left > 0 and os.clock() < stop do
+		task.wait(0.1)
+	end
+	return done
+end
+
 function Data.release(player)
 	Data.save(player, true)
 	states[player] = nil
@@ -605,9 +634,11 @@ function Data.start()
 		task.spawn(onPlayerAdded, player)
 	end
 	game:BindToClose(function()
+		local list = {}
 		for player in states do
-			Data.save(player, true)
+			table.insert(list, player)
 		end
+		Data.saveAll(list, 25)
 	end)
 	task.spawn(function()
 		while true do

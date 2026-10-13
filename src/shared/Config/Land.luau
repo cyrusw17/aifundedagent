@@ -41,6 +41,7 @@ return {
 		{ id = "belt", kind = "belt", name = "Conveyor belt", price = Prices.Pieces.belt, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
 		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = Prices.Pieces.hay_buyer, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
 		{ id = "silo", kind = "silo", name = "Hay silo", price = Prices.Pieces.silo, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
+		{ id = "hay_barn", kind = "silo", look = "barn", capacity = 150, name = "Hay barn", price = Prices.Pieces.hay_barn, size = { 3, 3 }, blurb = "A red barn that holds 150 bales and feeds them out the front onto a belt, one at a time." },
 		{ id = "parking", kind = "parking", name = "Parking pad", price = Prices.Pieces.parking, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
 		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = Prices.Pieces.hand_sieve, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
 		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = Prices.Pieces.shaker_table, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
@@ -54,11 +55,18 @@ return {
 		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
 		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
 		{ id = "alloy_mixer", kind = "mixer", name = "Alloy mixer", price = Prices.Pieces.alloy_mixer, size = { 1, 1 }, blurb = "Mixes two needle types from your pocket into an alloy block for blueprints. No belt needed." },
+		{ id = "hay_baler", kind = "baler", name = "Hay baler", price = Prices.Pieces.hay_baler, size = { 1, 2 }, blurb = "Packs loose strands on the belt back into bales, so raked and scooped hay can feed your line." },
+		{ id = "needle_vault", kind = "vault", name = "Needle vault", price = Prices.Pieces.needle_vault, size = { 1, 1 }, blurb = "A safe for your needles: E puts your pocket in, T takes it all out. Saves with your plot." },
 		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
 		-- Quest-only: free to build once the alien ritual is done (Config/Quests.luau), never sold.
 		-- quest is the reward id (Quests.has) that unlocks the piece.
 		{ id = "alien_collector", kind = "separator", name = "Alien Collector", price = 0, quest = "alien_collector", size = { 1, 2 }, blurb = "Sorts every needle at once while its beam is up, once a day. Earned from the alien offering." },
 		{ id = "starbeam_collector", kind = "starbeam", name = "Starbeam Collector", price = 0, quest = "starbeam_collector", size = { 1, 1 }, blurb = "Pulls a bale of Star hay down onto its belt every few minutes. Earned from the alien offering." },
+		-- Decor: looks only. look picks the model in Land.luau buildDecor.
+		{ id = "decor_flowers", kind = "decor", look = "flowers", name = "Flower box", price = Prices.Pieces.decor_flowers, size = { 1, 1 }, blurb = "A planter of wildflowers. Just for looks." },
+		{ id = "decor_bench", kind = "decor", look = "bench", name = "Hay-bale bench", price = Prices.Pieces.decor_bench, size = { 1, 1 }, blurb = "Two bales and a plank for visitors to sit on." },
+		{ id = "decor_lantern", kind = "decor", look = "lantern", name = "Lantern post", price = Prices.Pieces.decor_lantern, size = { 1, 1 }, blurb = "A warm light for your farm at night." },
+		{ id = "decor_scarecrow", kind = "decor", look = "scarecrow", name = "Scarecrow", price = Prices.Pieces.decor_scarecrow, size = { 1, 1 }, blurb = "Keeps watch over your line. Just for looks." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
 		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
 		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },
