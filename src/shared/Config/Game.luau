@@ -44,6 +44,7 @@ return {
 	-- takes in one scoop (it ignores the per-scoop size; only your carry room limits it).
 	PileMin = 40,
 	PileRadius = 3,
+	RakeBeltReach = 5, -- a rake stroke ending this close to a conveyor belt flicks the hay up onto it
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
 	RakeMaxSpeed = 16,
 	RakeCooldownSeconds = 0.75,
@@ -73,6 +74,8 @@ return {
 	PourStagger = 0.008, -- seconds between strands, so it streams out
 	GoldenBaleOneIn = Prices.GoldenBale.oneIn, -- a field bale grows golden 1 time in this many (Config/Prices)
 	GoldenBaleNeedles = Prices.GoldenBale.needles, -- a golden bale spills this many times the needles
+	CatchRadius = 4.5, -- a thrown bale this close to a bare-handed farm crew teammate is caught
+	CatchWindowSeconds = 1.6, -- how long after the throw a catch can happen
 	DoubleCarryTier = 3, -- gloves of this tier (Reinforced) and up carry two bales, one on top of the other
 	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long

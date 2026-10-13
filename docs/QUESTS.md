@@ -26,6 +26,8 @@ Quest gear is earned, never sold. No cash or Robux price buys a quest shovel, ra
 | The Wandering Scarecrow | Find him 5 times; he moves every 4 minutes between 6 fields | **Golden Shovel** (2x scoop) |
 | The Tailor's Journal | Find 3 pages (near the pond, the north woods, west of the dealer), read them at the Old Barn | **Thread Rake** (pulls nearby loose needles into your pocket) |
 | Old Bessie (Hank) | Barn key in the Old Barn, look under the tarp, bring a carburetor (Pine Mill), radiator (desert oasis camp) and seat spring (Snow Peak lodge), pay $2,500 | **Old Bessie** (pickup, top speed 52 vs 46) |
+| The Straw Labyrinth | Far south-west of camp: a new straw maze every UTC day. Cross the start line, ring the bell at its heart, then again within 45 seconds | **Straw Crown**, $500 |
+| The Drowned Rows | Swim in between the red buoys past the south beach, through rows of old pilings, to the raft in the middle | **Drowned Compass**, $750 |
 
 ## Rituals (the mystery items)
 
@@ -57,6 +59,12 @@ A part tagged `QuestAnchor` with `SpotId` still moves a spot onto it, for hand p
 
 Three a day from a pool of six (sell bales, break bales, pick up needles, sell sorted needles, sell loose hay, rake),
 the same three for everyone, new at midnight UTC. Cash only: $150 to $1,200.
+
+## Timed mazes
+
+The Straw Labyrinth and the Drowned Rows time every run from the start line to the heart. The first finish each UTC
+day pays $300 (labyrinth) or $400 (rows), once per save; the labyrinth's sign shows the server's best time for the
+day. About six Meadow bales for a minute or two of running: a daily treat, never a living. Config: `Quests.Runs`.
 
 ## Why the rewards are what they are
 

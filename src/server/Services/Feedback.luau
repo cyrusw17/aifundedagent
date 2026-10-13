@@ -11,6 +11,7 @@ local Sounds = require(ReplicatedStorage.Shared.Config.Sounds)
 local Feedback = {}
 
 local saleRemote = nil
+local juiceRemote = nil
 
 local function makeSound(def, pitch)
 	local sound = Instance.new("Sound")
@@ -62,6 +63,35 @@ function Feedback.sale(player, amount)
 	end
 end
 
+-- A little game feel for one player's own screen (Juice.client.luau): "burst" (a bale smashed: a 40 ms hit-stop and
+-- a jolt), "combo" (a third quick scoop and up: a tiny shake, stronger with amount).
+function Feedback.juice(player, kind, amount)
+	if juiceRemote and player and typeof(player) == "Instance" and player.Parent then
+		juiceRemote:FireClient(player, kind, amount or 1)
+	end
+end
+
+-- A puff of dust off the ground at a spot (the rake dragging, hay landing). Everyone nearby sees it.
+function Feedback.dust(at, color, amount)
+	local holder = Instance.new("Attachment")
+	holder.WorldPosition = at
+	holder.Parent = Workspace.Terrain
+	local puff = Instance.new("ParticleEmitter")
+	puff.Rate = 0
+	puff.Lifetime = NumberRange.new(0.5, 1.1)
+	puff.Speed = NumberRange.new(1.5, 4)
+	puff.SpreadAngle = Vector2.new(70, 70)
+	puff.Acceleration = Vector3.new(0, 1.5, 0)
+	puff.Drag = 3
+	puff.Color = ColorSequence.new(color or Color3.fromRGB(196, 178, 140))
+	puff.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1.8) })
+	puff.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) })
+	puff.LightInfluence = 1
+	puff.Parent = holder
+	puff:Emit(amount or 10)
+	Debris:AddItem(holder, 1.5)
+end
+
 -- The Cash column in the player list, kept in step with the Cash attribute Data publishes.
 local function addLeaderstats(player)
 	local stats = Instance.new("Folder")
@@ -82,6 +112,9 @@ function Feedback.init()
 	saleRemote = Instance.new("RemoteEvent")
 	saleRemote.Name = "Sale"
 	saleRemote.Parent = ReplicatedStorage
+	juiceRemote = Instance.new("RemoteEvent")
+	juiceRemote.Name = "Juice"
+	juiceRemote.Parent = ReplicatedStorage
 	Players.PlayerAdded:Connect(addLeaderstats)
 	for _, player in Players:GetPlayers() do
 		if not player:FindFirstChild("leaderstats") then
