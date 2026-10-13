@@ -1,12 +1,7 @@
 """Square hay bale in the Lumber Tycoon 2 look: a simple block of hay tied with
 two twine bands. Flat top and bottom and exact stud sizes so bales stack.
 
-Exports two meshes:
-  HayBale_Hay    - the bale (physics body; set Roblox material to Grass or Fabric)
-  HayBale_Twine  - the two bands (weld to the hay; Fabric or SmoothPlastic)
-
-Run:
-  blender --background --python blender/props/hay_bale.py -- --out blender/exports
+Shape only: props/rustic_props.py builds and exports it in the house style.
 """
 import os
 import sys
@@ -55,23 +50,5 @@ def build_twine(color=TWINE):
     return bands
 
 
-def build():
-    hay_mat = common.vertex_color_material("Hay", roughness=0.95)
-    twine_mat = common.vertex_color_material("Twine", roughness=0.9)
-    hay = build_hay()
-    common.assign(hay, hay_mat)
-    bands = build_twine()
-    for b in bands:
-        common.assign(b, twine_mat)
-    twine = common.join(bands, "HayBale_Twine")
-    return [hay, twine]
-
-
-def main():
-    args = common.parse_args("hay_bale")
-    common.reset_scene()
-    common.export(build(), args)
-
-
 if __name__ == "__main__":
-    main()
+    raise SystemExit("hay_bale.py only provides the bale shape; build it with props/rustic_props.py")
