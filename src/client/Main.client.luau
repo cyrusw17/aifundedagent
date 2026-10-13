@@ -127,7 +127,7 @@ end
 -- Setting a carried bale down or throwing it (click, G, tap, hold to charge) is in Throw.client.luau.
 
 local HINTS = {
-	Shovel = "Shovel: %s a bale or hay",
+	Shovel = "Shovel: %s hay or a bale; a truck bed or belt pours",
 	Rake = "Rake: %s loose hay",
 	Wheelbarrow = "Barrow: %s a bale, a truck bed, or the ground",
 }

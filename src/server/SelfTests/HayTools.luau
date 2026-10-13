@@ -23,6 +23,7 @@ local Gloves = require(Services.Gloves)
 local GloveLooks = require(Services.GloveLooks)
 local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
+local Tools = require(Services.Tools)
 local Bank = require(Services.Bank)
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
@@ -292,6 +293,34 @@ local function edgeCases(t, player, state, root, stand)
 	t.check("...inside the bed", inBed(bed, cargo))
 	t.check("...loose, never welded", isLoose(cargo))
 
+	-- Pour: hay in your arms goes into a truck bed as loose strands; sorted hay stays sorted, and the needles rolled
+	-- for it come back out of your load with it. The ground is never a pour target.
+	local pourBed = truckBed(t, t.place())
+	stand(pourBed.model.PrimaryPart.CFrame * CFrame.new(0, -3, 9))
+	t.check("a truck bed is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }) ~= nil)
+	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }) == nil)
+	local before = #Hay.near(pourBed.floor.Position, 12, nil)
+	state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadType = 30, 10, 4, "meadow"
+	state.loadWeight, state.loadTier = 30, 0
+	local box, size = Wheelbarrow.cargoOf(pourBed.floor)
+	local poured = Tools.pour(player, root, { box = box, size = size })
+	t.equal("a pour takes up to PourStrands from your arms", poured, math.min(30, Config.PourStrands))
+	t.equal("...and empties them", state.loadHay, 30 - poured * Config.HayPerPiece)
+	t.equal("...with the needles rolled for it", state.loadNeedles, 0)
+	t.wait(Config.PourFlightSeconds + poured * Config.PourStagger + 1)
+	local landed, sorted = 0, 0
+	for _, p in Hay.near(pourBed.floor.Position, 12, nil) do
+		local localPos = pourBed.floor.CFrame:PointToObjectSpace(p.Position)
+		if math.abs(localPos.X) <= 5 and math.abs(localPos.Z) <= 7 and p.Position.Y > pourBed.top - 0.2 then
+			landed += 1
+			if p:GetAttribute("Sorted") then
+				sorted += 1
+			end
+		end
+	end
+	t.check("the poured strands land in the bed", landed - before >= poured * 0.85, ("%d of %d"):format(landed - before, poured))
+	t.equal("hay scooped from sorted bales pours out sorted", sorted, 10)
+
 	-- Throw: a full-charge toss lobs the bale about TossRange studs, loose; a tiny charge just sets it down.
 	local throwSpot = t.place()
 	stand(throwSpot)
@@ -349,6 +378,7 @@ local function withPlayer(t, player)
 	end
 	local home = root.CFrame
 	local keepHay, keepNeedles, keepWeight, keepTier = state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier
+	local keepSorted, keepType = state.loadSortedHay, state.loadType
 	local keepFirst = Gloves.firstBaleBroken(player)
 	local ok, err = pcall(function()
 		humanoid:UnequipTools()
@@ -513,6 +543,7 @@ local function withPlayer(t, player)
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier
+	state.loadSortedHay, state.loadType = keepSorted, keepType
 	Data.sync(player)
 	Avatar.refreshSpeed(player)
 	root.CFrame = home

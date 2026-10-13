@@ -57,6 +57,11 @@ return {
 	TossMinPower = 0.12, -- charge below this (0..1) just sets the bale down
 	TossChargeSeconds = 0.9, -- holding this long is full power
 	TossFlightSeconds = 2.5, -- the server flies a thrown bale this long, then Roblox picks its owner again
+	-- Pouring the hay in your arms (shovel click on a truck bed, hopper, belt or sell pad).
+	PourStrands = 40, -- strands per click; click again for more
+	PourFlightSeconds = 0.55,
+	PourSpread = 1.2, -- studs around the clicked spot
+	PourStagger = 0.008, -- seconds between strands, so it streams out
 	GoldenBaleOneIn = Prices.GoldenBale.oneIn, -- a field bale grows golden 1 time in this many (Config/Prices)
 	GoldenBaleNeedles = Prices.GoldenBale.needles, -- a golden bale spills this many times the needles
 	DoubleCarryTier = 3, -- gloves of this tier (Reinforced) and up carry two bales, one on top of the other
