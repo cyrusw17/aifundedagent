@@ -995,6 +995,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local lampAt = center * CFrame.new(-T / 2 + 0.4, TOP + height + 1, T - 0.4)
 	part(model, "LampPost", Vector3.new(0.3, 1.2, 0.3), lampAt * CFrame.new(0, 0.6, 0), C.darkMetal, Enum.Material.Metal)
 	local lamp = part(model, "BottleneckLamp", Vector3.new(0.9, 0.9, 0.9), lampAt * CFrame.new(0, 1.5, 0), LAMP.amber, Enum.Material.Neon)
+	CollectionService:AddTag(lamp, "AlwaysLit") -- a status light, not a street lamp: WorldClock leaves it on by day
 	lamp.Shape = Enum.PartType.Ball
 	lamp.CanCollide = false
 	local lampLight = Instance.new("PointLight")
@@ -1154,8 +1155,15 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					end
 					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
 					if ownerId and Players:GetPlayerByUserId(ownerId) then
+						local seller = sortedBale.ownerId -- who handled it, before payTo sends the cash to the plot owner
+						local hayType = hayTypeOf(sortedBale.body)
 						Bales.consume(sortedBale)
 						Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
+						-- Line sales count for daily bounties and quests, like a sale at the hay shop (Gameplay).
+						if seller then
+							Events.fire(seller, "bale_sold", 1, { hayType = hayType })
+						end
+						Events.fire(ownerId, "hay_sold", hay)
 					end
 				else
 					local b = Bales.fromPart(p)
@@ -1195,6 +1203,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 				end
 			end
 			for ownerId, t in unsorted do
+				Events.fire(ownerId, "hay_sold", t.hay)
 				local value = Economy.rawLoadValue(t.hay, t.needles)
 				Machines.pay(
 					ownerId,
