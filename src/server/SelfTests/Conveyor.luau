@@ -143,6 +143,19 @@ return function(SelfTest)
 			state.needleHold = hadHold
 			t.equal("SELL NEEDLES takes the seller's needles", total(player.UserId), 0)
 			t.equal("and leaves everyone else's", total(GHOST - 1), 4)
+			-- A long run packs itself (CEO #35): 60 plain needles end up as one crate, and none go missing.
+			for _ = 1, 60 do
+				bin.put(GHOST - 2, "steel")
+			end
+			t.equal("60 needles packed into the bin all count", total(GHOST - 2), 60)
+			local cf, size = bin.model:GetBoundingBox()
+			local mine = 0
+			for _, n in require(Services.Needle).inBox(cf, size) do
+				if n:GetAttribute("OwnerId") == GHOST - 2 then
+					mine += 1
+				end
+			end
+			t.check("and they are a few parts, not 60", mine <= 5, ("%d parts"):format(mine))
 		else
 			t.skip("SELL NEEDLES pays", "needs a player with a loaded save")
 		end
