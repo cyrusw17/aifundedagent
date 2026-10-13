@@ -37,6 +37,14 @@ return function(SelfTest)
 			)
 		end
 
+		-- The book's SKINS page fires this one (Hay's ToolSkins.luau makes it).
+		if Services:FindFirstChild("ToolSkins") then
+			local wear = ReplicatedStorage:FindFirstChild("WearToolSkin")
+			t.check("remote ReplicatedStorage.WearToolSkin exists", wear ~= nil and wear:IsA("RemoteEvent"))
+		else
+			t.skip("remote ReplicatedStorage.WearToolSkin exists", "ToolSkins.luau is not in this build")
+		end
+
 		local Prices = require(Shared.Config.Prices)
 		local Catalog = require(Shared.UI.Catalog)
 		local saved = Catalog.who
