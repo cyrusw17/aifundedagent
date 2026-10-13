@@ -111,6 +111,35 @@ local function trimKind(isNeedle, over)
 	end
 end
 
+-- Past MaxHayPiles the oldest pile goes (the strand cap never takes piles).
+local function trimPiles()
+	while true do
+		local piles, oldest, oldestTime = 0, nil, math.huge
+		for piece, born in pieces do
+			if piece:GetAttribute("Strands") then
+				piles += 1
+				if born < oldestTime then
+					oldest, oldestTime = piece, born
+				end
+			end
+		end
+		if piles <= Config.MaxHayPiles or not oldest then
+			return
+		end
+		Hay.remove(oldest)
+	end
+end
+
+-- What is loose right now, for the self-tests and for spotting a leak: strands (piles count as one), needles, and
+-- every piece the module still tracks (which should always be strands + needles).
+function Hay.stats()
+	local tracked = 0
+	for _ in pieces do
+		tracked += 1
+	end
+	return { strands = count, needles = needleCount, tracked = tracked }
+end
+
 local function trim()
 	trimKind(false, function()
 		return count > Config.MaxLoosePieces
@@ -346,6 +375,7 @@ local function packPile(at, ownerId)
 				pcall(function()
 					pile:SetNetworkOwner(nil)
 				end)
+				trimPiles()
 			end
 			for _, piece in g.parts do
 				Hay.remove(piece)

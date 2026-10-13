@@ -2,7 +2,6 @@
 -- Client entry point. Shows the HUD only. The client never decides what was found or earned.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -82,7 +81,6 @@ Kit.corner(toast, 10)
 Kit.stroke(toast, C.Ink, 1.5)
 Kit.pad(toast, 10)
 
-local dropRemote = ReplicatedStorage:WaitForChild("DropBale")
 local aimRemote = ReplicatedStorage:WaitForChild("ToolAim")
 
 -- The server runs every tool click. All the client adds is where the click pointed, so the shovel and rake
@@ -108,23 +106,7 @@ local function hookTool(child)
 	end
 end
 
--- While carrying a bale, a click on the world or G puts it down (its Put down button does the same).
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or not player:GetAttribute("Carrying") then
-		return
-	end
-	local kind = input.UserInputType
-	-- Touch is left out on purpose: dragging the camera on a phone is a touch too. Phones use the Put down button
-	-- or a tap (below).
-	if kind == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.G then
-		dropRemote:FireServer()
-	end
-end)
-UserInputService.TouchTap:Connect(function(_, gameProcessed)
-	if not gameProcessed and player:GetAttribute("Carrying") then
-		dropRemote:FireServer()
-	end
-end)
+-- Setting a carried bale down or throwing it (click, G, tap, hold to charge) is in Throw.client.luau.
 
 local HINTS = {
 	Shovel = "Shovel: click a bale or hay",
