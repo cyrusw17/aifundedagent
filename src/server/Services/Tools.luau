@@ -97,9 +97,14 @@ local function useShovel(player, root, aim)
 			return
 		end
 		local strands, found = 0, 0
-		for _, piece in list do
+		for i = #list, 1, -1 do
+			local piece = list[i]
 			if Hay.isNeedle(piece) then
-				found += 1
+				if Hay.sharedNeedles then
+					table.remove(list, i) -- a shared needle is picked up by clicking it, so the shovel leaves it
+				else
+					found += 1
+				end
 			else
 				strands += 1
 			end

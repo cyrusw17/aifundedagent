@@ -8,6 +8,10 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Groups = require(script.Parent.Groups)
+-- The game's one shared needle (Needle.luau, from the conveyor work) when it is present, so a needle spilled from
+-- a bale looks, picks up and sells the same as one anywhere else. Without it, a local stand-in is used.
+local NeedleModule = script.Parent:FindFirstChild("Needle")
+local Needle = NeedleModule and require(NeedleModule)
 
 local Hay = {}
 
@@ -101,8 +105,29 @@ local function makeStraw()
 	return piece
 end
 
+local function addGlint(piece)
+	local glint = Instance.new("ParticleEmitter")
+	glint.Name = "Glint"
+	glint.Rate = 1.2
+	glint.Lifetime = NumberRange.new(0.25, 0.4)
+	glint.Speed = NumberRange.new(0)
+	glint.LightEmission = 1
+	glint.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	glint.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	glint.Parent = piece
+end
+
 -- A needle hiding in the hay: a thin steel sliver that catches the light now and then, so a sharp eye can spot it.
-local function makeNeedle()
+local function makeNeedle(cframe, ownerId)
+	if Needle then
+		local piece = Needle.make(cframe, ownerId)
+		addGlint(piece)
+		return piece
+	end
 	local piece = Instance.new("Part")
 	piece.Name = "Needle"
 	piece.Shape = Enum.PartType.Cylinder
@@ -112,23 +137,16 @@ local function makeNeedle()
 	piece.Reflectance = 0.35
 	piece.CustomPhysicalProperties = PhysicalProperties.new(2, 0.8, 0, 1, 1)
 	piece:SetAttribute("Needle", true)
-
-	local glint = Instance.new("ParticleEmitter")
-	glint.Rate = 1.2
-	glint.Lifetime = NumberRange.new(0.25, 0.4)
-	glint.Speed = NumberRange.new(0)
-	glint.LightEmission = 1
-	glint.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
-	glint.Color = ColorSequence.new(Color3.new(1, 1, 1))
-	glint.Parent = piece
+	addGlint(piece)
 	return piece
 end
 
 -- kind is "Needle" for a visible needle, otherwise a strand of straw.
 function Hay.spawnPiece(position, velocity, ownerId, kind)
-	local piece = kind == "Needle" and makeNeedle() or makeStraw()
-	piece.CFrame = CFrame.new(position)
+	local cframe = CFrame.new(position)
 		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId) or makeStraw()
+	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth
 	piece.CollisionGroup = Groups.Loose
@@ -137,6 +155,13 @@ function Hay.spawnPiece(position, velocity, ownerId, kind)
 	piece:SetAttribute("OwnerId", ownerId)
 	pieces[piece] = os.clock()
 	count += 1
+	-- A needle can be clicked up and destroyed elsewhere, so forget a piece however it leaves.
+	piece.Destroying:Connect(function()
+		if pieces[piece] then
+			pieces[piece] = nil
+			count -= 1
+		end
+	end)
 	piece.Parent = Hay.folder
 	-- The server simulates loose hay. Otherwise a nearby player's client owns each strand's physics and quietly
 	-- overrides the rake's pull, which is why raking used to feel weak.
@@ -148,8 +173,19 @@ function Hay.spawnPiece(position, velocity, ownerId, kind)
 end
 
 function Hay.isNeedle(part)
+	if Needle and Needle.isNeedle(part) then
+		return true
+	end
 	return part:GetAttribute("Needle") == true
 end
+
+-- What a found needle is worth: the shared needle's full value, or the raw $1 without it.
+function Hay.needleValue(part)
+	return Needle and Needle.value(part) or 1
+end
+
+-- True when needles are the shared kind, which players pick up by clicking rather than with the shovel.
+Hay.sharedNeedles = Needle ~= nil
 
 -- Pieces within radius of position, nearest first, at most max of them.
 function Hay.near(position, radius, max)
