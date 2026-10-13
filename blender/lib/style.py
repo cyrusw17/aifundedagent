@@ -49,6 +49,7 @@ RUSTIC = {
     "cloth": ((0.84, 0.80, 0.68), (0.74, 0.70, 0.58), (0.56, 0.52, 0.42)),
     "steel": ((0.78, 0.78, 0.76), (0.66, 0.66, 0.64), (0.50, 0.50, 0.48)),  # galvanized, unrusted
     "dirt": ((0.58, 0.48, 0.36), (0.48, 0.39, 0.29), (0.34, 0.27, 0.20)),
+    "leather": ((0.56, 0.40, 0.27), (0.46, 0.32, 0.21), (0.32, 0.22, 0.15)),
     # Flat, untextured.
     "tire": (None, (0.13, 0.12, 0.11), None),
     "glass": (None, (0.20, 0.26, 0.28), None),
@@ -58,7 +59,7 @@ RUSTIC = {
 FLAT = {"tire": {"roughness": 0.9}, "glass": {"roughness": 0.1, "metallic": 0.3},
         "glow": {"roughness": 0.4, "emission": 2.0}}
 # Kinds that use the blotchy weathered texture.
-WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt")
+WEATHERED = ("paint_red", "paint_green", "paint_blue", "paint_cream", "paint_yellow", "stone", "cloth", "steel", "dirt", "leather")
 SOFT = {
     "hay": (None, (1.00, 0.86, 0.55), None),
     "bark": (None, (0.66, 0.45, 0.34), None),

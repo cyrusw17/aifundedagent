@@ -30,12 +30,15 @@ blender/
 ## Props
 
 One `.glb` per item in `exports/rustic/`, named by its snake_case key (for
-example `rusty_pickup.glb`). Catalogs:
+example `rusty_pickup.glb`). The only hand tools players hold are the basic
+shovel and the garden rake, upgraded with gloves; the other hand tools are
+decor. Catalogs:
 
 | category | catalog | items |
 |---|---|---|
 | hay and starter tools | `catalog_hay_and_tools.png` | hay bale, round bale, basic shovel, wide scoop, garden rake, pitchfork, hay hook, wheelbarrow, hay crate, log |
 | shop tools | `catalog_tools.png` | steel fork, needle tweezers, silver sieve net, magnet wand, barrel auger, hay vacuum hose |
+| gloves | `catalog_gloves.png` | the player's tool upgrades, tier 1 to 5: work gloves, leather gloves, reinforced gloves, iron gauntlets, starlight gloves |
 | vehicles | `catalog_vehicles.png` | handcart, pull wagon, 6 trucks, rowboat, sailboat, cargo barge, 6 trailers |
 | storage | `catalog_storage.png` | 3 mill bins, 3 silos, bale rack, needle tray, needle vault, fence post set, road tile |
 | buildings | `catalog_buildings.png` | mill, sorter shed, barn, garage, sell depot, needle forge, workshop, museum, observatory, greenhouse, harbor dock, warehouse |
@@ -106,7 +109,7 @@ and list it in that module's `PROPS`. A builder makes parts with `cyl()` /
 `box()`, passes each through `f.shape(part)` (bevel and weathering) and
 `f.apply(part, kind, along=...)`. Kinds: hay, bark, wood (end grain), handle
 (planks), metal (weathered grey iron, light wear), steel (unrusted), twine, paint_red,
-paint_green, paint_blue, paint_cream, paint_yellow, stone, cloth, dirt, tire,
+paint_green, paint_blue, paint_cream, paint_yellow, stone, cloth, dirt, leather, tire,
 glass, glow (alien and mythic items only). Size things in studs
 (`STUD = 0.28`) and keep each prop under about 8,000 triangles.
 

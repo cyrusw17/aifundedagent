@@ -220,7 +220,7 @@ HAY_AND_TOOLS = {
 }
 
 
-CATEGORIES = ("hay_and_tools", "tools", "vehicles", "storage", "buildings", "machines")
+CATEGORIES = ("hay_and_tools", "tools", "gloves", "vehicles", "storage", "buildings", "machines")
 
 
 def categories(wanted=CATEGORIES):
