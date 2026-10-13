@@ -19,6 +19,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LineMath = require(Shared.LineMath)
+local LineRate = require(Shared.LineRate)
 local Factory = require(Shared.Config.Factory)
 local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
@@ -598,6 +599,8 @@ end
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
 -- go in one at a time, the needles it finds fly to `bin` (a Machines.needleBin), and a clean bale comes out the far end.
 -- payTo (optional) maps the owner of incoming hay to who gets paid and owns the needles (a plot's crew pays the owner).
+local RATE_WINDOW = 120 -- seconds of work a sorter's sign averages over
+
 -- How each sorter tier reads from across a plot (CEO #27), part-built until every tier has its Blender mesh: a painted
 -- band along both sides, stars on the sign, and a silhouette of its own on the roof. The tier parts sit in the sorter
 -- model, so an imported mesh replaces them like the rest of the fallback.
@@ -704,9 +707,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	-- A chute on the left side points at the bin.
 	local chuteFrom = (center * CFrame.new(-T / 2 - 0.2, TOP + 3, 0)).Position
 	part(model, "Chute", Vector3.new(3, 0.3, 2), center * CFrame.new(-T / 2 - 1.4, TOP + 2.5, 0) * CFrame.Angles(0, 0, math.rad(-20)), C.metal, Enum.Material.Metal)
+	local isAlienTier = tier.hayPerMin == math.huge -- no rate on its sign: it sorts only while its beam is up
 	local look = dressTier(model, center, tier, height)
 	local title = tier.name:upper() .. " " .. string.rep("★", look.stars)
-	local label = sign(roof, title, Vector3.new(0, 6, 0))
+	local label = sign(roof, title, Vector3.new(0, 9, 0)) -- above the tallest roof silhouette, five lines tall
 
 	-- The oil can on the right side: click it to buy a can of oil, and the sorter works faster for a while.
 	local canModel = Instance.new("Model")
@@ -740,15 +744,40 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local zoneSize = Vector3.new(T - 0.8, 7, 3.2)
 	local out = center * CFrame.new(0, TOP + 1.45, -T + 2) * CFrame.Angles(0, math.pi / 2, 0)
 	local sorted = 0
+	local recent = {} -- { { t, bales, needles, dollars } } over the last RATE_WINDOW seconds, for the sign (CEO #28)
+	local lastHay = "meadow"
 
+	-- The sign: tier, bales sorted, what the line did lately next to what this sorter makes kept full (the same
+	-- formula as tools/line_sim.py, at today's market price for the hay it last sorted).
 	local function refreshLabel()
-		label.Text = ("%s\n%d bales sorted, finds %d%%%s"):format(
+		local rateText = ""
+		if not isAlienTier then
+			local bpm, npm, perHour = LineRate.measured(recent, os.clock(), RATE_WINDOW)
+			local needleId = Needle.forHay(lastHay)
+			local full = LineRate.line(lastHay, tier.id, nil, oiled > 0, true, Market.multiplier(needleId))
+			rateText = ("\n%s bales/min, %s needles/min, $%s/hr\nkept full: $%s/hr"):format(
+				LineRate.short(bpm),
+				LineRate.short(npm),
+				LineRate.short(perHour),
+				LineRate.short(full.perHour)
+			)
+		end
+		label.Text = ("%s\n%d bales sorted, finds %d%%%s%s"):format(
 			title,
 			sorted,
 			math.round(tier.recovery * 100),
+			rateText,
 			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or ""
 		)
 		can.Color = oiled > 0 and C.go or C.darkMetal
+	end
+	if not isAlienTier then -- the collector's sign counts down its beam instead
+		task.spawn(function()
+			while model.Parent do
+				task.wait(5)
+				refreshLabel()
+			end
+		end)
 	end
 
 	oilClick.MouseClick:Connect(function(player)
@@ -790,8 +819,12 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType), Needle.gradeFor(tier.id))
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
-		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
+		local bales = hay / (Config.PiecesPerBale * Config.HayPerPiece)
+		LineStats.record(ownerId, "bales", bales)
 		LineStats.record(ownerId, "needles", found)
+		lastHay = hayType or "meadow"
+		local needlePrice = Needle.priceOf(Needle.forHay(lastHay), 1, false, Needle.gradeFor(tier.id))
+		table.insert(recent, { os.clock(), bales, found, hay * Economy.HAY_PRICE + found * needlePrice })
 		sorted += 1
 		model:SetAttribute("Sorted", sorted)
 		refreshLabel()
