@@ -138,6 +138,11 @@ function Hay.spawnPiece(position, velocity, ownerId, kind)
 	pieces[piece] = os.clock()
 	count += 1
 	piece.Parent = Hay.folder
+	-- The server simulates loose hay. Otherwise a nearby player's client owns each strand's physics and quietly
+	-- overrides the rake's pull, which is why raking used to feel weak.
+	pcall(function()
+		piece:SetNetworkOwner(nil)
+	end)
 	trim()
 	return piece
 end
@@ -193,24 +198,37 @@ function Hay.flyToPlayer(root, list)
 	end
 end
 
--- The rake drags pieces toward the player and spreads them sideways, so a pile smears across the ground.
-function Hay.rake(center, fromPosition, radius, ownerId)
-	local moved = 0
-	for _, piece in Hay.near(center, radius, nil) do
-		local toward = Vector3.new(fromPosition.X - piece.Position.X, 0, fromPosition.Z - piece.Position.Z)
-		local distance = toward.Magnitude
-		if distance > 3 then
-			local dir = toward.Unit
-			local side = Vector3.new(-dir.Z, 0, dir.X) * rng:NextNumber(-7, 7)
-			local speed = math.clamp(distance * 1.5, 8, 22)
-			piece.AssemblyLinearVelocity = dir * speed + side + Vector3.new(0, rng:NextNumber(4, 8), 0)
-			piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-6, 6), rng:NextNumber(-6, 6), rng:NextNumber(-6, 6))
-		end
+-- The rake gathers. For a short stroke every strand around the click slides along the ground toward a spot just in
+-- front of the player, so a scattered spill gets pulled into a neat row. Strands keep their own fall and tumble a
+-- little, but they are steered rather than flung, which suits small light straw.
+function Hay.rake(center, gatherAt, radius, ownerId)
+	local list = Hay.near(center, radius, nil)
+	for _, piece in list do
 		piece:SetAttribute("OwnerId", ownerId)
 		pieces[piece] = os.clock()
-		moved += 1
+		-- Each strand stops a slightly different distance short of the gather spot, so they pile in a row, not a point.
+		piece:SetAttribute("RakeStop", rng:NextNumber(0.6, 2.2))
 	end
-	return moved
+	task.spawn(function()
+		local started = os.clock()
+		while os.clock() - started < Config.RakeStrokeSeconds do
+			for _, piece in list do
+				if piece.Parent and pieces[piece] then
+					local toward = Vector3.new(gatherAt.X - piece.Position.X, 0, gatherAt.Z - piece.Position.Z)
+					local distance = toward.Magnitude
+					local fall = math.min(piece.AssemblyLinearVelocity.Y, 2)
+					if distance > (piece:GetAttribute("RakeStop") or 1) then
+						local speed = math.clamp(distance * 2.2, 3, Config.RakeMaxSpeed)
+						piece.AssemblyLinearVelocity = toward.Unit * speed + Vector3.new(0, fall, 0)
+					else
+						piece.AssemblyLinearVelocity = Vector3.new(0, fall, 0)
+					end
+				end
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+	return #list
 end
 
 return Hay
