@@ -224,13 +224,14 @@ def pull_wagon(f):
 
 # ---------------------------------------------------------------- trucks
 
-def truck(f, paint, k=1.0, wheel_r=1.3, hood_d=3.4, rear_len=7.0, rear_axles=None, dual=False,
+def truck(f, paint, k=1.0, wide=1.0, wheel_r=1.3, hood_d=3.4, rear_len=7.0, rear_axles=None, dual=False,
           sleeper=0.0, stacks=False, tanks=False, glow=False, lens="paint_cream", trim="metal"):
     """Shared truck front: chassis, hood, cab (game cab is 5.6 wide x 4.6 tall x 4.4 deep,
-    hood 5.2 x 2.2 x 3.4), windows, lights, wheels. Returns (parts, info) for the rear builder."""
+    hood 5.2 x 2.2 x 3.4), windows, lights, wheels. `wide` widens the cab and hood only, to match a
+    3-bale-wide bed. Returns (parts, info) for the rear builder."""
     parts = []
-    W, CH, CD = 5.6 * k, 4.6 * k, 4.4 * k
-    HW, HH, HD = 5.2 * k, 2.2 * k, hood_d * k
+    W, CH, CD = 5.6 * k * wide, 4.6 * k, 4.4 * k
+    HW, HH, HD = 5.2 * k * wide, 2.2 * k, hood_d * k
     tw = 1.0 * k
     fz = wheel_r * 1.25
     total = HD + CD + sleeper + rear_len
@@ -376,11 +377,6 @@ def taillights(f, info, z, w=None):
     return [B(f, "paint_red", (0.6, 0.15, 0.35), (x * (w / 2 - 0.5), info["yR"] + 0.05, z)) for x in (-1, 1)]
 
 
-def rust_patch(f, x, y, z, w, h, side=1):
-    """Thin rust patch sitting on a side panel (x face)."""
-    return B(f, "metal", (0.08, w, h), (x + side * 0.02, y, z), along="y", rounded=False)
-
-
 def mud_flaps(f, info, Wo):
     y = info["yR"] - 0.4
     return [flat(f, "tire", (1.4, 0.12, 1.4), (x * (info["wx"]), y, 1.6), along="z") for x in (-1, 1)]
@@ -402,28 +398,25 @@ def truck_with_bed(f, key, paint, nl, wall_h, k=1.0, wheel_r=1.3, gap=0.4, layer
 
 
 def rusty_pickup(f):
-    """Starter truck: small rusty red pickup. Bed 10 x 7 inside: 2 long x 2 wide bales."""
-    parts, i, yc = truck_with_bed(f, "rusty_pickup", "paint_red", 2, 2.6, wheel_r=1.3)
-    bed, Lo, Wo = cargo_bed(f, "rusty_pickup", 2, 2, 2.6, yc, floor="metal", wall="paint_red")
+    """Starter truck: weathered red pickup, 27.5 long. Bed 14.6 x 10.2 inside with 3.2 walls:
+    3 long x 3 wide bales (matches the game's truck, PR #15)."""
+    wall_h = 3.2
+    parts, i, yc = truck_with_bed(f, "rusty_pickup", "paint_red", 3, wall_h, k=1.5, wide=0.95, wheel_r=1.6,
+                                  hood_d=2.92)
+    bed, Lo, Wo = cargo_bed(f, "rusty_pickup", 3, 3, wall_h, yc, floor="metal", wall="paint_red")
     parts += bed + bed_support(f, i, yc, Lo) + mud_flaps(f, i, Wo)
     W, fz, yR = i["W"], i["fz"], i["yR"]
     for x in (-1, 1):
-        parts.append(flat(f, "metal", (0.4, Lo, 0.15), (x * (Wo / 2 - 0.15), yc, FLOOR + 2.6 + 0.07), along="y"))
+        parts.append(flat(f, "metal", (0.4, Lo, 0.15), (x * (Wo / 2 - 0.15), yc, FLOOR + wall_h + 0.07), along="y"))
     parts.append(B(f, "metal", (Wo - 0.6, 0.5, 0.6), (0, yR - 0.1, fz + 0.1)))
-    parts += taillights(f, dict(i, yR=yc + Lo / 2), FLOOR + 2.0, Wo)
-    # Rust: patches on the doors, bed walls and hood.
-    parts += [rust_patch(f, W / 2, i["yc1"] - 1.3, fz + 1.0, 1.6, 1.0),
-              rust_patch(f, -W / 2, i["yc1"] - 2.6, fz + 1.4, 1.2, 0.8, -1),
-              rust_patch(f, Wo / 2, yc + 2.0, FLOOR + 0.9, 1.8, 0.9),
-              rust_patch(f, -Wo / 2, yc - 1.5, FLOOR + 1.4, 1.4, 1.0, -1),
-              B(f, "metal", (1.8, 1.4, 0.08), (0.8, i["yF"] + 1.7, fz + 2.2 + 0.02), along="y", rounded=False)]
+    parts += taillights(f, dict(i, yR=yc + Lo / 2), FLOOR + 2.4, Wo)
     return parts
 
 
 def farm_flatbed(f):
-    """Farm stake-bed truck: wooden bed 3 long x 2 wide bales, stake posts and a headache rack."""
-    parts, i, yc = truck_with_bed(f, "farm_flatbed", "paint_green", 3, 2.8, wheel_r=1.4, gap=0.5)
-    bed, Lo, Wo = cargo_bed(f, "farm_flatbed", 3, 2, 2.8, yc)
+    """Farm stake-bed truck: wooden bed 3 long x 3 wide bales, stake posts and a headache rack."""
+    parts, i, yc = truck_with_bed(f, "farm_flatbed", "paint_green", 3, 2.8, wide=1.5, wheel_r=1.4, gap=0.5)
+    bed, Lo, Wo = cargo_bed(f, "farm_flatbed", 3, 3, 2.8, yc)
     parts += bed + bed_support(f, i, yc, Lo) + mud_flaps(f, i, Wo) + plank_lines(f, "handle", Lo, Wo, yc, 2.8)
     for x in (-1, 1):
         for n in range(5):
@@ -441,14 +434,14 @@ def farm_flatbed(f):
 
 
 def box_truck(f):
-    """Box truck: tall ribbed cargo box (4 long x 2 wide x 2 high bales) with the roll-up door
+    """Box truck: tall ribbed cargo box (4 long x 3 wide x 2 high bales) with the roll-up door
     rolled up and a tailgate across the back, dual rear wheels."""
     wall_h = 6.4
-    parts, i, yc = truck_with_bed(f, "box_truck", "paint_cream", 4, wall_h, k=1.05, wheel_r=1.45, gap=0.4,
+    parts, i, yc = truck_with_bed(f, "box_truck", "paint_cream", 4, wall_h, k=1.05, wide=1.55, wheel_r=1.45, gap=0.4,
                                   dual=True, axles=[3.2])
-    bed, Lo, Wo = cargo_bed(f, "box_truck", 4, 2, wall_h, yc, floor="handle", wall="paint_cream", tail_h=2.6,
+    bed, Lo, Wo = cargo_bed(f, "box_truck", 4, 3, wall_h, yc, floor="handle", wall="paint_cream", tail_h=2.6,
                             layers=2)
-    BEDS["box_truck"] = BEDS["box_truck"][:3] + ((4, 2, 2),)
+    BEDS["box_truck"] = BEDS["box_truck"][:3] + ((4, 3, 2),)
     parts += bed + bed_support(f, i, yc, Lo)
     top = FLOOR + wall_h
     parts.append(flat(f, "paint_cream", (Wo, Lo, WALL_T), (0, yc, top + WALL_T / 2), along="y"))
@@ -473,11 +466,11 @@ def box_truck(f):
 
 def heavy_hauler(f):
     """Big yellow hauler: bigger cab, fuel tanks and stacks, tandem dual axles and a steel tub
-    for 5 long x 2 wide x 2 high bales."""
+    for 5 long x 3 wide x 2 high bales."""
     k, wall_h = 1.2, 5.4
-    parts, i, yc = truck_with_bed(f, "heavy_hauler", "paint_yellow", 5, wall_h, k=k, wheel_r=1.5, gap=1.3,
+    parts, i, yc = truck_with_bed(f, "heavy_hauler", "paint_yellow", 5, wall_h, k=k, wide=1.35, wheel_r=1.5, gap=1.3,
                                   dual=True, stacks=True, tanks=True, axles=[2.2, 5.6])
-    bed, Lo, Wo = cargo_bed(f, "heavy_hauler", 5, 2, wall_h, yc, floor="metal", wall="metal", layers=2)
+    bed, Lo, Wo = cargo_bed(f, "heavy_hauler", 5, 3, wall_h, yc, floor="metal", wall="metal", layers=2)
     parts += bed + bed_support(f, i, yc, Lo) + mud_flaps(f, i, Wo)
     for x in (-1, 1):
         for n in range(6):

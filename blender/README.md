@@ -7,7 +7,7 @@ reproducible and tweakable by editing numbers instead of hand-modeling.
 
 Every prop uses Lumber Tycoon 2 style shapes (blocks and cylinders, small
 bevels) with the **Rustic** finish: muted, weathered straw / bark / plank
-textures, rusty metal, dull twine, and slightly uneven surfaces. It lives in
+textures, clean weathered grey metal with light wear, dull twine, and slightly uneven surfaces. It lives in
 `lib/style.py`; build new props with `style.rustic()` so they match.
 
 ```
@@ -47,15 +47,16 @@ Hay rides loose in the beds with real physics, so no bales are part of any
 vehicle model. Every bed floor top is 3.5 studs above the ground (the
 conveyor dock height). Floors, sidewalls and tailgates are plain unbeveled
 boxes so their collision is clean. Interiors are sized in whole bales lying
-lengthwise, two across: length n x 4.6 + 0.8, width 7 (wide tier 10.2).
+lengthwise: length n x 4.6 + 0.8, width 7 for two across or 10.2 for three
+across. Every truck bed is three across (10.8 outside); trailers keep 7 except the large one.
 `vehicles.BEDS` lists each bed's interior size and capacity.
 
 | vehicle | bed inside (L x W x wall) | bales |
 |---|---|---|
-| rusty pickup | 10.0 x 7.0 x 2.6 | 4 |
-| farm flatbed | 14.6 x 7.0 x 2.8 | 6 |
-| box truck | 19.2 x 7.0 x 6.4 (roofed) | 16 |
-| heavy hauler | 23.8 x 7.0 x 5.4 | 20 |
+| rusty pickup | 14.6 x 10.2 x 3.2 | 9 |
+| farm flatbed | 14.6 x 10.2 x 2.8 | 9 |
+| box truck | 19.2 x 10.2 x 6.4 (roofed) | 24 |
+| heavy hauler | 23.8 x 10.2 x 5.4 | 30 |
 | wagon trailer | 5.4 x 7.0 x 2.6 | 2 |
 | small trailer | 10.0 x 7.0 x 2.6 | 4 |
 | medium trailer | 24.0 x 7.0 x 2.6 | 10 |
@@ -104,7 +105,7 @@ Add a builder to the category module it belongs in (`props/<category>.py`)
 and list it in that module's `PROPS`. A builder makes parts with `cyl()` /
 `box()`, passes each through `f.shape(part)` (bevel and weathering) and
 `f.apply(part, kind, along=...)`. Kinds: hay, bark, wood (end grain), handle
-(planks), metal (grey iron with rust), steel (unrusted), twine, paint_red,
+(planks), metal (weathered grey iron, light wear), steel (unrusted), twine, paint_red,
 paint_green, paint_blue, paint_cream, paint_yellow, stone, cloth, dirt, tire,
 glass, glow (alien and mythic items only). Size things in studs
 (`STUD = 0.28`) and keep each prop under about 8,000 triangles.
