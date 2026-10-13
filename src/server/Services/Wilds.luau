@@ -72,6 +72,13 @@ local function claimSecret(player, id, name)
 		return false
 	end
 	state.secrets = state.secrets or {}
+	-- A secret inside the crater's heat (the Ember Cache) needs the same heat-proof gloves as getting there.
+	local spot = Wilds.Secrets[id]
+	local hot = id == "ember_cache" or (spot and spot.part and Wilds.inHeat(spot.part.Position))
+	if hot and not Wilds.heatProof(player) then
+		Data.toast(player, "Too hot to search! Tier 4 gloves (Iron Gauntlets or Magma Grips) handle the crater's heat.")
+		return false
+	end
 	if state.secrets[id] then
 		Data.toast(player, ("You already found the %s."):format(name))
 		return false
@@ -137,6 +144,9 @@ local function heatLoop()
 			if root and humanoid and not humanoid.SeatPart and Wilds.inHeat(root.Position) and not Wilds.heatProof(player) then
 				local out = Vector2.new(root.Position.X, root.Position.Z) - peak.center
 				out = out.Magnitude > 0.1 and out.Unit or Vector2.new(1, 0)
+				-- The client owns its character's physics, so a server velocity alone can be lost: step it back
+				-- out of the heat as well, then push.
+				character:PivotTo(root.CFrame + Vector3.new(out.X * 6, 3, out.Y * 6))
 				root.AssemblyLinearVelocity = Vector3.new(out.X * 55, 45, out.Y * 55)
 				if not warned[player] or os.clock() - warned[player] > 8 then
 					warned[player] = os.clock()

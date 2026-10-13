@@ -54,6 +54,7 @@ RunService.RenderStepped:Connect(function(dt)
 		local region = root and WorldRegions.at(root.Position)
 		if region and region.style then
 			targetFog = region.style.fog
+			targetDensity = region.style.density or 0
 		end
 	end
 	-- Crossing into a region, its haze drifts in over a few seconds rather than snapping.
