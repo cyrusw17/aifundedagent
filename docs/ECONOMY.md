@@ -74,6 +74,7 @@ and a round-trip drive from your plot (half a minute in Meadow, 3 to 8 minutes t
 |---|---|---|---|
 | 1. Hands, bare | 2.3 | 2.3 | $6,573 |
 | 2. Hands, Work Gloves | 2.6 | 2.6 | $7,368 |
+| 2b. Wheelbarrow, public shop | 4.7 | 4.7 | $13,257 |
 | 3. Pickup, public shop | 3.7 | 3.7 | $10,398 |
 | 4. Pickup, plot + Hand sieve | 3.7 | 2.0 | $13,758 |
 | 5. Pickup, Shaker table | 3.7 | 3.7 | $25,441 |
@@ -91,6 +92,18 @@ size. V8's field bale chutes (park under one, pull a lever, a bed's worth drops 
 building before the bigger trucks go on sale.
 
 ## The price list
+
+### Wheelbarrow
+
+**$1,000** (`Prices.Wheelbarrow`; the hay tools thread set $400). It carries 3 bales a push, so by the model it hauls
+about 4.7 bales a minute to the sell pad, double what you carry by hand. Doubling your income is a big step, so it
+should cost about 10 minutes of hand hauling, not 3. At $1,000 it lands about 12 minutes in, between Work Gloves and
+the pickup.
+
+One thing to fix in play, not in price: near camp the wheelbarrow outhauls the Rusty Pickup (4.7 bales a minute against
+3.7), because the truck is loaded one bale at a time by hand. The pickup still wins on longer hauls (at 250 studs the
+barrow drops to 2.8 a minute), which is every trip to your own plot and every other region. Letting the barrow tip its
+3 bales into a truck bed, or V8's field bale chutes, would make the truck the clear upgrade again.
 
 ### Trucks (Homestead Motors)
 
@@ -285,25 +298,26 @@ loan takes its share of sales after that.
 | Buy | Price | Time to afford | Total play time | How |
 |---|---|---|---|---|
 | Work Gloves | $250 | 3 min | 0.1 h |  |
-| Rusty Pickup | $6,000 | 10 min | 0.2 h | financed: $1,200 down |
-| Wagon Trailer | $1,500 | 12 min | 0.4 h |  |
-| Plot + Hand sieve + first line | $3,600 | 28 min | 0.9 h |  |
-| Shaker table | $4,000 | 24 min | 1.3 h |  |
-| Leather Gloves | $8,000 | 24 min | 1.7 h |  |
-| Farm Flatbed | $25,000 | 12 min | 1.9 h | financed: $5,000 down |
-| Small Trailer | $8,000 | 30 min | 2.4 h |  |
-| Conveyor sorter | $25,000 | 93 min | 3.9 h |  |
-| Hay silo | $5,000 | 10 min | 4.1 h |  |
-| Box Truck | $90,000 | 41 min | 4.8 h | financed: $18,000 down |
-| Reinforced Gloves | $45,000 | 40 min | 5.4 h |  |
-| Medium Trailer | $30,000 | 27 min | 5.9 h |  |
-| Magnet drum | $175,000 | 152 min | 8.4 h |  |
-| Iron Gauntlets | $75,000 | 30 min | 8.9 h |  |
-| Heavy Hauler | $350,000 | 28 min | 9.4 h | financed: $70,000 down |
+| Wheelbarrow | $1,000 | 9 min | 0.2 h |  |
+| Rusty Pickup | $6,000 | 6 min | 0.3 h | financed: $1,200 down |
+| Wagon Trailer | $1,500 | 12 min | 0.5 h |  |
+| Plot + Hand sieve + first line | $3,600 | 28 min | 1.0 h |  |
+| Shaker table | $4,000 | 24 min | 1.4 h |  |
+| Leather Gloves | $8,000 | 24 min | 1.8 h |  |
+| Farm Flatbed | $25,000 | 12 min | 2.0 h | financed: $5,000 down |
+| Small Trailer | $8,000 | 30 min | 2.5 h |  |
+| Conveyor sorter | $25,000 | 93 min | 4.0 h |  |
+| Hay silo | $5,000 | 10 min | 4.2 h |  |
+| Box Truck | $90,000 | 41 min | 4.9 h | financed: $18,000 down |
+| Reinforced Gloves | $45,000 | 40 min | 5.5 h |  |
+| Medium Trailer | $30,000 | 27 min | 6.0 h |  |
+| Magnet drum | $175,000 | 152 min | 8.5 h |  |
+| Iron Gauntlets | $75,000 | 30 min | 9.0 h |  |
+| Heavy Hauler | $350,000 | 28 min | 9.5 h | financed: $70,000 down |
 | Large Trailer | $120,000 | 22 min | 9.8 h |  |
-| Optical sorter | $1,100,000 | 188 min | 12.9 h |  |
-| Starlight Gloves | $400,000 | 32 min | 13.4 h |  |
-| Semi Rig | $1,500,000 | 24 min | 13.8 h | financed: $300,000 down |
+| Optical sorter | $1,100,000 | 188 min | 13.0 h |  |
+| Starlight Gloves | $400,000 | 32 min | 13.5 h |  |
+| Semi Rig | $1,500,000 | 24 min | 13.9 h | financed: $300,000 down |
 
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
 which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
@@ -325,6 +339,7 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Hay and raw needle price | `HayPrice`, `RawNeedlePrice` | `Economy.luau` |
 | Needles per bale, visible share | `NeedlesPerBale`, `VisibleNeedleShare` | `Config/Game` (`NeedleChancePerHay`, `VisibleNeedleChance`) |
 | Sorted needle values | `Needles` | `Config/Needles` |
+| Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
 | Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
