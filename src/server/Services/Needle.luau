@@ -108,7 +108,7 @@ end
 
 -- The grade a sorter tier gives the needles it finds (Prices.SorterGrade): "B", "A" or "S".
 function Needle.gradeFor(tierId)
-	return Prices.SorterGrade[tierId] or "B"
+	return (LineMath.grade(tierId, Prices.SorterGrade, Prices.NeedleGrades))
 end
 
 -- Marks a needle part (or bundle) with a grade above B. A shines a little, S a lot, so a good find looks it.
