@@ -247,11 +247,14 @@ HAY_AND_TOOLS = {
 
 
 GROUNDED = {"wide_scoop", "hay_hook", "garden_rake"}  # rest exactly on z=0 (art review P3)
-MAX_TRIANGLES = 6000  # per prop; the body is decimated down to fit
+MAX_TRIANGLES = 6000  # per prop by default; the body is decimated down to fit
+# Mid-detail budgets per category (Cyrus 2026-10-13: "less low poly, more details, a good middle").
+CATEGORY_TRIANGLES = {"vehicles": 12000, "special_vehicles": 12000, "truck_skins": 12000,
+                      "buildings": 10000, "hub": 10000, "regions": 10000, "rides": 6000}
 MAX_MATERIALS = 4  # per mesh; Roblox imports one MeshPart per material (moving parts get 1)
 
 CATEGORIES = ("scatter", "hay_and_tools", "tools", "gloves", "quest_gear", "finds", "needles", "vehicles", "special_vehicles", "storage",
-              "buildings", "hub", "regions", "machines", "truck_skins")
+              "buildings", "hub", "regions", "machines", "truck_skins", "rides")
 
 
 def categories(wanted=CATEGORIES):
@@ -332,7 +335,7 @@ def main():
             if key in GROUNDED:
                 rig.ground(objs[0])
             rig.limit_materials(objs[0], MAX_MATERIALS)
-            rig.limit_triangles(objs, MAX_TRIANGLES)
+            rig.limit_triangles(objs, CATEGORY_TRIANGLES.get(cat, MAX_TRIANGLES))
             args.name = key
             common.export(objs, args)
             if len(objs) > 1:
