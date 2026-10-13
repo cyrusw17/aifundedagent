@@ -14,6 +14,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
@@ -101,24 +102,45 @@ local function comboBonus(player, root)
 	end
 	comboPop(root, combo.count)
 	Feedback.juice(player, "combo", combo.count - Config.ComboStart + 1)
-	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
+	return HayMath.comboExtra(combo.count, Config)
 end
 
 -- Machines that take loose hay in (the sorter's hopper, the hay buyer, the baler, the docks' funnels).
 local POUR_INTO = { NeedleSorter = true, HayBuyer = true, HayBaler = true, DockFunnel = true, PlotDock = true }
 
+-- How far point is from the nearest point of a box (CFrame at its middle, and its size); 0 inside it.
+local function distanceToBox(point, box, size)
+	local p = box:PointToObjectSpace(point)
+	local half = size / 2
+	local outside = Vector3.new(
+		math.max(math.abs(p.X) - half.X, 0),
+		math.max(math.abs(p.Y) - half.Y, 0),
+		math.max(math.abs(p.Z) - half.Z, 0)
+	)
+	return outside.Magnitude
+end
+
 -- Where a pour can go: the cargo box of the truck or trailer clicked (returns its box CFrame and size), or the clicked
 -- spot on a conveyor belt, a machine's hopper, the dock or the sell pad. Anything else (the ground, a wall) is not a
--- pour target, so a stray click never dumps your hay.
-function Tools.pourTarget(aim)
-	if not aim or not aim.part then
+-- pour target, so a stray click never dumps your hay. Everything is checked on the server against where the player
+-- stands: the click names a part, and the client could name any part on the map, so the bed (or the belt or hopper
+-- under the click) must be within Config.ToolReach of the player.
+function Tools.pourTarget(aim, root)
+	if not aim or not aim.part or not root then
 		return nil
 	end
-	local box, size = Wheelbarrow.cargoOf(aim.part)
+	local part = aim.part
+	local box, size = Wheelbarrow.cargoOf(part)
 	if box then
+		if distanceToBox(root.Position, box, size) > Config.ToolReach then
+			return nil
+		end
 		return { box = box, size = size }
 	end
-	local part = aim.part
+	-- The clicked spot must really be on the clicked part, and in reach.
+	if (aim.position - root.Position).Magnitude > Config.ToolReach or distanceToBox(aim.position, part.CFrame, part.Size) > 1.5 then
+		return nil
+	end
 	if CollectionService:HasTag(part, "ConveyorBelt") or part.Name == "Hopper" or part.Name == "SellPad" then
 		return { at = aim.position }
 	end
@@ -142,14 +164,14 @@ function Tools.pour(player, root, target)
 		return 0
 	end
 	local held = math.floor(state.loadHay / Config.HayPerPiece)
-	local n = math.min(held, Config.PourStrands)
-	local sortedHeld = math.min(math.floor((state.loadSortedHay or 0) / Config.HayPerPiece), held)
-	local sortedOut = math.min(n, sortedHeld)
-	local unsortedHeld = held - sortedHeld
-	local unsortedOut = n - sortedOut
-	local needlesOut = unsortedHeld > 0 and math.floor((state.loadNeedles or 0) * unsortedOut / unsortedHeld + 0.5) or 0
+	local split = HayMath.pourSplit({
+		hay = state.loadHay,
+		sorted = state.loadSortedHay,
+		needles = state.loadNeedles,
+		wet = state.loadWetHay,
+	}, Config.PourStrands, Config.HayPerPiece)
+	local n, sortedOut, needlesOut, wetOut = split.n, split.sortedOut, split.needlesOut, split.wetOut
 	local fraction = n / held
-	local wetOut = math.min(n, math.floor((state.loadWetHay or 0) / Config.HayPerPiece * fraction + 0.5))
 
 	state.loadHay -= n * Config.HayPerPiece
 	state.loadSortedHay = math.max(0, (state.loadSortedHay or 0) - sortedOut * Config.HayPerPiece)
@@ -225,7 +247,7 @@ local function useShovel(player, root, aim)
 		return
 	end
 	-- Hay in your arms and a truck bed, hopper, belt or sell pad clicked: pour it there.
-	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim)
+	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim, root)
 	if target then
 		Avatar.swing(player, "Shovel", function()
 			Tools.pour(player, root, target)

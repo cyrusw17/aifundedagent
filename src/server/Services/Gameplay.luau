@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Economy = require(Shared.Economy)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local Prices = require(Shared.Config.Prices)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -31,7 +32,7 @@ end)
 
 -- What rain costs: wet hay sells at Config.WetPriceFactor of the hay price (the needles in it are unharmed).
 local function wetPenalty(wetHay)
-	return math.floor(math.max(wetHay, 0) * Economy.HAY_PRICE * (1 - Config.WetPriceFactor))
+	return HayMath.wetPenalty(wetHay, Economy.HAY_PRICE, Config.WetPriceFactor)
 end
 
 local function hasPocketNeedles(player)

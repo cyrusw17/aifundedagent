@@ -5,6 +5,7 @@
 -- yours to drive. Owners can come back to the counter any time to have their truck brought round again.
 --
 -- The building is part-built for now, laid out around Meadow.DealerCenter with its front facing east (+X).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -317,9 +318,16 @@ end
 local TRAILER_SPOT = Vector3.new(50, 0.06, 36)
 
 -- Trailers: paid for like trucks, then parked on the lot unhitched. Back your truck up to it and press H.
+local TRAILER_COOLDOWN = 10 -- seconds between trailer deliveries per player, so the button cannot spam parts
+local lastTrailer = {} -- player -> os.clock() of their last trailer delivery
+
 local function onBuyTrailer(player, def)
 	if not nearCounter(player) then
 		return false, "Step up to the counter first."
+	end
+	local since = os.clock() - (lastTrailer[player] or -math.huge)
+	if since < TRAILER_COOLDOWN then
+		return false, ("Hank is still hitching the last one up. Try again in %d s."):format(math.ceil(TRAILER_COOLDOWN - since))
 	end
 	local state = Data.get(player)
 	if not state then
@@ -339,6 +347,8 @@ local function onBuyTrailer(player, def)
 		Data.sync(player)
 		task.spawn(Data.save, player)
 	end
+	-- Only one trailer is ever out per player (setOwnedTrailer replaces the old one), and each kind is owned once.
+	lastTrailer[player] = os.clock()
 	local trailer = Vehicles.buildTrailer(def, origin * CFrame.lookAt(TRAILER_SPOT, TRAILER_SPOT + Vector3.xAxis), trucksFolder)
 	trailer.Name = player.Name .. "'s " .. def.name
 	Vehicles.makeTrailerLive(trailer, player)
@@ -437,15 +447,22 @@ function Dealer.build(worldFolder)
 	end
 
 	-- Testing only: in Studio the panel has a button that adds cash so the purchase can be tried right away.
+	local lastCash = {}
 	studioCash.OnServerEvent:Connect(function(player)
-		if not RunService:IsStudio() then
+		if not RunService:IsStudio() or os.clock() - (lastCash[player] or -math.huge) < 1 then
 			return
 		end
+		lastCash[player] = os.clock()
 		local state = Data.get(player)
 		if state then
 			Bank.give(player, STUDIO_CASH, "Studio test cash")
 			Data.toast(player, ("Studio test cash: +$%d"):format(STUDIO_CASH))
 		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		lastTrailer[player] = nil
+		lastCash[player] = nil
 	end)
 
 	Vehicles.init(trucksFolder)

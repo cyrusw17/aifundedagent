@@ -747,10 +747,12 @@ function Vehicles.makeTrailerLive(model, owner)
 	prompt.RequiresLineOfSight = false
 	prompt.ClickablePrompt = true
 	prompt.Parent = model:FindFirstChild("Coupler") or chassis
+	local lastPress = -math.huge
 	prompt.Triggered:Connect(function(player)
-		if player ~= owner then
+		if player ~= owner or os.clock() - lastPress < 1 then
 			return
 		end
+		lastPress = os.clock()
 		if model:GetAttribute("HitchedTo") then
 			Vehicles.unhitch(model)
 		else
@@ -1067,6 +1069,8 @@ end
 
 local TOW_COOLDOWN = 30
 local lastTow = {} -- player -> os.clock() of their last tow
+local FLIP_COOLDOWN = 3
+local lastFlip = {}
 
 -- The ground under a point, ignoring vehicles, bales and people.
 local function groundY(position, ignore)
@@ -1126,6 +1130,10 @@ function Vehicles.recover(player, mode)
 			player:RequestStreamAroundAsync(spot, 10)
 		end)
 	elseif mode == "flip" then
+		if os.clock() - (lastFlip[player] or -math.huge) < FLIP_COOLDOWN then
+			return false, "Give it a moment."
+		end
+		lastFlip[player] = os.clock()
 		if chassis.AssemblyLinearVelocity.Magnitude > 8 then
 			return false, "Wait for it to stop rolling."
 		end
@@ -1192,6 +1200,8 @@ function Vehicles.init(folder)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastHorn[player] = nil
+		lastTow[player] = nil
+		lastFlip[player] = nil
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		if owned[player] then
