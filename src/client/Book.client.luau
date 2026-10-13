@@ -245,14 +245,24 @@ do
 	local entries = {}
 	for _, d in DiscoveryList.all() do
 		local region = d.kind == "region"
+		local hidden = d.kind == "hidden"
 		table.insert(entries, {
 			id = d.id,
 			name = d.name,
-			-- A little patch of land for a region, a standing stone for a landmark.
-			size = region and Vector3.new(3, 0.6, 3) or Vector3.new(0.8, 2.4, 0.8),
-			color = region and Color3.fromRGB(110, 132, 82) or Color3.fromRGB(150, 140, 120),
-			material = region and Enum.Material.Grass or Enum.Material.Slate,
+			-- A little patch of land for a region, a small chest for a hidden spot, a standing stone for a landmark.
+			size = region and Vector3.new(3, 0.6, 3) or hidden and Vector3.new(1.4, 1, 1) or Vector3.new(0.8, 2.4, 0.8),
+			color = region and Color3.fromRGB(110, 132, 82)
+				or hidden and Color3.fromRGB(120, 86, 52)
+				or Color3.fromRGB(150, 140, 120),
+			material = region and Enum.Material.Grass or hidden and Enum.Material.Wood or Enum.Material.Slate,
 			lines = function(found)
+				if hidden then
+					if found then
+						return ("Found in %s"):format(d.near), ("Finder's pay: %s"):format(Kit.money(d.reward))
+					end
+					return ("Hidden in %s: read the Old Sign"):format(d.near),
+						("Pays %s the first time"):format(Kit.money(d.reward))
+				end
 				if found then
 					return region and "Region visited" or ("Landmark near %s"):format(d.near or "the isles"),
 						("Finder's pay: %s"):format(Kit.money(d.reward))
@@ -264,7 +274,7 @@ do
 	end
 	table.insert(PAGES, {
 		tab = "PLACES",
-		intro = "Every region and landmark of the Stitched Isles. Your first visit to each pays out and stamps your map.",
+		intro = "Every region, landmark and hidden spot of the Stitched Isles. Your first find of each pays out and stamps your map.",
 		entries = entries,
 		attribute = "Discovered",
 		read = function()
