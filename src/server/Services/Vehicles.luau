@@ -1171,27 +1171,6 @@ function Vehicles.recover(player, mode, to)
 	return true, "Back on its wheels."
 end
 
--- Every player's trailer in the world, as player -> model (FallSafety catches an unhitched one that falls).
-function Vehicles.trailers()
-	return ownedTrailers
-end
-
--- Sets the player's unhitched trailer down still on a ground CFrame (FallSafety's catch). A hitched trailer goes
--- with its truck's rescue instead. Returns true when it was moved.
-function Vehicles.rescueTrailer(player, ground)
-	local trailer = ownedTrailers[player]
-	if not trailer or not trailer.Parent or not trailer.PrimaryPart or trailer:GetAttribute("HitchedTo") then
-		return false
-	end
-	setDown(trailer, ground, trailer:GetAttribute("ChassisHeight") or 3)
-	task.delay(0.5, function()
-		if trailer.Parent and trailer.PrimaryPart and player.Parent then
-			giveTrailerTo(trailer, player)
-		end
-	end)
-	return true
-end
-
 function Vehicles.init(folder)
 	spawnFolder = folder
 	local recoverRemote = Instance.new("RemoteFunction")

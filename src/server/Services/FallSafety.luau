@@ -106,17 +106,7 @@ local function catchTruck(player, truck)
 	busy[truck] = nil
 end
 
-local function catchTrailer(player, trailer)
-	busy[trailer] = true
-	local ground, name = FallSafety.target(trailer.PrimaryPart.Position)
-	pcall(player.RequestStreamAroundAsync, player, ground.Position, 5)
-	if Vehicles.rescueTrailer(player, ground) and Data.get(player) then
-		Data.toast(player, ("Your trailer fell through the world. It's back on %s."):format(roadLabel(name)))
-	end
-	busy[trailer] = nil
-end
-
--- One pass: anyone, any player truck or any unhitched trailer below the kill floor is put back on a road.
+-- One pass: anyone or any player truck below the kill floor is put back on a road.
 function FallSafety.step()
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
@@ -131,13 +121,6 @@ function FallSafety.step()
 		local chassis = model.PrimaryPart
 		if chassis and not busy[model] and model:GetAttribute("TruckId") and chassis.Position.Y < FallSafety.KILL_Y then
 			task.spawn(catchTruck, owner, model)
-		end
-	end
-	-- A hitched trailer comes back with its truck (Vehicles.recover); only a loose one needs its own catch.
-	for player, trailer in Vehicles.trailers() do
-		local chassis = trailer.Parent and trailer.PrimaryPart
-		if chassis and not busy[trailer] and not trailer:GetAttribute("HitchedTo") and chassis.Position.Y < FallSafety.KILL_Y then
-			task.spawn(catchTrailer, player, trailer)
 		end
 	end
 end
