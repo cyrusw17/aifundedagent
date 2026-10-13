@@ -205,11 +205,31 @@ player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 local CollectionService = game:GetService("CollectionService")
 local promptsOn = true
 
+-- Shown only with bare hands and while the server says the bale can be picked up (not breaking or in a barrow).
+local hookedPrompts = setmetatable({}, { __mode = "k" })
+local function applyPrompt(prompt)
+	local want = promptsOn and prompt:GetAttribute("Usable") ~= false
+	if prompt.Enabled ~= want then
+		prompt.Enabled = want
+	end
+end
+
 local function setPrompt(bale)
 	local prompt = bale:FindFirstChildOfClass("ProximityPrompt") or bale:WaitForChild("ProximityPrompt", 5)
-	if prompt then
-		prompt.Enabled = promptsOn
+	if not prompt then
+		return
 	end
+	if not hookedPrompts[prompt] then
+		hookedPrompts[prompt] = true
+		-- The server turns the button back on when a bale is released; keep this player's rule on top of that.
+		prompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+			applyPrompt(prompt)
+		end)
+		prompt:GetAttributeChangedSignal("Usable"):Connect(function()
+			applyPrompt(prompt)
+		end)
+	end
+	applyPrompt(prompt)
 end
 
 local function updatePrompts()

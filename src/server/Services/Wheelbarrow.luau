@@ -31,7 +31,7 @@ local function owns(player)
 	return state ~= nil and table.find(state.gear or {}, GEAR_ID) ~= nil
 end
 
-local function part(model, name, size, cframe, color, material, shape)
+local function makePart(model, name, size, cframe, color, material, shape)
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Size = size
@@ -53,11 +53,11 @@ local function buildBarrow(root)
 	local model = Instance.new("Model")
 	model.Name = "Barrow"
 	local base = root.CFrame * TRAY
-	local floor = part(model, "Tray", Vector3.new(5, 0.25, 3.6), base, METAL, Enum.Material.Metal)
-	part(model, "SideL", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(-2.5, 0.4, 0), METAL, Enum.Material.Metal)
-	part(model, "SideR", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(2.5, 0.4, 0), METAL, Enum.Material.Metal)
-	part(model, "Front", Vector3.new(5, 0.8, 0.2), base * CFrame.new(0, 0.4, -1.8), METAL, Enum.Material.Metal)
-	part(
+	local floor = makePart(model, "Tray", Vector3.new(5, 0.25, 3.6), base, METAL, Enum.Material.Metal)
+	makePart(model, "SideL", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(-2.5, 0.4, 0), METAL, Enum.Material.Metal)
+	makePart(model, "SideR", Vector3.new(0.2, 0.8, 3.6), base * CFrame.new(2.5, 0.4, 0), METAL, Enum.Material.Metal)
+	makePart(model, "Front", Vector3.new(5, 0.8, 0.2), base * CFrame.new(0, 0.4, -1.8), METAL, Enum.Material.Metal)
+	makePart(
 		model,
 		"Wheel",
 		Vector3.new(0.4, 1.4, 1.4),
@@ -67,7 +67,7 @@ local function buildBarrow(root)
 		Enum.PartType.Cylinder
 	)
 	for _, x in { -1, 1 } do
-		part(model, "Handle", Vector3.new(0.2, 0.2, 3.2), base * CFrame.new(x * 1.2, 0.9, 2.8) * CFrame.Angles(math.rad(12), 0, 0), WOOD, Enum.Material.Wood)
+		makePart(model, "Handle", Vector3.new(0.2, 0.2, 3.2), base * CFrame.new(x * 1.2, 0.9, 2.8) * CFrame.Angles(math.rad(12), 0, 0), WOOD, Enum.Material.Wood)
 	end
 	for _, p in model:GetChildren() do
 		local weld = Instance.new("Weld")
@@ -139,6 +139,35 @@ local function unloadAll(player)
 	return #load
 end
 
+-- Loads a bale into the player's barrow (it must be out and have room). Returns true if it went in.
+function Wheelbarrow.load(player, bale)
+	local state = Data.get(player)
+	local root = Avatar.getRoot(player)
+	if not state or not root or not barrows[player] or bale.carriedBy then
+		return false
+	end
+	state.barrow = state.barrow or {}
+	if #state.barrow >= Config.WheelbarrowBales then
+		return false
+	end
+	if Bales.stow(player, bale, root, slot(#state.barrow + 1)) then
+		table.insert(state.barrow, bale)
+		Avatar.refreshSpeed(player)
+		return true
+	end
+	return false
+end
+
+-- Sets the whole load down in front of the player. Returns how many bales came out.
+function Wheelbarrow.unload(player)
+	return unloadAll(player)
+end
+
+-- True while the player has the barrow out.
+function Wheelbarrow.isOut(player)
+	return barrows[player] ~= nil
+end
+
 local function use(player)
 	local state = Data.get(player)
 	local root = Avatar.getRoot(player)
@@ -152,13 +181,8 @@ local function use(player)
 		bale = nil
 	end
 	if bale and not bale.carriedBy then
-		if #state.barrow >= Config.WheelbarrowBales then
+		if not Wheelbarrow.load(player, bale) and #state.barrow >= Config.WheelbarrowBales then
 			Data.toast(player, "The barrow is full. Click the ground to set the load down.")
-			return
-		end
-		if Bales.stow(player, bale, root, slot(#state.barrow + 1)) then
-			table.insert(state.barrow, bale)
-			Avatar.refreshSpeed(player)
 		end
 		return
 	end
@@ -214,6 +238,11 @@ local function give(player)
 	makeTool(player).Parent = backpack
 end
 
+-- Gives the tool to a player who owns a barrow (for after a purchase, or the self-test).
+function Wheelbarrow.give(player)
+	give(player)
+end
+
 local function buy(player)
 	local state = Data.get(player)
 	if not state then
@@ -241,11 +270,11 @@ function Wheelbarrow.buildStand(parent, cframe)
 	local model = Instance.new("Model")
 	model.Name = "WheelbarrowStand"
 	local base = cframe * CFrame.new(0, 1.2, 0)
-	local tray = part(model, "Tray", Vector3.new(4, 0.25, 3), base, METAL, Enum.Material.Metal)
-	part(model, "Wheel", Vector3.new(0.4, 1.4, 1.4), base * CFrame.new(0, -0.5, -1.8), Color3.fromRGB(60, 52, 44), Enum.Material.Fabric, Enum.PartType.Cylinder)
+	local tray = makePart(model, "Tray", Vector3.new(4, 0.25, 3), base, METAL, Enum.Material.Metal)
+	makePart(model, "Wheel", Vector3.new(0.4, 1.4, 1.4), base * CFrame.new(0, -0.5, -1.8), Color3.fromRGB(60, 52, 44), Enum.Material.Fabric, Enum.PartType.Cylinder)
 	for _, x in { -1, 1 } do
-		part(model, "Leg", Vector3.new(0.25, 1, 0.25), base * CFrame.new(x * 1.2, -0.6, 1.2), WOOD, Enum.Material.Wood)
-		part(model, "Handle", Vector3.new(0.2, 0.2, 3), base * CFrame.new(x * 1.2, 0.4, 2.6), WOOD, Enum.Material.Wood)
+		makePart(model, "Leg", Vector3.new(0.25, 1, 0.25), base * CFrame.new(x * 1.2, -0.6, 1.2), WOOD, Enum.Material.Wood)
+		makePart(model, "Handle", Vector3.new(0.2, 0.2, 3), base * CFrame.new(x * 1.2, 0.4, 2.6), WOOD, Enum.Material.Wood)
 	end
 	for _, p in model:GetChildren() do
 		p.Anchored = true

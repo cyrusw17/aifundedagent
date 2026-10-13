@@ -145,7 +145,14 @@ local function useShovel(player, root, aim)
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
 		-- Better gloves scoop more; hay rarer than your gloves are rated for scoops less.
 		local room = math.floor((capacity - state.loadHay) / Config.HayPerPiece)
-		local first = targetPieces(1)[1]
+		-- The hay's tier comes from the first strand in reach, not a needle (needles carry no hay type).
+		local first
+		for _, piece in targetPieces(8) do
+			if not Hay.isNeedle(piece) then
+				first = piece
+				break
+			end
+		end
 		if not first then
 			return
 		end
