@@ -3,6 +3,9 @@
 -- models, scales and places copies, and welds them onto the parts the game already uses (the bale's hitbox, a
 -- tool's handle). Nothing here changes how anything plays: gameplay keeps its own parts, the meshes only ride along.
 -- Callers fall back to their part-built look when a prop is missing, so the game still runs before any import.
+-- Rigged props (vehicles, trailers, conveyors, machines) keep their moving pieces as separate child meshes:
+-- Wheel_L1, Wheel_R2, Tailgate, Coupler, Belt, Roller, Drum, Reel, Flywheel, Crank, Shaker. Copies keep that
+-- hierarchy; Props.find picks the pieces out and Props.weldTo can leave them loose for a hinge or motor.
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -220,6 +223,25 @@ function Props.make(name, cframe, fit, turn)
 	return model
 end
 
+-- The moving pieces of a placed prop whose name starts with prefix: Props.find(truck, "Wheel") gives every wheel,
+-- Props.find(truck, "Wheel_L") the left ones. A piece the importer wrapped in a <Name>_Node model, or split into
+-- <Name> and <Name>2 by material, counts by its own name or the nearest model above it.
+function Props.find(model, prefix)
+	local found = {}
+	for _, part in partsOf(model) do
+		local node = part
+		while node and node ~= model do
+			local name = string.gsub(node.Name, "_Node$", "")
+			if string.sub(name, 1, #prefix) == prefix then
+				table.insert(found, part)
+				break
+			end
+			node = node.Parent
+		end
+	end
+	return found
+end
+
 -- Moves a placed prop up or down so its lowest point rests at height y.
 function Props.restOn(model, y)
 	local parts = partsOf(model)
@@ -235,7 +257,13 @@ end
 -- fallback is the part-built look the mesh replaces (a bale body, a Tool). When given, the mesh starts hidden and the
 -- fallback stays visible; each client swaps them once the mesh has actually loaded (PropMeshes.client.luau), so a
 -- freshly imported mesh that Roblox is still processing never leaves an invisible bale or an empty hand.
-function Props.weldTo(model, anchor, fallback)
+-- loose is a list of the prop's own parts (from Props.find) to leave unwelded, so the caller can join them with a
+-- hinge or Motor6D instead (spinning wheels, an opening tailgate). They are unanchored like the rest.
+function Props.weldTo(model, anchor, fallback, loose)
+	local skip = {}
+	for _, part in loose or {} do
+		skip[part] = true
+	end
 	for _, part in partsOf(model) do
 		part.Anchored = false
 		part.CanCollide = false
@@ -246,12 +274,26 @@ function Props.weldTo(model, anchor, fallback)
 			part:SetAttribute("MeshTransparency", part.Transparency)
 			part.Transparency = 1
 		end
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = anchor
-		weld.Part1 = part
-		weld.Parent = part
+		if not skip[part] then
+			-- A Weld with its offset written out, not a WeldConstraint: a tool is built outside the Workspace, and a
+			-- WeldConstraint there can take its offset later, after the handle has already moved to the hand.
+			local weld = Instance.new("Weld")
+			weld.Part0 = anchor
+			weld.Part1 = part
+			weld.C0 = anchor.CFrame:ToObjectSpace(part.CFrame)
+			weld.Parent = part
+		end
 	end
 	if fallback then
+		-- Where the mesh should sit on its anchor and how big it is, so each client can check the mesh really
+		-- landed there before it hides the fallback (PropMeshes.client.luau).
+		local center, size = bounds(partsOf(model))
+		local anchorLink = Instance.new("ObjectValue")
+		anchorLink.Name = "Anchor"
+		anchorLink.Value = anchor
+		anchorLink.Parent = model
+		model:SetAttribute("MeshOffset", anchor.CFrame:PointToObjectSpace(center))
+		model:SetAttribute("MeshLength", math.max(size.X, size.Y, size.Z))
 		local link = Instance.new("ObjectValue")
 		link.Name = "Fallback"
 		link.Value = fallback
