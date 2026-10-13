@@ -8,6 +8,7 @@
 -- rollers that ride over the terrain. Nothing here touches the character's joints.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Rustic = require(Shared.Config.Rustic)
@@ -216,6 +217,7 @@ function Vehicles.build(def, pivot, parent)
 		local tailZ = backStart + backLength - 0.175
 		local tailgate = box("Tailgate", Vector3.new(BED_W, wall, 0.35), 0, floorTop + wall / 2, tailZ, paint, Enum.Material.Metal)
 		tailgate.CustomPhysicalProperties = BED_GRIP
+		CollectionService:AddTag(tailgate, "Tailgate") -- the conveyor dock (PR #13 Dock.luau) drops it while unloading
 		-- Closed and folded-down spots, from the chassis center. Open, it lies flat behind the bed at floor level.
 		model:SetAttribute("TailgateClosed", CFrame.new(0, floorTop + wall / 2 - (DECK - 0.4), tailZ))
 		model:SetAttribute(
