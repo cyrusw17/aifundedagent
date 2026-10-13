@@ -215,6 +215,22 @@ Prices.Travel = {
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
 }
 
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul.
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Thimble Keys: the sand bars dry out
+	eruption = { bales = 8, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach)
+	meteor_shower = { bales = 6, boost = 2.5 }, -- Mirror Lake Valley, nights only: fallen stars in the hay
+}
+
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
 -- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
 Prices.Robux = {
