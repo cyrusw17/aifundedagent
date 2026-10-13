@@ -38,16 +38,17 @@ Needle.MUTATION = { chance = MUTATION_CHANCE, min = MUTATION_MIN, max = MUTATION
 local FANFARE = "rbxasset://sounds/victory.wav"
 
 -- Color per needle type, and whether it glows. Common types are plain metal; the rare maps glow.
+-- Glow (Neon) starts at Epic, as STYLE.md settles rarity: common to Rare types are plain metal in their own color.
 local LOOKS = {
 	steel = { Color3.fromRGB(150, 158, 166), false },
 	pine = { Color3.fromRGB(96, 140, 84), false },
 	sand = { Color3.fromRGB(214, 186, 120), false },
-	ice = { Color3.fromRGB(170, 220, 240), true },
+	ice = { Color3.fromRGB(170, 220, 240), false },
 	bog = { Color3.fromRGB(110, 128, 70), false },
 	coral = { Color3.fromRGB(214, 120, 104), false },
 	brass = { Color3.fromRGB(181, 148, 72), false },
-	obsidian = { Color3.fromRGB(60, 40, 70), true },
-	geode = { Color3.fromRGB(170, 110, 220), true },
+	obsidian = { Color3.fromRGB(96, 64, 112), false },
+	geode = { Color3.fromRGB(170, 110, 220), false },
 	cloud = { Color3.fromRGB(240, 244, 255), true },
 	phantom = { Color3.fromRGB(120, 230, 210), true },
 	cosmic = { Color3.fromRGB(80, 70, 220), true },
