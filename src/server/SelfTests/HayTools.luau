@@ -734,6 +734,19 @@ local function withPlayer(t, player)
 			t.equal("the shovel's tooltip is ToolGuide's", shovel.ToolTip, ToolGuide.tool("Shovel"))
 			t.equal("the rake's tooltip is ToolGuide's", rake.ToolTip, ToolGuide.tool("Rake"))
 		end
+		-- Comfort settings (Hay #26): stored and published like the other settings, bad values refused.
+		local Settings = require(Services.Settings)
+		for key, attribute in { holdScoop = "SettingHoldScoop", holdCarry = "SettingHoldCarry", bigThrow = "SettingBigThrow" } do
+			local was = player:GetAttribute(attribute)
+			local saved = state.settings and state.settings[key]
+			Settings.set(player, key, not was)
+			t.equal(("the %s setting changes"):format(key), player:GetAttribute(attribute), not was)
+			Settings.set(player, key, "yes")
+			t.equal(("the %s setting refuses a non-true/false value"):format(key), player:GetAttribute(attribute), not was)
+			-- Put back exactly what was there, so the test never changes the player's own setting.
+			state.settings[key] = saved
+			player:SetAttribute(attribute, was)
+		end
 		if shovel and Avatar.onToolActivated then
 			humanoid:EquipTool(shovel)
 			stand(CFrame.new(burst) * CFrame.new(0, 0, 3))
