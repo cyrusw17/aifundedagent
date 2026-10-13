@@ -20,6 +20,14 @@ blender/
   props/storage.py         bins, silos, bale rack, needle tray and vault, fence, road tile
   props/buildings.py       mill, sheds, barn, garage, shops, forge, museum, observatory, dock...
   props/machines.py        conveyor pieces (6x6-stud tiles, belt top 3.5) and every machine
+  props/scatter.py         region scatter: oaks, pines, snow pines, cacti, dead trees, reeds, rocks, dune, firefly
+  props/gloves.py          the glove ladder (the tool upgrades) and event gloves
+  props/quest_gear.py      quest-only gear, keys, beacon parts, journal pages
+  props/finds.py           things found in bales (boot, horseshoe, key, radio, ring, fossil)
+  props/needles.py         rarity needles, sorted needle types, mutations, bundle, bin, display wall, region bales
+  props/special_vehicles.py quest trucks, barges, ferry and zeppelin
+  props/hub.py             Homestead hub: dealer, land office, sell shop, bank, chute, boards, signs, scarecrow
+  props/regions.py         region landmarks, windmill and the Spindle
   props/hay_bale.py        bale shape, 4.6 long x 2.6 high x 3.2 deep studs (the game's bale)
   styles/lt2_mockups.py    the six finishes that were compared when picking the style
   tools/render_preview.py  renders a PNG preview of any exported .glb
@@ -42,7 +50,14 @@ decor. Catalogs:
 | vehicles | `catalog_vehicles.png` | handcart, pull wagon, 6 trucks, rowboat, sailboat, cargo barge, 6 trailers |
 | storage | `catalog_storage.png` | 3 mill bins, 3 silos, bale rack, needle tray, needle vault, fence post set, road tile |
 | buildings | `catalog_buildings.png` | mill, sorter shed, barn, garage, sell depot, needle forge, workshop, museum, observatory, greenhouse, harbor dock, warehouse |
-| machines | `catalog_machines.png` | conveyor straight/corner/ramp, splitter, merger, hopper feeder, 6 sorter tiers, needle type splitter, bundler, polisher, hay baler, hay press, alloy mixer, boost oil, alien collector |
+| machines | `catalog_machines.png` | conveyor straight/corner/ramp, splitter, merger, hopper feeder, 6 sorter tiers, needle type splitter, bundler, polisher, hay baler, hay press, alloy mixer, boost oil, alien collector, starbeam collector |
+| scatter | `catalog_scatter.png` | oak_tree_a-c, pine_tree_a-c, snowpine_tree_a-b, cactus_a-b, dead_tree_a-b, reeds_clump, rock_a-c, dune_mound, firefly (all 300 triangles or less) |
+| quest gear | `catalog_quest_gear.png` | golden shovel, thread rake, maze and barn keys, golden bale, beacon parts, needle shard, bobbin, log and journal pages, crop circle marker |
+| finds | `catalog_finds.png` | old boot, horseshoe, rusty key, old radio, lost ring, fossil |
+| needles | `catalog_needles.png` | needle_common..legendary (+ rarity_needle), 12 sorted types, 3 mutations, bundle, bin, display wall, 9 region bales |
+| special vehicles | `catalog_special_vehicles.png` | old bessie, sandrunner, ghost hauler, captain's barge, public ferry, zeppelin |
+| hub | `catalog_hub.png` | homestead motors, land office, hay sell shop, homestead bank, field bale chute, loading dock, hay buyer, bounty board, trading post, scarecrow, signs, ferry dock, display stand |
+| regions | `catalog_regions.png` | 15 region landmarks, windmill, spindle landmark |
 
 ### Truck and trailer beds
 
@@ -80,10 +95,21 @@ parts are its children:
 | `Coupler`, `Coupler2` | trailers | the hitch point |
 | `Belt`, `Roller`, `Roller2` | conveyors and line machines | belt center / roller axle |
 | `Drum`, `Shaker`, `Crank`, `Reel`, `Flywheel` | magnet drum, shaker table, hay baler | axle or deck center |
+| `HayFill`, `NeedleFill` | anything that holds loose hay or needles | center; the game scales or raises it as it fills |
+| `Ramp`, `Lever`, `Head` | barges, ferry, dock, bale chute, scarecrow | bottom center (the hinge / neck) |
+| `Gate` | bale chute | top edge center |
+| `Door` | buildings | the hinge edge (builder-left) |
+| `ArmL`, `ArmR` | scarecrow | the shoulder (inner end) |
+| `Rotor`, `Star`, `Propeller`, `Blades`, `Notice1-3`, `Board`, `Arrow1-3` | windmills, starbeam collector, zeppelin, signs | center |
+
+Every mesh has at most 4 materials and every moving part exactly 1 (Roblox makes one MeshPart per
+material); the exporter enforces it by repainting the smallest areas with the nearest kept color.
+Bodies over 6,000 triangles are decimated.
 
 Every vehicle (trucks, trailers, carts and boats) faces **-Z with +Y up** in the .glb, which
 is Roblox's forward (LookVector) and up, so it imports facing forward with no extra turn. Wheels
-spin about X. Other props keep their old orientation.
+spin about X. The scatter, hub, regions and special vehicle props face -Z too; buildings and the
+older storage props keep their old orientation.
 
 ## Build
 
