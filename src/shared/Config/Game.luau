@@ -51,6 +51,13 @@ return {
 	-- Carrying a whole bale
 	CarryWalkSpeed = 8,
 	StackReach = 9, -- a bale set down lands on top of a stack up to this high in front of you
+	-- Hold click (or G) with a bale to charge a throw, then let go to lob it. A plain click still sets it down.
+	TossRange = 10, -- studs on flat ground at full charge
+	TossMinRange = 3, -- at the least charge that throws at all
+	TossMinPower = 0.12, -- charge below this (0..1) just sets the bale down
+	TossChargeSeconds = 0.9, -- holding this long is full power
+	TossFlightSeconds = 2.5, -- the server flies a thrown bale this long, then Roblox picks its owner again
+	DoubleCarryTier = 3, -- gloves of this tier (Reinforced) and up carry two bales, one on top of the other
 	StackMin = 3, -- a neat stack of this many bales or more is kept (no despawn) and gets a "Stack N" label
 	DroppedBaleSeconds = 180, -- a dropped bale disappears after this long
 

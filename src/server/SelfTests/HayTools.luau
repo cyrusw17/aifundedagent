@@ -4,7 +4,7 @@
 -- first-bale flag back afterwards: lift, set down, stack, break (the first-bale needle), scoop with the combo, sell
 -- at the pad, a pocket needle, and the wheelbarrow. A sale made here is real money in the player's slot.
 -- Edge cases: leaving mid-carry, two players after one bale, a bale set down into a truck bed (and a barrow tipped
--- into one), selling with nothing to sell, and a flood of loose hay staying under its caps without leaking.
+-- into one), selling with nothing to sell, throwing a bale, carrying two, and a flood of loose hay staying under its caps without leaking.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Services = script.Parent.Parent.Services
@@ -27,6 +27,7 @@ local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
 local BALE = Vector3.new(4.6, 2.6, 3.2)
+local DOUBLE_CARRY_TIER = Config.DoubleCarryTier -- the double-carry checks change it; it is always put back
 
 -- Bales made by a test, consumed at the end so Bales' own tables forget them too.
 local made = {}
@@ -231,6 +232,51 @@ local function edgeCases(t, player, state, root, stand)
 	t.near("a bale set down into a truck bed rests on the bed floor", cargo.body.Position.Y - bed.top, BALE.Y / 2, 0.6)
 	t.check("...inside the bed", inBed(bed, cargo))
 	t.check("...loose, never welded", isLoose(cargo))
+
+	-- Throw: a full-charge toss lobs the bale about TossRange studs, loose; a tiny charge just sets it down.
+	local throwSpot = t.place()
+	stand(throwSpot)
+	local thrown = bale(throwSpot * CFrame.new(0, 0, -4))
+	t.wait(0.2)
+	Bales.pickup(player, thrown)
+	local from = root.Position
+	Bales.toss(player, 1)
+	t.check("a throw lets go of the bale", state.carryBale == nil and thrown.carriedBy == nil)
+	t.wait(2)
+	local flew = (Vector3.new(thrown.body.Position.X, 0, thrown.body.Position.Z) - Vector3.new(from.X, 0, from.Z)).Magnitude
+	t.check("a full throw lands well out in front", flew > Config.TossRange * 0.6 and flew < Config.TossRange * 1.6, ("%.1f studs"):format(flew))
+	t.check("a thrown bale is loose", isLoose(thrown))
+	local tapped = bale(throwSpot * CFrame.new(12, 0, -4))
+	stand(throwSpot * CFrame.new(12, 0, 0))
+	Bales.pickup(player, tapped)
+	Bales.toss(player, Config.TossMinPower / 2)
+	t.wait(0.8)
+	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
+	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
+
+	-- Double carry: two bales with good enough gloves, one without; both go down as a stack of two.
+	local carrySpot = t.place()
+	stand(carrySpot)
+	local a1 = bale(carrySpot * CFrame.new(0, 0, -4))
+	local a2 = bale(carrySpot * CFrame.new(3, 0, -4))
+	t.wait(0.2)
+	Config.DoubleCarryTier = 99 -- gloves can't reach this
+	Bales.pickup(player, a1)
+	Bales.pickup(player, a2)
+	t.check("weak gloves carry one bale only", state.carryBale == a1 and state.carryExtra == nil and a2.carriedBy == nil)
+	Config.DoubleCarryTier = 0 -- any gloves
+	Bales.pickup(player, a2)
+	t.check("good gloves carry a second bale", state.carryExtra == a2 and a2.carriedBy == player)
+	local a3 = bale(carrySpot * CFrame.new(-3, 0, -4))
+	t.wait(0.2)
+	Bales.pickup(player, a3)
+	t.check("...but never a third", a3.carriedBy == nil)
+	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
+	stand(carrySpot * CFrame.new(0, 0, 8))
+	Bales.drop(player)
+	t.check("putting down frees both hands", state.carryBale == nil and state.carryExtra == nil)
+	t.wait(1)
+	t.near("the second bale lands on top of the first", a2.body.Position.Y - a1.body.Position.Y, BALE.Y, 0.6)
 end
 
 local function withPlayer(t, player)
@@ -405,6 +451,7 @@ local function withPlayer(t, player)
 	if state.carryBale then
 		Bales.drop(player)
 	end
+	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier
 	Data.sync(player)

@@ -342,10 +342,12 @@ function Avatar.refreshSpeed(player)
 			weight += baleWeight * Config.WheelbarrowLoadFactor
 			tier = math.max(tier, baleTier)
 		end
-		if state.carryBale and state.carryBale.body then
-			local baleWeight, baleTier = Gloves.baleWeight(state.carryBale.body)
-			weight += baleWeight
-			tier = math.max(tier, baleTier)
+		for _, carried in { state.carryBale, state.carryExtra } do
+			if carried and carried.body then
+				local baleWeight, baleTier = Gloves.baleWeight(carried.body)
+				weight += baleWeight
+				tier = math.max(tier, baleTier)
+			end
 		end
 	end
 	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
