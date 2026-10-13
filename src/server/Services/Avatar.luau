@@ -1,5 +1,5 @@
 --!nonstrict
--- What the player looks like while working: a shovel in hand and the scoop animation.
+-- What the player looks like while working: a shovel in hand, the scoop swing, and the carry pose.
 -- Built from parts so no uploaded assets are needed yet. The swing only plays while the shovel is equipped.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,58 +11,6 @@ local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Avatar = {}
 
 local rigs = {}
-
-local function addPiece(parent, root, name, size, offset, color, material, shape)
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Size = size
-	part.Color = color
-	part.Material = material
-	if shape then
-		part.Shape = shape
-	end
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.Massless = true
-	part.CFrame = root.CFrame * offset
-	part.Parent = parent
-
-	local weld = Instance.new("Weld")
-	weld.Part0 = root
-	weld.Part1 = part
-	weld.C0 = offset
-	weld.Parent = part
-	return part
-end
-
-local function buildCarriedBarrel(character, root)
-	local model = Instance.new("Model")
-	model.Name = "CarriedBarrel"
-	local upright = CFrame.Angles(0, 0, math.rad(90))
-	addPiece(
-		model,
-		root,
-		"Body",
-		Vector3.new(3.4, 3, 3),
-		CFrame.new(0, 0.2, -2.1) * upright,
-		Color3.fromRGB(139, 90, 43),
-		Enum.Material.Wood,
-		Enum.PartType.Cylinder
-	)
-	addPiece(
-		model,
-		root,
-		"Hay",
-		Vector3.new(0.6, 2.7, 2.7),
-		CFrame.new(0, 2, -2.1) * upright,
-		Color3.fromRGB(232, 201, 90),
-		Enum.Material.Fabric,
-		Enum.PartType.Cylinder
-	)
-	model.Parent = character
-	return model
-end
 
 local function buildShovel()
 	local tool = Instance.new("Tool")
@@ -154,10 +102,8 @@ local function setup(player, character)
 		leftBase = leftMotor and leftMotor.C0,
 		defaultSpeed = humanoid.WalkSpeed,
 		token = 0,
-		digging = false,
-		liftUntil = 0,
+		swingUntil = 0,
 		carrying = false,
-		carryModel = nil,
 	}
 	rigs[player] = rig
 
@@ -176,6 +122,42 @@ local function setup(player, character)
 	humanoid:EquipTool(shovel)
 end
 
+-- One scoop swing. onImpact runs at the moment the shovel hits the hay. Returns false if the swing could not start.
+function Avatar.scoopSwing(player, onImpact)
+	local rig = rigs[player]
+	if not rig or rig.carrying or not Avatar.hasShovelEquipped(player) then
+		return false
+	end
+	if os.clock() < rig.swingUntil then
+		return false
+	end
+	rig.swingUntil = os.clock() + Config.ScoopCooldownSeconds
+	rig.token += 1
+	local token = rig.token
+
+	task.spawn(function()
+		tweenArm(rig, Config.DigBackDegrees, Config.DigBackSeconds)
+		task.wait(Config.DigBackSeconds)
+		if rig.token ~= token then
+			return
+		end
+		tweenArm(rig, Config.DigForwardDegrees, Config.DigForwardSeconds, Enum.EasingStyle.Quad)
+		task.wait(Config.DigForwardSeconds)
+		if rig.token ~= token then
+			return
+		end
+		if Avatar.hasShovelEquipped(player) then
+			onImpact()
+		end
+		tweenArm(rig, Config.LiftDegrees, 0.2, Enum.EasingStyle.Quad)
+		task.wait(0.3)
+		if rig.token == token then
+			tweenArm(rig, 0, 0.25)
+		end
+	end)
+	return true
+end
+
 -- Both arms hold a barrel in front of the chest; walking slows down and the shovel is put away.
 function Avatar.setCarry(player)
 	local rig = rigs[player]
@@ -184,10 +166,8 @@ function Avatar.setCarry(player)
 	end
 	rig.carrying = true
 	rig.token += 1
-	rig.digging = false
 	rig.humanoid:UnequipTools()
 	rig.humanoid.WalkSpeed = Config.CarryWalkSpeed
-	rig.carryModel = buildCarriedBarrel(rig.character, rig.root)
 	tweenMotor(rig.motor, rig.base, 80, 0.25)
 	tweenMotor(rig.leftMotor, rig.leftBase, 80, 0.25)
 end
@@ -198,10 +178,6 @@ function Avatar.clearCarry(player)
 		return
 	end
 	rig.carrying = false
-	if rig.carryModel then
-		rig.carryModel:Destroy()
-		rig.carryModel = nil
-	end
 	rig.humanoid.WalkSpeed = rig.defaultSpeed
 	tweenMotor(rig.motor, rig.base, 0, 0.25)
 	tweenMotor(rig.leftMotor, rig.leftBase, 0, 0.25)
@@ -211,71 +187,15 @@ function Avatar.clearCarry(player)
 	end
 end
 
--- Pumping motion while the player holds the prompt. `burst` is called on every downward thrust.
-function Avatar.startDig(player, burst)
+function Avatar.getRoot(player)
 	local rig = rigs[player]
-	if not rig or not Avatar.hasShovelEquipped(player) then
-		return
-	end
-	rig.token += 1
-	local token = rig.token
-	rig.digging = true
-	task.spawn(function()
-		while rig.token == token and rig.digging do
-			if not Avatar.hasShovelEquipped(player) then
-				rig.digging = false
-				tweenArm(rig, 0, 0.2)
-				break
-			end
-			tweenArm(rig, Config.DigBackDegrees, Config.DigBackSeconds)
-			task.wait(Config.DigBackSeconds)
-			if rig.token ~= token or not rig.digging then
-				break
-			end
-			tweenArm(rig, Config.DigForwardDegrees, Config.DigForwardSeconds, Enum.EasingStyle.Quad)
-			task.wait(Config.DigForwardSeconds)
-			if burst and rig.token == token then
-				burst()
-			end
-		end
-	end)
-end
-
-function Avatar.stopDig(player)
-	local rig = rigs[player]
-	if not rig then
-		return
-	end
-	rig.digging = false
-	if os.clock() < rig.liftUntil then
-		return
-	end
-	rig.token += 1
-	tweenArm(rig, 0, 0.2)
-end
-
--- Raise the full shovel after a scoop, then settle back.
-function Avatar.lift(player)
-	local rig = rigs[player]
-	if not rig or not Avatar.hasShovelEquipped(player) then
-		return
-	end
-	rig.token += 1
-	rig.digging = false
-	rig.liftUntil = os.clock() + 0.6
-	local token = rig.token
-	tweenArm(rig, Config.LiftDegrees, 0.2, Enum.EasingStyle.Quad)
-	task.delay(0.35, function()
-		if rig.token == token then
-			tweenArm(rig, 0, 0.3)
-		end
-	end)
+	return rig and rig.root
 end
 
 -- A clump of hay arcs from the barrel to the player's chest, where it joins the load they are carrying.
 function Avatar.flyHay(player, fromPosition)
 	local rig = rigs[player]
-	if not rig or not Avatar.hasShovelEquipped(player) then
+	if not rig then
 		return
 	end
 

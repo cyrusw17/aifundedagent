@@ -64,26 +64,14 @@ toast.Visible = false
 toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
--- Drop button for a carried barrel. Shown only while carrying, so phones can use it too.
-local dropButton = Instance.new("TextButton")
-dropButton.AnchorPoint = Vector2.new(0.5, 1)
-dropButton.Position = UDim2.new(0.5, 0, 1, -24)
-dropButton.Size = UDim2.fromOffset(220, 52)
-dropButton.BackgroundColor3 = Color3.fromRGB(240, 173, 46)
-dropButton.TextColor3 = Color3.fromRGB(27, 18, 0)
-dropButton.Font = Enum.Font.GothamBold
-dropButton.TextSize = 20
-dropButton.Text = "Drop barrel (G)"
-dropButton.Visible = false
-dropButton.Parent = gui
-Instance.new("UICorner", dropButton).CornerRadius = UDim.new(0, 12)
-
+-- Putting a barrel down: click or tap anywhere while carrying one (G works too). No on-screen prompt.
 local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
-dropButton.Activated:Connect(function()
-	dropRemote:FireServer()
-end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.KeyCode == Enum.KeyCode.G then
+	if gameProcessed or player:GetAttribute("CarryScoops") == nil then
+		return
+	end
+	local kind = input.UserInputType
+	if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch or input.KeyCode == Enum.KeyCode.G then
 		dropRemote:FireServer()
 	end
 end)
@@ -99,7 +87,6 @@ local function refresh()
 	else
 		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
 	end
-	dropButton.Visible = barrel ~= nil
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
 end
 

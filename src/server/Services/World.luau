@@ -22,17 +22,6 @@ local function newPart(parent, name, size, cframe, color, material)
 	return part
 end
 
-local function addPrompt(parent, actionText, objectText, holdSeconds)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = actionText
-	prompt.ObjectText = objectText
-	prompt.HoldDuration = holdSeconds
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = parent
-	return prompt
-end
-
 local function addSign(parent, text, offset)
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromOffset(240, 50)
@@ -116,8 +105,19 @@ function World.build()
 		Enum.Material.Wood
 	)
 	addSign(counter, "HAY SHOP", Vector3.new(0, 6, 0))
-	local prompt = addPrompt(counter, "Sell hay", "Hay shop", 0)
-	Gameplay.wireShop(prompt)
+
+	-- Sell pad in front of the counter. Walk onto it with hay, or set a barrel down on it.
+	local pad = newPart(
+		folder,
+		"SellPad",
+		Vector3.new(12, 0.4, 9),
+		CFrame.new(22, 0.2, -6),
+		Color3.fromRGB(240, 173, 46),
+		Enum.Material.Neon
+	)
+	pad.Transparency = 0.35
+	addSign(pad, "SELL HERE", Vector3.new(0, 5, 0))
+	Gameplay.wireSellPad(pad)
 end
 
 return World

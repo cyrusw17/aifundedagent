@@ -32,10 +32,12 @@ Press Play. You spawn on a small pad at base camp. Walk to the three hay barrels
 
 Saving: DataStores only work in Studio if the place is published to Roblox and Game Settings > Security > "Enable Studio Access to API Services" is on. Otherwise you will see a warning in Output and progress simply will not save. The game still plays.
 
-## Scooping, carrying and dropping (current controls)
+## Controls (current)
 
-- Your shovel is equipped when you spawn. The scoop swing only plays, and scooping only works, while the shovel is in your hand.
-- Hold E at a barrel to scoop. Hold F to pick the whole barrel up. While carrying you walk slower, your arms hold the barrel and the shovel is put away.
-- Press G (or tap the "Drop barrel" button) to put the barrel down. A dropped barrel keeps what is left in it and disappears after 3 minutes.
-- Walk to the hay shop and press the sell prompt. A barrel in your arms is sold together with any hay you scooped.
-- Animation and carry numbers are in `src/shared/Config/Game.luau` (DigBackDegrees, DigForwardDegrees, LiftDegrees, CarryWalkSpeed, and so on).
+No prompts or overlays. Everything is a click or a tap on the thing itself.
+
+- Your shovel is equipped when you spawn. Click or tap a hay barrel while holding the shovel to scoop. The swing only plays, and scooping only works, with the shovel in your hand.
+- To lift a barrel, put the shovel away (press 1 or tap its slot) so your hands are empty, then click the barrel. You carry the real barrel in front of you and walk slower.
+- To put it down, click or tap anywhere (G also works). It gets a small toss, falls, and rolls like any physical object. A dropped barrel disappears after 3 minutes.
+- The yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, or set a barrel down on it.
+- Tuning numbers are in `src/shared/Config/Game.luau` (swing angles, carry speed, cooldowns).

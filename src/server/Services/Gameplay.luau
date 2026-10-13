@@ -1,47 +1,84 @@
 --!nonstrict
--- Selling hay at the shop. Every sale is decided here, never on the client.
+-- The sell pad by the hay shop. Step on it with hay, or set a barrel down on it, and it sells.
+-- No buttons or prompts. Every sale is decided here, never on the client.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
-local Avatar = require(script.Parent.Avatar)
+local Barrels = require(script.Parent.Barrels)
 
 local Gameplay = {}
 
 local rng = Random.new()
+local lastHaySale = {}
 
-function Gameplay.wireShop(prompt)
-	prompt.Triggered:Connect(function(player)
-		local state = Data.get(player)
-		if not state then
-			return
-		end
+local function sellHay(player)
+	local state = Data.get(player)
+	if not state or state.loadHay <= 0 then
+		return
+	end
+	if os.clock() - (lastHaySale[player] or 0) < 1 then
+		return
+	end
+	lastHaySale[player] = os.clock()
 
-		-- A barrel in your arms is sold along with the hay you scooped.
-		local barrelHay = state.carry and state.carry * Config.ShovelHayPerScoop or 0
-		if state.loadHay <= 0 and barrelHay <= 0 then
-			Data.toast(player, "You have no hay to sell. Scoop some or pick up a barrel.")
-			return
-		end
+	local hay, needles = state.loadHay, state.loadNeedles
+	local value = Economy.rawLoadValue(hay, needles)
+	state.cash += value
+	state.loadHay = 0
+	state.loadNeedles = 0
+	Data.sync(player)
+	Data.toast(
+		player,
+		("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
+	)
+end
 
-		local hay = state.loadHay + barrelHay
-		local needles = state.loadNeedles + Economy.rollNeedles(rng, barrelHay, Config.NeedleChancePerHay)
-		local value = Economy.rawLoadValue(hay, needles)
+local function sellBarrel(b)
+	if b.gone or b.carriedBy or b.scoops <= 0 then
+		return
+	end
+	local hay = b.scoops * Config.ShovelHayPerScoop
+	local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+	local value = Economy.rawLoadValue(hay, needles)
+	local owner = b.ownerId and Players:GetPlayerByUserId(b.ownerId)
+	Barrels.consume(b)
 
+	local state = owner and Data.get(owner)
+	if state then
 		state.cash += value
-		state.loadHay = 0
-		state.loadNeedles = 0
-		if state.carry then
-			state.carry = nil
-			Avatar.clearCarry(player)
-		end
-		Data.sync(player)
+		Data.sync(owner)
 		Data.toast(
-			player,
-			("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
+			owner,
+			("Sold a barrel: %d hay for $%d. The shop found %d needles and paid $1 each."):format(hay, value, needles)
 		)
+	end
+end
+
+function Gameplay.wireSellPad(pad)
+	task.spawn(function()
+		while pad.Parent do
+			task.wait(0.25)
+			local box = pad.CFrame * CFrame.new(0, 3.5, 0)
+			local parts = Workspace:GetPartBoundsInBox(box, Vector3.new(pad.Size.X, 7, pad.Size.Z))
+			local doneBarrels, donePlayers = {}, {}
+			for _, part in parts do
+				local barrel = Barrels.fromPart(part)
+				if barrel and not doneBarrels[barrel] then
+					doneBarrels[barrel] = true
+					sellBarrel(barrel)
+				end
+				local player = part.Parent and Players:GetPlayerFromCharacter(part.Parent)
+				if player and not donePlayers[player] then
+					donePlayers[player] = true
+					sellHay(player)
+				end
+			end
+		end
 	end)
 end
 

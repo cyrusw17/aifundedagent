@@ -3,7 +3,7 @@
 return {
 	WheelbarrowCapacity = 30, -- hay units the wheelbarrow carries
 	ShovelHayPerScoop = 5, -- hay units per scoop with the basic shovel
-	ScoopHoldSeconds = 0.35,
+	ScoopCooldownSeconds = 0.85, -- one click scoops once, then the swing has to finish
 	BarrelScoops = 20, -- scoops in a full barrel
 	BarrelRefillSeconds = 30, -- placeholder until we decide how barrels refill
 	NeedleChancePerHay = 0.2, -- meadow barrels hide about 20 needles per 100 hay
@@ -11,7 +11,6 @@ return {
 
 	-- Carrying a whole barrel
 	CarryWalkSpeed = 8,
-	BarrelPickupHoldSeconds = 0.6,
 	DroppedBarrelSeconds = 180, -- a dropped barrel disappears after this long
 
 	-- Scoop animation tuning (degrees of right-arm swing and seconds). Easy to adjust from playtests.
