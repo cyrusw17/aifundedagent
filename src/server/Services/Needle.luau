@@ -91,6 +91,22 @@ function Needle.spawn(position, ownerId, needleId)
 	return n
 end
 
+-- Same as spawn, at a CFrame (for code that already has one, like spilled hay).
+function Needle.make(cframe, ownerId, needleId)
+	local n = Needle.spawn(cframe.Position, ownerId, needleId)
+	n.CFrame = cframe
+	return n
+end
+
+function Needle.isNeedle(part)
+	return CollectionService:HasTag(part, "Needle")
+end
+
+-- Dollars a found needle sells for at a SELL NEEDLES pad.
+function Needle.value(part)
+	return Needle.info(part:GetAttribute("NeedleId")).sortedValue
+end
+
 -- Throws a needle in an arc from `from` to land at `to`, then lets it settle with physics.
 function Needle.throw(from, to, ownerId, needleId)
 	local n = Needle.spawn(from, ownerId, needleId)
