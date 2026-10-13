@@ -313,8 +313,48 @@ local function nearCounter(player)
 	return root and counter and (root.Position - counter.Position).Magnitude <= COUNTER_REACH
 end
 
+-- Where a bought trailer waits on the lot, beside the lane trucks drive out on, nose toward the road.
+local TRAILER_SPOT = Vector3.new(50, 0.06, 36)
+
+-- Trailers: paid for like trucks, then parked on the lot unhitched. Back your truck up to it and press H.
+local function onBuyTrailer(player, def)
+	if not nearCounter(player) then
+		return false, "Step up to the counter first."
+	end
+	local state = Data.get(player)
+	if not state then
+		return false, "Still loading your save. Try again in a moment."
+	end
+	state.trailers = state.trailers or {}
+	local owns = table.find(state.trailers, def.id) ~= nil
+	if not owns then
+		if not Bank.canAfford(player, def.price) then
+			return false, ("You need $%d more for the %s. The bank on the main road can finance it."):format(def.price - Bank.spendable(state), def.name)
+		end
+		local paid, why = Bank.charge(player, def.price, def.name)
+		if not paid then
+			return false, why
+		end
+		table.insert(state.trailers, def.id)
+		Data.sync(player)
+		task.spawn(Data.save, player)
+	end
+	local trailer = Vehicles.buildTrailer(def, origin * CFrame.lookAt(TRAILER_SPOT, TRAILER_SPOT + Vector3.xAxis), trucksFolder)
+	trailer.Name = player.Name .. "'s " .. def.name
+	Vehicles.makeTrailerLive(trailer, player)
+	Vehicles.setOwnedTrailer(player, trailer)
+	if owns then
+		return true, ("Your %s is on the lot. Back up to it and press H to hitch."):format(def.name)
+	end
+	return true, ("Sold! The %s is on the lot. Back your truck up to it and press H."):format(def.name)
+end
+
 -- The panel's Buy / Get my truck button. Returns ok and a message for the panel.
 local function onBuy(player, id)
+	local trailerDef = typeof(id) == "string" and Vehicles.getTrailer(id)
+	if trailerDef then
+		return onBuyTrailer(player, trailerDef)
+	end
 	local def = typeof(id) == "string" and Vehicles.get(id)
 	if not def then
 		return false, "Unknown truck."
@@ -354,6 +394,16 @@ local function onBuy(player, id)
 		return true, "Hank is bringing your truck round."
 	end
 	return true, ("Sold! The %s is yours. Watch the garage door."):format(def.name)
+end
+
+-- For self-tests (SelfTests/Biome.luau): the same purchase the counter panel makes.
+Dealer.buy = function(player, id)
+	return onBuy(player, id)
+end
+
+-- Where a player stands to buy: the sales rug in front of the counter.
+function Dealer.counterPosition()
+	return counter and counter.Position
 end
 
 function Dealer.build(worldFolder)

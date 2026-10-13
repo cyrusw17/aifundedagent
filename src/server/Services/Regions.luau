@@ -894,6 +894,7 @@ function LANDMARKS.cave(folder, rng)
 		local a = i / 6 * math.pi * 2
 		local p = Map.Cave.mouth:Lerp(c.center, i / 7)
 		local lamp = part(folder, "CaveLamp", Vector3.new(0.8, 0.8, 0.8), CFrame.new(p + Vector3.new(math.cos(a) * 2, 4, 0)), Color3.fromRGB(255, 196, 120), Enum.Material.Neon, nil, false)
+		CollectionService:AddTag(lamp, "AlwaysLit") -- it's always night in the cave
 		light(lamp, Color3.fromRGB(255, 190, 120), 26, 1)
 	end
 	field("Crystal Cave", Map.Cave.hayType, Vector3.new(c.center.X, floorY, c.center.Z), floorY, 8, rng)

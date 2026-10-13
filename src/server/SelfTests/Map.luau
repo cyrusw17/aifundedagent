@@ -160,6 +160,17 @@ return function(SelfTest)
 			truck:Destroy()
 		end
 
+		-- Clock ------------------------------------------------------------------------------------------------
+		local Lighting = game:GetService("Lighting")
+		local WorldClock = require(Services.WorldClock)
+		local was = Lighting.ClockTime
+		Lighting.ClockTime = 0
+		t.check("midnight is night", WorldClock.isNight() and WorldClock.lampsOn())
+		Lighting.ClockTime = 12
+		t.check("noon is day, lamps off", not WorldClock.isNight() and not WorldClock.lampsOn())
+		Lighting.ClockTime = was
+		t.check("the sky has an Atmosphere to tint", Lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
+
 		-- Rich field -------------------------------------------------------------------------------------------
 		if #Regions.fields < 2 then
 			t.skip("the rich field moves on", "fewer than two hay fields")

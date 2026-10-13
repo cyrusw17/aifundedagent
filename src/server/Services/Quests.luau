@@ -1663,7 +1663,12 @@ function Quests.build(worldFolder)
 		for _, anchor in CollectionService:GetTagged("QuestAnchor") do
 			onAnchor(anchor)
 		end
+		-- Anyone who loaded a save while the places went up gets the region quests that just opened.
 		for player in players do
+			local q = questsOf(player)
+			if q then
+				unlockQuests(q)
+			end
 			publish(player)
 		end
 	end)

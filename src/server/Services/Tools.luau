@@ -163,9 +163,29 @@ local function useShovel(player, root, aim)
 			return
 		end
 		local strands, found, unsorted = 0, 0, 0
+		local roomLeft = room
 		for i = #list, 1, -1 do
 			local piece = list[i]
-			if Hay.isNeedle(piece) then
+			if Hay.isPile(piece) then
+				-- A raked pile goes in one scoop, as much of it as you have room for.
+				local take = math.min(Hay.strandsIn(piece), math.max(roomLeft, 0))
+				if take <= 0 then
+					table.remove(list, i)
+					continue
+				end
+				roomLeft -= take
+				strands += take
+				if not piece:GetAttribute("Sorted") then
+					unsorted += take
+				end
+				local weight, tier = Gloves.pieceWeight(piece)
+				state.loadWeight = (state.loadWeight or 0) + weight * take
+				state.loadTier = math.max(state.loadTier or 0, tier)
+				if take < Hay.strandsIn(piece) then
+					Hay.takeFromPile(piece, take)
+					table.remove(list, i) -- the rest of the pile stays on the ground
+				end
+			elseif Hay.isNeedle(piece) then
 				if Hay.sharedNeedles then
 					table.remove(list, i) -- a shared needle is picked up by clicking it, so the shovel leaves it
 				else
@@ -173,6 +193,7 @@ local function useShovel(player, root, aim)
 				end
 			else
 				strands += 1
+				roomLeft -= 1
 				if not piece:GetAttribute("Sorted") then
 					unsorted += 1 -- hay from a sorted bale has had its needles taken out already
 				end

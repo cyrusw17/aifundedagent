@@ -165,6 +165,7 @@ Prices.Pieces = {
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
 	needle_polisher = 12000,
 	alloy_mixer = 20000,
 	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.

@@ -168,6 +168,7 @@ local function spawnSortedBale(cframe, ownerId, hay, hayType)
 	end)
 	return b
 end
+Machines.spawnSortedBale = spawnSortedBale
 
 -- Needle bin: one cell, open on top. Sorters throw real needles into it (Needle.luau) and they pile up.
 -- It comes with a SELL NEEDLES pad in front (local +Z side) that pays the full sorted price for your needles in the
@@ -342,6 +343,15 @@ function Machines.needleBin(parent, frame)
 		end
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
 		Events.fire(player, "needles_sold", count)
+	end
+
+	-- Drops one existing needle (a visible one a sorter caught) into the bin as it is.
+	function bin.put(ownerId, needleId, mult, polished)
+		local at = cornerFor(needleId or Needle.default.id) or Vector3.zero
+		local spread = cornerFor(needleId or Needle.default.id) and 0.7 or 2
+		local n = Needle.make(floor * CFrame.new(at + Vector3.new(rng:NextNumber(-spread, spread), 0.8, rng:NextNumber(-spread, spread))), ownerId, needleId, mult, polished)
+		n.Anchored = false
+		refresh()
 	end
 
 	-- Needles in the bin, as { [key] = count } with Needle.keyOf keys ("steel", or "steel*12" when mutated); a bundle
@@ -635,7 +645,16 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 						passThrough(p) -- already sorted upstream: never sorted twice, and never left jamming the flap
 					end
 				elseif Hay.isPiece(p) then
-					if p:GetAttribute("Sorted") then
+					if Needle.isNeedle(p) then
+						-- A visible needle that spilled from a bale: it goes to the bin as it is, not counted as a strand.
+						if bin and p.Parent then
+							local owner = p:GetAttribute("OwnerId")
+							bin.put(payTo and payTo(owner) or owner, p:GetAttribute("NeedleId"), p:GetAttribute("Mutation"), p:GetAttribute("Polished"))
+							Hay.remove(p)
+						else
+							passThrough(p)
+						end
+					elseif p:GetAttribute("Sorted") then
 						passThrough(p)
 					else
 						table.insert(loose, p)
@@ -718,7 +737,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 								Events.fire(seller, "bale_sold", 1, { hayType = hayType })
 							end
 						end
-					elseif Hay.isPiece(p) then
+					elseif Hay.isPiece(p) and not Needle.isNeedle(p) then -- a visible needle stays for its finder to pick up
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
 						clean = p:GetAttribute("Sorted") == true -- from a sorted bale that broke: its needles are gone
 						take = function()
