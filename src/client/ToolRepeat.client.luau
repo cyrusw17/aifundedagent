@@ -55,7 +55,7 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	local tool = heldTool()
-	if not tool or player:GetAttribute("SettingHoldScoop") == false then
+	if not tool or player:GetAttribute("SettingHoldToScoop") == false then
 		held = nil
 		return
 	end
