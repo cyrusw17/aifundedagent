@@ -11,6 +11,7 @@ local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
+local Tutorial = require(script.Parent.Tutorial)
 
 local Gameplay = {}
 
@@ -33,6 +34,8 @@ local function sellHay(player)
 	state.loadHay = 0
 	state.loadNeedles = 0
 	Data.sync(player)
+	Tutorial.mark(player, "sold")
+	Tutorial.earned(player, value)
 	Data.toast(
 		player,
 		("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
@@ -53,6 +56,8 @@ local function sellBale(b)
 	if state then
 		state.cash += value
 		Data.sync(owner)
+		Tutorial.mark(owner, "sold")
+		Tutorial.earned(owner, value)
 		Data.toast(
 			owner,
 			("Sold a bale: %d hay for $%d. The shop found %d needles and paid $1 each."):format(hay, value, needles)

@@ -11,69 +11,49 @@ local chooseRemote = remotes:WaitForChild("Choose")
 
 local player = Players.LocalPlayer
 
-local INK = Color3.fromRGB(40, 34, 28)
-local PANEL = Color3.fromRGB(199, 186, 153)
-local CARD = Color3.fromRGB(222, 212, 184)
-local RED = Color3.fromRGB(133, 61, 48)
-local GREEN = Color3.fromRGB(87, 107, 71)
-local BROWN = Color3.fromRGB(110, 88, 64)
+local Kit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local C, F, T = Theme.Colors, Theme.Fonts, Theme.Text
 
 if player:GetAttribute("SaveSlot") then
 	return -- already picked (the script reran)
 end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "SaveSlotsGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 50
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = Kit.screen("SaveSlotsGui", 50, true)
 
 local shade = Instance.new("Frame")
 shade.Size = UDim2.fromScale(1, 1)
-shade.BackgroundColor3 = Color3.new(0, 0, 0)
+shade.BackgroundColor3 = C.Shade
 shade.BackgroundTransparency = 0.35
 shade.Active = true
 shade.Parent = gui
 
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(0.5, 0.5)
-panel.Position = UDim2.fromScale(0.5, 0.5)
-panel.Size = UDim2.fromOffset(420, 430)
-panel.BackgroundColor3 = PANEL
-panel.Parent = shade
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = INK
-stroke.Thickness = 2
-local constraint = Instance.new("UISizeConstraint", panel)
-constraint.MaxSize = Vector2.new(420, 430)
-local scale = Instance.new("UIScale", panel)
-local function fit()
-	local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(800, 600)
-	scale.Scale = math.min(1, (view.X - 24) / 420, (view.Y - 24) / 430)
-end
-fit()
-workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+local W, H = 440, 590
+local _, body = Kit.panel(shade, { title = "NEEDLEWOOD", width = W, height = H })
 
-local function text(parent, value, size, y, height, color, font)
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(14, y)
-	label.Size = UDim2.new(1, -28, 0, height)
-	label.Font = font or Enum.Font.GothamBold
-	label.TextSize = size
-	label.TextWrapped = true
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextColor3 = color or INK
-	label.Text = value
-	label.Parent = parent
-	return label
-end
+local subtitle = Kit.label(body, "Pick a save to play.", { size = T.Body, font = F.Medium, color = C.InkSoft, height = 20 })
 
-text(panel, "NEEDLEWOOD", 26, 12, 30)
-text(panel, "Pick a save to play.", 15, 42, 20, INK, Enum.Font.Gotham)
-local message = text(panel, "Loading your saves...", 13, 366, 52, RED, Enum.Font.Gotham)
+-- Returning players get one big button for the save they played last.
+local continueButton = Kit.button(body, "CONTINUE", "go", UDim2.new(1, 0, 0, 56))
+continueButton.Position = UDim2.fromOffset(0, 26)
+continueButton.Font = F.Title
+continueButton.TextSize = 22
+continueButton.Visible = false
+
+local slotsFrame = Instance.new("Frame")
+slotsFrame.BackgroundTransparency = 1
+slotsFrame.Position = UDim2.fromOffset(0, 26)
+slotsFrame.Size = UDim2.new(1, 0, 0, 300)
+slotsFrame.Parent = body
+local slotLayout = Instance.new("UIListLayout")
+slotLayout.Padding = UDim.new(0, 8)
+slotLayout.SortOrder = Enum.SortOrder.LayoutOrder
+slotLayout.Parent = slotsFrame
+
+local message = Kit.label(body, "Loading your saves...", { size = T.Small, color = C.Red, height = 48 })
+message.AnchorPoint = Vector2.new(0, 1)
+message.Position = UDim2.new(0, 0, 1, 0)
+message.TextYAlignment = Enum.TextYAlignment.Top
 
 local busy = false
 
@@ -82,7 +62,7 @@ local function describe(slot)
 		return slot.preset and "Empty. Starts as your preset farm: truck, trailer, silo and a working line." or "Empty. Starts a new farm."
 	end
 	local plot = slot.plot and LandConfig.Plots[slot.plot]
-	local parts = { ("$%d"):format(slot.cash or 0) }
+	local parts = { Kit.money(slot.cash or 0) }
 	table.insert(parts, plot and plot.name or "no land yet")
 	if (slot.trucks or 0) > 0 then
 		table.insert(parts, slot.trucks == 1 and "1 truck" or ("%d trucks"):format(slot.trucks))
@@ -93,51 +73,64 @@ local function describe(slot)
 	return table.concat(parts, "  ·  ")
 end
 
+local function pick(i, used)
+	if busy then
+		return
+	end
+	busy = true
+	message.TextColor3 = C.Ink
+	message.Text = used and "Loading..." or "Starting..."
+	local ok, chosen, reply = pcall(function()
+		return chooseRemote:InvokeServer(i)
+	end)
+	busy = false
+	if ok and chosen then
+		gui:Destroy()
+	else
+		message.TextColor3 = C.Red
+		message.Text = ok and (reply or "Couldn't load that save.") or "Couldn't reach the server. Try again."
+	end
+end
+
 local function show(slots, online)
+	-- The last save played, for CONTINUE.
+	local latest, latestAt = nil, -1
 	for i, slot in slots do
-		local card = Instance.new("Frame")
-		card.Position = UDim2.fromOffset(14, 72 + (i - 1) * 96)
-		card.Size = UDim2.new(1, -28, 0, 86)
-		card.BackgroundColor3 = CARD
-		card.Parent = panel
-		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
-		text(card, (slot.used and "LOAD %d" or "SAVE %d"):format(i), 18, 8, 22)
-		local info = text(card, describe(slot), 13, 30, 34, INK, Enum.Font.Gotham)
+		if slot.used and (slot.savedAt or 0) > latestAt then
+			latest, latestAt = i, slot.savedAt or 0
+		end
+	end
+	if latest then
+		continueButton.Visible = true
+		continueButton.Text = ("CONTINUE  ·  SAVE %d"):format(latest)
+		continueButton.Activated:Connect(function()
+			pick(latest, true)
+		end)
+		slotsFrame.Position = UDim2.fromOffset(0, 92)
+		subtitle.Text = "Welcome back. Pick up where you left off, or choose a save."
+	end
+
+	for i, slot in slots do
+		local card = Kit.card(slotsFrame, 88)
+		card.LayoutOrder = i
+		local title = Kit.label(card, (slot.used and "SAVE %d" or "EMPTY SLOT %d"):format(i), { size = T.Heading, font = F.Title, wrap = false })
+		title.Position = UDim2.fromOffset(12, 8)
+		title.Size = UDim2.new(1, -150, 0, 22)
+		local info = Kit.label(card, describe(slot), { size = T.Small, color = C.InkSoft })
+		info.Position = UDim2.fromOffset(12, 32)
 		info.Size = UDim2.new(1, -150, 0, 48)
-		local button = Instance.new("TextButton")
+		info.TextYAlignment = Enum.TextYAlignment.Top
+		local button = Kit.button(card, slot.used and "LOAD" or "NEW GAME", slot.used and "go" or "wood", UDim2.fromOffset(116, 40))
 		button.AnchorPoint = Vector2.new(1, 0.5)
-		button.Position = UDim2.new(1, -10, 0.5, 0)
-		button.Size = UDim2.fromOffset(110, 40)
-		button.Font = Enum.Font.GothamBold
-		button.TextSize = 16
-		button.Text = slot.used and "LOAD" or "NEW GAME"
-		button.TextColor3 = Color3.new(1, 1, 1)
-		button.BackgroundColor3 = slot.used and GREEN or BROWN
-		button.Parent = card
-		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+		button.Position = UDim2.new(1, -12, 0.5, 0)
 		button.Activated:Connect(function()
-			if busy then
-				return
-			end
-			busy = true
-			message.TextColor3 = INK
-			message.Text = slot.used and "Loading..." or "Starting..."
-			local ok, chosen, reply = pcall(function()
-				return chooseRemote:InvokeServer(i)
-			end)
-			busy = false
-			if ok and chosen then
-				gui:Destroy()
-			else
-				message.TextColor3 = RED
-				message.Text = ok and (reply or "Couldn't load that save.") or "Couldn't reach the server. Try again."
-			end
+			pick(i, slot.used)
 		end)
 	end
 	if online then
 		message.Text = ""
 	else
-		message.TextColor3 = RED
+		message.TextColor3 = C.Red
 		message.Text = "Saving is off, so this game won't be kept. In Studio, turn on Game Settings > Security > "
 			.. "Enable Studio Access to API Services."
 	end

@@ -127,6 +127,8 @@ local function stateFrom(saved)
 		trailers = stringList(saved.trailers),
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... } } once a plot is bought.
 		land = nil,
+		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
+		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -253,7 +255,7 @@ function Data.save(player)
 	end
 	-- With infinite money on, the save keeps the balance the player had before, not the test cash.
 	local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land }
+	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land, tutorial = state.tutorial }
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
 		list[state.slot] = summarize(saved)

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
+local WorldLabel = require(ReplicatedStorage.Shared.WorldLabel)
 local Data = require(script.Parent.Data)
 local GloveLooks = require(script.Parent.GloveLooks)
 
@@ -217,20 +218,7 @@ function Gloves.buildStand(parent, cframe)
 		leg.Parent = stand
 	end
 
-	local sign = Instance.new("BillboardGui")
-	sign.Size = UDim2.fromOffset(200, 40)
-	sign.StudsOffset = Vector3.new(0, 3, 0)
-	sign.MaxDistance = 60
-	sign.Parent = top
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = "GLOVES"
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = sign
+	WorldLabel.billboard(top, "GLOVES", { offset = Vector3.new(0, 3, 0), kind = "status" })
 
 	local slot = 0
 	for _, def in GloveConfig.Tiers do

@@ -22,30 +22,30 @@ local T = Factory.TileSize
 local DIRS = { "N", "E", "S", "W" }
 local DIR_VECTORS = { N = Vector3.new(0, 0, -1), E = Vector3.new(1, 0, 0), S = Vector3.new(0, 0, 1), W = Vector3.new(-1, 0, 0) }
 
-local INK = Color3.fromRGB(40, 34, 28)
-local PANEL = Color3.fromRGB(199, 186, 153)
-local CARD = Color3.fromRGB(222, 212, 184)
-local RED = Color3.fromRGB(133, 61, 48)
-local GREEN = Color3.fromRGB(87, 107, 71)
-local MUTED = Color3.fromRGB(150, 140, 120)
-local PICKED = Color3.fromRGB(176, 146, 82)
+local Kit = require(Shared:WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local F = Theme.Fonts
+local INK = Theme.Colors.Ink
+local PANEL = Theme.Colors.Paper
+local CARD = Theme.Colors.Card
+local RED = Theme.Colors.Red
+local GREEN = Theme.Colors.Green
+local MUTED = Theme.Colors.Muted
+local PICKED = Theme.Colors.Picked
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "LandGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = Kit.screen("LandGui", 10, true)
 
-local function corner(instance, radius)
-	Instance.new("UICorner", instance).CornerRadius = UDim.new(0, radius or 8)
-end
+local corner = Kit.corner
+
+local panelBody -- the land office panel's body, set below
 
 local function text(parent, value, size, y, height, color, font)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(14, y)
-	label.Size = UDim2.new(1, -28, 0, height)
-	label.Font = font or Enum.Font.GothamBold
+	local inset = parent == panelBody and 0 or 14
+	label.Position = UDim2.fromOffset(inset, y)
+	label.Size = UDim2.new(1, -inset * 2, 0, height)
+	label.Font = font or F.Bold
 	label.TextSize = size
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -57,10 +57,10 @@ end
 
 local function button(parent, label, color)
 	local b = Instance.new("TextButton")
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 14
 	b.Text = label
-	b.TextColor3 = Color3.new(1, 1, 1)
+	b.TextColor3 = Theme.Colors.Cream
 	b.BackgroundColor3 = color or GREEN
 	b.Parent = parent
 	corner(b, 6)
@@ -79,25 +79,22 @@ end
 
 -- Land office panel ---------------------------------------------------------------------------------------------------
 
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -16, 0.5, 0)
-panel.Size = UDim2.fromOffset(340, 440)
-panel.BackgroundColor3 = PANEL
+local panel
+panel, panelBody = Kit.panel(gui, {
+	title = "MEADOW LAND OFFICE",
+	width = 340,
+	height = 490,
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(1, -16, 0.5, 0),
+})
 panel.Visible = false
-panel.Parent = gui
-corner(panel, 12)
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = INK
-stroke.Thickness = 2
 
-text(panel, "MEADOW LAND OFFICE", 22, 10, 28)
-local ownedLabel = text(panel, "", 14, 38, 20, GREEN)
-local panelMessage = text(panel, "", 14, 404, 30, RED, Enum.Font.Gotham)
+local ownedLabel = text(panelBody, "", 14, 0, 20, GREEN)
+local panelMessage = text(panelBody, "", 14, 400, 30, RED, F.Body)
 
 local list = Instance.new("ScrollingFrame")
-list.Position = UDim2.fromOffset(10, 62)
-list.Size = UDim2.new(1, -20, 0, 338)
+list.Position = UDim2.fromOffset(0, 26)
+list.Size = UDim2.new(1, 0, 0, 368)
 list.BackgroundTransparency = 1
 list.BorderSizePixel = 0
 list.ScrollBarThickness = 6
@@ -148,7 +145,7 @@ for index, def in LandConfig.Plots do
 	card.Parent = list
 	corner(card)
 	text(card, def.name, 17, 6, 22)
-	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, Enum.Font.Gotham)
+	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, F.Body)
 	local b = button(card, "", GREEN)
 	b.AnchorPoint = Vector2.new(1, 1)
 	b.Position = UDim2.new(1, -8, 1, -8)
@@ -226,7 +223,7 @@ local barStroke = Instance.new("UIStroke", bar)
 barStroke.Color = INK
 barStroke.Thickness = 2
 
-local infoLabel = text(bar, "", 13, 6, 34, INK, Enum.Font.Gotham)
+local infoLabel = text(bar, "", 13, 6, 34, INK, F.Body)
 infoLabel.Size = UDim2.new(1, -28, 0, 34)
 
 local pieceRow = Instance.new("ScrollingFrame")
@@ -302,7 +299,7 @@ for i, def in LandConfig.Pieces do
 	b.LayoutOrder = i
 	b.Size = UDim2.fromOffset(118, 52)
 	b.BackgroundColor3 = CARD
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK

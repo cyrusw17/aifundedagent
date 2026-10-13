@@ -5,69 +5,81 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "NeedlewoodHud"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
+local Kit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local C, F = Theme.Colors, Theme.Fonts
 
+local gui = Kit.screen("NeedlewoodHud", 4)
+
+-- The HUD card: cash, what you carry, a load bar and a one-line hint. The goal bar and the MAP / SHOP / HELP
+-- buttons sit right under it (Menus.client.luau).
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(230, 112)
 panel.Position = UDim2.fromOffset(14, 14)
-panel.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
-panel.BackgroundTransparency = 0.25
+panel.BackgroundColor3 = C.Wood
+panel.BackgroundTransparency = 0.1
 panel.Parent = gui
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+Kit.corner(panel, 10)
+Kit.stroke(panel, C.Ink, 1.5)
 
 local function makeLabel(y, size)
 	local label = Instance.new("TextLabel")
 	label.Position = UDim2.fromOffset(12, y)
 	label.Size = UDim2.new(1, -24, 0, size)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = size - 4
+	label.Font = F.Bold
+	label.TextSize = size - 6
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextColor3 = C.Cream
+	label.TextTruncate = Enum.TextTruncate.AtEnd
 	label.Parent = panel
 	return label
 end
 
 local cashLabel = makeLabel(8, 30)
-cashLabel.TextColor3 = Color3.fromRGB(125, 255, 168)
+cashLabel.Font = F.Title
+cashLabel.TextColor3 = C.Cash
 local loadLabel = makeLabel(40, 22)
 
 local barBack = Instance.new("Frame")
-barBack.Position = UDim2.fromOffset(12, 68)
+barBack.Position = UDim2.fromOffset(12, 66)
 barBack.Size = UDim2.new(1, -24, 0, 10)
-barBack.BackgroundColor3 = Color3.fromRGB(60, 78, 66)
+barBack.BackgroundColor3 = C.Ink
+barBack.BorderSizePixel = 0
 barBack.Parent = panel
-Instance.new("UICorner", barBack).CornerRadius = UDim.new(0, 5)
+Kit.corner(barBack, 5)
 
 local bar = Instance.new("Frame")
 bar.Size = UDim2.fromScale(0, 1)
-bar.BackgroundColor3 = Color3.fromRGB(189, 168, 112)
+bar.BackgroundColor3 = C.Hay
+bar.BorderSizePixel = 0
 bar.Parent = barBack
-Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 5)
+Kit.corner(bar, 5)
 
 -- One line saying what a click does with what is in your hands right now.
-local hintLabel = makeLabel(84, 20)
-hintLabel.Font = Enum.Font.Gotham
-hintLabel.TextColor3 = Color3.fromRGB(214, 226, 218)
+local hintLabel = makeLabel(82, 22)
+hintLabel.Font = F.Medium
+hintLabel.TextColor3 = C.Cream
+hintLabel.TextTransparency = 0.15
 
+-- Short messages from the server (sales, purchases) at the top of the screen.
 local toast = Instance.new("TextLabel")
 toast.AnchorPoint = Vector2.new(0.5, 0)
 toast.Position = UDim2.new(0.5, 0, 0, 16)
-toast.Size = UDim2.fromOffset(460, 44)
-toast.BackgroundColor3 = Color3.fromRGB(20, 34, 26)
-toast.BackgroundTransparency = 0.15
-toast.Font = Enum.Font.GothamBold
-toast.TextSize = 18
+toast.Size = UDim2.fromOffset(440, 0)
+toast.AutomaticSize = Enum.AutomaticSize.Y
+toast.BackgroundColor3 = C.Wood
+toast.BackgroundTransparency = 0.05
+toast.Font = F.Bold
+toast.TextSize = 16
 toast.TextWrapped = true
-toast.TextColor3 = Color3.new(1, 1, 1)
+toast.TextColor3 = C.Cream
 toast.Visible = false
 toast.Parent = gui
-Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
+Kit.corner(toast, 10)
+Kit.stroke(toast, C.Ink, 1.5)
+Kit.pad(toast, 10)
 
 local dropRemote = ReplicatedStorage:WaitForChild("DropBale")
 local aimRemote = ReplicatedStorage:WaitForChild("ToolAim")
@@ -118,7 +130,7 @@ local function refresh()
 	local hay = player:GetAttribute("LoadHay") or 0
 	local cap = (player:GetAttribute("LoadCap") or 1) + (player:GetAttribute("LoadCapBonus") or 0)
 	local carrying = player:GetAttribute("Carrying")
-	cashLabel.Text = ("$%d"):format(cash)
+	cashLabel.Text = Kit.money(cash)
 	if carrying then
 		loadLabel.Text = "Carrying a bale"
 		hintLabel.Text = "Click or G: set it down"

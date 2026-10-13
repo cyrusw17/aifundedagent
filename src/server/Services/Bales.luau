@@ -13,6 +13,7 @@ local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
+local Tutorial = require(script.Parent.Tutorial)
 local Props = require(script.Parent.Props)
 
 local Bales = {}
@@ -223,6 +224,7 @@ function Bales.breakOpen(player, b)
 	end
 	b.breaking = true
 	b.prompt.Enabled = false
+	Tutorial.mark(player, "broke")
 	scheduleRegrow(b)
 
 	task.spawn(function()
