@@ -146,15 +146,14 @@ local function buildSilo(plot, item, def)
 
 	local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
 	if mesh then
-		Props.restOn(mesh, 0)
+		Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
 		for _, p in mesh:GetDescendants() do
 			if p:IsA("BasePart") then
 				p.CanCollide = false
 			end
 		end
-		mesh.Parent = model
-		body.Transparency = 1
-		cap.Transparency = 1
+		-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
+		Props.weldTo(mesh, body, { body, cap })
 	end
 
 	item.stored = math.clamp(item.stored or 0, 0, LandConfig.SiloCapacity)
