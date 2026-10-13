@@ -136,6 +136,64 @@ function LineMath.lamp(s: { [string]: any }): (string, string?)
 	return "green", nil
 end
 
+-- How a needle bin keeps its part count bounded however long a line runs (CEO #35). parts: { { key, count } }, one per
+-- needle part in the bin (a single is count 1). Returns the merges to make: { { key = key, parts = { indices },
+-- count = total } }. Per key: plain singles tie into bundles of `bundle`; once a key has `crateAt` or more stacked
+-- parts (bundles and crates), or `crateAt` mutated singles, they all become one crate. So a key never holds more than
+-- bundle - 1 plain singles, crateAt - 1 mutated singles and crateAt - 1 bundles plus one crate.
+LineMath.CRATE_AT = 5
+function LineMath.pack(parts: { { any } }, bundle: number, crateAt: number?): { { [string]: any } }
+	local at = crateAt or LineMath.CRATE_AT
+	local byKey: { [string]: { singles: { number }, stacks: { number } } } = {}
+	for i, p in parts do
+		local g = byKey[p[1]] or { singles = {}, stacks = {} }
+		byKey[p[1]] = g
+		table.insert(if p[2] > 1 then g.stacks else g.singles, i)
+	end
+	local merges = {}
+	for key, g in byKey do
+		local _, mult = LineMath.parseKey(key)
+		if mult == 1 then
+			while #g.singles >= bundle do
+				local tie = {}
+				for _ = 1, bundle do
+					table.insert(tie, table.remove(g.singles))
+				end
+				table.insert(merges, { key = key, parts = tie, count = bundle })
+				table.insert(g.stacks, -#merges) -- a bundle made this round, counted toward the crate below
+			end
+		elseif #g.singles >= at then
+			table.insert(merges, { key = key, parts = g.singles, count = #g.singles })
+			continue
+		end
+		if #g.stacks >= at then
+			local crate, total = {}, 0
+			for _, i in g.stacks do
+				if i < 0 then
+					-- Fold a bundle made this round straight into the crate instead.
+					local made = merges[-i]
+					for _, j in made.parts do
+						table.insert(crate, j)
+					end
+					total += made.count
+					merges[-i] = false :: any
+				else
+					table.insert(crate, i)
+					total += parts[i][2]
+				end
+			end
+			table.insert(merges, { key = key, parts = crate, count = total })
+		end
+	end
+	local out = {}
+	for _, m in merges do
+		if m then
+			table.insert(out, m)
+		end
+	end
+	return out
+end
+
 -- How a pile of plain needles packs: whole bundles of `size` and the loose rest.
 function LineMath.bundles(count: number, size: number): (number, number)
 	return count // size, count % size

@@ -166,10 +166,35 @@ def barn_key(f):
 # ---------------------------------------------------------------- bale
 
 def golden_hay_bale(f):
-    """Exactly the game bale (4.6 long x 2.6 high x 3.2 deep studs) in golden straw with twine bands."""
+    """Exactly the game bale (4.6 long x 2.6 high x 3.2 deep studs): the house straw texture tinted gold
+    (#D9B04A mid) with twine bands and four tiny warm glints, so the reward reads as precious (B2-2)."""
+    import common
+    import style
     hay_bale.BEVEL = max(f.bevel, 0.001)
-    gold = f.apply(f.shape(hay_bale.build_hay(), round_edges=False), "paint_yellow")
-    return [gold] + [f.apply(b, "twine") for b in hay_bale.build_twine()]
+    gold = f.shape(hay_bale.build_hay(), round_edges=False)
+    pal = ((0.98, 0.84, 0.46), (0.85, 0.69, 0.29), (0.62, 0.46, 0.16))
+    mat = f._mat("hay_gold", lambda: common.texture_material(
+        "rustic_hay_gold", common.make_texture("rustic_hay_gold", 256, style.straw_texture(pal, f.contrast)),
+        metallic=0.3))
+    common.box_uv(gold, scale=1.6, along="x")
+    common.assign(gold, mat)
+
+    def glint_mat():
+        m = common.material("glint", common.srgb((1.0, 0.93, 0.7)), roughness=0.2)
+        bsdf = m.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs["Emission Color"].default_value = (*common.srgb((1.0, 0.9, 0.6)), 1)
+        bsdf.inputs["Emission Strength"].default_value = 3.0
+        return m
+    parts = [gold] + [f.apply(b, "twine") for b in hay_bale.build_twine()]
+    # Four glints: tiny four-point stars just proud of the top and front faces.
+    for x, y, z, axis in ((-1.4, 0.6, 2.63, "z"), (1.1, -0.9, 2.63, "z"), (0.4, -1.63, 1.6, "y"),
+                          (-0.9, -1.63, 0.9, "y")):
+        for a in (0.0, math.pi / 2):
+            o = box(s(0.36, 0.06, 0.02) if axis == "z" else s(0.36, 0.02, 0.06), s(x, y, z),
+                    rot=(0, 0, a) if axis == "z" else (0, a, 0))
+            common.assign(o, f._mat("glint", glint_mat))
+            parts.append(o)
+    return parts
 
 
 # ---------------------------------------------------------------- alien beacon

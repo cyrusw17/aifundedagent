@@ -38,16 +38,17 @@ Needle.MUTATION = { chance = MUTATION_CHANCE, min = MUTATION_MIN, max = MUTATION
 local FANFARE = "rbxasset://sounds/victory.wav"
 
 -- Color per needle type, and whether it glows. Common types are plain metal; the rare maps glow.
+-- Glow (Neon) starts at Epic, as STYLE.md settles rarity: common to Rare types are plain metal in their own color.
 local LOOKS = {
 	steel = { Color3.fromRGB(150, 158, 166), false },
 	pine = { Color3.fromRGB(96, 140, 84), false },
 	sand = { Color3.fromRGB(214, 186, 120), false },
-	ice = { Color3.fromRGB(170, 220, 240), true },
+	ice = { Color3.fromRGB(170, 220, 240), false },
 	bog = { Color3.fromRGB(110, 128, 70), false },
 	coral = { Color3.fromRGB(214, 120, 104), false },
 	brass = { Color3.fromRGB(181, 148, 72), false },
-	obsidian = { Color3.fromRGB(60, 40, 70), true },
-	geode = { Color3.fromRGB(170, 110, 220), true },
+	obsidian = { Color3.fromRGB(96, 64, 112), false },
+	geode = { Color3.fromRGB(170, 110, 220), false },
 	cloud = { Color3.fromRGB(240, 244, 255), true },
 	phantom = { Color3.fromRGB(120, 230, 210), true },
 	cosmic = { Color3.fromRGB(80, 70, 220), true },
@@ -527,69 +528,76 @@ function Needle.inBox(cframe, size)
 	return found
 end
 
--- A bundle of 10 plain needles of one type at cframe.
-function Needle.bundle(cframe, ownerId, needleId, polished)
-	local b = Needle.spawn(cframe.Position, ownerId, needleId, 1, polished)
-	b.Name = "NeedleBundle"
-	b.Size = BUNDLE_SIZE
+-- A bundle of 10 plain needles of one type at cframe. With count (more than 10, or mutated needles of one key), it is a
+-- fatter sheaf tied twice: a crate, so a bin that runs all night stays a few parts per needle kind (LineMath.pack).
+function Needle.bundle(cframe, ownerId, needleId, polished, count, mult)
+	count = count or BUNDLE
+	local b = Needle.spawn(cframe.Position, ownerId, needleId, mult or 1, polished)
+	local crate = count > BUNDLE or (mult or 1) > 1
+	b.Name = crate and "NeedleCrate" or "NeedleBundle"
+	b.Size = crate and BUNDLE_SIZE * Vector3.new(1.15, 1.5, 1.5) or BUNDLE_SIZE
 	b.CFrame = cframe
-	b:SetAttribute("Count", BUNDLE)
-	local band = Instance.new("Part")
-	band.Name = "Twine"
-	band.Shape = Enum.PartType.Cylinder
-	band.Size = Vector3.new(0.2, BUNDLE_SIZE.Y + 0.08, BUNDLE_SIZE.Z + 0.08)
-	band.CFrame = b.CFrame
-	band.Color = TWINE
-	band.Material = Enum.Material.Fabric
-	band.CanCollide = false
-	band.CanQuery = false
-	band.CanTouch = false
-	band.Massless = true
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = b
-	weld.Part1 = band
-	weld.Parent = band
-	band.Parent = b
+	b:SetAttribute("Count", count)
+	for _, x in (crate and { -0.3, 0.3 } or { 0 }) do
+		local band = Instance.new("Part")
+		band.Name = "Twine"
+		band.Shape = Enum.PartType.Cylinder
+		band.Size = Vector3.new(0.2, b.Size.Y + 0.08, b.Size.Z + 0.08)
+		band.CFrame = b.CFrame * CFrame.new(x * b.Size.X, 0, 0)
+		band.Color = TWINE
+		band.Material = Enum.Material.Fabric
+		band.CanCollide = false
+		band.CanQuery = false
+		band.CanTouch = false
+		band.Massless = true
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = b
+		weld.Part1 = band
+		weld.Parent = band
+		band.Parent = b
+	end
 	return b
 end
 Needle.BUNDLE = BUNDLE
 
--- Ties every 10 plain needles of one type and owner resting in a box into one bundle. Needles still flying in
--- (anchored), mutated needles and bundles are left alone. Returns how many bundles it tied.
+-- Packs the needles resting in a box (a needle bin) by owner and key with LineMath.pack: every 10 plain singles tie
+-- into a bundle, and once a key has LineMath.CRATE_AT stacks (or mutated singles) they become one crate. Needles still
+-- flying in are left alone. A merged part is anchored when any part of it was (a pile restored from a save).
+-- Returns how many parts it made.
 function Needle.bundleIn(cframe, size)
-	local groups = {}
+	local byOwner = {}
 	for _, n in Needle.inBox(cframe, size) do
-		if not n.Anchored and Needle.count(n) == 1 and not n:GetAttribute("Mutation") then
-			local k = ("%s|%s|%s|%s"):format(
-				tostring(n:GetAttribute("OwnerId")),
-				n:GetAttribute("NeedleId") or Needle.default.id,
-				tostring(n:GetAttribute("Polished") == true),
-				n:GetAttribute("Grade") or "B"
-			)
-			groups[k] = groups[k] or {}
-			table.insert(groups[k], n)
+		if not (n.Anchored and not n.CanCollide) then -- anchored and not solid: still in the air (Needle.throw)
+			local owner = n:GetAttribute("OwnerId") or 0
+			byOwner[owner] = byOwner[owner] or {}
+			table.insert(byOwner[owner], n)
 		end
 	end
-	local tied = 0
-	for _, list in groups do
-		while #list >= BUNDLE do
-			local center = Vector3.zero
-			local first = list[1]
-			for i = 1, BUNDLE do
-				center += list[i].Position / BUNDLE
+	local made = 0
+	for ownerId, list in byOwner do
+		local parts = {}
+		for i, n in list do
+			parts[i] = { Needle.keyOfPart(n), Needle.count(n) }
+		end
+		for _, m in LineMath.pack(parts, BUNDLE) do
+			local center, anchored, polishedAll = Vector3.zero, false, true
+			for _, i in m.parts do
+				local n = list[i]
+				center += n.Position / #m.parts
+				anchored = anchored or n.Anchored
+				polishedAll = polishedAll and n:GetAttribute("Polished") == true
 			end
-			local ownerId, needleId = first:GetAttribute("OwnerId"), first:GetAttribute("NeedleId")
-			local polished = first:GetAttribute("Polished") == true
-			local grade = first:GetAttribute("Grade")
-			for _ = 1, BUNDLE do
-				(table.remove(list, 1) :: BasePart):Destroy()
+			local id, mult, _, grade = LineMath.parseKey(m.key)
+			for _, i in m.parts do
+				list[i]:Destroy()
 			end
-			local b = Needle.setGrade(Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId, needleId, polished), grade)
-			glint(b, 10)
-			tied += 1
+			local b = Needle.setGrade(Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId ~= 0 and ownerId or nil, id, polishedAll, m.count, mult), grade)
+			b.Anchored = anchored
+			glint(b, math.min(m.count, 20))
+			made += 1
 		end
 	end
-	return tied
+	return made
 end
 
 Players.PlayerRemoving:Connect(function(player)

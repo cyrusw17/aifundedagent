@@ -12,6 +12,7 @@ local Prices = require(Shared.Config.Prices)
 local WorldRegions = require(Shared.WorldRegions)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
+local WorldShape = require(script.Parent.WorldShape)
 
 local Discoveries = {}
 
@@ -47,6 +48,37 @@ for _, d in Map.Discoveries do
 		table.insert(landmarks, entry)
 	end
 end
+
+-- Where the first-visit camera pan looks (#24): the region's first landmark, else its peak, else its middle.
+-- Sky Island looks at the zeppelin platform; the Crystal Cave has no pan (the camera would clip the rock).
+local focusCache = {}
+function Discoveries.focus(id)
+	if focusCache[id] ~= nil then
+		return focusCache[id] or nil
+	end
+	local at = nil
+	if id == WorldRegions.Sky.id then
+		at = Map.Zeppelin.b.pos
+	elseif id ~= WorldRegions.Cave.id then
+		for _, entry in landmarks do
+			local y = WorldShape.heightAt(entry.at.X, entry.at.Y)
+			local region = WorldRegions.at(Vector3.new(entry.at.X, y + 2, entry.at.Y))
+			if region and region.id == id then
+				at = Vector3.new(entry.at.X, math.max(y, Map.SeaLevel), entry.at.Y)
+				break
+			end
+		end
+		local r = not at and WorldShape.region(id)
+		if r then
+			local c = r.peak and r.peak.center or Vector2.new(r.cx, r.cz)
+			at = Vector3.new(c.X, math.max(WorldShape.heightAt(c.X, c.Y), Map.SeaLevel), c.Y)
+		end
+	end
+	focusCache[id] = at or false
+	return at
+end
+
+local introRemote = nil
 
 -- A discovery made by finding something rather than by walking up to it (Wilds hidden spots): stamped by
 -- Discoveries.discover when it's found; kind "hidden" pays nothing here (the find pays its own reward).
@@ -103,6 +135,16 @@ function Discoveries.discover(player, id)
 	if entry.kind ~= "hidden" then -- a hidden find already said so
 		Data.toast(player, ("Discovered: %s! +$%d   (%d of %d)"):format(entry.name, reward, count, #list))
 	end
+	-- First time in a region on this save: a short camera pan over its landmark (RegionIntro.client.luau).
+	local focus = entry.kind == "region" and Discoveries.focus(id)
+	if focus and introRemote then
+		task.spawn(function()
+			pcall(player.RequestStreamAroundAsync, player, focus, 4)
+			if player.Parent then
+				pcall(introRemote.FireClient, introRemote, player, entry.name, focus)
+			end
+		end)
+	end
 	publish(player)
 	return true
 end
@@ -129,6 +171,9 @@ function Discoveries.start()
 		return
 	end
 	started = true
+	introRemote = Instance.new("RemoteEvent")
+	introRemote.Name = "RegionIntro"
+	introRemote.Parent = ReplicatedStorage
 	Data.loaded.Event:Connect(publish)
 	for _, player in Players:GetPlayers() do
 		if Data.get(player) then
