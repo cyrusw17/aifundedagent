@@ -602,6 +602,7 @@ end
 function Vehicles.buildTrailer(def, pivot, parent)
 	local model = Instance.new("Model")
 	model.Name = def.name
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- the hinged wheels stream in with the bed
 	model:SetAttribute("TrailerId", def.id)
 	local inside, W, L = trailerSize(def)
 	local floorTop = DEFAULT_SHAPE.bedFloor
@@ -917,6 +918,8 @@ local function driverOf(model, owner)
 	return player or owner
 end
 
+local FAR_PARKED = 250 -- studs from its owner past which a parked vehicle goes back to the server
+
 local function updateCargo()
 	local now = {}
 	local load = {} -- model -> mass of the bales riding in it
@@ -928,6 +931,19 @@ local function updateCargo()
 		end
 		-- Lashed on a ferry (Ferry.luau) the truck is part of the server's ferry, so it and its cargo are too.
 		local simulator = if model:GetAttribute("OnFerry") then nil else driverOf(model, player)
+		-- Parked with its owner far away (or gone): the server simulates it and its load, so a client that no longer
+		-- streams it cannot leave it frozen or let its bales fall through the world.
+		if simulator == player then
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not root or (root.Position - chassis.Position).Magnitude > FAR_PARKED then
+				simulator = nil
+				pcall(function()
+					if chassis:GetNetworkOwner() ~= nil then
+						chassis:SetNetworkOwner(nil)
+					end
+				end)
+			end
+		end
 		-- Keep the driver simulating the truck they sit in. Ownership can be reset (anchoring, a ferry ride), and a
 		-- truck the server simulates ignores the driver's controls.
 		if simulator and not model:GetAttribute("TrailerId") then
@@ -1105,6 +1121,10 @@ function Vehicles.recover(player, mode)
 		lastTow[player] = os.clock()
 		local spot = Meadow.TowSpot
 		ground = CFrame.lookAt(spot, spot + Vector3.xAxis)
+		-- With streaming on, the driver's client must have the lot loaded before the truck lands there.
+		pcall(function()
+			player:RequestStreamAroundAsync(spot, 10)
+		end)
 	elseif mode == "flip" then
 		if chassis.AssemblyLinearVelocity.Magnitude > 8 then
 			return false, "Wait for it to stop rolling."

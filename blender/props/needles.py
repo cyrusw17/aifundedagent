@@ -377,7 +377,7 @@ def thin_needle(f, kind, length, t, x, y, z):
 
 
 def needle_bundle(f):
-    """3 x 0.6 x 0.6 studs, 296 tris: ten grey needles 3 studs long packed 2-3-3-2, eyes all at the
+    """1.3 x 0.55 x 0.55 studs (the game's bundle part), 296 tris: ten grey needles packed 2-3-3-2, eyes all at the
     -x end, tied with two twine bands."""
     parts = []
     t = 0.15
@@ -385,10 +385,10 @@ def needle_bundle(f):
     for row, count in enumerate(rows):
         for i in range(count):
             y = (i - (count - 1) / 2) * t
-            parts += thin_needle(f, "metal", 2.9 + 0.03 * ((row + i) % 3), t, 0.0, y, t / 2 + row * t * 0.87)
+            parts += thin_needle(f, "metal", 1.24 + 0.02 * ((row + i) % 3), t, 0.0, y, t / 2 + row * t * 0.87)
     zc = t / 2 + 1.5 * t * 0.87
-    for x in (-0.7, 0.55):
-        band = cyl(0.3 * STUD, 0.14 * STUD, s(x, 0, zc), verts=8, rot=(0, math.pi / 2, 0))
+    for x in (-0.3, 0.25):
+        band = cyl(0.27 * STUD, 0.1 * STUD, s(x, 0, zc), verts=8, rot=(0, math.pi / 2, 0))
         parts.append(f.apply(band, "twine", along="x"))
     return parts
 

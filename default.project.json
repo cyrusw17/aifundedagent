@@ -21,7 +21,9 @@
     },
     "Workspace": {
       "$properties": {
-        "StreamingEnabled": false
+        "StreamingEnabled": true,
+        "StreamingTargetRadius": 1024,
+        "StreamingMinRadius": 128
       },
       "Terrain": {
         "$className": "Terrain",

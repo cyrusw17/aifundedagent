@@ -14,6 +14,8 @@ local MapConfig = require(Shared.Config.WorldMap)
 local Quests = require(Services.Quests)
 local Events = require(Services.Events)
 local Data = require(Services.Data)
+local Regions = require(Services.Regions)
+local WorldShape = require(Services.WorldShape)
 
 local function spotIdsOf(step)
 	return step.spots or (step.spot and { step.spot }) or {}
@@ -95,7 +97,8 @@ return function(SelfTest)
 		for id, def in QuestConfig.Spots do
 			local spot = Quests.spot(id)
 			local built = spot and spot.model and spot.model.Parent and spot.base
-			if not built and (def.pos or def.fallback or def.world or def.wander or def.inMaze) then
+			local expected = def.pos or def.fallback or def.world or def.wander or def.inMaze
+			if not built and (expected or (def.sea and #Regions.fields > 0)) then
 				table.insert(missing, id)
 			elseif built and spot.base.Position.Y < MapConfig.SeaLevel then
 				table.insert(wet, ("%s (y %.0f)"):format(id, spot.base.Position.Y))
@@ -123,6 +126,47 @@ return function(SelfTest)
 			table.insert(keyDetail, offset and ("(%.0f, %.0f)"):format(offset.X, offset.Z) or "missing")
 		end
 		t.check("three corn keys sit inside the maze", keysOk, table.concat(keyDetail, " "))
+
+		-- The Straw Labyrinth: straw walls, a start line and a bell. Every run spot has a start line.
+		local function countParts(spot, name)
+			local n = 0
+			for _, p in (spot and spot.model and spot.model:GetChildren()) or {} do
+				if p.Name == name then
+					n += 1
+				end
+			end
+			return n
+		end
+		local lab = Quests.spot("straw_labyrinth")
+		t.check(
+			"the straw labyrinth has its walls",
+			countParts(lab, "StrawWall") >= 20,
+			("%d walls"):format(countParts(lab, "StrawWall"))
+		)
+		for id in QuestConfig.Runs do
+			local spot = Quests.spot(id)
+			if spot or id ~= "drowned_rows" or #Regions.fields > 0 then
+				t.check(id .. " has a start line", spot ~= nil and spot.startAt ~= nil)
+			end
+		end
+		-- The Drowned Rows: pilings standing in real water (only once the world map and its sea exist).
+		local rows = Quests.spot("drowned_rows")
+		if rows and rows.position then
+			local _, floor, water = pcall(WorldShape.column, rows.position.X, rows.position.Z)
+			t.check(
+				"the drowned rows stand in the sea",
+				water ~= nil and floor < water - 6,
+				("floor %s, water %s"):format(tostring(floor), tostring(water))
+			)
+			t.check("the drowned rows' entrance faces the beach (north)", rows.startAt.Z < rows.position.Z)
+			t.check(
+				"the drowned rows have their pilings",
+				countParts(rows, "Piling") >= 15,
+				("%d pilings"):format(countParts(rows, "Piling"))
+			)
+		else
+			t.skip("the drowned rows stand in the sea", "the world map is not built")
+		end
 
 		local remotes = ReplicatedStorage:FindFirstChild("Quests")
 		t.check(
@@ -187,6 +231,34 @@ return function(SelfTest)
 			end
 			Quests.press(player, "corn_maze")
 			t.check("the corn maze completes at night", q.done.corn_maze == true and q.earned.corn_moon_charm == true)
+
+			-- Timed mazes: a run moves the labyrinth quest on, a slow one doesn't pass the 45 second step, and the
+			-- first finish of the day is recorded (paid outside a sandbox) once.
+			q.active.straw_labyrinth = { step = 1, n = 0, seen = {} }
+			Quests.run(player, "straw_labyrinth", 70)
+			t.equal(
+				"a labyrinth run moves the quest to the timed step",
+				q.active.straw_labyrinth and q.active.straw_labyrinth.step,
+				2
+			)
+			t.check(
+				"the first run today is recorded",
+				q.runs and q.runs.straw_labyrinth and q.runs.straw_labyrinth.day == os.time() // 86400
+			)
+			Quests.run(player, "straw_labyrinth", 60)
+			t.check("a 60 second run doesn't pass the 45 second step", q.active.straw_labyrinth ~= nil)
+			Quests.run(player, "straw_labyrinth", 30)
+			t.check(
+				"a 30 second run completes the labyrinth",
+				q.done.straw_labyrinth == true and q.earned.straw_crown == true
+			)
+			t.near("the best time is kept", q.runs.straw_labyrinth.best, 30, 0.01)
+			q.active.drowned_rows = { step = 1, n = 0, seen = {} }
+			Quests.run(player, "drowned_rows", 80)
+			t.check(
+				"swimming the rows completes them",
+				q.done.drowned_rows == true and q.earned.drowned_compass == true
+			)
 
 			-- The daily streak: a finished bounty counts the day once; a gap pauses it; 3 days earns the first rosette.
 			local bounty = QuestConfig.Bounties

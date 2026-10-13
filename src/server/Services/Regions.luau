@@ -876,7 +876,10 @@ function LANDMARKS.spindle(folder)
 		local a = i / 12 * math.pi * 2
 		local socket = part(folder, "ShardSocket", Vector3.new(0.6, 1, 1), door.CFrame * CFrame.new(math.cos(a) * 5, math.sin(a) * 5 + 2, -0.6) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(242, 183, 5), Enum.Material.Neon, Enum.PartType.Cylinder, false)
 		socket.Transparency = 0.6
+		socket:SetAttribute("Slot", i + 1) -- SpindleDoor.luau lights it once anyone here holds that shard
+		CollectionService:AddTag(socket, "ShardSocket")
 	end
+	CollectionService:AddTag(door, "SpindleDoor")
 	billboard(door, "THE SPINDLE\nTwelve shards open this door", Vector3.new(0, 14, 0), 160)
 
 	-- The Observatory on the Spindle's shoulder (meteor showers land here).

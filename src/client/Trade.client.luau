@@ -572,7 +572,7 @@ acceptButton.Activated:Connect(function()
 	if not current then
 		return
 	end
-	local ok, why = call(acceptRemote, not current.myAccept)
+	local ok, why = call(acceptRemote, not current.myAccept, current.version)
 	if not ok and why then
 		message.TextColor3 = C.Red
 		message.Text = why

@@ -55,6 +55,8 @@ local post = nil -- the counter part distances are measured from
 local updateRemote = nil
 
 local sessions = {} -- player -> session (both players point at the same table)
+local INVITE_COOLDOWN = 10
+local lastInvite = {} -- player -> { [target] = os.clock() of their last invite }
 local invites = {} -- target player -> { from = player, at = os.clock() }
 
 -- Mythic needles ------------------------------------------------------------------------------------------------------
@@ -403,6 +405,7 @@ local function push(session)
 			-- Each side's trading post fee on what it gives (Bank.tradeFee; $0 with test money on).
 			myFee = Bank.tradeFee(session.offers[player].cash),
 			theirFee = Bank.tradeFee(session.offers[other].cash),
+			version = session.version, -- Accept sends it back, so an accept never lands on an offer that just changed
 			myAccept = session.accepted[player] == true,
 			theirAccept = session.accepted[other] == true,
 			endsAt = session.endsAt, -- server time (Workspace:GetServerTimeNow) the countdown finishes, or nil
@@ -503,6 +506,10 @@ local function finish(session)
 	local stateA, stateB = Data.get(a), Data.get(b)
 	if not stateA or not stateB then
 		close(session, "A save isn't loaded. Trade called off.")
+		return
+	end
+	if not (Data.isSaving(a) and Data.isSaving(b)) then
+		close(session, "One of the saves stopped saving. Trade called off.")
 		return
 	end
 	-- Pocket needles picked up before the slot loaded join it now, so the check below sees the real pocket.
@@ -618,6 +625,12 @@ local function onRequest(player, userId)
 	if sessions[target] then
 		return false, target.DisplayName .. " is already trading."
 	end
+	-- One invite to the same player every INVITE_COOLDOWN seconds, so nobody can be spammed with them.
+	lastInvite[player] = lastInvite[player] or {}
+	if os.clock() - (lastInvite[player][target] or -math.huge) < INVITE_COOLDOWN then
+		return false, ("You asked %s a moment ago. Give them a little time."):format(target.DisplayName)
+	end
+	lastInvite[player][target] = os.clock()
 	invites[target] = { from = player, at = os.clock() }
 	send(target, { kind = "invite", from = player.UserId, name = player.DisplayName, seconds = INVITE_SECONDS })
 	return true, ("Asked %s to trade."):format(target.DisplayName)
@@ -642,6 +655,9 @@ local function onRespond(player, fromUserId, yes)
 	end
 	if not Data.get(player) or not Data.get(from) then
 		return false, "Both players need a save loaded."
+	end
+	if not (Data.isSaving(player) and Data.isSaving(from)) then
+		return false, "Trading needs both saves working. One of you is playing without saving right now."
 	end
 	if not (near(player) and near(from)) then
 		return false, "Both players need to be at the Trading Post."
@@ -681,7 +697,7 @@ local function onOffer(player, raw)
 	return true, nil
 end
 
-local function onAccept(player, yes)
+local function onAccept(player, yes, version)
 	local session = sessions[player]
 	if not session then
 		return false, "You're not trading."
@@ -690,6 +706,10 @@ local function onAccept(player, yes)
 		resetAccepts(session)
 		push(session)
 		return true, nil
+	end
+	if version ~= session.version then
+		push(session)
+		return false, "The offer just changed. Check it and accept again."
 	end
 	if not near(player) then
 		return false, "Walk back to the Trading Post to accept."
@@ -863,9 +883,11 @@ function Trade.build(worldFolder)
 	updateRemote = Instance.new("RemoteEvent")
 	updateRemote.Name = "Update"
 	updateRemote.Parent = remotes
+	updateRemote.OnServerEvent:Connect(function() end) -- server to client only; anything a client sends is dropped
 	remotes.Parent = ReplicatedStorage
 
 	Players.PlayerRemoving:Connect(function(player)
+		lastInvite[player] = nil
 		local session = sessions[player]
 		if session then
 			close(session, player.DisplayName .. " left the server.")

@@ -251,6 +251,7 @@ Prices.Travel = {
 	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
 	barge = 0, -- the Captain's Barge is earned by quest and free to use
 	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+	snack = 15, -- a snack from the ferry galley: cosmetic, a little treat for the crossing
 }
 
 -- Wet hay (Hay thread; Config/Game reads it as WetPriceFactor): a bale soaked by rain sells its hay at this share of

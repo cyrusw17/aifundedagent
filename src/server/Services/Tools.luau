@@ -23,6 +23,7 @@ local Events = require(script.Parent.Events)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
 local Wheelbarrow = require(script.Parent.Wheelbarrow)
+local Vehicles = require(script.Parent.Vehicles)
 
 local Tools = {}
 
@@ -98,6 +99,7 @@ local function comboBonus(player, root)
 		return 0
 	end
 	comboPop(root, combo.count)
+	Feedback.juice(player, "combo", combo.count - Config.ComboStart + 1)
 	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
 end
 
@@ -341,7 +343,24 @@ local function useRake(player, root, aim)
 		local flat = Vector3.new(center.X - root.Position.X, 0, center.Z - root.Position.Z)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
-		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		-- A stroke that ends at a conveyor belt (or a click on the belt itself) flicks the hay up onto it, so raking
+		-- feeds the line. Otherwise the hay is pulled into a row in front of you.
+		local belt, landAt
+		if aim and aim.part and CollectionService:HasTag(aim.part, "ConveyorBelt") then
+			belt, landAt = Hay.beltNear(aim.position, 1)
+		end
+		if not belt then
+			belt, landAt = Hay.beltNear(gatherAt - Vector3.new(0, 1, 0), Config.RakeBeltReach)
+		end
+		-- Dust kicks up where the tines drag, and along the way back toward you.
+		Feedback.dust(center, nil, 8)
+		Feedback.dust(center:Lerp(gatherAt, 0.5) - Vector3.new(0, 1.5, 0), nil, 5)
+		if belt then
+			Hay.rakeOntoBelt(center, belt, landAt, Config.RakeRadius, player.UserId)
+			Events.fire(player, "raked_onto_belt", 1, { center = center })
+		else
+			Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		end
 		Events.fire(player, "raked", 1, { center = center })
 		Feedback.play("Rake", center)
 	end)
@@ -352,6 +371,14 @@ function Tools.init()
 	Gloves.init()
 	Finds.init()
 	Wheelbarrow.init(currentAim)
+	-- Crew hand-offs (Bales): until Land says exactly who shares a farm, a teammate is anyone allowed to drive the
+	-- other's truck, either way round (a farm's owner and its crew).
+	if not Bales.isTeammate then
+		Bales.isTeammate = function(a, b)
+			local canDrive = Vehicles.canDrive
+			return canDrive ~= nil and (canDrive(a, b) == true or canDrive(b, a) == true)
+		end
+	end
 	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")

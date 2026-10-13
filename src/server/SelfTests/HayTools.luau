@@ -25,13 +25,16 @@ local Finds = require(Services.Finds)
 local Wheelbarrow = require(Services.Wheelbarrow)
 local Tools = require(Services.Tools)
 local Weather = require(Services.Weather)
+local Feedback = require(Services.Feedback)
 local Bank = require(Services.Bank)
 local Vehicles = require(Services.Vehicles)
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 local NeedleModule = Services:FindFirstChild("Needle")
 local Needle = NeedleModule and require(NeedleModule)
 
 local BALE = Vector3.new(4.6, 2.6, 3.2)
+local KEEP_TEAMMATE = Bales.isTeammate -- the hand-off checks swap it; it is always put back
 local DOUBLE_CARRY_TIER = Config.DoubleCarryTier -- the double-carry checks change it; it is always put back
 
 -- Bales made by a test, consumed at the end so Bales' own tables forget them too.
@@ -206,6 +209,74 @@ local function noPlayerChecks(t)
 			Hay.remove(p)
 		end
 	end
+
+	-- Raking onto a belt: the strands go up onto the belt (it stands well off the ground), ride it, and no pile forms.
+	local beltAt = t.place()
+	local belt = Instance.new("Part")
+	belt.Name = "Belt"
+	belt.Anchored = true
+	belt.Size = Vector3.new(30, 1, 3)
+	belt.CFrame = beltAt * CFrame.new(8, 3, 0)
+	belt.AssemblyLinearVelocity = Vector3.new(6, 0, 0)
+	CollectionService:AddTag(belt, "ConveyorBelt")
+	belt.Parent = workspace
+	t.cleanup(belt)
+	local loose = {}
+	for i = 1, 16 do
+		local angle = i / 16 * math.pi * 2
+		table.insert(loose, Hay.spawnPiece(beltAt.Position + Vector3.new(math.cos(angle) * 2.5, 0.5, 6 + math.sin(angle) * 2.5), Vector3.zero, 0))
+	end
+	t.wait(0.6)
+	local found, beltSpot = Hay.beltNear(beltAt.Position + Vector3.new(0, 1, 1.5), Config.RakeBeltReach)
+	t.check("a belt in reach is found", found == belt)
+	local sent = found and Hay.rakeOntoBelt(beltAt.Position + Vector3.new(0, 0, 6), belt, beltSpot, Config.RakeRadius, 0) or 0
+	t.equal("the rake flicks every strand toward the belt", sent, #loose)
+	t.wait(0.9)
+	local onBelt, startX = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			onBelt += 1
+			startX += p.Position.X
+		end
+	end
+	t.check("raked strands land on the belt", onBelt >= #loose * 0.75, ("%d of %d"):format(onBelt, #loose))
+	t.wait(1)
+	local endX, still = 0, 0
+	for _, p in loose do
+		local localPos = belt.CFrame:PointToObjectSpace(p.Position)
+		if p.Parent and math.abs(localPos.Z) <= 2 and localPos.Y > 0 then
+			still += 1
+			endX += p.Position.X
+		end
+	end
+	t.check("...and ride it along", still > 0 and onBelt > 0 and endX / still - startX / onBelt > 2, ("%.1f studs"):format(still > 0 and onBelt > 0 and endX / still - startX / onBelt or 0))
+	local pileMade = false
+	for _, p in Hay.near(belt.Position, 20, nil) do
+		if Hay.isPile(p) then
+			pileMade = true
+		end
+	end
+	t.check("raking onto a belt makes no pile", not pileMade)
+	for _, p in loose do
+		if p.Parent then
+			Hay.remove(p)
+		end
+	end
+
+	-- Tool juice: the Juice remote exists for the client's hit-stop and shake, and the rake's dust puff appears.
+	local juice = ReplicatedStorage:FindFirstChild("Juice")
+	t.check("the Juice event is there for hit-stop and shake", juice ~= nil and juice:IsA("RemoteEvent"))
+	local dustAt = t.place().Position + Vector3.new(0, 0.5, 0)
+	local terrainBefore = #workspace.Terrain:GetChildren()
+	Feedback.dust(dustAt)
+	local puffed = false
+	for _, a in workspace.Terrain:GetChildren() do
+		if a:IsA("Attachment") and (a.WorldPosition - dustAt).Magnitude < 0.01 and a:FindFirstChildOfClass("ParticleEmitter") then
+			puffed = true
+		end
+	end
+	t.check("a rake stroke kicks up dust", puffed and #workspace.Terrain:GetChildren() > terrainBefore)
 
 	-- A flood of loose hay: far more strands and needles than the caps. The counts stay at the caps, every piece
 	-- the module tracks is a real one, spawning stays cheap, and when it is all gone the counts come back down.
@@ -459,6 +530,37 @@ local function edgeCases(t, player, state, root, stand)
 	local near = (Vector3.new(tapped.body.Position.X, 0, tapped.body.Position.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Magnitude
 	t.check("a tiny charge just sets the bale down", near < 5, ("%.1f studs"):format(near))
 
+	-- Crew hand-off: a bale thrown by a teammate that flies close to bare hands is caught; a stranger's is not.
+	local catchSpot = t.place()
+	stand(catchSpot)
+	local keepTeammate = Bales.isTeammate
+	local thrower = { Name = "SelfTestThrower", UserId = -2 }
+	local function lob(b)
+		-- From 8 studs off, arcing in to land at the player's feet.
+		Bales.releaseAt(b, CFrame.new(root.Position + Vector3.new(0, 2, 8)))
+		local flight = 0.6
+		local target = root.Position
+		b.body.AssemblyLinearVelocity = (target - b.body.Position - 0.5 * Vector3.new(0, -workspace.Gravity, 0) * flight * flight) / flight
+		Bales.watchForCatch(b, thrower)
+	end
+	Bales.isTeammate = function(fromPlayer, toPlayer)
+		return fromPlayer == thrower and toPlayer == player
+	end
+	local passed = bale(catchSpot * CFrame.new(0, 0, 20))
+	lob(passed)
+	t.wait(1)
+	t.check("a teammate's thrown bale is caught", state.carryBale == passed and passed.carriedBy == player)
+	Bales.drop(player)
+	Bales.isTeammate = function()
+		return false
+	end
+	stand(catchSpot * CFrame.new(10, 0, 0))
+	local stranger = bale(catchSpot * CFrame.new(10, 0, 20))
+	lob(stranger)
+	t.wait(1)
+	t.check("a stranger's thrown bale is not caught", state.carryBale == nil and stranger.carriedBy == nil)
+	Bales.isTeammate = keepTeammate
+
 	-- Double carry: two bales with good enough gloves, one without; both go down as a stack of two.
 	local carrySpot = t.place()
 	stand(carrySpot)
@@ -657,6 +759,7 @@ local function withPlayer(t, player)
 	if state.carryBale then
 		Bales.drop(player)
 	end
+	Bales.isTeammate = KEEP_TEAMMATE
 	Config.DoubleCarryTier = DOUBLE_CARRY_TIER
 	Gloves.setFirstBaleBroken(player, keepFirst)
 	state.loadHay, state.loadNeedles, state.loadWeight, state.loadTier = keepHay, keepNeedles, keepWeight, keepTier

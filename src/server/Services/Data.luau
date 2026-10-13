@@ -337,6 +337,12 @@ end
 -- For SelfTests: the save shape without a DataStore.
 Data.test = { stateFrom = stateFrom, toSave = toSave }
 
+-- True when this player's slot is being written: loaded, the store reachable, and the save not set aside (read
+-- failed on join, or another server took the slot's lock). Trades need it, so nothing traded can be lost.
+function Data.isSaving(player)
+	return states[player] ~= nil and store ~= nil and not offline[player]
+end
+
 function Data.get(player)
 	return states[player]
 end
@@ -503,6 +509,10 @@ function Data.choose(player, slot, plot)
 	if fresh then
 		local preset = presetFor(player)
 		saved = preset and copy({ cash = preset.cash, trucks = preset.trucks, trailers = preset.trailers, land = preset.land })
+		-- A preset farm's pieces were free, so removing them refunds nothing.
+		for _, item in (saved and saved.land and saved.land.items or {}) do
+			item.paid = 0
+		end
 	end
 	if not player.Parent then
 		choosing[player] = nil
