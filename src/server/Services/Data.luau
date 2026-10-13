@@ -24,6 +24,9 @@ Data.beforeSave = nil -- optional function(player), called just before a save is
 local states = {}
 local summaries = {} -- player -> { [slot] = summary }, read once on join
 local choosing = {} -- player -> true while a slot is loading
+-- player -> true when their saves couldn't be read on join. They still play (Studio with API access off lands here),
+-- but nothing is written for them, so an unreadable save is never overwritten by a fresh one.
+local offline = {}
 local INFINITE_CASH = 1e9 -- shown and spendable while Config.InfiniteMoney is on
 local store = nil
 
@@ -169,14 +172,20 @@ local function stateFrom(saved)
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
-		-- gloves: { owned = { id, ... }, worn = id }, kept by Gloves.luau. nil in saves from before gloves were saved.
-		gloves = typeof(saved.gloves) == "table" and { owned = stringList(saved.gloves.owned), worn = saved.gloves.worn }
-			or nil,
+		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
+		-- before gloves were saved.
+		gloves = typeof(saved.gloves) == "table" and {
+			owned = stringList(saved.gloves.owned),
+			worn = saved.gloves.worn,
+			brokeFirstBale = saved.gloves.brokeFirstBale == true or nil,
+		} or nil,
 		-- bank: { balance, earned, loans = { truck|land = { owed, principal, item, takenAt } }, history } (Bank.luau)
 		bank = bankFrom(saved.bank),
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... }, needles = { [id] = count } }
 		-- once a plot is bought. needles are the ones in the plot's bin.
 		land = nil,
+		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
+		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -185,6 +194,8 @@ local function stateFrom(saved)
 			plot = typeof(saved.land.plot) == "number" and saved.land.plot or nil,
 			items = saved.land.items,
 			needles = countMap(saved.land.needles),
+			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
+			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
 		}
 	end
 	return state
@@ -243,13 +254,17 @@ local function loadSummaries(player)
 		end
 	elseif ok then
 		local okOld, old = read(legacyKey(player))
-		if okOld and typeof(old) == "table" then
-			if write(slotKey(player, 1), old) then
+		if not okOld then
+			ok = false
+		elseif typeof(old) == "table" then
+			if write(slotKey(player, 1), old) and write(indexKey(player), { ["1"] = summarize(old) }) then
 				list[1] = summarize(old)
-				write(indexKey(player), { ["1"] = list[1] })
+			else
+				ok = false -- keep the old save untouched until it can be moved
 			end
 		end
 	end
+	offline[player] = not ok or nil
 	summaries[player] = list
 	return ok
 end
@@ -280,7 +295,7 @@ function Data.choose(player, slot, plot)
 		return false, "No such save."
 	end
 	choosing[player] = true
-	local used = summaries[player] and summaries[player][slot] ~= nil
+	local used = summaries[player] and summaries[player][slot] ~= nil and not offline[player]
 	local saved = nil
 	if used then
 		local ok, result = read(slotKey(player, slot))
@@ -316,7 +331,7 @@ end
 
 function Data.save(player)
 	local state = states[player]
-	if not state or not store or not state.slot then
+	if not state or not store or not state.slot or offline[player] then
 		return
 	end
 	if Data.beforeSave then
@@ -332,6 +347,7 @@ function Data.save(player)
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
+		tutorial = state.tutorial,
 	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
@@ -350,6 +366,7 @@ function Data.release(player)
 	states[player] = nil
 	summaries[player] = nil
 	choosing[player] = nil
+	offline[player] = nil
 end
 
 local function onPlayerAdded(player)

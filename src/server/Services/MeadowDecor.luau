@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local Bales = require(script.Parent.Bales)
 
@@ -109,21 +110,7 @@ local function signpost(parent, position, facing, text, width, bothSides)
 	local base = CFrame.lookAt(Vector3.new(position.X, y, position.Y), Vector3.new(position.X + facing.X, y, position.Y + facing.Y))
 	part(model, "Post", Vector3.new(0.6, 7, 0.6), base * CFrame.new(0, 3, 0.4), Rustic.WoodDark, Enum.Material.Wood)
 	local board = part(model, "Board", Vector3.new(width, 3.6, 0.4), base * CFrame.new(0, 6.2, 0), Rustic.Wood, Enum.Material.WoodPlanks)
-	for _, face in bothSides and { Enum.NormalId.Front, Enum.NormalId.Back } or { Enum.NormalId.Front } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(width * 50, 180)
-		gui.LightInfluence = 1
-		gui.Parent = board
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(40, 34, 28)
-		label.Text = text
-		label.Parent = gui
-	end
+	WorldLabel.surface(board, text, bothSides and { Enum.NormalId.Front, Enum.NormalId.Back } or { Enum.NormalId.Front })
 	model.Parent = parent
 	return model
 end

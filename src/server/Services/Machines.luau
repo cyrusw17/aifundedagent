@@ -22,7 +22,9 @@ local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
+local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Tutorial = require(script.Parent.Tutorial)
 local Bank = require(script.Parent.Bank)
 local Prices = require(Shared.Config.Prices)
 local Oil = Prices.SorterOil
@@ -82,22 +84,9 @@ function Machines.part(parent, name, size, cframe, color, material)
 end
 local part = Machines.part
 
-function Machines.sign(parent, text, offset)
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(260, 60)
-	gui.StudsOffset = offset
-	gui.MaxDistance = 120
-	gui.Parent = parent
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
-	return label
+-- A floating label (shared WorldLabel helper). kind is "status" unless given ("sign" for place names).
+function Machines.sign(parent, text, offset, kind)
+	return WorldLabel.billboard(parent, text, { offset = offset, kind = kind or "status" })
 end
 local sign = Machines.sign
 
@@ -109,6 +98,8 @@ function Machines.pay(ownerId, amount, text, note)
 		return
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
+	Tutorial.mark(owner, "sold")
+	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
 	Feedback.sale(owner, amount)
 end
@@ -366,7 +357,8 @@ end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
 -- go in one at a time, the needles it finds fly to `bin` (a Machines.needleBin), and a clean bale comes out the far end.
-function Machines.sorter(parent, frame, tierId, bin)
+-- payTo (optional) maps the owner of incoming hay to who gets paid and owns the needles (a plot's crew pays the owner).
+function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local tier = tiers[tierId] or tiers.conveyor_sorter
 	local center = frame * CFrame.new(0, 0, -T / 2) -- middle of the two cells
 	local model = Instance.new("Model")
@@ -496,10 +488,16 @@ function Machines.sorter(parent, frame, tierId, bin)
 			end
 			if bale then
 				local ownerId, hayType = bale.ownerId, hayTypeOf(bale.body)
+				if payTo then
+					ownerId = payTo(ownerId)
+				end
 				Bales.consume(bale)
 				sort(Config.PiecesPerBale * Config.HayPerPiece, ownerId, hayType)
 			elseif #loose > 0 then
 				local ownerId, hayType = loose[1]:GetAttribute("OwnerId"), hayTypeOf(loose[1])
+				if payTo then
+					ownerId = payTo(ownerId)
+				end
 				for _, p in loose do
 					Hay.remove(p)
 				end
@@ -511,8 +509,9 @@ function Machines.sorter(parent, frame, tierId, bin)
 end
 
 -- Hay buyer: an open hopper at the end of a belt (the belt comes in from local +Z). Pays whoever owns what drops in:
--- sorted bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle.
-function Machines.hayBuyer(parent, frame, title)
+-- sorted bales at the hay price, and unsorted hay at the hay price plus only $1 per hidden needle. payTo (optional)
+-- maps that owner to who gets paid, as for Machines.sorter.
+function Machines.hayBuyer(parent, frame, title, payTo)
 	local model = Instance.new("Model")
 	model.Name = "HayBuyer"
 	model.Parent = parent
@@ -535,6 +534,9 @@ function Machines.hayBuyer(parent, frame, title)
 					local hay = sortedBale.sortedHay or 0
 					local value = math.floor(hay * Economy.HAY_PRICE)
 					local ownerId = sortedBale.ownerId
+					if payTo then
+						ownerId = payTo(ownerId)
+					end
 					Bales.consume(sortedBale)
 					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 				else
@@ -546,6 +548,9 @@ function Machines.hayBuyer(parent, frame, title)
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
 						Hay.remove(p)
+					end
+					if hay > 0 and ownerId and payTo then
+						ownerId = payTo(ownerId)
 					end
 					if hay > 0 and ownerId then
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }

@@ -24,7 +24,10 @@ local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
+local Tutorial = require(script.Parent.Tutorial)
 local Vehicles = require(script.Parent.Vehicles)
+local Likes = require(script.Parent.Likes)
+local Needle = require(script.Parent.Needle)
 
 local Land = {}
 
@@ -95,6 +98,18 @@ local function footprintFrame(plot, def, gx, gz, dir)
 end
 
 -- Client-facing copy of a plot's state, so the panel and the build ghost work without asking the server.
+-- Farm crew: players the owner lets drive their truck and work their line. Hay a crew member runs through the plot's
+-- sorters and buyers pays the owner, and the needles it finds go in the owner's bin.
+local CREW_MAX = 6
+local function payeeFor(plot)
+	return function(ownerId)
+		if ownerId and plot.ownerId and (ownerId == plot.ownerId or (plot.crew and plot.crew[ownerId])) then
+			return plot.ownerId
+		end
+		return ownerId
+	end
+end
+
 local function publish(plot)
 	local info = plot.info
 	info:SetAttribute("OwnerId", plot.ownerId or 0)
@@ -104,8 +119,17 @@ local function publish(plot)
 		table.insert(taken, k)
 	end
 	info:SetAttribute("Taken", table.concat(taken, ";"))
+	local crew = {}
+	for userId in plot.crew or {} do
+		table.insert(crew, tostring(userId))
+	end
+	info:SetAttribute("Crew", table.concat(crew, ","))
+	info:SetAttribute("Likes", plot.likes or 0)
+	info:SetAttribute("LockedRows", plot.locked or 0)
+	plot.likePrompt.Enabled = plot.ownerId ~= nil
+	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
-		plot.label.Text = ("%s\n%s's farm"):format(plot.def.name:upper(), plot.ownerName)
+		plot.label.Text = ("%s\n%s's farm\n♥ %d this week"):format(plot.def.name:upper(), plot.ownerName, plot.likes or 0)
 	else
 		plot.label.Text = ("%s FOR SALE\n$%d at the Land Office"):format(plot.def.name:upper(), plot.def.price)
 	end
@@ -147,15 +171,14 @@ local function buildSilo(plot, item, def)
 
 	local mesh = Props.make("silo_small", frame * CFrame.new(0, height / 2, 0), Vector3.new(w - 0.5, height + 2, w - 0.5))
 	if mesh then
-		Props.restOn(mesh, 0)
+		Props.restOn(mesh, frame.Position.Y) -- on the plot's ground, wherever the plot sits
 		for _, p in mesh:GetDescendants() do
 			if p:IsA("BasePart") then
 				p.CanCollide = false
 			end
 		end
-		mesh.Parent = model
-		body.Transparency = 1
-		cap.Transparency = 1
+		-- The part silo stays until this client has loaded the mesh (PropMeshes.client.luau), so it is never invisible.
+		Props.weldTo(mesh, body, { body, cap })
 	end
 
 	item.stored = math.clamp(item.stored or 0, 0, LandConfig.SiloCapacity)
@@ -217,6 +240,135 @@ end
 
 -- Parking pad -------------------------------------------------------------------------------------------------------
 
+-- Blueprints: a see-through template that turns solid once it is filled. Bales dropped into it make thatch; needles
+-- used from your pocket at it make iron. item.stored counts what is in so far and item.fill is the material.
+local BLUEPRINT_GHOST = Color3.fromRGB(150, 185, 215)
+local FILLS = {
+	hay = { color = Color3.fromRGB(205, 182, 120), material = Enum.Material.Fabric, label = "thatch" },
+	needle = { color = Color3.fromRGB(128, 117, 105), material = Enum.Material.DiamondPlate, label = "iron" },
+}
+
+local function blueprintShape(frame, shape)
+	if shape == "post" then
+		return Vector3.new(1.2, 5, 1.2), frame * CFrame.new(0, 2.5, 0)
+	elseif shape == "wall" then
+		return Vector3.new(T, 6, 0.6), frame * CFrame.new(0, 3, T / 2 - 0.3)
+	end
+	return Vector3.new(T, 0.6, T), frame * CFrame.new(0, 0.3, 0)
+end
+
+-- Takes up to n needles from a player's pocket. Returns how many it took.
+local function takeNeedles(player, n)
+	local pocket = Needle.held(player)
+	local took = 0
+	for key, count in pocket do
+		local use = math.min(count, n - took)
+		pocket[key] = count - use > 0 and count - use or nil
+		took += use
+		if took >= n then
+			break
+		end
+	end
+	Data.sync(player)
+	return took
+end
+
+local function buildBlueprint(plot, item, def)
+	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
+	local model = Instance.new("Model")
+	model.Name = "Blueprint"
+	model.Parent = plot.items
+	local size, cframe = blueprintShape(frame, def.shape)
+	local body = part(model, "Body", size, cframe, BLUEPRINT_GHOST, Enum.Material.ForceField)
+	body.CanCollide = false
+	local label = sign(body, "", Vector3.new(0, 3, 0))
+	if not FILLS[item.fill] then
+		item.fill = nil
+	end
+
+	local function needed()
+		return item.fill == "needle" and def.needles or def.bales
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "FillPrompt"
+	prompt.ActionText = "Fill with needles"
+	prompt.ObjectText = def.name
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = body
+
+	local function refresh()
+		item.stored = math.clamp(item.stored or 0, 0, needed())
+		local done = item.stored >= needed()
+		if done then
+			local look = FILLS[item.fill]
+			body.Color = look.color
+			body.Material = look.material
+			body.Transparency = 0
+			body.CanCollide = true
+			label.Text = ""
+			prompt.Enabled = false
+		elseif item.fill then
+			body.Transparency = 0.45 - 0.3 * item.stored / needed()
+			label.Text = item.fill == "hay" and ("%d / %d bales"):format(item.stored, def.bales)
+				or ("%d / %d needles"):format(item.stored, def.needles)
+			prompt.Enabled = item.fill == "needle"
+		else
+			body.Transparency = 0.5
+			label.Text = ("BLUEPRINT\n%d bales or %d needles"):format(def.bales, def.needles)
+			prompt.Enabled = true
+		end
+		return done
+	end
+	refresh()
+
+	prompt.Triggered:Connect(function(player)
+		if plot.owner ~= player and not plot.crew[player.UserId] then
+			Data.toast(player, "Only the farm's owner and crew can fill its blueprints.")
+			return
+		end
+		if item.fill == "hay" then
+			Data.toast(player, "This one is being filled with bales. Drop bales into it.")
+			return
+		end
+		local took = takeNeedles(player, def.needles - (item.stored or 0))
+		if took == 0 then
+			Data.toast(player, "You have no needles in your pocket. Pick some up from a bin.")
+			return
+		end
+		item.fill = "needle"
+		item.stored = (item.stored or 0) + took
+		plot.dirty = true
+		if refresh() then
+			Data.toast(player, ("Built an iron %s."):format(def.shape))
+		end
+	end)
+
+	-- Bales dropped into the template fill it with thatch.
+	local intakeSize = size + Vector3.new(3, 4, 3)
+	task.spawn(function()
+		while model.Parent and (item.stored or 0) < needed() do
+			task.wait(0.3)
+			if item.fill ~= "needle" then
+				for _, p in Workspace:GetPartBoundsInBox(cframe, intakeSize) do
+					local b = Bales.fromPart(p)
+					if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and (item.stored or 0) < def.bales then
+						Bales.consume(b)
+						item.fill = "hay"
+						item.stored = (item.stored or 0) + 1
+						plot.dirty = true
+						if refresh() and plot.owner then
+							Data.toast(plot.owner, ("Built a thatch %s."):format(def.shape))
+						end
+					end
+				end
+			end
+		end
+	end)
+	return model
+end
+
 local function buildParking(plot, item, def)
 	local frame = footprintFrame(plot, def, item.gx, item.gz, item.dir)
 	local model = Instance.new("Model")
@@ -236,8 +388,8 @@ end
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
 -- Builds one piece on a plot. No checks and no charge: callers do that.
-local function spawnItem(plot, def, gx, gz, dir, stored)
-	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored }
+local function spawnItem(plot, def, gx, gz, dir, stored, fill)
+	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
 	if def.kind == "belt" or def.kind == "separator" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
@@ -247,13 +399,15 @@ local function spawnItem(plot, def, gx, gz, dir, stored)
 		end
 	end
 	if def.kind == "separator" then
-		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin))
+		table.insert(item.instances, Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot)))
 	elseif def.kind == "buyer" then
-		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER"))
+		table.insert(item.instances, Machines.hayBuyer(plot.items, frame, "HAY BUYER", payeeFor(plot)))
 	elseif def.kind == "silo" then
 		table.insert(item.instances, buildSilo(plot, item, def))
 	elseif def.kind == "parking" then
 		table.insert(item.instances, buildParking(plot, item, def))
+	elseif def.kind == "blueprint" then
+		table.insert(item.instances, buildBlueprint(plot, item, def))
 	end
 	for _, cell in item.cells do
 		plot.taken[key(cell[1], cell[2])] = item
@@ -278,10 +432,18 @@ local function destroyItem(plot, item)
 end
 
 -- Whether a piece fits: every cell on the plot and free.
+-- A tile row counted from the back fence (0) toward the lane, the same on both sides of the lane.
+local function rowFromBack(plot, z)
+	return if plot.def.open == "S" then z else plot.tiles.Z - 1 - z
+end
+
 local function fits(plot, def, gx, gz, dir)
 	for _, cell in cellsFor(def, gx, gz, dir) do
 		local x, z = cell[1], cell[2]
 		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or plot.taken[key(x, z)] then
+			return false
+		end
+		if rowFromBack(plot, z) < (plot.locked or 0) then
 			return false
 		end
 	end
@@ -297,7 +459,7 @@ local function saveItems(player, plot)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
-		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored })
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -305,7 +467,13 @@ local function saveItems(player, plot)
 	end
 	s.land.items = items
 	s.land.plot = plot.index
+	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
 	s.land.needles = plot.bin.contents(player.UserId)
+	local crew = {}
+	for userId in plot.crew do
+		table.insert(crew, userId)
+	end
+	s.land.crew = crew
 	plot.dirty = false
 end
 
@@ -350,6 +518,24 @@ local function clearPlot(plot)
 	plot.taken = {}
 end
 
+-- Locked rows at the back of the plot: rough ground with a sign until the owner buys them.
+local function drawLocks(plot)
+	for _, p in plot.lockParts or {} do
+		p:Destroy()
+	end
+	plot.lockParts = {}
+	for r = 0, (plot.locked or 0) - 1 do
+		local z = if plot.def.open == "S" then r else plot.tiles.Z - 1 - r
+		local at = plot.corner + Vector3.new(plot.size.X / 2, 0.25, z * T + T / 2)
+		local p = part(plot.model, "LockedRow", Vector3.new(plot.size.X, 0.3, T), CFrame.new(at), Rustic.Mud, Enum.Material.Grass)
+		p.CanCollide = false
+		table.insert(plot.lockParts, p)
+		if r == 0 then
+			sign(p, ("LOCKED ROWS\nBUILD > EXPAND, $%d a row"):format(LandConfig.ExpansionPrice), Vector3.new(0, 4, 0))
+		end
+	end
+end
+
 local function release(plot)
 	if plot.owner then
 		plotOf[plot.owner] = nil
@@ -358,6 +544,9 @@ local function release(plot)
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
+	plot.crew = {}
+	plot.locked = 0
+	drawLocks(plot)
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -366,14 +555,32 @@ end
 local function claim(plot, player, saved)
 	plot.owner, plot.ownerId, plot.ownerName = player, player.UserId, player.DisplayName
 	plotOf[player] = plot
+	plot.likes = 0
+	task.spawn(function()
+		local count = Likes.count(player.UserId)
+		if plot.ownerId == player.UserId then
+			plot.likes = count
+			publish(plot)
+		end
+	end)
 	player:SetAttribute("LandPlot", plot.index)
 	plot.leftOut = {}
+	plot.crew = {}
+	-- Saves from before expansions existed get the whole plot.
+	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
+	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
+	drawLocks(plot)
+	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
+		if typeof(userId) == "number" and userId ~= player.UserId then
+			plot.crew[userId] = true
+		end
+	end
 	for _, s in saved.items or {} do
 		local def = typeof(s) == "table" and pieces[s.id]
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
 			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
 			if fits(plot, def, gx, gz, dir) then
-				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil)
+				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil)
 			else
 				table.insert(plot.leftOut, s)
 			end
@@ -426,7 +633,7 @@ local function onBuy(player, index)
 	if not paid then
 		return false, why
 	end
-	s.land = { owned = true, plot = index, items = {} }
+	s.land = { owned = true, plot = index, items = {}, expansions = 0 }
 	claim(plot, player, s.land)
 	Data.sync(player)
 	task.spawn(Data.save, player)
@@ -469,6 +676,7 @@ local function onPlace(player, id, gx, gz, dir)
 	publish(plot)
 	saveItems(player, plot)
 	Data.sync(player)
+	Tutorial.placed(player, def.id)
 	return true, ("Built a %s for $%d."):format(def.name:lower(), def.price)
 end
 
@@ -497,6 +705,59 @@ end
 -- World -------------------------------------------------------------------------------------------------------------
 
 -- A low wooden fence along one edge, from a to b on the ground.
+-- Buys the next locked row at the back of the owner's plot.
+local function onExpand(player)
+	local plot = plotOf[player]
+	local s = Data.get(player)
+	if not plot or not s or not s.land then
+		return false, "Buy a plot first."
+	end
+	if (plot.locked or 0) <= 0 then
+		return false, "Your plot is already full size."
+	end
+	local paid, why = Bank.charge(player, LandConfig.ExpansionPrice, "Land: expansion")
+	if not paid then
+		return false, why
+	end
+	plot.locked -= 1
+	drawLocks(plot)
+	saveItems(player, plot)
+	publish(plot)
+	Data.sync(player)
+	return true, ("Your plot grew by a row of %d tiles."):format(plot.tiles.X)
+end
+
+-- Adds (on = true) or removes a player from the owner's farm crew.
+local function onCrew(player, userId, on)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(userId) ~= "number" or userId == player.UserId then
+		return false, "Pick another player."
+	end
+	if on then
+		local mate = Players:GetPlayerByUserId(userId)
+		if not mate then
+			return false, "That player isn't on this server."
+		end
+		local count = 0
+		for _ in plot.crew do
+			count += 1
+		end
+		if not plot.crew[userId] and count >= CREW_MAX then
+			return false, ("A crew holds %d players."):format(CREW_MAX)
+		end
+		plot.crew[userId] = true
+		Data.toast(mate, ("%s added you to their farm crew. You can drive their truck, and hay you run through their line pays them."):format(player.DisplayName))
+	else
+		plot.crew[userId] = nil
+	end
+	plot.dirty = true
+	publish(plot)
+	return true, on and "Added to your crew." or "Removed from your crew."
+end
+
 local function fence(parent, a, b)
 	local length = (b - a).Magnitude
 	local along = CFrame.lookAt((a + b) / 2, b)
@@ -563,6 +824,15 @@ local function buildPlot(parent, index, def)
 	local board = part(model, "SignBoard", Vector3.new(8, 2.4, 0.4), CFrame.new((x0 + x1) / 2, 5.4, stripZ), Rustic.Wood, Enum.Material.WoodPlanks)
 	board.CanCollide = false
 	local label = sign(post, "", Vector3.new(0, 6, 0))
+	-- Visitors like the farm here, once a week.
+	local likePrompt = Instance.new("ProximityPrompt")
+	likePrompt.Name = "LikePrompt"
+	likePrompt.ActionText = "Like this farm"
+	likePrompt.HoldDuration = 0.3
+	likePrompt.MaxActivationDistance = 10
+	likePrompt.RequiresLineOfSight = false
+	likePrompt.Enabled = false
+	likePrompt.Parent = post
 
 	local items = Instance.new("Folder")
 	items.Name = "Built"
@@ -591,12 +861,39 @@ local function buildPlot(parent, index, def)
 		items = items,
 		info = info,
 		label = label,
+		likePrompt = likePrompt,
+		likes = 0,
+		owner = nil,
+		locked = 0,
+		lockParts = {},
+		ownerId = nil,
+		ownerName = nil,
 		grid = Conveyors.newGrid(model, corner),
 		bin = Machines.needleBin(model, binFrame),
 		list = {},
 		taken = {},
+		crew = {},
 	}
 	plots[index] = plot
+	likePrompt.Triggered:Connect(function(player)
+		local ownerId = plot.ownerId
+		if not ownerId then
+			return
+		end
+		if os.clock() - (lastAction[player] or 0) < 1 then
+			return
+		end
+		lastAction[player] = os.clock()
+		local ok, message, count = Likes.like(player, ownerId)
+		Data.toast(player, message)
+		if plot.ownerId == ownerId then
+			plot.likes = count
+			publish(plot)
+			if ok and plot.owner then
+				Data.toast(plot.owner, ("%s liked your farm! ♥ %d this week."):format(player.DisplayName, count))
+			end
+		end
+	end)
 	publish(plot)
 	return plot
 end
@@ -632,7 +929,41 @@ local function buildOffice(parent)
 	local rug = part(model, "Rug", Vector3.new(10, 0.1, 4), at(0, 0.65, -1.6), Rustic.PaintRed, Enum.Material.Fabric)
 	rug.CanCollide = false
 	CollectionService:AddTag(rug, "LandCounter")
-	sign(roof, "MEADOW LAND OFFICE\nBuy a plot, build a farm", Vector3.new(0, 4, 0))
+
+	-- The weekly board on the inside of the west wall: the most liked farms.
+	local wall = model:FindFirstChild("LeftWall")
+	local board = Instance.new("SurfaceGui")
+	board.Name = "BestFarms"
+	board.Face = Enum.NormalId.Right
+	board.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	board.PixelsPerStud = 40
+	board.Parent = wall
+	local boardText = Instance.new("TextLabel")
+	boardText.Size = UDim2.fromScale(0.86, 0.8)
+	boardText.Position = UDim2.fromScale(0.07, 0.1)
+	boardText.BackgroundColor3 = Rustic.Cloth
+	boardText.TextColor3 = Color3.fromRGB(40, 34, 28)
+	boardText.Font = Enum.Font.GothamBold
+	boardText.TextScaled = true
+	boardText.TextYAlignment = Enum.TextYAlignment.Top
+	boardText.Text = "BEST FARMS THIS WEEK"
+	boardText.Parent = board
+	task.spawn(function()
+		while model.Parent do
+			local ok, top = pcall(Likes.top, 10)
+			local lines = { "BEST FARMS THIS WEEK" }
+			if ok and #top > 0 then
+				for i, entry in top do
+					table.insert(lines, ("%d. %s  ♥ %d"):format(i, entry.name, entry.likes))
+				end
+			else
+				table.insert(lines, "No likes yet. Visit a farm and like it at its sign.")
+			end
+			boardText.Text = table.concat(lines, "\n")
+			task.wait(30)
+		end
+	end)
+	sign(roof, "MEADOW LAND OFFICE\nBuy a plot, build a farm", Vector3.new(0, 4, 0), "sign")
 end
 
 -- A save was picked: give back its farm, if it owns land.
@@ -646,6 +977,20 @@ local function sendHome(player, plot)
 	local inward = plot.def.open == "S" and -1 or 1
 	local at = Vector3.new(plot.corner.X + plot.size.X / 2 + 8, 4, plot.stripZ)
 	character:PivotTo(CFrame.lookAt(at, at + Vector3.new(0, 0, inward)))
+end
+
+-- Takes a visitor to the front of someone else's farm.
+local function onVisit(player, index)
+	local plot = typeof(index) == "number" and plots[index]
+	if not plot or not plot.ownerId then
+		return false, "Nobody farms there yet."
+	end
+	if os.clock() - (lastAction[player] or 0) < 1 then
+		return false, "One moment."
+	end
+	lastAction[player] = os.clock()
+	task.spawn(sendHome, player, plot)
+	return true, ("Visiting %s's farm. Like it at the sign by the lane."):format(plot.ownerName)
 end
 
 -- A save was picked (with the plot the player chose in the picker, if any): set up its farm, or buy the chosen plot
@@ -722,7 +1067,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -748,6 +1093,14 @@ function Land.build(worldFolder)
 	remotes.Buy.OnServerInvoke = guard(onBuy)
 	remotes.Place.OnServerInvoke = guard(onPlace)
 	remotes.Remove.OnServerInvoke = guard(onRemove)
+	remotes.Crew.OnServerInvoke = guard(onCrew)
+	remotes.Visit.OnServerInvoke = guard(onVisit)
+	remotes.Expand.OnServerInvoke = guard(onExpand)
+	-- Crew members may drive the owner's truck.
+	Vehicles.canDrive = function(driver, owner)
+		local plot = plotOf[owner]
+		return plot ~= nil and plot.crew[driver.UserId] == true
+	end
 
 	Data.loaded.Event:Connect(onLoaded)
 	for _, player in Players:GetPlayers() do

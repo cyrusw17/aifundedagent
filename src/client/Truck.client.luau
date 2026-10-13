@@ -23,18 +23,23 @@ local function yawOf(cframe)
 	return math.atan2(-look.X, -look.Z)
 end
 
+local Kit = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local F = Theme.Fonts
+
 local hint = Instance.new("TextLabel")
 hint.AnchorPoint = Vector2.new(0.5, 1)
 hint.Position = UDim2.new(0.5, 0, 1, -90)
 hint.Size = UDim2.fromOffset(420, 26)
-hint.BackgroundColor3 = Color3.fromRGB(40, 34, 28)
-hint.BackgroundTransparency = 0.3
-hint.Font = Enum.Font.GothamBold
+hint.BackgroundColor3 = Theme.Colors.Wood
+hint.BackgroundTransparency = 0.1
+hint.Font = F.Bold
 hint.TextSize = 15
-hint.TextColor3 = Color3.fromRGB(235, 225, 200)
+hint.TextColor3 = Theme.Colors.Cream
 hint.Text = "W/S drive   A/D steer   Space get out"
 hint.Visible = false
-Instance.new("UICorner", hint).CornerRadius = UDim.new(0, 8)
+Kit.corner(hint, 8)
+Kit.stroke(hint, Theme.Colors.Ink, 1.5)
 local hintGui = Instance.new("ScreenGui")
 hintGui.Name = "TruckHint"
 hintGui.ResetOnSpawn = false

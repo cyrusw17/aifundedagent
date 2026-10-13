@@ -23,6 +23,9 @@ return {
 		{ zone = "plot_6", name = "Plot 6", price = PRICE, tiles = TILES, open = "N" },
 	},
 	StripDepth = 8,
+	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
+	ExpansionRows = 2,
+	ExpansionPrice = Prices.PlotExpansion,
 
 	-- The land office, in Meadow.luau's LandOffice zone. Its open front faces north toward the main road.
 	OfficeCenter = Vector3.new(-20, 0, 49),
@@ -40,6 +43,11 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
+		-- needles from your pocket at it for iron. bales / needles is how much it takes.
+		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, blurb = "Fill with 1 bale (thatch) or 4 needles (iron)." },
+		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, blurb = "A wall along the back of the tile. Fill with 3 bales or 12 needles." },
+		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, blurb = "Fill with 2 bales or 8 needles." },
 	},
 
 	SiloCapacity = 60, -- bales
@@ -57,6 +65,7 @@ return {
 			land = {
 				owned = true,
 				plot = 4,
+				expansions = 2, -- the whole plot
 				items = ({
 					-- Silo -> belts -> magnet drum -> belts -> hay buyer, along the back fence.
 					{ id = "silo", gx = 1, gz = 1, dir = "E", stored = 20 },
