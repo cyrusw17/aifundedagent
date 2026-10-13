@@ -157,16 +157,17 @@ def railing(f, x0, x1, y, z0, h=3.0, step=4.0, axis="x", kind="handle", post_kin
 
 def homestead_motors(f):
     """Truck dealer, 52 wide x 26 tall x 60 deep (registry footprint 60 x 52: the 52 side is the
-    front and faces the lot). Left half is a glass showroom with a player door; right half is the
-    garage whose 16 x 13 door (tagged "Door", closed; slide it up) lets a truck drive out. Cream
+    front and faces the lot). Matches Dealer.luau (u = x, +u at the viewer's right): garage on the left
+    (u -23..-5, 13 tall, door tagged "Door", closed; slide it up) behind an interior divider at u = -2,
+    showroom on the right with a 12-tall player door at u 1..9 and glass at u 11..24, z 3..13. Cream
     clapboard, green trim, low tin roof behind a western false front carrying HOMESTEAD MOTORS."""
     hw, hd, slab, eave, rise = 26.0, 30.0, 0.3, 18.0, 4.0
     p = [B(f, "metal", (2 * hw + 1, 2 * hd + 1, slab), (0, 0, slab / 2), rnd=False)]
     fy = -hd + WALL / 2
     a = hw - WALL / 2
-    door = (-15.0, -10.0, slab, slab + 8.0)            # player door in the showroom glass
-    glass = [(-23.5, -16.5, 2.0, 14.0), (-8.5, -1.0, 2.0, 14.0)]
-    garage = (5.0, 21.0, slab, slab + 13.0)            # vehicle door
+    door = (1.0, 9.0, slab, slab + 12.0)               # player door into the showroom
+    glass = [(11.0, 24.0, 3.0, 13.0)]
+    garage = (-23.0, -5.0, slab, slab + 13.0)          # vehicle door
     p += wall(f, "paint_cream", "x", fy, -a, a, slab, eave + 7.0, holes=[door, garage] + glass)
     for u0, u1, z0, z1 in glass:
         p.append(B(f, "glass", (u1 - u0, 0.2, z1 - z0), ((u0 + u1) / 2, -hd + 0.4, (z0 + z1) / 2), rnd=False))
@@ -177,8 +178,10 @@ def homestead_motors(f):
         for z in (z0, z1, 9.0):
             p.append(B(f, "paint_green", (u1 - u0 + 0.4, 0.5, 0.4), ((u0 + u1) / 2, -hd + 0.2, z), rnd=False))
     p += door_frame(f, "x", -hd, -1, *door, trim="paint_green")
-    p += open_door(f, "glass", door[0] - 0.2, -hd, 2.5, 8.0, slab)
-    p += open_door(f, "glass", door[1] + 0.2, -hd, 2.5, 8.0, slab)
+    p += open_door(f, "glass", door[0] - 0.2, -hd, 4.0, 12.0, slab)
+    p += open_door(f, "glass", door[1] + 0.2, -hd, 4.0, 12.0, slab)
+    # Interior divider between garage and showroom, with a walk-through.
+    p += wall(f, "paint_cream", "y", -2.0, -hd + WALL, hd - WALL, slab, eave, holes=[(-2.5, 2.5, slab, slab + 8.0)])
     p += door_frame(f, "x", -hd, -1, *garage, trim="paint_green")
     # Garage door: horizontal slats in one tagged panel, closed.
     gd = []
@@ -187,6 +190,9 @@ def homestead_motors(f):
         z = garage[2] + gh * (i + 0.5) / 6
         gd.append(B(f, "paint_cream", (gw, 0.4 if i % 2 else 0.6, gh / 6 - 0.1), ((garage[0] + garage[1]) / 2, fy, z)))
     gd.append(B(f, "paint_cream", (2.0, 0.8, 0.4), ((garage[0] + garage[1]) / 2, fy - 0.3, garage[2] + 1.2), rnd=False))
+    for i in range(4):                                                   # a row of lites in the door
+        u = garage[0] + gw * (i + 0.5) / 4
+        gd.append(B(f, "paint_cream", (gw / 4 - 1.2, 0.7, 1.6), (u, fy - 0.15, garage[2] + gh * 0.72), rnd=False))
     p += tag(gd, "Door")
     # Apron ramp so wheels roll off the slab.
     p.append(B(f, "metal", (gw + 2, 2.0, slab), ((garage[0] + garage[1]) / 2, -hd - 1.0, slab / 2 - 0.1), rnd=False))
@@ -213,13 +219,13 @@ def homestead_motors(f):
     p += text(f, "paint_cream", "MOTORS", 0, -hd - 0.4, eave + 1.3, 2.0)
     p += text(f, "paint_green", "$", 0, -hd - 0.2, eave + 8.6, 2.0)
     # Porch awning over the showroom front.
-    ax0, ax1 = -hw + 0.5, 1.5
+    ax0, ax1 = -0.5, hw - 0.5
     for x in (ax0 + 0.5, (ax0 + ax1) / 2, ax1 - 0.5):
         p.append(post(f, "paint_green", x, -hd - 5.5, slab, 15.0, 0.7))
     p.append(B(f, "paint_green", (ax1 - ax0, 0.8, 0.8), ((ax0 + ax1) / 2, -hd - 5.5, 15.0), rnd=False))
     p.append(plate(f, "metal", (-hd - 6.5, 15.2), (-hd, 16.6), 0.4, "x", ax1 - ax0, mid=(ax0 + ax1) / 2))
     # Hanging lamps.
-    for x in (-19, -5):
+    for x in (5, 17.5):
         p.append(C(f, "metal", 0.6, 0.6, (x, -hd - 3, 14.2), verts=8))
     return p
 
