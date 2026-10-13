@@ -772,10 +772,22 @@ function Vehicles.groundCFrame(model)
 end
 
 -- Hands the truck to physics and to its owner's client.
+-- Drive force that lifts the truck plus what it pulls up a steep slope with room to spare. The driving client sets
+-- the same (Truck.client.luau); the server sets it too, so a truck the server simulates (no driver, self-tests) and
+-- the first frames after a hand-off are never left on a weak default.
+local function setDriveForce(model, extra)
+	local chassis = model.PrimaryPart
+	local drive = chassis and chassis:FindFirstChild("Drive")
+	if drive then
+		drive.MaxForce = (chassis.AssemblyMass + (extra or 0)) * (workspace.Gravity + 80)
+	end
+end
+
 function Vehicles.release(model, owner)
 	local chassis = model.PrimaryPart
 	chassis.Steer.CFrame = CFrame.Angles(0, yawOf(chassis.CFrame), 0)
 	chassis.Anchored = false
+	setDriveForce(model, model:GetAttribute("PullMass"))
 	pcall(function()
 		chassis:SetNetworkOwner(owner)
 	end)
@@ -882,6 +894,7 @@ local function updateCargo()
 		end
 		if truck.Parent then
 			truck:SetAttribute("PullMass", math.floor(extra))
+			setDriveForce(truck, extra)
 		end
 	end
 	for b in riding do

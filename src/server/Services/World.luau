@@ -16,6 +16,7 @@ local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabe
 local Bank = require(script.Parent.Bank)
 local Market = require(script.Parent.Market)
 local WorldMap = require(script.Parent.WorldMap)
+local Chutes = require(script.Parent.Chutes)
 
 local World = {}
 
@@ -147,6 +148,7 @@ function World.build()
 
 	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
 	WorldMap.build(folder)
+	Chutes.build(folder) -- after the world map, so its hay fields get chutes
 end
 
 return World
