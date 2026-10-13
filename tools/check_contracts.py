@@ -201,7 +201,7 @@ for path, text in files.items():
 # 6. One-time rewards are tagged for Bank's sold-total gate ------------------------------------------------------------
 # Bank counts every Bank.earn toward "sold" (the trade gate) unless its note starts with a ONE_TIME prefix. So every earn
 # note must be either a ONE_TIME prefix (one-time reward) or a known repeatable sale below; anything else must be classified.
-SALE_NOTES = ("Hay shop", "Farm sale", "Sorted needles", "Hay buyer", "Order: ", "Bounty: ", "While you were away", "SelfTest")
+SALE_NOTES = ("Hay shop", "Farm sale", "Sorted needles", "Hay buyer", "Order: ", "Contract: ", "Bounty: ", "While you were away", "SelfTest")
 bank_src = next((t for p, t in files.items() if p.replace(os.sep, "/").endswith("server/Services/Bank.luau")), "")
 om = re.search(r"local ONE_TIME = \{(.*?)\}", bank_src)
 ONE_TIME = tuple(re.findall(r'"((?:[^"\\]|\\.)*)"', om.group(1))) if om else ()

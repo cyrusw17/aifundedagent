@@ -265,6 +265,33 @@ return function(SelfTest)
 				Orders.setProgress(player, progress)
 			end
 
+			-- Daily contracts: deliveries pay their normal price, a finished contract pays the tier's reward once. The
+			-- all-three bonus is marked paid first so the test doesn't count a real streak day; the player's own contracts
+			-- are put back afterwards.
+			local savedContracts = state.contracts
+			state.contracts = nil
+			reset(0)
+			local c, list = Orders.contracts(player)
+			t.check("today's contracts exist", c ~= nil and #list == 3)
+			if c then
+				c.bonus = true
+				local tier = Prices.DailyContracts.Tiers[c.tier]
+				local def = list[1]
+				local unit = def.kind == "needles" and Prices.Needles[def.needle]
+					or def.kind == "sorted" and Prices.HayPerBale * Prices.HayPrice
+					or Prices.HayPerBale * Prices.HayPrice + Prices.NeedlesPerBale.meadow * Prices.RawNeedlePrice
+				local before = Bank.wallet(state)
+				t.equal("a contract takes what it asks for", Orders.fillContract(player, def.kind, def.amount + 5), def.amount)
+				t.equal("pays the goods' price plus the reward", Bank.wallet(state) - before, math.floor(unit * def.amount + 0.5) + tier.reward)
+				t.check("and is marked done", c.paid[1] == true and string.find(player:GetAttribute("Contracts") or "", "(done)", 1, true) ~= nil)
+				local after = Bank.wallet(state)
+				local more = Orders.fillContract(player, def.kind, 3) -- goes to another contract of the same kind, if any
+				t.equal("a done contract never pays its reward twice", Bank.wallet(state) - after, math.floor(unit * more + 0.5))
+				t.check("the reset countdown is set", (game:GetService("ReplicatedStorage"):GetAttribute("ContractsResetAt") or 0) > os.time() or #Orders.current() == 0)
+			end
+			state.contracts = savedContracts
+			Orders.contracts(player)
+
 			-- The Hay Market: a purchase charges the price, takes one from stock, hands over a marked bale, and stops at
 			-- the per-restock cap. A restock afterwards puts the stall back for real players.
 			local stall = HayMarket.slots()

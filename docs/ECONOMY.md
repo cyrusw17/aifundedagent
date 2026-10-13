@@ -567,6 +567,62 @@ chance to come out Wet at 2x. That adds 1% to needle income, and only while it r
 (under 4%) free rolls stay inside the 5% budget. tests/pity.luau holds storm + Wet + pity at 1.2x to 1.5x of the
 plain mutation value and fails above 2x.
 
+## Daily contracts
+
+Three contracts a day on the back of the order board (`Prices.DailyContracts`, `Services/Orders.luau`, CEO H9), the
+same for everyone, reset at midnight UTC. You fill them on the orders pad: a delivery also counts toward a matching
+NPC order, and when no order wants the goods the contract takes them at their normal price, so a contract never
+costs you a sale. Each finished contract pays a reward, and all three pay a bonus and count a streak day.
+
+The cash is the hard part, because income runs from $6,500 to $1.4 million an hour. A fixed reward is either a
+jackpot early or nothing late, so it scales with your lifetime sales (Bank `sold`), fixed for the day when your
+contracts start. Each tier begins where the model's first playthrough reaches that stage, and a full day (three
+rewards plus the bonus) is about 20% of one hour's income there:
+
+| Lifetime sales | Stage | Income/h | Reward each | Bonus | Full day | Needle asked for |
+|---|---|---|---|---|---|---|
+| $0 | Hands, wheelbarrow, pickup | $6,500 | $250 | $500 | $1,250 (19%) | Steel |
+| $5,000 | Plot and hand sieve | $13,700 | $550 | $1,100 | $2,750 (20%) | Steel |
+| $15,000 | Shaker, flatbed in Pine | $21,600 | $850 | $1,700 | $4,250 (20%) | Pine |
+| $40,000 | Conveyor sorter, Desert | $40,500 | $1,500 | $3,000 | $7,500 (19%) | Sand |
+| $80,000 | Box truck, Snow | $90,000 | $3,500 | $7,000 | $17,500 (19%) | Ice |
+| $170,000 | Magnet drum, Swamp | $150,000 | $6,000 | $12,000 | $30,000 (20%) | Bog |
+| $530,000 | Hauler, Volcano | $436,000 | $17,000 | $34,000 | $85,000 (19%) | Obsidian |
+| $760,000 | Optical, Cave | $750,000 | $30,000 | $60,000 | $150,000 (20%) | Geode |
+| $5,000,000 | Semi, Sky Island | $1,396,000 | $55,000 | $110,000 | $275,000 (20%) | Cloud |
+
+Income/h is the slowest stage before the next tier, so a player who is on track never gets more than about 20%. The
+budget is 25% of a day's line income, counting a day as one hour of play; anyone who plays longer gets a smaller
+share. `tests/contracts.luau` (in prepush) fails above 25% or under 10%. A player who hoards cash instead of upgrading
+reaches a tier with lower income than it assumes, so contracts are a bigger share for them; the 5% headroom covers
+that, and it nudges them back to buying. Contracts ask for 10 to 20 hay bales, 10 to 20 sorted bales and 8 to 16
+needles of the tier's type. Before a sorter they ask for a second load of hay instead of sorted bales. Rewards count
+toward `sold`, like orders and bounties, because each one needs real goods delivered.
+
+**Play-together bonus** (Land, `LandConfig.TogetherBonus` = 1.1 in Config/Land): +10% needles while a friend or crew
+member is on your plot, and only one with $25,000 sold counts, so alt accounts can't switch it on. It stays in
+Config/Land because it multiplies needles, not dollars. At the conveyor stage it's worth about $4,000 an hour, a reason
+to play together that doesn't double anyone's income.
+
+## Needle index milestones
+
+Conveyor's `Prices.NeedleIndex` (ea81985) pays once per slot as you fill the needle index: $5,000 at 25%, $40,000 at
+50%, $250,000 and the gilded skin at 75%, and $1,000,000 at 100%. The note "Discovered N% of the needle index" makes
+them one-time rewards, so they don't count toward `sold` and alt accounts can't use them to reach the trade gate.
+Checked against pacing: you reach each mark around Desert, Swamp, Cave and Star Hay, where income is about $40,000,
+$150,000, $750,000 and $1.4 million an hour. That makes each one 7 to 45 minutes of income, which is the same range as
+quest cash and the big secrets, so they are approved as they are.
+
+## Regional festival
+
+Map's H11 festival (b5f1453) gives every field bale in one region `NeedleBoost` 2 for a week, moving to a new region of
+the 11 each week. It doesn't stack with a rich field's 2x, and the sorter honours it since Conveyor 814a73f. With a
+conveyor sorter or better, needles are most of a bale's value, so a player whose own region has the festival earns
+about 1.8x for that week. A festival in an easier region than yours doesn't pay: doubled Meadow on a conveyor sorter
+($265 a bale) is still under plain Desert ($353). In practice it lands on your region about one week in 11, and
+shortens the stage you're in by up to about 45%. Spread over the climb that's well under 10%, so it's approved as it
+is. If playtests show players waiting for their region's week before upgrading, drop it to 1.5x.
+
 ## The Hay Market
 
 A stall at base camp (`Services/HayMarket.luau`, CEO backlog H6) restocks every 5 minutes with three rare bales, three

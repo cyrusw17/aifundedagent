@@ -2249,6 +2249,15 @@ end
 -- For SelfTests: runs fn(q, pocket) with this player's quests swapped for a fresh, empty set (q) and a pretend needle
 -- pocket, so steps, rituals and rewards can be driven without touching their save, cash, gear or real needles.
 -- Prompts work from anywhere while it runs. Returns pcall's results.
+-- Counts today toward the daily streak (once a day), for things outside Quests that finish a day's work: clearing all
+-- three daily contracts (Orders.luau, CEO H9).
+function Quests.countStreak(player)
+	local q = questsOf(player)
+	if q then
+		countStreakDay(player, q)
+	end
+end
+
 function Quests.sandbox(player, fn)
 	if not Data.get(player) or sandboxes[player] then
 		return false, "no save loaded, or a sandbox is already running"
