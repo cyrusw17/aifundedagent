@@ -136,6 +136,11 @@ It is the first land goal, at about 45 minutes: roughly 15 minutes of pickup ear
 paid for. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75. A land loan brings it
 forward to $500 down. $1,500 would arrive only a few minutes after the pickup, before the player has learned to haul.
 
+**Plot expansion: $5,000 a row** (`Prices.PlotExpansion`, was $1,500 in Land's first version). A plot starts with its
+back two rows locked (96 of 120 tiles), and each row adds 12 tiles. 96 tiles is plenty for the first line, so the rows
+only matter when you build a second line, around the shaker-table stage, where $5,000 is about 12 minutes of earnings.
+At $1,500 it would be a 4-minute afterthought; at $5,000 it is a small goal of its own.
+
 ### Building on your land
 
 | Piece | Was | Now | Why |
@@ -258,7 +263,7 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Sorted needle values | `Needles` | `Config/Needles` |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
-| Plot, pieces, refund | `Plot`, `Pieces`, `RefundShare` | `Config/Land` |
+| Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |
