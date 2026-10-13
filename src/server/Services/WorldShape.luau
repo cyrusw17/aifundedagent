@@ -172,20 +172,22 @@ local function addPiece(piece)
 	end
 end
 
--- Nearest road piece to a point: distance, road height there, and the road's name. nil when none is close.
+-- Nearest road piece to a point: distance, road height there, the road's name, and the nearest point on its center
+-- line (x, z). nil when none is close.
 local function nearestRoad(x, z)
 	local list = roadGrid[gridKey(math.floor(x / CELL), math.floor(z / CELL))]
 	if not list then
 		return nil
 	end
-	local best, bestH, bestRoad = math.huge, 0, nil
+	local best, bestH, bestRoad, bestX, bestZ = math.huge, 0, nil, x, z
 	for _, p in list do
 		local d, t = segment(x, z, p[1], p[2], p[3], p[4])
 		if d < best then
 			best, bestH, bestRoad = d, lerp(p[5], p[6], t), p[7]
+			bestX, bestZ = lerp(p[1], p[3], t), lerp(p[2], p[4], t)
 		end
 	end
-	return best, bestH, bestRoad
+	return best, bestH, bestRoad, bestX, bestZ
 end
 WorldShape.nearestRoad = nearestRoad
 

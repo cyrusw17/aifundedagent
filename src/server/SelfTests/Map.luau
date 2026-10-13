@@ -45,6 +45,17 @@ return function(SelfTest)
 		t.check(("all %d regions have their trees and landmarks"):format(#Map.Regions), #missing == 0, #missing > 0 and table.concat(missing, ", ") or nil)
 		t.check("the Longstitch Highway is built", isles:FindFirstChild("Longstitch Highway") ~= nil)
 		t.check("hay fields are spread over the map", #Regions.fields >= #Map.Regions, ("%d fields"):format(#Regions.fields))
+		local fieldless = {}
+		for _, def in Map.Regions do
+			local has = def.id == "spindle" -- the Spindle's hay is the Crystal Cave's
+			for _, entry in Regions.fields do
+				has = has or entry.region == def.name
+			end
+			if not has then
+				table.insert(fieldless, def.name)
+			end
+		end
+		t.check("every region has a hay field a truck can reach", #fieldless == 0, #fieldless > 0 and table.concat(fieldless, ", ") or nil)
 		local meadow = root:FindFirstChild("Meadow")
 		t.check("Meadow's gates are open", not (meadow and (meadow:FindFirstChild("ClosedGate") or meadow:FindFirstChild("EdgeWall"))))
 

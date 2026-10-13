@@ -40,6 +40,9 @@ MODULES = {
 }
 
 
+EXTRA_CHECKS = ["reach.luau"]  # run after check.luau, on the map it built
+
+
 def bundle(entry):
     out = [open(os.path.join(HERE, "mock.luau")).read(), open(os.path.join(HERE, "stubs.luau")).read()]
     for key, path in MODULES.items():
@@ -47,6 +50,8 @@ def bundle(entry):
         src = "\n".join(line for line in src.split("\n") if not line.startswith("--!"))
         out.append(f'MODULES["{key}"] = function(script)\n{src}\nend\n')
     out.append(open(entry).read())
+    for extra in EXTRA_CHECKS if entry.endswith("check.luau") else []:
+        out.append(open(os.path.join(HERE, extra)).read())
     return "\n".join(out)
 
 
