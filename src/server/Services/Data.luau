@@ -189,6 +189,7 @@ local function bankFrom(saved)
 		return typeof(v) == "number" and v == v and v or 0
 	end
 	local bank = { balance = num(saved.balance), earned = num(saved.earned), loans = {}, history = {} }
+	bank.sold = typeof(saved.sold) == "number" and saved.sold == saved.sold and saved.sold or bank.earned
 	if typeof(saved.loans) == "table" then
 		for kind, loan in saved.loans do
 			if typeof(kind) == "string" and typeof(loan) == "table" and num(loan.owed) > 0 then

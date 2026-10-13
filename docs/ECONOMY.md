@@ -275,7 +275,11 @@ when the orders change.
 
 A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
 the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
-since they are capped per player.
+since they are capped per player. A sorted bale pays for the hay it actually holds (rate × strands ÷ 90), because a sorter can wrap a few
+loose strands into a full-size sorted bale; Conveyor's audit found that paid up to $1,800 a rotation for nearly empty
+bales.
+
+Savings interest is paid on the bank balance only. Loan money is held apart (see Loans), so it never earns interest.
 
 ## The bank: Meadow Savings & Loan
 
@@ -501,6 +505,15 @@ Cash-for-needles deals pay something like the market's spread, and big cash tran
 cost. Cash moves wallet to wallet (taking from
 the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
 side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
+
+**Alt accounts and one-time rewards.** Secrets, discoveries, mazes, quest cash and finder's rewards pay once per save
+slot, so a fresh slot (or a second account) could collect them and trade the cash to a main farm. The rewards keep
+their amounts: they are what make exploring worth it, and cutting them to stop alts would punish everyone. Instead,
+a slot can hand over cash at the trading post only after it has made $25,000 from selling
+(`Prices.Trade.MinSoldToGiveCash`, about 2 hours of a new player's farming). One-time rewards still count toward loans
+and credit, but not toward that $25,000, which Bank tracks separately as `sold`. Items can always be traded, and saves
+from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
+a clock nobody can game; sales already are one.
 
 ## Where each number lives
 
