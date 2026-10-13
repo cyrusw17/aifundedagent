@@ -127,8 +127,46 @@ def prop(key, loc, rot_z=0.0, f=None, rot=None):
     return root
 
 
-def finish_part(obj, kind, f, along="x"):
-    """Give a plain mock part a house-style material (kind: hay, bark, wood, handle, metal)."""
+def prop_any(module, key, loc, rot_z=0.0, f=None, rot=None):
+    """Like prop(), for any blender/props module with a PROPS table (vehicles, buildings, machines...)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
+    mod = __import__(module)
+    f = f or rustic_finish()
+    parts = mod.PROPS[key](f)
+    root = bpy.data.objects.new(key, None)
+    bpy.context.collection.objects.link(root)
+    for o in parts:
+        if o.parent is None:
+            o.parent = root
+    root.scale = (1 / STUD,) * 3
+    root.location = loc
+    root.rotation_euler = rot or (0, 0, rot_z)
+    return root
+
+
+def bounds(root):
+    """World-space (min, max) corners of everything under root."""
+    from mathutils import Vector
+    lo, hi = Vector((1e9,) * 3), Vector((-1e9,) * 3)
+    for o in root.children_recursive:
+        if o.type != "MESH":
+            continue
+        for c in o.bound_box:
+            w = o.matrix_world @ Vector(c)
+            lo = Vector(map(min, lo, w))
+            hi = Vector(map(max, hi, w))
+    return lo, hi
+
+
+def finish_part(obj, kind, f, along="x", studs=False):
+    """Give a plain mock part a house-style material (kind: hay, bark, wood, handle, metal).
+    studs=True: the part is modeled in studs, so the textures (made for meters) are laid on at meter
+    scale and the part is scaled back up, which keeps big walls from tiling the texture into dots."""
+    if studs:
+        obj.scale = tuple(v * STUD for v in obj.scale)
+        part = finish_part(obj, kind, f, along)
+        part.scale = (1 / STUD,) * 3
+        return part
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
