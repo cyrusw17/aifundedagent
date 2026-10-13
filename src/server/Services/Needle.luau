@@ -425,7 +425,7 @@ function Needle.bundleIn(cframe, size)
 			end
 			local ownerId, needleId = first:GetAttribute("OwnerId"), first:GetAttribute("NeedleId")
 			for _ = 1, BUNDLE do
-				table.remove(list, 1):Destroy()
+				(table.remove(list, 1) :: BasePart):Destroy()
 			end
 			local b = Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId, needleId)
 			glint(b, 10)
