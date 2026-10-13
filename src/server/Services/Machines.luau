@@ -179,6 +179,7 @@ function Machines.needleBin(parent, frame)
 	local insideSize = Vector3.new(T - 0.8, 3.4, T - 0.8)
 	local label = sign(model.Floor, "", Vector3.new(0, 6, 0))
 
+	local corners = nil -- needleId -> corner index, once the needle-type splitter is fitted
 	local function refresh()
 		Needle.bundleIn(inside, insideSize)
 		local count = 0
@@ -198,7 +199,6 @@ function Machines.needleBin(parent, frame)
 	-- The needle-type splitter upgrade: a cross of dividers makes four corners, and each needle type gets its own
 	-- corner (in the order the types first arrive; a fifth type shares with the first). Plots can sell it as an
 	-- upgrade; the SELL NEEDLES pad works the same.
-	local corners = nil -- needleId -> corner index, once split
 	local cornerLabels = {}
 	local CORNER = { Vector3.new(-1.3, 0, -1.3), Vector3.new(1.3, 0, -1.3), Vector3.new(-1.3, 0, 1.3), Vector3.new(1.3, 0, 1.3) }
 	local nextCorner = 0
