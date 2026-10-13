@@ -73,7 +73,11 @@ local function openTailgates()
 		end
 	end
 	for _, p in Workspace:GetPartBoundsInBox(zone, Vector3.new(ZONE_WIDTH, ZONE_HEIGHT, ZONE_LENGTH)) do
-		if CollectionService:HasTag(p, "Tailgate") and not tagged[p] then
+		local folded = false
+		for _, truck in trucks do
+			folded = folded or p:IsDescendantOf(truck)
+		end
+		if CollectionService:HasTag(p, "Tailgate") and not tagged[p] and not folded then
 			tagged[p] = { canCollide = p.CanCollide, transparency = p.Transparency }
 			p.CanCollide = false
 			p.Transparency = 1
