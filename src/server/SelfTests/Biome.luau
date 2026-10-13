@@ -93,13 +93,18 @@ return function(SelfTest)
 		local trailerDef = Vehicles.getTrailer("small_trailer")
 		local trailer = Vehicles.buildTrailer(trailerDef, chassis.CFrame * CFrame.new(0, -chassis.Position.Y + t.center.Position.Y, 30), workspace)
 		t.cleanup(trailer)
+		-- A built trailer gets its coupler and hitch joint when it goes live (bought at the dealer or spawned owned).
+		Vehicles.makeTrailerLive(trailer, { Name = "SelfTest", UserId = -1 })
 		t.check("hitch returns true", Vehicles.hitch(truck, trailer))
 		local ball = chassis:FindFirstChild("HitchAttachment")
 		local coupler = trailer.PrimaryPart:FindFirstChild("CouplerAttachment")
-		t.near("coupler sits on the hitch ball", (ball.WorldPosition - coupler.WorldPosition).Magnitude, 0, 0.3)
-		t.check("hitch joint is on", trailer.PrimaryPart.Hitch.Enabled)
-		Vehicles.unhitch(trailer)
-		t.check("unhitch turns the joint off and clears HitchedTo", not trailer.PrimaryPart.Hitch.Enabled and trailer:GetAttribute("HitchedTo") == nil)
+		local joint = trailer.PrimaryPart:FindFirstChild("Hitch")
+		if t.check("truck has a hitch ball and the trailer a coupler and joint", ball ~= nil and coupler ~= nil and joint ~= nil) then
+			t.near("coupler sits on the hitch ball", (ball.WorldPosition - coupler.WorldPosition).Magnitude, 0, 0.3)
+			t.check("hitch joint is on", joint.Enabled)
+			Vehicles.unhitch(trailer)
+			t.check("unhitch turns the joint off and clears HitchedTo", not joint.Enabled and trailer:GetAttribute("HitchedTo") == nil)
+		end
 		trailer:Destroy()
 
 		-- Bale chute: one pull fills the bottom layer --------------------------------------------------------
