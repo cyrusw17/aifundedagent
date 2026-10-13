@@ -742,10 +742,33 @@ return function(SelfTest)
 			t.skip("place and undo", "the player's farm changed while the suite ran")
 			return
 		end
-		local placed, placeWhy = L.onPlace(player, "belt", spot[1], spot[2], "N")
+		-- The same player may be building at the same time (a person clicking in Studio, or the headless scenario's
+		-- poke), and every build action shares ownPlot's 0.12 s debounce, which refuses with no message. Clear the
+		-- debounce before each call (and retry if another action slips in between).
+		local function act(fn, ...)
+			local ok, why
+			for _ = 1, 10 do
+				L.lastAction[player] = nil -- this check's click, not the debounce, is under test
+				ok, why = fn(...)
+				if ok or why ~= nil then
+					break
+				end
+				task.wait(0.15)
+			end
+			return ok, why
+		end
+		local placed, placeWhy = act(L.onPlace, player, "belt", spot[1], spot[2], "N")
 		t.check("place builds a belt", placed and beltAt(mine) ~= nil, ("%s: %s"):format(tostring(placed), tostring(placeWhy)))
-		task.wait(0.2)
-		local undone, undoWhy = L.onUndo(player)
+		-- Undo takes back the player's newest action; if they built something else meanwhile, undo that too until
+		-- this belt is gone (a few steps at most).
+		local undone, undoWhy
+		for _ = 1, 5 do
+			task.wait(0.2)
+			undone, undoWhy = act(L.onUndo, player)
+			if not beltAt(mine) or not undone then
+				break
+			end
+		end
 		t.check("undo takes it away again", undone and beltAt(mine) == nil, ("%s: %s"):format(tostring(undone), tostring(undoWhy)))
 	end)
 end

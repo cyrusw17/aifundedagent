@@ -2499,6 +2499,7 @@ end
 
 -- For SelfTests/Land.luau only: the internals its checks drive. Nothing in the game reads this.
 Land.test = {
+	lastAction = lastAction,
 	helperOn = helperOn,
 	seasonedState = seasonedState,
 	joinLimit = joinLimit,
