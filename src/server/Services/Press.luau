@@ -148,7 +148,10 @@ function Press.build(parent, frame)
 		plate.CFrame = top
 		model:SetAttribute("Running", false)
 
-		local units = math.max(1, math.floor(hay / Blocks.Materials.thatch.per))
+		local units = math.floor(hay / Blocks.Materials.thatch.per)
+		if units < 1 then
+			return
+		end
 		-- Four spots on the pallet, stacked three high, so a new block never lands inside one nobody picked up.
 		local stack, layer = pressed % 4, (pressed // 4) % 3
 		local at = pallet * CFrame.new((stack % 2 - 0.5) * 1.1, 0.5 + BLOCK.Y / 2 + 0.2 + layer * (BLOCK.Y + 0.1), (math.floor(stack / 2) - 0.5) * 2.2)
@@ -161,6 +164,11 @@ function Press.build(parent, frame)
 	-- Everything sorted that reaches the press comes off the belt at once and waits its turn here, so nothing rides
 	-- through while the plate is down.
 	local queue = {}
+	-- Loose sorted strands wait here per owner and are pressed in whole thatch units, once a bale's worth is in or
+	-- nothing more has come for a moment, so strands trickling in press to the same thatch as a bale (they used to
+	-- round up to a block each).
+	local pending = {} -- ownerId (0 = nobody) -> hay
+	local lastIn = {} -- ownerId -> os.clock() of the last strand in
 	task.spawn(function()
 		while model.Parent do
 			local job = table.remove(queue, 1)
@@ -194,7 +202,19 @@ function Press.build(parent, frame)
 				end
 			end
 			for ownerId, strands in loose do
-				table.insert(queue, { hay = strands * Config.HayPerPiece, ownerId = ownerId ~= 0 and ownerId or nil })
+				pending[ownerId] = (pending[ownerId] or 0) + strands * Config.HayPerPiece
+				lastIn[ownerId] = os.clock()
+			end
+			local per = Blocks.Materials.thatch.per
+			local baleHay = Config.PiecesPerBale * Config.HayPerPiece
+			for ownerId, hay in pending do
+				if hay >= baleHay or os.clock() - (lastIn[ownerId] or 0) > 2 then
+					local whole = math.floor(math.min(hay, baleHay) / per) * per
+					if whole > 0 then
+						pending[ownerId] = hay - whole
+						table.insert(queue, { hay = whole, ownerId = ownerId ~= 0 and ownerId or nil })
+					end
+				end
 			end
 			if refused and os.clock() - refusedAt > 8 then
 				refusedAt = os.clock()

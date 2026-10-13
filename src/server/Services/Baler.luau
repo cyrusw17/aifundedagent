@@ -53,6 +53,7 @@ function Baler.build(parent, frame)
 	local zoneSize = Vector3.new(T - 0.8, 4, T - 0.6)
 	local out = center * CFrame.new(0, TOP + 1.45, -T + 2) * CFrame.Angles(0, math.pi / 2, 0)
 	local chamber = {} -- "ownerId|hayType|sorted" -> strands waiting
+	local boostSums = {} -- same key -> { [boost name] = sum over strands of the boost }
 	local baled = 0
 
 	local function refresh()
@@ -65,7 +66,8 @@ function Baler.build(parent, frame)
 	end
 	refresh()
 
-	local function makeBale(ownerId, hayType, sorted)
+	-- boosts: { NeedleBoost = n, MutationBoost = n } averaged over the strands that went in (Hay.BoostAttributes).
+	local function makeBale(ownerId, hayType, sorted, boosts)
 		model:SetAttribute("Running", true)
 		local rest = ram.CFrame
 		local started = os.clock()
@@ -82,6 +84,12 @@ function Baler.build(parent, frame)
 		else
 			local b = Bales.spawn(out.Position, false, false, hayType)
 			b.ownerId = ownerId
+			-- The strands' boosts go back into the bale, so a rich field's or a Hay Market bale's odds survive baling.
+			for name, boost in boosts or {} do
+				if math.abs(boost - 1) > 1e-6 then
+					b.body:SetAttribute(name, boost)
+				end
+			end
 			b.body.CFrame = out
 			b.body.Anchored = false
 			pcall(function()
@@ -98,7 +106,7 @@ function Baler.build(parent, frame)
 		while model.Parent do
 			local job = table.remove(queue, 1)
 			if job then
-				makeBale(job.ownerId, job.hayType, job.sorted)
+				makeBale(job.ownerId, job.hayType, job.sorted, job.boosts)
 			else
 				task.wait(0.25)
 			end
@@ -116,12 +124,22 @@ function Baler.build(parent, frame)
 					local sorted = p:GetAttribute("Sorted") == true
 					local key = ("%s|%s|%s"):format(tostring(ownerId), hayType, sorted and "1" or "0")
 					local strands = Hay.strandsIn(p) -- a raked pile counts every strand in it
+					-- Each boost is kept as strand-weighted sums beside the strand count, so a bale gets the average.
+					boostSums[key] = boostSums[key] or {}
+					for _, name in Hay.BoostAttributes do
+						boostSums[key][name] = (boostSums[key][name] or 0) + strands * Hay.boostOf(p, name)
+					end
 					Hay.remove(p)
 					took = true
 					chamber[key] = (chamber[key] or 0) + strands
 					while chamber[key] >= Config.PiecesPerBale do
+						local boosts = {}
+						for name, sum in boostSums[key] do
+							boosts[name] = sum / chamber[key]
+							boostSums[key][name] = sum - boosts[name] * Config.PiecesPerBale
+						end
 						chamber[key] -= Config.PiecesPerBale
-						table.insert(queue, { ownerId = ownerId ~= 0 and ownerId or nil, hayType = hayType, sorted = sorted })
+						table.insert(queue, { ownerId = ownerId ~= 0 and ownerId or nil, hayType = hayType, sorted = sorted, boosts = boosts })
 					end
 				end
 			end

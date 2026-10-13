@@ -1099,16 +1099,24 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				if payTo then
 					ownerId = payTo(ownerId)
 				end
-				local taken, boosted = 0, 0
+				local taken, boosted, mutated = 0, 0, 0
 				for _, p in loose do
 					if p:GetAttribute("OwnerId") == firstOwner and hayTypeOf(p) == hayType then
 						local strands = Hay.strandsIn(p) -- a raked pile counts every strand in it
 						taken += strands
 						boosted += strands * boostOf(p, "NeedleBoost") -- strands from a rich bale keep its boost
+						mutated += strands * boostOf(p, "MutationBoost") -- and a Hay Market bale's mutation odds
 						Hay.remove(p)
 					end
 				end
-				sort(taken * Config.HayPerPiece, ownerId, hayType, 1, taken > 0 and boosted / taken or 1)
+				sort(
+					taken * Config.HayPerPiece,
+					ownerId,
+					hayType,
+					1,
+					taken > 0 and boosted / taken or 1,
+					taken > 0 and mutated / taken or 1
+				)
 			end
 		end
 	end)

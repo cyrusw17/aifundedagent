@@ -310,6 +310,7 @@ function Bales.breakOpen(player, b)
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
 		local boost = b.body:GetAttribute("NeedleBoost") or 1
+		local mutation = b.body:GetAttribute("MutationBoost") -- a Hay Market bale's mutation odds ride on its strands
 		local wet = b.body:GetAttribute("Wet") == true -- a soaked bale spills soaked hay
 		-- A golden field bale (1 in GoldenBaleOneIn) holds GoldenBaleNeedles times the needles on top of that.
 		local golden = b.body:GetAttribute("GoldenField") == true
@@ -372,6 +373,9 @@ function Bales.breakOpen(player, b)
 				if boost ~= 1 then
 					piece:SetAttribute("NeedleBoost", boost)
 				end
+				if mutation then
+					piece:SetAttribute("MutationBoost", mutation)
+				end
 				if sorted then
 					piece:SetAttribute("Sorted", true)
 				end
@@ -396,7 +400,7 @@ function Bales.breakOpen(player, b)
 		end
 		-- Once in a while something odd was baled up with the hay (Config/Finds).
 		if not sorted then
-			Finds.roll(center + Vector3.new(0, 2, 0))
+			Finds.roll(center + Vector3.new(0, 2, 0), baleOwner)
 		end
 	end)
 end

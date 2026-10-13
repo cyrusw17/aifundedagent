@@ -88,7 +88,7 @@ local function sellBale(b)
 	end
 	local hay = b.sortedHay or Config.PiecesPerBale * Config.HayPerPiece
 	-- A sorted bale's needles were already taken out (and paid for) by the sorter.
-	local needles = if b.sorted then 0 else Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
+	local needles = if b.sorted then 0 else Economy.rollNeedles(rng, hay, Hay.needleChanceOf(b.body))
 	local value = Economy.rawLoadValue(hay, needles)
 	if b.body:GetAttribute("Wet") then
 		value -= wetPenalty(hay)
@@ -112,7 +112,7 @@ end
 
 -- Loose hay on the pad is paid to whoever last scooped, raked or smashed it.
 local function sellPieces(pieces)
-	local byOwner, unsortedByOwner, needlesByOwner, wetByOwner = {}, {}, {}, {}
+	local byOwner, hiddenByOwner, needlesByOwner, wetByOwner = {}, {}, {}, {}
 	for _, piece in pieces do
 		local ownerId = piece:GetAttribute("OwnerId")
 		if Hay.isNeedle(piece) then
@@ -123,7 +123,9 @@ local function sellPieces(pieces)
 			local n = Hay.strandsIn(piece) -- a raked pile counts as all the strands in it
 			byOwner[ownerId] = (byOwner[ownerId] or 0) + n
 			if not piece:GetAttribute("Sorted") then
-				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + n
+				-- Hidden needles at this piece's own chance (its hay type and boosts).
+				hiddenByOwner[ownerId] = (hiddenByOwner[ownerId] or 0)
+					+ Economy.rollNeedles(rng, n * Config.HayPerPiece, Hay.needleChanceOf(piece))
 			end
 			if piece:GetAttribute("Wet") then
 				wetByOwner[ownerId] = (wetByOwner[ownerId] or 0) + n
@@ -138,8 +140,7 @@ local function sellPieces(pieces)
 			local hay = n * Config.HayPerPiece
 			-- Hidden needles in loose hay pay the raw price; needles lying in plain sight pay their full value. Hay
 			-- from a sorted bale has no hidden needles left.
-			local needles =
-				Economy.rollNeedles(rng, (unsortedByOwner[ownerId] or 0) * Config.HayPerPiece, Config.NeedleChancePerHay)
+			local needles = hiddenByOwner[ownerId] or 0
 			local value = Economy.rawLoadValue(hay, needles)
 				+ (needlesByOwner[ownerId] or 0)
 				- wetPenalty((wetByOwner[ownerId] or 0) * Config.HayPerPiece)

@@ -306,6 +306,7 @@ local function useShovel(player, root, aim)
 		end
 		local takes = HayMath.scoopPlan(plan, room, Gloves.scoopSize(player, hayTier) + bonus)
 		local strands, found, unsorted, wet = 0, 0, 0, 0
+		local hidden = 0 -- needles rolled in the unsorted hay, at each piece's own chance (hay type, boosts)
 		local flying = {} -- what leaves the ground whole and flies to you
 		for i, piece in hayPieces do
 			local take = takes[i]
@@ -313,6 +314,7 @@ local function useShovel(player, root, aim)
 				strands += take
 				if not piece:GetAttribute("Sorted") then
 					unsorted += take -- hay from a sorted bale has had its needles taken out already
+					hidden += Economy.rollNeedles(rng, take * Config.HayPerPiece, Hay.needleChanceOf(piece))
 				end
 				if piece:GetAttribute("Wet") then
 					wet += take
@@ -340,8 +342,7 @@ local function useShovel(player, root, aim)
 		state.loadSortedHay = (state.loadSortedHay or 0) + (strands - unsorted) * Config.HayPerPiece
 		state.loadWetHay = (state.loadWetHay or 0) + wet * Config.HayPerPiece
 		state.loadType = state.loadType or first:GetAttribute("HayType") or "meadow"
-		state.loadNeedles += found
-			+ Economy.rollNeedles(rng, unsorted * Config.HayPerPiece, Config.NeedleChancePerHay)
+		state.loadNeedles += found + hidden
 		Data.sync(player)
 		Hay.flyToPlayer(root, list)
 		Feedback.play("Scoop", root)

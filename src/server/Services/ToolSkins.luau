@@ -72,12 +72,15 @@ local function publish(player, skins)
 	player:SetAttribute("ToolSkinRake", skins.worn.Rake or "")
 end
 
--- Recolors one tool for the skin (or puts its own look back when skinId is nil). Parts that are hidden (a mesh's
--- part fallback, transparency 1) are left alone.
+-- Recolors one tool for the skin (or puts its own look back when skinId is nil), mesh and part look alike. The
+-- Rustic mesh's parts sit at transparency 1 on the server until each client has loaded the mesh and swapped it in
+-- (Props.weldTo marks them MeshTransparency, PropMeshes.client shows them), so those are painted too; only parts
+-- meant to stay invisible are skipped.
 function ToolSkins.dress(tool, skinId)
 	local def = skinId and byId[skinId]
 	for _, part in tool:GetDescendants() do
-		if part:IsA("BasePart") and part.Transparency < 1 then
+		local shown = part:IsA("BasePart") and (part.Transparency < 1 or (part:GetAttribute("MeshTransparency") or 1) < 1)
+		if shown then
 			local own = part:GetAttribute("OwnColor")
 			if def then
 				if not own then
