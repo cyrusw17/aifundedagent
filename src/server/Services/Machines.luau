@@ -711,9 +711,12 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					local clean = false
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
+						local seller = ownerId -- who handled the bale, before payTo sends the cash to the plot owner
 						take = function()
-							Events.fire(ownerId, "bale_sold", 1, { hayType = hayType })
 							Bales.consume(b)
+							if seller then
+								Events.fire(seller, "bale_sold", 1, { hayType = hayType })
+							end
 						end
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
