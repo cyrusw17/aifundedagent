@@ -49,6 +49,44 @@ Prices.Needles = {
 	cosmic = 5000,
 }
 
+-- Finder's rewards for foreign objects in hay (Config/Finds, by id), paid once for the first of each kind. About $1
+-- for every bale it takes on average to turn one up (Finds oneIn), with the two rarest doubled because they are the
+-- finds players talk about. They are a moment, not an income: all six together are under an hour of pickup earnings.
+Prices.FinderRewards = {
+	boot = 50, -- 1 in 50 bales
+	horseshoe = 150, -- 1 in 150
+	key = 300, -- 1 in 300
+	radio = 600, -- 1 in 600
+	ring = 1500, -- 1 in 1,000, doubled
+	fossil = 4000, -- 1 in 2,000, doubled
+}
+
+-- NPC buyer orders (Services/Orders.luau). Three local buyers post an order each, new ones every RotateSeconds. Every
+-- unit delivered pays at once: its normal price times mult, up to the order's amount per player. Plain bales pay 1.5x
+-- the public shop ($71 a bale), sorted bales 2x their hay ($90, double what a hay buyer pays, since the sorting is
+-- done), and steel needles 1.25x list ($125). A full order is worth a few hundred to a thousand dollars over selling
+-- normally: a 5 to 10 minute bonus at the pickup stage, and a reason to haul somewhere other than your own line.
+Prices.Orders = {
+	RotateSeconds = 1200,
+	Buyers = { "Miller Joe", "Widow Hale", "Old Tobias", "Mabel at the feed store", "The Thatcher twins", "Pastor Reed" },
+	Kinds = {
+		bales = { amount = { 8, 16 }, mult = 1.5 },
+		sorted = { amount = { 10, 20 }, mult = 2 },
+		needles = { amount = { 6, 15 }, mult = 1.25 },
+	},
+}
+
+-- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
+-- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
+-- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
+-- MinNormalSales. A quiet type pays up to 20% more, which nudges players toward regions nobody is farming.
+Prices.Market = {
+	Swing = 0.2,
+	HalfLifeSeconds = 600,
+	NormalSales = 40,
+	MinNormalSales = 5,
+}
+
 -- Buying ------------------------------------------------------------------------------------------------------------
 
 -- Trucks, at Homestead Motors. Each costs one to two hours of what you earn at the stage before it, so it is a real
@@ -71,6 +109,10 @@ Prices.Trailers = {
 	bale_rack_trailer = 200000,
 }
 
+-- The wheelbarrow carries 3 bales at a push: about three times a hand haul, well short of a truck. Priced at a few
+-- minutes of hand hauling so it is the first big upgrade, before the pickup.
+Prices.Wheelbarrow = 400
+
 -- Gloves (Config/Gloves Tiers, by id). Each pair costs about 30 minutes of what you earn just before you need it for
 -- the next region's heavier hay. Work Gloves are the first purchase, two or three minutes in.
 Prices.Gloves = {
@@ -90,6 +132,7 @@ Prices.Plot = 2500
 -- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
 -- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
 Prices.PlotExpansion = 5000
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type (placeholder for Econ)
 
 -- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
 -- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
@@ -110,12 +153,28 @@ Prices.Pieces = {
 	blueprint_floor = 10,
 	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
 	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	raised_belt = 60, -- a belt on the upper level, so one line can cross another
+	ramp_up = 150,
+	ramp_down = 150,
 	splitter = 300,
 	sort_splitter = 600,
 	display_wall = 1000,
 	hay_press = 8000,
+	needle_polisher = 12000,
+	alloy_mixer = 20000,
 }
 Prices.RefundShare = 0.5
+
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
+
+-- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
+-- PolishPerMinute needles a minute; the rest stay plain.
+Prices.PolishBonus = 0.25
+Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
 -- change on a big one; it only pays when the sorter is what holds the line back.
@@ -133,6 +192,38 @@ Prices.SorterBalesPerMinute = {
 	conveyor_sorter = 8,
 	magnet_drum = 16,
 	optical_sorter = 30,
+}
+
+-- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
+-- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
+-- Longstitch Highway, stay free.
+Prices.Travel = {
+	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
+	barge = 0, -- the Captain's Barge is earned by quest and free to use
+	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+}
+
+-- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
+-- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+Prices.Robux = {
+	Trucks = {
+		homestead_classic = 399, -- skin of the Rusty Pickup tier
+		timber_wolf = 799, -- Farm Flatbed tier
+		midnight_express = 1199, -- Box Truck tier
+		prairie_schooner = 1799, -- Heavy Hauler tier
+		founders_semi = 2499, -- Semi tier, launch edition
+	},
+	Passes = {
+		vip = 249,
+		auto_dock = 299,
+		big_silo = 199,
+		paint_studio = 149,
+		plot_themes = 199,
+		truck_radio = 99,
+	},
+	HarvestPass = 499,
+	ServerBoost = 99,
+	PrivateServer = 100, -- a month
 }
 
 -- The bank -----------------------------------------------------------------------------------------------------------

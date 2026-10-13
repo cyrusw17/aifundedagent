@@ -308,8 +308,13 @@ Quests.Rewards = {
 	starlight_hauler = { kind = "truck", name = "Starlight Hauler", blurb = "Call it from the quest log." },
 	alien_collector = {
 		kind = "unlock",
+		name = "Alien Collector",
+		blurb = "A sorter that finds every needle at once while its beam is up, once a day. Build it on your land.",
+	},
+	starbeam_collector = {
+		kind = "unlock",
 		name = "Starbeam Collector",
-		blurb = "A sorter that finds every needle at once. Build it on your land.",
+		blurb = "A beacon over one belt tile that pulls a bale of Star hay out of the sky now and then. Build it on your land.",
 	},
 	captains_barge = {
 		kind = "unlock",
@@ -613,7 +618,11 @@ Quests.List = {
 				text = "Offer 50 sorted needles of every kind you can find",
 			},
 		},
-		reward = { unlock = "alien_collector", gloves = "starweave_gloves", truck = "starlight_hauler" },
+		reward = {
+			unlock = { "alien_collector", "starbeam_collector" },
+			gloves = "starweave_gloves",
+			truck = "starlight_hauler",
+		},
 	},
 
 	-- Region quests. Their spots appear once the region is built.

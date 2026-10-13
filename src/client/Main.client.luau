@@ -14,12 +14,13 @@ local gui = Kit.screen("NeedlewoodHud", 4)
 
 -- The HUD card: cash, what you carry, a load bar and a one-line hint. The goal bar and the MAP / SHOP / HELP
 -- buttons sit right under it (Menus.client.luau).
+local Hud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UI"):WaitForChild("Hud"))
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(230, 112)
-panel.Position = UDim2.fromOffset(14, 14)
+panel.LayoutOrder = Hud.Order.Cash
 panel.BackgroundColor3 = C.Wood
 panel.BackgroundTransparency = 0.1
-panel.Parent = gui
+panel.Parent = Hud.column()
 Kit.corner(panel, 10)
 Kit.stroke(panel, C.Ink, 1.5)
 
@@ -128,6 +129,7 @@ end)
 local HINTS = {
 	Shovel = "Shovel: click a bale or hay",
 	Rake = "Rake: click loose hay",
+	Wheelbarrow = "Wheelbarrow: click a bale to load, the ground to unload",
 }
 
 local function refresh()

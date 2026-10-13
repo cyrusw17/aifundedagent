@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
+local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
@@ -18,6 +19,7 @@ local Props = require(script.Parent.Props)
 local Gloves = require(script.Parent.Gloves)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
+local Finds = require(script.Parent.Finds)
 
 local Bales = {}
 
@@ -28,17 +30,23 @@ local byBody = {} -- bale body part -> bale record
 
 local SIZE = Vector3.new(4.6, 2.6, 3.2) -- length, height, depth of one bale
 local CARRY_OFFSET = CFrame.new(0, 0.4, -2.8)
-local HAY = Color3.fromRGB(189, 168, 112) -- rustic palette: muted, weathered
 local TWINE = Color3.fromRGB(97, 84, 66)
 local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
 
-local function buildBale(position)
+-- The bale's own color: the first of its hay's colors (Config/HayLooks).
+local function hayColor(hayType)
+	local c = Hay.look(hayType).colors[1]
+	return Color3.fromRGB(c[1], c[2], c[3])
+end
+
+local function buildBale(position, hayType)
+	hayType = hayType or "meadow"
 	local body = Instance.new("Part")
 	body.Name = "HayBale"
-	body:SetAttribute("HayType", "meadow") -- Config/Gloves hay type; set another for rarer bales
+	body:SetAttribute("HayType", hayType) -- Config/Gloves hay type; set another for rarer bales
 	body.Size = SIZE
 	body.CFrame = CFrame.new(position + Vector3.new(0, SIZE.Y / 2, 0)) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0)
-	body.Color = HAY
+	body.Color = hayColor(hayType)
 	body.Material = Enum.Material.Fabric
 	body.TopSurface = Enum.SurfaceType.Smooth
 	body.BottomSurface = Enum.SurfaceType.Smooth
@@ -50,6 +58,14 @@ local function buildBale(position)
 	-- stays the real physics block and click target. Each client hides the part look once the mesh has loaded.
 	local mesh = Props.make("hay_bale", body.CFrame, SIZE)
 	if mesh then
+		-- Tint the mesh for rarer hay (an untextured mesh takes the color; a textured one keeps its own).
+		if hayType ~= "meadow" then
+			for _, d in mesh:GetDescendants() do
+				if d:IsA("MeshPart") then
+					d.Color = body.Color
+				end
+			end
+		end
 		Props.weldTo(mesh, body, body)
 	end
 
@@ -76,7 +92,7 @@ local function buildBale(position)
 	-- while you carry it the button travels with you and puts it down.
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Pick up"
-	prompt.ObjectText = "Hay bale"
+	prompt.ObjectText = (GloveConfig.HayTypes[hayType] or GloveConfig.HayTypes.meadow).name .. " bale"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.PickupReach
 	prompt.RequiresLineOfSight = false
@@ -195,7 +211,8 @@ local function debrisPart(shape, size, cframe, color, material, velocity)
 end
 
 -- Straw and dust thrown up when the bale bursts.
-local function burstEffects(position)
+local function burstEffects(position, hayType)
+	local look = Hay.look(hayType)
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
 	anchor.CanCollide = false
@@ -212,7 +229,7 @@ local function burstEffects(position)
 	straw.Speed = NumberRange.new(10, 22)
 	straw.SpreadAngle = Vector2.new(180, 180)
 	straw.Acceleration = Vector3.new(0, -25, 0)
-	straw.Color = ColorSequence.new(HAY)
+	straw.Color = ColorSequence.new(hayColor(hayType))
 	straw.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
 	straw.Parent = anchor
 
@@ -221,13 +238,27 @@ local function burstEffects(position)
 	dust.Lifetime = NumberRange.new(0.8, 1.4)
 	dust.Speed = NumberRange.new(3, 8)
 	dust.SpreadAngle = Vector2.new(180, 180)
-	dust.Color = ColorSequence.new(Color3.fromRGB(175, 160, 125))
+	dust.Color = ColorSequence.new(Color3.fromRGB(look.dust[1], look.dust[2], look.dust[3]))
 	dust.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
 	dust.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
 	dust.Parent = anchor
 
 	straw:Emit(40)
 	dust:Emit(18)
+	-- The stranger hays throw up a few drifting specks: ash embers, frost, crystal glints, star dust.
+	if look.motes then
+		local motes = Instance.new("ParticleEmitter")
+		motes.Rate = 0
+		motes.Lifetime = NumberRange.new(1.2, 2.2)
+		motes.Speed = NumberRange.new(1, 4)
+		motes.SpreadAngle = Vector2.new(180, 180)
+		motes.Acceleration = Vector3.new(0, 1.5, 0)
+		motes.LightEmission = 0.6
+		motes.Color = ColorSequence.new(Color3.fromRGB(look.motes[1], look.motes[2], look.motes[3]))
+		motes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(1, 0) })
+		motes.Parent = anchor
+		motes:Emit(24)
+	end
 	Debris:AddItem(anchor, 2.5)
 end
 
@@ -258,7 +289,7 @@ function Bales.breakOpen(player, b)
 		-- A rich field (WorldMap.luau) marks its bales with NeedleBoost: that many times the needles.
 		local boost = b.body:GetAttribute("NeedleBoost") or 1
 		Bales.consume(b)
-		burstEffects(center + Vector3.new(0, 1.5, 0))
+		burstEffects(center + Vector3.new(0, 1.5, 0), hayType)
 		Feedback.play("BaleBurst", center)
 		Events.fire(player, "bale_broken", 1, { position = center, hayType = hayType })
 		-- The first bale a player ever breaks always shows them a glinting needle: that is the hook.
@@ -286,7 +317,7 @@ function Bales.breakOpen(player, b)
 				Enum.PartType.Block,
 				Vector3.new(SIZE.X / 6, SIZE.Y * 0.8, SIZE.Z * 0.8),
 				flake,
-				HAY,
+				hayColor(hayType),
 				Enum.Material.Fabric,
 				out * rng:NextNumber(6, 10) + Vector3.new(rng:NextNumber(-2, 2), rng:NextNumber(5, 9), rng:NextNumber(-2, 2))
 			)
@@ -299,7 +330,7 @@ function Bales.breakOpen(player, b)
 			for _ = 1, perWave do
 				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
-				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner)
+				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner, nil, hayType)
 				piece:SetAttribute("HayType", hayType)
 				if boost ~= 1 then
 					piece:SetAttribute("NeedleBoost", boost)
@@ -322,6 +353,10 @@ function Bales.breakOpen(player, b)
 				Feedback.needle(needle, Hay.needleValue(needle))
 			end
 			task.wait(0.22)
+		end
+		-- Once in a while something odd was baled up with the hay (Config/Finds).
+		if not sorted then
+			Finds.roll(center + Vector3.new(0, 2, 0))
 		end
 	end)
 end
@@ -364,29 +399,8 @@ function Bales.pickup(player, b)
 	Data.sync(player)
 end
 
--- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
-function Bales.drop(player)
-	local state = Data.get(player)
-	local b = state and state.carryBale
-	if not b or b.gone then
-		return
-	end
-	local root = Avatar.getRoot(player)
-	state.carryBale = nil
-	Data.sync(player)
-
-	if b.carryWeld then
-		b.carryWeld:Destroy()
-		b.carryWeld = nil
-	end
-	b.carriedBy = nil
-
-	if not root or not root.Parent then
-		Bales.consume(b)
-		return
-	end
-
-	-- Set it down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
+-- Sets a bale down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
+local function setDown(b, root)
 	local look = root.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
@@ -411,18 +425,88 @@ function Bales.drop(player)
 		b.body:SetNetworkOwnershipAuto()
 	end)
 
+end
+
+-- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
+function Bales.drop(player)
+	local state = Data.get(player)
+	local b = state and state.carryBale
+	if not b or b.gone then
+		return
+	end
+	local root = Avatar.getRoot(player)
+	state.carryBale = nil
+	Data.sync(player)
+
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+
+	if not root or not root.Parent then
+		Bales.consume(b)
+		return
+	end
+
+	setDown(b, root)
 	Feedback.play("BaleSetDown", b.body)
 	Avatar.clearCarry(player)
+	startDespawnTimer(b)
+end
+
+-- Loads a bale into something the player moves (a wheelbarrow): welded to anchor at offset, out of play until
+-- released. Returns true if it was loaded.
+function Bales.stow(player, b, anchor, offset)
+	if b.gone or b.carriedBy or b.breaking then
+		return false
+	end
+	b.carriedBy = player
+	b.ownerId = player.UserId
+	b.dropToken += 1
+	b.prompt.Enabled = false
+	b.body.Anchored = false
+	b.body.CanCollide = false
+	b.body.CanQuery = false -- so bales set down from the same barrow stack on the ground, not on this one
+	b.body.Massless = true
+	b.body.CFrame = anchor.CFrame * offset
+	local weld = Instance.new("Weld")
+	weld.Name = "CarryWeld"
+	weld.Part0 = anchor
+	weld.Part1 = b.body
+	weld.C0 = offset
+	weld.Parent = b.body
+	b.carryWeld = weld
+	scheduleRegrow(b)
+	Feedback.play("BaleLift", b.body)
+	return true
+end
+
+-- Takes a stowed bale out and sets it down in front of the player (or gets rid of it if the player is gone).
+function Bales.release(b, root)
+	if b.gone then
+		return
+	end
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+	b.prompt.Enabled = true
+	if not root or not root.Parent then
+		Bales.consume(b)
+		return
+	end
+	setDown(b, root)
+	b.body.CanQuery = true
+	Feedback.play("BaleSetDown", b.body)
 	startDespawnTimer(b)
 end
 
 -- position is the ground point under the bale. home bales regrow after being smashed or lifted, as the same hay.
 -- hayType is a Config/Gloves hay (meadow when nil). Set b.onRegrow(newBale) to hear about the bale that grows back.
 function Bales.spawn(position, home, fadeIn, hayType)
-	local body, prompt = buildBale(position)
-	if hayType then
-		body:SetAttribute("HayType", hayType)
-	end
+	local body, prompt = buildBale(position, hayType)
 	local b = {
 		hayType = hayType,
 		body = body,

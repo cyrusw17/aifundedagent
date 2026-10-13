@@ -171,8 +171,11 @@ local function stateFrom(saved)
 		carryBale = nil,
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
+		gear = stringList(saved.gear), -- other things bought once and kept, like "wheelbarrow"
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
+		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
+		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
 		gloves = typeof(saved.gloves) == "table" and {
@@ -187,6 +190,8 @@ local function stateFrom(saved)
 		land = nil,
 		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
+		-- settings: { effects, uiSize, shadows, labels } (Settings.luau checks each value)
+		settings = typeof(saved.settings) == "table" and saved.settings or {},
 		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
 		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 	}
@@ -199,6 +204,8 @@ local function stateFrom(saved)
 			needles = countMap(saved.land.needles),
 			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
 			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
+			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
+			theme = typeof(saved.land.theme) == "string" and saved.land.theme or nil, -- plot theme id
 		}
 	end
 	return state
@@ -347,12 +354,16 @@ function Data.save(player)
 		cash = cash,
 		trucks = state.trucks,
 		trailers = state.trailers,
+		gear = state.gear,
 		pocket = state.pocket,
 		thatch = state.thatch,
+		materials = state.materials,
+		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
 		tutorial = state.tutorial,
+		settings = state.settings,
 		quests = state.quests,
 	}
 	if write(slotKey(player, state.slot), saved) then

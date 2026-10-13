@@ -14,6 +14,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -31,10 +32,13 @@ local Oil = Prices.SorterOil
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
+local LineStats = require(script.Parent.LineStats)
+require(script.Parent.Jams) -- watches belts for stuck bales (Jams.luau)
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
 local Events = require(script.Parent.Events)
+local Market = require(script.Parent.Market)
 
 local Machines = {}
 
@@ -56,6 +60,7 @@ Machines.Colors = {
 local C = Machines.Colors
 
 local rng = Random.new()
+local alienUsedDay = {} -- UserId -> UTC day the Alien collector beam was last used (per server)
 
 local needle = Needles[1]
 for _, n in Needles do
@@ -99,6 +104,7 @@ function Machines.pay(ownerId, amount, text, note)
 		return
 	end
 	Bank.earn(owner, amount, note or "Farm sale")
+	LineStats.record(ownerId, "cash", amount)
 	Tutorial.mark(owner, "sold")
 	Tutorial.earned(owner, amount)
 	Data.toast(owner, text)
@@ -217,6 +223,52 @@ function Machines.needleBin(parent, frame)
 		return CORNER[corners[needleId]]
 	end
 
+	-- The needle polisher upgrade: a polishing wheel on the bin's side that polishes needles resting in the bin, up to
+	-- Prices.PolishPerMinute a minute (a bundle counts as 10). Polished needles sell for Prices.PolishBonus more.
+	local polisher = nil
+	function bin.fitPolisher()
+		if polisher then
+			return
+		end
+		model:SetAttribute("Polisher", true)
+		local side = frame * CFrame.new(T / 2 + 0.9, 0, 0)
+		polisher = Instance.new("Model")
+		polisher.Name = "NeedlePolisher"
+		polisher:SetAttribute("Running", false)
+		polisher.Parent = model
+		local base = part(polisher, "Base", Vector3.new(1.4, 2.4, 2.4), side * CFrame.new(0, 1.2, 0), C.wood, Enum.Material.WoodPlanks)
+		local wheel = part(polisher, "Wheel", Vector3.new(0.5, 2, 2), side * CFrame.new(0, 3.2, 0), C.metal, Enum.Material.Metal)
+		wheel.Shape = Enum.PartType.Cylinder
+		wheel:SetAttribute("Motion", "Spin")
+		CollectionService:AddTag(wheel, "PropMotion")
+		Skins.dress("needle_polisher", base, polisher, side)
+		local spark = Instance.new("ParticleEmitter")
+		spark.Rate = 0
+		spark.Lifetime = NumberRange.new(0.2, 0.4)
+		spark.Speed = NumberRange.new(4, 8)
+		spark.LightEmission = 1
+		spark.Size = NumberSequence.new(0.15, 0)
+		spark.Parent = wheel
+		task.spawn(function()
+			local budget = 0
+			while polisher.Parent do
+				task.wait(1)
+				budget = math.min(budget + Prices.PolishPerMinute / 60, Prices.PolishPerMinute)
+				local worked = false
+				for _, n in Needle.inBox(inside, insideSize) do
+					local count = Needle.count(n)
+					if not n:GetAttribute("Polished") and budget >= count then
+						Needle.polish(n)
+						budget -= count
+						worked = true
+					end
+				end
+				polisher:SetAttribute("Running", worked)
+				spark.Rate = worked and 40 or 0
+			end
+		end)
+	end
+
 	function bin.splitByType()
 		if corners then
 			return
@@ -260,6 +312,7 @@ function Machines.needleBin(parent, frame)
 			if n:GetAttribute("OwnerId") == player.UserId then
 				count += Needle.count(n)
 				value += Needle.value(n)
+				Market.sold(n:GetAttribute("NeedleId"), Needle.count(n))
 				n:Destroy()
 			end
 		end
@@ -278,7 +331,7 @@ function Machines.needleBin(parent, frame)
 		local byKey = {}
 		for _, n in Needle.inBox(inside, insideSize) do
 			if ownerId == nil or n:GetAttribute("OwnerId") == ownerId then
-				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"))
+				local key = Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"))
 				byKey[key] = (byKey[key] or 0) + Needle.count(n)
 			end
 		end
@@ -298,7 +351,7 @@ function Machines.needleBin(parent, frame)
 			return floor * CFrame.new(-1.95 + col * 1.3, 0.3 + layer * 0.6, -2.3 + row * 0.2)
 		end
 		for key, count in byKey do
-			local id, mult = Needle.parseKey(key)
+			local id, mult, polished = Needle.parseKey(key)
 			if typeof(count) ~= "number" then
 				continue
 			end
@@ -312,23 +365,23 @@ function Machines.needleBin(parent, frame)
 				end
 				if mult == 1 then
 					while count >= Needle.BUNDLE do
-						Needle.bundle(cornerSpot(), ownerId, id).Anchored = true
+						Needle.bundle(cornerSpot(), ownerId, id, polished).Anchored = true
 						count -= Needle.BUNDLE
 					end
 				end
 				for _ = 1, count do
-					Needle.make(cornerSpot(), ownerId, id, mult).Anchored = true
+					Needle.make(cornerSpot(), ownerId, id, mult, polished).Anchored = true
 				end
 				continue
 			end
 			if mult == 1 then
 				while count >= Needle.BUNDLE do
-					Needle.bundle(nextSpot(), ownerId, id).Anchored = true
+					Needle.bundle(nextSpot(), ownerId, id, polished).Anchored = true
 					count -= Needle.BUNDLE
 				end
 			end
 			for _ = 1, count do
-				local n = Needle.make(nextSpot(), ownerId, id, mult)
+				local n = Needle.make(nextSpot(), ownerId, id, mult, polished)
 				n.Anchored = true
 			end
 		end
@@ -472,13 +525,56 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			bin.add(chuteFrom, ownerId, found, Needle.forHay(hayType))
 		end
 		spawnSortedBale(out, ownerId, hay, hayType)
+		LineStats.record(ownerId, "bales", hay / (Config.PiecesPerBale * Config.HayPerPiece))
+		LineStats.record(ownerId, "needles", found)
 		sorted += 1
 		refreshLabel()
 	end
 
+	-- The Alien collector (quest only) sorts everything instantly at 100%, but only while its beam is up: a player
+	-- steps on BEAM UP once a day (UTC) to open a window of Factory.AlienWindowSeconds. Bales wait at the flap otherwise.
+	local isAlien = tier.hayPerMin == math.huge
+	local beamUntil = 0
+	if isAlien then
+		local beam = part(model, "Beam", Vector3.new(T - 1.6, 60, T - 1.6), center * CFrame.new(0, TOP + height + 31, 0), C.go, Enum.Material.Neon)
+		beam.Shape = Enum.PartType.Cylinder
+		beam.CFrame = center * CFrame.new(0, TOP + height + 31, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		beam.Size = Vector3.new(60, T - 1.6, T - 1.6)
+		beam.CanCollide = false
+		beam.CanQuery = false
+		beam.Transparency = 1
+		local padAt = (center * CFrame.new(T / 2 + 2.5, 0, -T / 2 - 1)).Position
+		Machines.stepPad(model, padAt, C.go, "BEAM UP\nonce a day", function(player)
+			if os.clock() < beamUntil then
+				return
+			end
+			local today = math.floor(os.time() / 86400)
+			if alienUsedDay[player.UserId] == today then
+				local left = (today + 1) * 86400 - os.time()
+				Data.toast(player, ("The collector is recharging. Next beam in %dh %dm."):format(left // 3600, (left % 3600) // 60))
+				return
+			end
+			alienUsedDay[player.UserId] = today
+			beamUntil = os.clock() + Factory.AlienWindowSeconds
+			beam.Transparency = 0.6
+			Data.toast(player, ("The beam is up for %d seconds. Feed it everything you have."):format(Factory.AlienWindowSeconds))
+			task.spawn(function()
+				while os.clock() < beamUntil and model.Parent do
+					label.Text = ("ALIEN COLLECTOR\nBEAM UP: %ds"):format(math.ceil(beamUntil - os.clock()))
+					task.wait(0.5)
+				end
+				beam.Transparency = 1
+				refreshLabel()
+			end)
+		end)
+	end
+
 	task.spawn(function()
 		while model.Parent do
-			task.wait(0.2)
+			task.wait(isAlien and 0.05 or 0.2)
+			if isAlien and os.clock() >= beamUntil then
+				continue
+			end
 			local bale, loose = nil, {}
 			for _, p in Workspace:GetPartBoundsInBox(zone, zoneSize) do
 				local b = Bales.fromPart(p)
@@ -539,25 +635,33 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					if payTo then
 						ownerId = payTo(ownerId)
 					end
-					Bales.consume(sortedBale)
-					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
+					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
+					if ownerId then
+						Bales.consume(sortedBale)
+						Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
+					end
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId, hayType = 0, nil, "meadow"
+					local take = nil
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId, hayType = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId, hayTypeOf(p)
-						if ownerId then
+						take = function()
 							Events.fire(ownerId, "bale_sold", 1, { hayType = hayType })
+							Bales.consume(b)
 						end
-						Bales.consume(b)
 					elseif Hay.isPiece(p) then
 						hay, ownerId, hayType = Config.HayPerPiece, p:GetAttribute("OwnerId"), hayTypeOf(p)
-						Hay.remove(p)
+						take = function()
+							Hay.remove(p)
+						end
 					end
 					if hay > 0 and ownerId and payTo then
 						ownerId = payTo(ownerId)
 					end
+					-- Hay nobody has handled has no one to pay, so it stays in the hopper until someone picks it up.
 					if hay > 0 and ownerId then
+						take()
 						local t = unsorted[ownerId] or { hay = 0, needles = 0 }
 						t.hay += hay
 						t.needles += Economy.rollNeedles(rng, hay, needleChance(hayType))

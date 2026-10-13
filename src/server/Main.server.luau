@@ -12,12 +12,36 @@ local World = require(Services.World)
 local Avatar = require(Services.Avatar)
 local GloveLooks = require(Services.GloveLooks)
 local Tutorial = require(Services.Tutorial)
+local Settings = require(Services.Settings)
+local Announce = require(Services.Announce)
 
 Data.start()
 Bank.start()
 Tutorial.start()
+Settings.start()
+Announce.start()
 Avatar.start()
 GloveLooks.start()
 World.build()
 
 print("[Needlewood] server started. Base camp is ready.")
+
+-- Part budget. StreamingEnabled is off, so every client loads every part in the Workspace; past this many, phones
+-- stutter and slow PCs take long to join. The count prints at start and again once the meadow has settled.
+local PART_BUDGET = 40000
+local function countParts(when)
+	local parts = 0
+	for _, d in workspace:GetDescendants() do
+		if d:IsA("BasePart") then
+			parts += 1
+		end
+	end
+	local line = ("[Needlewood] %d parts in the Workspace %s (budget %d)"):format(parts, when, PART_BUDGET)
+	if parts > PART_BUDGET then
+		warn(line .. ": over budget. Merge decor into meshes or turn on StreamingEnabled.")
+	else
+		print(line)
+	end
+end
+countParts("at start")
+task.delay(60, countParts, "a minute in")

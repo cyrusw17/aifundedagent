@@ -197,15 +197,24 @@ local function applyPerks(player, q)
 	end
 end
 
+-- A reward slot holds one id or a list of them.
+local function rewardIds(value)
+	if typeof(value) == "table" then
+		return value
+	end
+	return value and { value } or {}
+end
+
 local function rewardText(reward)
 	local parts = {}
 	if reward.cash then
 		table.insert(parts, ("$%d"):format(reward.cash))
 	end
 	for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
-		local id = reward[key]
-		if id and QuestConfig.Rewards[id] then
-			table.insert(parts, QuestConfig.Rewards[id].name)
+		for _, id in rewardIds(reward[key]) do
+			if QuestConfig.Rewards[id] then
+				table.insert(parts, QuestConfig.Rewards[id].name)
+			end
 		end
 	end
 	return table.concat(parts, ", ")
@@ -216,8 +225,7 @@ local function giveReward(player, q, reward, name)
 		Bank.earn(player, reward.cash, "Quest: " .. name)
 	end
 	for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
-		local id = reward[key]
-		if id then
+		for _, id in rewardIds(reward[key]) do
 			q.earned[id] = true
 		end
 	end
@@ -1141,10 +1149,9 @@ function Quests.usePrompt(player, spotId)
 					want[n.id] = step.needlesEach
 				end
 			end
-			local pocket = Needle.held(player)
 			local missing = {}
 			for needleId, count in want do
-				local have = pocket[needleId] or 0
+				local have = Needle.plainCount(player, needleId)
 				if have < count then
 					table.insert(missing, ("%d more %s"):format(count - have, needleName(needleId):lower()))
 				end

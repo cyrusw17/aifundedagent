@@ -74,6 +74,7 @@ and a round-trip drive from your plot (half a minute in Meadow, 3 to 8 minutes t
 |---|---|---|---|
 | 1. Hands, bare | 2.3 | 2.3 | $6,573 |
 | 2. Hands, Work Gloves | 2.6 | 2.6 | $7,368 |
+| 2b. Wheelbarrow, public shop | 4.7 | 4.7 | $13,257 |
 | 3. Pickup, public shop | 3.7 | 3.7 | $10,398 |
 | 4. Pickup, plot + Hand sieve | 3.7 | 2.0 | $13,758 |
 | 5. Pickup, Shaker table | 3.7 | 3.7 | $25,441 |
@@ -91,6 +92,18 @@ size. V8's field bale chutes (park under one, pull a lever, a bed's worth drops 
 building before the bigger trucks go on sale.
 
 ## The price list
+
+### Wheelbarrow
+
+**$1,000** (`Prices.Wheelbarrow`; the hay tools thread set $400). It carries 3 bales a push, so by the model it hauls
+about 4.7 bales a minute to the sell pad, double what you carry by hand. Doubling your income is a big step, so it
+should cost about 10 minutes of hand hauling, not 3. At $1,000 it lands about 12 minutes in, between Work Gloves and
+the pickup.
+
+One thing to fix in play, not in price: near camp the wheelbarrow outhauls the Rusty Pickup (4.7 bales a minute against
+3.7), because the truck is loaded one bale at a time by hand. The pickup still wins on longer hauls (at 250 studs the
+barrow drops to 2.8 a minute), which is every trip to your own plot and every other region. Letting the barrow tip its
+3 bales into a truck bed, or V8's field bale chutes, would make the truck the clear upgrade again.
 
 ### Trucks (Homestead Motors)
 
@@ -176,6 +189,44 @@ buffer, a crew, or richer hay, the payback gets much faster: an optical sorter o
 | Sorted needles (SELL NEEDLES pad) | $100 steel up to $5,000 cosmic | Unchanged from the needle table. |
 | A needle you spot and pick up yourself | Full sorted value | It's rare (about 1 per 2 bales broken) and it is the first hook that shows what sorting is worth. |
 
+### Finder's rewards (foreign objects in hay)
+
+The first boot, horseshoe, key, radio, ring and fossil you find in a broken bale each pay a one-time reward
+(`Prices.FinderRewards`). The rule is about $1 for every bale it takes on average to turn one up, with the two
+rarest doubled because they are the finds players talk about: boot $50 (1 in 50 bales), horseshoe $150, key $300,
+radio $600, ring $1,500 (1 in 1,000) and fossil $4,000 (1 in 2,000). They are a moment, not an income. All six
+together come to $6,600, under an hour of pickup earnings, so they never change what a player can afford.
+
+### The needle market
+
+Each server keeps its own needle prices (`Services/Market.luau`, numbers in `Prices.Market`). Selling a needle type
+pushes its price down, and the push fades by half every 10 minutes. A type nobody has sold lately pays up to 20% over
+its list price, and a flooded one drops as far as 20% under, never further. The point is the V8 one: flooding steel
+nudges players toward regions nobody else is farming, without ever making a needle worthless.
+
+List price is set where a solo shaker-table farm sells steel (about 40 recent sales). Rarer needles sell in smaller
+numbers, so they reach list price with fewer sales (a cosmic needle with 5). A board beside the hay shop's sell pad
+shows today's price for every type, with an arrow. Every needle sale goes through `Needle.priceOf`, so pads, the
+display wall and the ding pitch all follow the market. The earning tables above use list prices, since the swing
+averages out.
+
+### NPC buyer orders
+
+A board on the west side of base camp shows three orders from local buyers, with new ones every 20 minutes
+(`Services/Orders.luau`, numbers in `Prices.Orders`). Deliver on the pad beside it: set bales on it, or step on it with
+needles in your pocket. Each unit pays straight away, up to the order's amount for each player, so nothing is lost
+when the orders change.
+
+| Order | Amount | Pays | Why |
+|---|---|---|---|
+| Hay bales | 8 to 16 | $71 each (1.5x the public shop) | Gives a no-plot player a better buyer than the shop |
+| Sorted bales | 10 to 20 | $90 each (2x a hay buyer) | The sorting is already done, so the buyer pays for clean hay |
+| Steel needles | 6 to 15 | $125 each (1.25x list) | A small premium; mutated needles stay in your pocket |
+
+A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
+the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
+since they are capped per player.
+
 ## The bank: Meadow Savings & Loan
 
 A stone-and-plank bank on the main road, east of the plot road, with a teller window. Press E at the window to open it.
@@ -213,6 +264,32 @@ the pickup once it has earned its down payment, and big loans come once you have
 loans and history underneath stay real and are saved, so the bank can be tested with real numbers. (Before this change,
 anything earned while test money was on was thrown away.)
 
+## Travel fares (for the rest of the map)
+
+Nothing uses these yet. They are in `Prices.Travel` for the world map thread. A fare should be felt but should never
+decide whether a trip is worth making, so each is under 5% of what the trip carries.
+
+| Trip | Fare | Why |
+|---|---|---|
+| Public ferry (to Thimble Keys or Bobbin Rock) | $250 a truck with trailer, each way | Under 5% of a box-truck load of Snow hay |
+| Captain's Barge | Free | Earned by quest |
+| Zeppelin to Sky Island | $1,000 a trip | Under 5% of a pickup load of Sky hay ($1,300 to $7,800 a bale) |
+| Roads, including the Longstitch Highway | Free | Driving is already the cost |
+
+## Robux prices
+
+Recorded in `Prices.Robux` so every price lives in one file. The store waits until the cash economy has been
+playtested (backlog rule). These are V8's prices, kept because they sit in the usual range for Roblox tycoons (a
+99 R$ impulse buy, 149 to 299 R$ passes, and trucks rising with tier). That range is design judgement, not data.
+
+- **Trucks:** Homestead Classic 399, Timber Wolf 4x4 799, Midnight Express 1,199, Prairie Schooner 1,799 and Founders'
+  Semi 2,499 R$. Each one matches the stats of its cash tier exactly. One fix to V8: V8 gives the Timber Wolf "better
+  grip on dirt", which would make it stronger than the cash Flatbed. It should look lifted but drive the same.
+- **Passes:** VIP 249, Auto-Dock 299, Big Silo 199, Paint Studio 149, Plot Themes 199 and Truck Radio 99 R$. Auto-Dock
+  and Big Silo are convenience with a cash match: you can step on UNLOAD yourself, and build a second $5,000 silo.
+- **Other:** Harvest Pass premium track 499 R$, a server boost 99 R$, and a private server 100 R$ a month.
+- No item gives cash, needles, sorter tiers or quest skips, and nothing is random.
+
 ## A first playthrough
 
 One player, buying in this order and spending everything as it comes in. Financed buys pay the down payment, and the
@@ -221,25 +298,26 @@ loan takes its share of sales after that.
 | Buy | Price | Time to afford | Total play time | How |
 |---|---|---|---|---|
 | Work Gloves | $250 | 3 min | 0.1 h |  |
-| Rusty Pickup | $6,000 | 10 min | 0.2 h | financed: $1,200 down |
-| Wagon Trailer | $1,500 | 12 min | 0.4 h |  |
-| Plot + Hand sieve + first line | $3,600 | 28 min | 0.9 h |  |
-| Shaker table | $4,000 | 24 min | 1.3 h |  |
-| Leather Gloves | $8,000 | 24 min | 1.7 h |  |
-| Farm Flatbed | $25,000 | 12 min | 1.9 h | financed: $5,000 down |
-| Small Trailer | $8,000 | 30 min | 2.4 h |  |
-| Conveyor sorter | $25,000 | 93 min | 3.9 h |  |
-| Hay silo | $5,000 | 10 min | 4.1 h |  |
-| Box Truck | $90,000 | 41 min | 4.8 h | financed: $18,000 down |
-| Reinforced Gloves | $45,000 | 40 min | 5.4 h |  |
-| Medium Trailer | $30,000 | 27 min | 5.9 h |  |
-| Magnet drum | $175,000 | 152 min | 8.4 h |  |
-| Iron Gauntlets | $75,000 | 30 min | 8.9 h |  |
-| Heavy Hauler | $350,000 | 28 min | 9.4 h | financed: $70,000 down |
+| Wheelbarrow | $1,000 | 9 min | 0.2 h |  |
+| Rusty Pickup | $6,000 | 6 min | 0.3 h | financed: $1,200 down |
+| Wagon Trailer | $1,500 | 12 min | 0.5 h |  |
+| Plot + Hand sieve + first line | $3,600 | 28 min | 1.0 h |  |
+| Shaker table | $4,000 | 24 min | 1.4 h |  |
+| Leather Gloves | $8,000 | 24 min | 1.8 h |  |
+| Farm Flatbed | $25,000 | 12 min | 2.0 h | financed: $5,000 down |
+| Small Trailer | $8,000 | 30 min | 2.5 h |  |
+| Conveyor sorter | $25,000 | 93 min | 4.0 h |  |
+| Hay silo | $5,000 | 10 min | 4.2 h |  |
+| Box Truck | $90,000 | 41 min | 4.9 h | financed: $18,000 down |
+| Reinforced Gloves | $45,000 | 40 min | 5.5 h |  |
+| Medium Trailer | $30,000 | 27 min | 6.0 h |  |
+| Magnet drum | $175,000 | 152 min | 8.5 h |  |
+| Iron Gauntlets | $75,000 | 30 min | 9.0 h |  |
+| Heavy Hauler | $350,000 | 28 min | 9.5 h | financed: $70,000 down |
 | Large Trailer | $120,000 | 22 min | 9.8 h |  |
-| Optical sorter | $1,100,000 | 188 min | 12.9 h |  |
-| Starlight Gloves | $400,000 | 32 min | 13.4 h |  |
-| Semi Rig | $1,500,000 | 24 min | 13.8 h | financed: $300,000 down |
+| Optical sorter | $1,100,000 | 188 min | 13.0 h |  |
+| Starlight Gloves | $400,000 | 32 min | 13.5 h |  |
+| Semi Rig | $1,500,000 | 24 min | 13.9 h | financed: $300,000 down |
 
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
 which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
@@ -261,9 +339,15 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Hay and raw needle price | `HayPrice`, `RawNeedlePrice` | `Economy.luau` |
 | Needles per bale, visible share | `NeedlesPerBale`, `VisibleNeedleShare` | `Config/Game` (`NeedleChancePerHay`, `VisibleNeedleChance`) |
 | Sorted needle values | `Needles` | `Config/Needles` |
+| Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
 | Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
 | Gloves | `Gloves` | `Config/Gloves` |
 | Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
+| Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
+| Travel fares | `Travel` | Not wired yet (world map thread) |
+| Robux store | `Robux` | Not wired yet (store waits on playtests) |
+| NPC orders | `Orders` | `Services/Orders.luau` |
+| Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |

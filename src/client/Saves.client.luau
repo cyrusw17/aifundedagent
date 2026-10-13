@@ -109,7 +109,7 @@ local showSlots
 -- start without one.
 local function showPlots(i, slot)
 	clear()
-	local hasLand = slot.plot ~= nil
+	local hasLand = slot.plot ~= nil or slot.preset == true -- a preset save comes with land
 	title.Text = hasLand and ("Save %d: pick a free plot. Your farm is rebuilt there."):format(i)
 		or ("Save %d: buy a free plot now, or start without land."):format(i)
 	local infos = plotInfos()
