@@ -20,6 +20,7 @@ local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Conveyors = require(script.Parent.Conveyors)
 local Machines = require(script.Parent.Machines)
@@ -450,10 +451,10 @@ local function onBuy(player, index)
 	if plot.ownerId then
 		return false, ("%s already belongs to %s."):format(plot.def.name, plot.ownerName)
 	end
-	if s.cash < plot.def.price then
-		return false, ("You need $%d more."):format(plot.def.price - s.cash)
+	local paid, why = Bank.charge(player, plot.def.price, "Land: " .. plot.def.name)
+	if not paid then
+		return false, why
 	end
-	s.cash -= plot.def.price
 	s.land = { owned = true, plot = index, items = {} }
 	claim(plot, player, s.land)
 	Data.sync(player)
@@ -488,11 +489,10 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
-	local s = Data.get(player)
-	if not s or s.cash < def.price then
-		return false, ("You need $%d more."):format(def.price - (s and s.cash or 0))
+	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
+	if not paid then
+		return false, short
 	end
-	s.cash -= def.price
 	spawnItem(plot, def, gx, gz, dir)
 	refreshRails(plot)
 	publish(plot)
@@ -519,11 +519,7 @@ local function onRemove(player, gx, gz)
 	publish(plot)
 	saveItems(player, plot)
 	local refund = math.floor(def.price * LandConfig.RefundShare)
-	local s = Data.get(player)
-	if s then
-		s.cash += refund
-		Data.sync(player)
-	end
+	Bank.give(player, refund, "Removed a " .. def.name:lower())
 	return true, ("Removed the %s. Got $%d back."):format(def.name:lower(), refund)
 end
 

@@ -20,6 +20,7 @@ local Needles = require(Shared.Config.Needles)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
@@ -92,14 +93,14 @@ function Machines.sign(parent, text, offset)
 end
 local sign = Machines.sign
 
-function Machines.pay(ownerId, amount, text)
+-- note is the short line for the bank history (Bank.luau); text is the toast.
+function Machines.pay(ownerId, amount, text, note)
 	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 	local state = owner and Data.get(owner)
 	if not state then
 		return
 	end
-	state.cash += amount
-	Data.sync(owner)
+	Bank.earn(owner, amount, note or "Farm sale")
 	Data.toast(owner, text)
 end
 
@@ -209,7 +210,7 @@ function Machines.needleBin(parent, frame)
 			Data.toast(player, "You have no needles in this bin or your pocket. Run some hay through a sorter.")
 			return
 		end
-		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
+		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value), "Sorted needles")
 	end
 
 	-- Needles in the bin, as { [needleId] = count }: everyone's, or only ownerId's.
@@ -262,7 +263,7 @@ function Machines.sortSeconds(tierId, hay)
 	if not tier or tier.hayPerMin == math.huge then
 		return 0.4
 	end
-	return math.clamp(hay / tier.hayPerMin * 60, 0.5, 20)
+	return math.max(hay / tier.hayPerMin * 60, 0.5) -- no upper clamp, so every tier's speed is felt
 end
 
 -- Needle sorter over two belt cells: the cell at frame and the next one downstream. Bales wait at its rubber flap,
@@ -395,7 +396,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						ownerId = payTo(ownerId)
 					end
 					Bales.consume(sortedBale)
-					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay))
+					Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 				else
 					local b = Bales.fromPart(p)
 					local hay, ownerId = 0, nil
