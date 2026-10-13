@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cfg = require(Shared.Config.Chutes)
+local RateLimit = require(Shared.RateLimit)
 local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
 local Bales = require(script.Parent.Bales)
@@ -28,6 +29,7 @@ local SLOT_ACROSS, SLOT_ALONG = 3.25, 4.7
 local ROAD_CLEAR = 18 -- from a road's center line to a field chute's center: half a road plus the chute's half width
 
 local chutes = {}
+local pullLimit = RateLimit.new("Chutes.Pull", 1, 2)
 
 local function part(parent, name, size, cframe, color, material, collide)
 	local p = Instance.new("Part")
@@ -240,6 +242,9 @@ function Chutes.make(parent, frame, field, name)
 	}
 	refreshLabel(chute)
 	prompt.Triggered:Connect(function(player)
+		if not pullLimit:allow(player) then
+			return
+		end
 		Chutes.pull(chute, player)
 	end)
 	table.insert(chutes, chute)

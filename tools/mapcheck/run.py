@@ -40,6 +40,7 @@ MODULES = {
     "Services.Discoveries": "server/Services/Discoveries.luau",
     "Services.SpindleDoor": "server/Services/SpindleDoor.luau",
     "Services.FallSafety": "server/Services/FallSafety.luau",
+    "Services.RoadGraph": "server/Services/RoadGraph.luau",
 }
 
 
