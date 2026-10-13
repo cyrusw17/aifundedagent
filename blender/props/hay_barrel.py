@@ -249,11 +249,8 @@ def build_hay(rng):
     return parts
 
 
-def main():
-    args = common.parse_args("hay_barrel")
-    common.reset_scene()
-    rng = random.Random(SEED)
-
+def build(rng):
+    """Build the barrel and hay meshes in the current scene; returns [barrel, hay]."""
     wood = common.vertex_color_material("Wood", roughness=0.85)
     iron = common.vertex_color_material("Iron", roughness=0.45, metallic=0.6)
     hay = common.vertex_color_material("Hay", roughness=0.95)
@@ -272,8 +269,14 @@ def main():
         common.assign(o, hay)
     hay_obj = common.join(hay_parts, "HayBarrel_Hay")
     common.flat(hay_obj)
+    return [barrel, hay_obj]
 
-    common.export([barrel, hay_obj], args)
+
+def main():
+    args = common.parse_args("hay_barrel")
+    common.reset_scene()
+    common.export(build(random.Random(SEED)), args)
 
 
-main()
+if __name__ == "__main__":
+    main()

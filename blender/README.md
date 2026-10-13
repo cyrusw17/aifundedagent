@@ -7,6 +7,7 @@ reproducible and tweakable by editing numbers instead of hand-modeling.
 blender/
   lib/common.py            shared helpers: scene reset, materials, join, export
   props/hay_barrel.py      hay barrel (stylized low-poly; separate barrel and hay meshes)
+  styles/mockups.py        the same props in three candidate art styles (A/B/C)
   tools/render_preview.py  renders a PNG preview of an exported .glb
   exports/                 generated .glb / .obj / .png (committed for easy import)
 ```
