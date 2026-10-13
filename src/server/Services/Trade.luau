@@ -1,8 +1,8 @@
 --!nonstrict
 -- The Trading Post, a little wooden stall on the grass between the Homestead Motors lot and base camp. Two players
--- swap needles, thatch, building materials and cash. Trucks and land never trade. Cash goes through
--- Bank.settleTrade (fees, both bank histories) when the bank has it; until then it moves wallet to wallet here, and
--- only while test money is off.
+-- swap needles (bundles are just counts in the pocket), foreign objects, thatch, building materials and cash. Trucks
+-- and land never trade. All cash, and each side's fee (Bank.tradeFee), goes through Bank.settleTrade, which also writes
+-- the trade into both bank histories. This file never moves cash itself.
 --
 -- How a trade goes:
 --   1. Press E at the stall: a list of players standing near the post comes up. Pick one to ask them.
@@ -11,9 +11,10 @@
 --      offer (or either player taking their accept back) stops the countdown and clears both accepts.
 --   4. When the countdown ends the server checks everything again against both saves and swaps it all in one step.
 --
--- Mythic needles (the top needle type in Config/Needles, and any mutated needle) that a player RECEIVED in a trade are
--- locked for 24 hours: they can be sold or used, but not traded on until the lock runs out. Locks are saved with the
--- slot as state.tradeLocks = { [needleKey] = { { count = n, untilTime = os.time() }, ... } }.
+-- Mythic items that a player RECEIVED in a trade are locked for 24 hours: they can be sold or used, but not traded on
+-- until the lock runs out. Mythic means the top needle type in Config/Needles, any mutated needle, and the rarest
+-- foreign object in Config/Finds. Locks are saved with the slot as
+-- state.tradeLocks = { [needleKey or "find:" .. findId] = { { count = n, untilTime = os.time() }, ... } }.
 --
 --   Trade.build(worldFolder)   -- the stall and the remotes (ReplicatedStorage.Trade)
 local Players = game:GetService("Players")
@@ -21,9 +22,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared.Config.Game)
 local Needles = require(Shared.Config.Needles)
 local Alloys = require(Shared.Config.Alloys)
+local FindsConfig = require(Shared.Config.Finds)
 local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
@@ -84,6 +85,23 @@ local function needleLabel(key)
 	return name
 end
 
+-- Foreign objects (Config/Finds). It has no rarity field either, so the top rarity is the one with the longest odds
+-- (the Fossil today). Their locks are kept under "find:" .. id so they never mix with needle keys.
+local findNames = {}
+local topFind = FindsConfig.Items[1]
+for _, def in FindsConfig.Items do
+	findNames[def.id] = def.name
+	if def.oneIn > topFind.oneIn then
+		topFind = def
+	end
+end
+local function findLockKey(id)
+	return "find:" .. id
+end
+local function isMythicFind(id)
+	return id == topFind.id
+end
+
 local materialNames = {}
 for _, alloy in Alloys do
 	materialNames[alloy.id] = alloy.name
@@ -118,19 +136,16 @@ end
 -- Offers ---------------------------------------------------------------------------------------------------------------
 
 local function emptyOffer()
-	return { needles = {}, cash = 0, thatch = 0, materials = {} }
+	return { needles = {}, finds = {}, cash = 0, thatch = 0, materials = {} }
 end
 
 local function isWhole(n)
 	return typeof(n) == "number" and n == n and n >= 1 and n <= MAX_AMOUNT and math.floor(n) == n
 end
 
--- Cash a player can put in: wallet and bank through Bank.settleTrade (it checks the fee too), else the real wallet.
+-- Cash a player can put in: wallet plus bank, the same money Bank.settleTrade takes it from.
 local function cashAvailable(state)
-	if Bank.settleTrade then
-		return math.floor(Bank.spendable(state))
-	end
-	return if Config.InfiniteMoney then 0 else math.floor(state.cash or 0)
+	return math.max(0, math.floor(Bank.spendable(state)))
 end
 
 -- Cleans an offer from the client: whole positive amounts, no more than the player can trade right now. Returns the
@@ -164,16 +179,38 @@ local function cleanOffer(player, state, raw)
 			offer.needles[key] = count
 		end
 	end
-	if raw.cash ~= nil and raw.cash ~= 0 then
-		if not Bank.settleTrade and Config.InfiniteMoney then
-			return nil, "Cash can't be traded while test money is on."
+	if raw.finds ~= nil then
+		if typeof(raw.finds) ~= "table" then
+			return nil, "That offer didn't make sense."
 		end
+		local kinds = 0
+		for id, count in raw.finds do
+			if typeof(id) ~= "string" or not findNames[id] or not isWhole(count) then
+				return nil, "That offer didn't make sense."
+			end
+			kinds += 1
+			if kinds > MAX_LINES then
+				return nil, ("Up to %d kinds of find in one trade."):format(MAX_LINES)
+			end
+			local have = state.finds and state.finds[id] or 0
+			local locked = lockedCount(state, findLockKey(id))
+			if count > have - locked then
+				if locked > 0 and count <= have then
+					return nil, ("%d of your %s came from a trade and are locked for a day."):format(locked, findNames[id])
+				end
+				return nil, ("You only have %d %s to trade."):format(math.max(0, have - locked), findNames[id])
+			end
+			offer.finds[id] = count
+		end
+	end
+	if raw.cash ~= nil and raw.cash ~= 0 then
 		if not isWhole(raw.cash) then
 			return nil, "Cash must be a whole number of dollars."
 		end
 		local have = cashAvailable(state)
-		if raw.cash > have then
-			return nil, ("You only have $%d to trade."):format(have)
+		local fee = Bank.tradeFee(raw.cash)
+		if raw.cash + fee > have then
+			return nil, ("You have $%d. Giving $%d costs $%d with the $%d fee."):format(have, raw.cash, raw.cash + fee, fee)
 		end
 		offer.cash = raw.cash
 	end
@@ -210,23 +247,45 @@ local function cleanOffer(player, state, raw)
 end
 
 local function offerIsEmpty(offer)
-	return next(offer.needles) == nil and offer.cash == 0 and offer.thatch == 0 and next(offer.materials) == nil
+	return next(offer.needles) == nil and next(offer.finds) == nil and offer.cash == 0 and offer.thatch == 0 and next(offer.materials) == nil
 end
 
--- One line of text for the log (and, without cash, for the bank history).
+-- "3 Cosmic needles", "a Fossil", "2 Old boots".
+local function counted(count, name, noun)
+	if count == 1 then
+		local article = string.find(name, "^[AEIOUaeiou]") and "an" or "a"
+		return ("%s %s%s"):format(article, name, noun and " " .. noun or "")
+	end
+	return if noun then ("%d %s %ss"):format(count, name, noun) else ("%d %ss"):format(count, name)
+end
+
+-- What an offer hands over, in words: "3 Cosmic needles, a Fossil and 20 thatch" for the bank history and the log.
+-- Cash is left out for the bank (it adds the amount itself).
 local function describe(offer, withoutCash)
 	local parts = {}
-	for key, count in offer.needles do
-		table.insert(parts, ("%dx %s"):format(count, key))
+	local keys = {}
+	for key in offer.needles do
+		table.insert(keys, key)
 	end
-	if offer.cash > 0 and not withoutCash then
-		table.insert(parts, "$" .. offer.cash)
+	table.sort(keys)
+	for _, key in keys do
+		table.insert(parts, counted(offer.needles[key], needleLabel(key), "needle"))
+	end
+	for id, count in offer.finds do
+		table.insert(parts, counted(count, findNames[id] or id))
 	end
 	if offer.thatch > 0 then
 		table.insert(parts, offer.thatch .. " thatch")
 	end
 	for id, units in offer.materials do
-		table.insert(parts, ("%d %s"):format(units, id))
+		table.insert(parts, ("%d %s"):format(units, materialNames[id] or id))
+	end
+	if offer.cash > 0 and not withoutCash then
+		table.insert(parts, "$" .. offer.cash)
+	end
+	if #parts > 1 then
+		local last = table.remove(parts)
+		return table.concat(parts, ", ") .. " and " .. last
 	end
 	if #parts == 0 then
 		return if withoutCash then "" else "nothing"
@@ -282,13 +341,20 @@ local function offerView(offer)
 	table.sort(materials, function(a, b)
 		return a.label < b.label
 	end)
-	return { needles = needles, cash = offer.cash, thatch = offer.thatch, materials = materials }
+	local finds = {}
+	for id, count in offer.finds do
+		table.insert(finds, { id = id, count = count, label = findNames[id] or id, mythic = isMythicFind(id) })
+	end
+	table.sort(finds, function(a, b)
+		return a.label < b.label
+	end)
+	return { needles = needles, finds = finds, cash = offer.cash, thatch = offer.thatch, materials = materials }
 end
 
 -- What this player has that could go in a trade, for the add list.
 local function inventory(player)
 	local state = Data.get(player)
-	local out = { needles = {}, materials = {}, cash = 0, thatch = 0, cashAllowed = Bank.settleTrade ~= nil or not Config.InfiniteMoney }
+	local out = { needles = {}, finds = {}, materials = {}, cash = 0, thatch = 0, cashAllowed = true }
 	if not state then
 		return out
 	end
@@ -297,6 +363,15 @@ local function inventory(player)
 		table.insert(out.needles, { key = key, count = count - locked, locked = locked, label = needleLabel(key), mythic = isMythic(key) })
 	end
 	table.sort(out.needles, function(a, b)
+		return a.label < b.label
+	end)
+	for id, count in state.finds or {} do
+		if count > 0 and findNames[id] then
+			local locked = math.min(count, lockedCount(state, findLockKey(id)))
+			table.insert(out.finds, { id = id, count = count - locked, locked = locked, label = findNames[id], mythic = isMythicFind(id) })
+		end
+	end
+	table.sort(out.finds, function(a, b)
 		return a.label < b.label
 	end)
 	for id, units in state.materials or {} do
@@ -324,6 +399,9 @@ local function push(session)
 			partner = other.DisplayName,
 			mine = offerView(session.offers[player]),
 			theirs = offerView(session.offers[other]),
+			-- Each side's trading post fee on what it gives (Bank.tradeFee; $0 with test money on).
+			myFee = Bank.tradeFee(session.offers[player].cash),
+			theirFee = Bank.tradeFee(session.offers[other].cash),
 			myAccept = session.accepted[player] == true,
 			theirAccept = session.accepted[other] == true,
 			endsAt = session.endsAt, -- server time (Workspace:GetServerTimeNow) the countdown finishes, or nil
@@ -358,8 +436,8 @@ end
 -- The swap ------------------------------------------------------------------------------------------------------------
 
 -- Takes everything in the offer out of `from`'s state and puts it into `to`'s. No yields: the caller checked it all.
--- Cash moves here only when the bank can't settle it (see finish).
-local function move(fromState, toState, offer, withCash)
+-- Cash is not moved here: Bank.settleTrade did that just before (see finish).
+local function move(fromState, toState, offer)
 	for key, count in offer.needles do
 		fromState.pocket[key] -= count
 		if fromState.pocket[key] <= 0 then
@@ -372,9 +450,19 @@ local function move(fromState, toState, offer, withCash)
 			table.insert(toState.tradeLocks[key], { count = count, untilTime = os.time() + LOCK_SECONDS })
 		end
 	end
-	if withCash and offer.cash > 0 then
-		fromState.cash -= offer.cash
-		toState.cash += offer.cash
+	for id, count in offer.finds do
+		fromState.finds[id] -= count
+		if fromState.finds[id] <= 0 then
+			fromState.finds[id] = nil
+		end
+		toState.finds = toState.finds or {}
+		toState.finds[id] = (toState.finds[id] or 0) + count
+		if isMythicFind(id) then
+			local key = findLockKey(id)
+			toState.tradeLocks = toState.tradeLocks or {}
+			toState.tradeLocks[key] = toState.tradeLocks[key] or {}
+			table.insert(toState.tradeLocks[key], { count = count, untilTime = os.time() + LOCK_SECONDS })
+		end
 	end
 	if offer.thatch > 0 then
 		fromState.thatch -= offer.thatch
@@ -388,6 +476,16 @@ local function move(fromState, toState, offer, withCash)
 		toState.materials = toState.materials or {}
 		toState.materials[id] = (toState.materials[id] or 0) + units
 	end
+end
+
+-- The "Finds" attribute the collection book reads, the same way Finds.luau writes it.
+local function publishFinds(player, state)
+	local list = {}
+	for id, count in state.finds or {} do
+		table.insert(list, ("%s:%d"):format(id, count))
+	end
+	table.sort(list)
+	player:SetAttribute("Finds", table.concat(list, ","))
 end
 
 -- Runs when the countdown ends. Checks everything once more, then swaps both offers in one step.
@@ -413,6 +511,8 @@ local function finish(session)
 	stateB.pocket = stateB.pocket or {}
 	stateA.materials = stateA.materials or {}
 	stateB.materials = stateB.materials or {}
+	stateA.finds = stateA.finds or {}
+	stateB.finds = stateB.finds or {}
 	local offerA, whyA = cleanOffer(a, stateA, session.offers[a])
 	local offerB, whyB = cleanOffer(b, stateB, session.offers[b])
 	if not offerA or not offerB then
@@ -429,28 +529,27 @@ local function finish(session)
 	end
 
 	-- The swap itself: nothing from here to the end of the item moves yields, so no other request can land between
-	-- the take and the give. Cash first, through the bank when it can settle trades (fees and both histories); if it
-	-- refuses, the trade is called off before anything has moved.
-	local bankCash = Bank.settleTrade ~= nil
-	if bankCash then
-		local paid, why = Bank.settleTrade(a, b, {
-			aGives = describe(offerA, true),
-			bGives = describe(offerB, true),
-			aCash = offerA.cash,
-			bCash = offerB.cash,
-		})
-		if not paid then
-			close(session, why or "The bank couldn't settle the cash. Nothing was traded.")
-			return
-		end
+	-- the take and the give. Cash and fees first, through the bank; if it refuses, the trade is called off before
+	-- anything has moved and both players see why (close toasts it).
+	local paid, why = Bank.settleTrade(a, b, {
+		aGives = describe(offerA, true),
+		bGives = describe(offerB, true),
+		aCash = offerA.cash,
+		bCash = offerB.cash,
+	})
+	if not paid then
+		close(session, why or "The bank couldn't settle the trade. Nothing was traded.")
+		return
 	end
-	move(stateA, stateB, offerA, not bankCash)
-	move(stateB, stateA, offerB, not bankCash)
+	move(stateA, stateB, offerA)
+	move(stateB, stateA, offerB)
 
 	session.done = true
 	close(session, "Trade complete.")
 	Data.sync(a)
 	Data.sync(b)
+	publishFinds(a, stateA)
+	publishFinds(b, stateB)
 	task.spawn(Data.save, a)
 	task.spawn(Data.save, b)
 	print(("[Trade] %s -> %s: %s | %s -> %s: %s"):format(a.Name, b.Name, describe(offerA), b.Name, a.Name, describe(offerB)))
