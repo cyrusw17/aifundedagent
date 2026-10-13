@@ -1,12 +1,15 @@
 --!nonstrict
 -- What the player looks like while working: the shovel and rake, their swings, and the carry pose.
--- Built from parts so no uploaded assets are needed yet. Each swing only plays with its own tool equipped.
+-- Tools use the Rustic Blender meshes once they are imported (see Props.luau) and fall back to parts until then.
+-- Each swing only plays with its own tool equipped.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Groups = require(script.Parent.Groups)
+local Props = require(script.Parent.Props)
+local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
 local Data = require(script.Parent.Data)
 local Gloves = require(script.Parent.Gloves)
 
@@ -51,9 +54,24 @@ local function buildTool(name, tip, parts)
 	return tool
 end
 
+-- Gives a part-built tool the Rustic Blender prop's look when it was imported. The part tool stays as the fallback,
+-- shown until the mesh has loaded on each client (see Props.weldTo). The prop is turned blade-up (it is modeled
+-- blade-down) so the blade leads like the part tools, with the end of its handle just below the hand.
+local function addMesh(tool, prop)
+	local handle = tool.Handle
+	local length = PropsConfig.Sizes[prop]
+	local center = CFrame.new(0, length / 2 - PropsConfig.GripFromEnd, 0)
+	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
+	if model then
+		Props.weldTo(model, handle, tool)
+	end
+	return tool
+end
+
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
-	return buildTool("Shovel", "Face a bale to smash it, or a pile to scoop it, and click.", {
+	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
+	return addMesh(buildTool("Shovel", tip, {
 		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
@@ -62,11 +80,12 @@ local function buildShovel()
 			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
-	})
+	}), "basic_shovel")
 end
 
 -- A long shaft with a crossbar and a row of teeth at the end.
 local function buildRake()
+	local tip = "Face loose hay and click to drag it toward you."
 	local steel = Color3.fromRGB(107, 94, 84)
 	local parts = {
 		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },
@@ -81,7 +100,7 @@ local function buildRake()
 			Enum.Material.Metal,
 		})
 	end
-	return buildTool("Rake", "Face loose hay and click to drag it toward you.", parts)
+	return addMesh(buildTool("Rake", tip, parts), "garden_rake")
 end
 
 -- Finds a shoulder joint for either rig type. side is "Right" or "Left".

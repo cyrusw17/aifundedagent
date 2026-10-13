@@ -6,6 +6,12 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
+local SellShop = require(script.Parent.SellShop)
+local Props = require(script.Parent.Props)
+local MeadowTerrain = require(script.Parent.MeadowTerrain)
+local MeadowDecor = require(script.Parent.MeadowDecor)
+local Dealer = require(script.Parent.Dealer)
+local Land = require(script.Parent.Land)
 
 local World = {}
 
@@ -46,16 +52,13 @@ function World.build()
 	folder.Name = "Needlewood"
 	folder.Parent = Workspace
 
-	if not Workspace:FindFirstChild("Baseplate") then
-		newPart(
-			folder,
-			"Ground",
-			Vector3.new(300, 1, 300),
-			CFrame.new(0, -0.5, 0),
-			Color3.fromRGB(112, 128, 82),
-			Enum.Material.Grass
-		)
+	-- Meadow Farm's ground is scripted terrain (MeadowTerrain.luau). The template's flat baseplate would cover the
+	-- pond and cut through the hills, so it goes.
+	local baseplate = Workspace:FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		baseplate:Destroy()
 	end
+	MeadowTerrain.ensure()
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "BaseCampSpawn"
@@ -131,6 +134,19 @@ function World.build()
 	)
 	addSign(dropOff, "BALE DROP-OFF", Vector3.new(0, 5, 0))
 	Bales.setDropOff(dropOff)
+
+	-- The Rustic props that have no job yet (wheelbarrow, crate, logs, spare tools) dress up the camp.
+	Props.dressBaseCamp(folder)
+
+	-- The public hay sell shop with its conveyor line, east of base camp.
+	SellShop.build(folder)
+
+	-- The truck dealer west of camp, then bales, trees and signs over the rest of the meadow.
+	Dealer.build(folder)
+	MeadowDecor.build(folder)
+
+	-- The land office and the buildable plots south of the main road.
+	Land.build(folder)
 end
 
 return World
