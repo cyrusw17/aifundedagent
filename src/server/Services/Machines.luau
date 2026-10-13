@@ -35,7 +35,7 @@ local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
 local LineStats = require(script.Parent.LineStats)
-require(script.Parent.Jams) -- watches belts for stuck bales (Jams.luau)
+local Jams = require(script.Parent.Jams) -- watches belts for stuck bales; the sorter lamp asks it
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
@@ -746,6 +746,10 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	local sorted = 0
 	local recent = {} -- { { t, bales, needles, dollars } } over the last RATE_WINDOW seconds, for the sign (CEO #28)
 	local lastHay = "meadow"
+	-- Bottleneck lamp state (CEO #29, rules in LineMath.lamp).
+	local sortingNow, lastSortEnd = false, os.clock()
+	local lastRefused, refusedNeed = nil, nil
+	local lampWhy = nil
 
 	-- The sign: tier, bales sorted, what the line did lately next to what this sorter makes kept full (the same
 	-- formula as tools/line_sim.py, at today's market price for the hay it last sorted).
@@ -762,12 +766,13 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 				LineRate.short(full.perHour)
 			)
 		end
-		label.Text = ("%s\n%d bales sorted, finds %d%%%s%s"):format(
+		label.Text = ("%s\n%d bales sorted, finds %d%%%s%s%s"):format(
 			title,
 			sorted,
 			math.round(tier.recovery * 100),
 			rateText,
-			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or ""
+			oiled > 0 and ("\nOILED: %d bales"):format(oiled) or "",
+			lampWhy and ("\n" .. lampWhy:upper()) or ""
 		)
 		can.Color = oiled > 0 and C.go or C.darkMetal
 	end
@@ -798,6 +803,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end)
 
 	local function sort(hay, ownerId, hayType, recoveryMult)
+		sortingNow = true
 		model:SetAttribute("Running", true)
 		dust.Rate = 30
 		local rest = roof.CFrame
@@ -811,6 +817,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 		roof.CFrame = rest
 		dust.Rate = 0
 		model:SetAttribute("Running", false)
+		sortingNow, lastSortEnd = false, os.clock()
 
 		-- Each hidden needle is found with the tier's recovery chance. The rest stay lost in the hay.
 		local hidden = Economy.rollNeedles(rng, hay, needleChance(hayType))
@@ -840,6 +847,7 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 	end
 	local toldAt = {}
 	local function refuse(ownerId, need)
+		lastRefused, refusedNeed = os.clock(), string.gsub(need.machine, "_", " ")
 		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
 		if owner and os.clock() - (toldAt[ownerId] or -math.huge) > 15 then
 			toldAt[ownerId] = os.clock()
@@ -891,6 +899,60 @@ function Machines.sorter(parent, frame, tierId, bin, payTo)
 			end)
 		end)
 	end
+
+	-- The bottleneck lamp on the upstream corner: green sorting, amber starved, red backed up, jammed or refusing.
+	local LAMP = { green = C.go, amber = Color3.fromRGB(230, 170, 60), red = Color3.fromRGB(200, 70, 55) }
+	local lampAt = center * CFrame.new(-T / 2 + 0.4, TOP + height + 1, T - 0.4)
+	part(model, "LampPost", Vector3.new(0.3, 1.2, 0.3), lampAt * CFrame.new(0, 0.6, 0), C.darkMetal, Enum.Material.Metal)
+	local lamp = part(model, "BottleneckLamp", Vector3.new(0.9, 0.9, 0.9), lampAt * CFrame.new(0, 1.5, 0), LAMP.amber, Enum.Material.Neon)
+	lamp.Shape = Enum.PartType.Ball
+	lamp.CanCollide = false
+	local lampLight = Instance.new("PointLight")
+	lampLight.Range = 6
+	lampLight.Brightness = 1
+	lampLight.Color = LAMP.amber
+	lampLight.Parent = lamp
+	-- Two cells upstream of the flap: where a queue of bales stands when this sorter can't keep up.
+	local queueBox = center * CFrame.new(0, TOP + 2, T * 2)
+	local queueSize = Vector3.new(T - 0.4, 4, T * 2)
+	task.spawn(function()
+		local queueSince = nil
+		while model.Parent do
+			task.wait(0.5)
+			local queued, jam = 0, false
+			for _, p in Workspace:GetPartBoundsInBox(queueBox, queueSize) do
+				local b = Bales.fromPart(p)
+				if b and p == b.body and not b.gone and not b.sorted then
+					queued += 1
+					jam = jam or Jams.isJammed(p)
+				end
+			end
+			local now = os.clock()
+			if queued >= 2 then
+				queueSince = queueSince or now
+			else
+				queueSince = nil
+			end
+			local color, why = LineMath.lamp({
+				sorting = sortingNow,
+				idleSeconds = now - lastSortEnd,
+				queued = queued,
+				queuedSeconds = queueSince and now - queueSince or 0,
+				jammed = jam,
+				refusedSeconds = lastRefused and now - lastRefused,
+				need = refusedNeed,
+				beamDown = isAlien and now >= beamUntil,
+			})
+			lamp.Color, lampLight.Color = LAMP[color], LAMP[color]
+			model:SetAttribute("Lamp", color)
+			if why ~= lampWhy then
+				lampWhy = why
+				if not (isAlien and now < beamUntil) then
+					refreshLabel()
+				end
+			end
+		end
+	end)
 
 	task.spawn(function()
 		while model.Parent do
