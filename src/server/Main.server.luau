@@ -12,10 +12,14 @@ local World = require(Services.World)
 local Avatar = require(Services.Avatar)
 local GloveLooks = require(Services.GloveLooks)
 local Tutorial = require(Services.Tutorial)
+local Settings = require(Services.Settings)
+local Announce = require(Services.Announce)
 
 Data.start()
 Bank.start()
 Tutorial.start()
+Settings.start()
+Announce.start()
 Avatar.start()
 GloveLooks.start()
 World.build()
@@ -41,3 +45,6 @@ local function countParts(when)
 end
 countParts("at start")
 task.delay(60, countParts, "a minute in")
+
+-- Studio only: set the Workspace attribute RunSelfTests = true and every suite in src/server/SelfTests runs.
+require(Services.SelfTest).start()

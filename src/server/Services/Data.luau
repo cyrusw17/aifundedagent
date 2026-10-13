@@ -5,8 +5,8 @@
 -- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
 -- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
 -- once it is ready. A slot keeps cash, owned trucks and trailers, gloves, the needles in your pocket, the land plot
--- with everything built on it (and the needles in its bin), and the bank account (balance, loans and history, see
--- Bank.luau).
+-- with everything built on it (and the needles in its bin), the bank account (balance, loans and history, see
+-- Bank.luau), and quest progress (Quests.luau).
 -- Players listed in Config/Land.luau Presets start an empty slot as their preset farm instead of from nothing.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -171,8 +171,10 @@ local function stateFrom(saved)
 		carryBale = nil,
 		trucks = stringList(saved.trucks),
 		trailers = stringList(saved.trailers),
+		gear = stringList(saved.gear), -- other things bought once and kept, like "wheelbarrow"
 		pocket = countMap(saved.pocket), -- needles in the pocket (Needle.luau)
 		thatch = typeof(saved.thatch) == "number" and math.max(0, math.floor(saved.thatch)) or 0, -- carried (Press.luau)
+		materials = countMap(saved.materials), -- building material units carried, { [materialId] = units } (Mixer.luau)
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
 		-- gloves: { owned = { id, ... }, worn = id, brokeFirstBale = true? }, kept by Gloves.luau. nil in saves from
 		-- before gloves were saved.
@@ -188,6 +190,10 @@ local function stateFrom(saved)
 		land = nil,
 		-- tutorial: { done = bool, flags = { sold = true, ... } } (Tutorial.luau)
 		tutorial = typeof(saved.tutorial) == "table" and saved.tutorial or {},
+		-- settings: { effects, uiSize, shadows, labels } (Settings.luau checks each value)
+		settings = typeof(saved.settings) == "table" and saved.settings or {},
+		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
+		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -198,6 +204,9 @@ local function stateFrom(saved)
 			needles = countMap(saved.land.needles),
 			crew = typeof(saved.land.crew) == "table" and saved.land.crew or {}, -- farm crew user ids
 			expansions = typeof(saved.land.expansions) == "number" and saved.land.expansions or nil, -- rows bought
+			binSorted = saved.land.binSorted == true or nil, -- the needle bin has type dividers
+			theme = typeof(saved.land.theme) == "string" and saved.land.theme or nil, -- plot theme id
+			savedAt = typeof(saved.land.savedAt) == "number" and saved.land.savedAt or nil, -- os.time() of the last save
 		}
 	end
 	return state
@@ -346,13 +355,17 @@ function Data.save(player)
 		cash = cash,
 		trucks = state.trucks,
 		trailers = state.trailers,
+		gear = state.gear,
 		pocket = state.pocket,
 		thatch = state.thatch,
+		materials = state.materials,
 		finds = state.finds,
 		gloves = state.gloves,
 		land = state.land,
 		bank = state.bank,
 		tutorial = state.tutorial,
+		settings = state.settings,
+		quests = state.quests,
 	}
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}

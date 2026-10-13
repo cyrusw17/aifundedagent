@@ -27,6 +27,7 @@ local moveRemote = state:WaitForChild("Move")
 local copyRemote = state:WaitForChild("Copy")
 local pasteRemote = state:WaitForChild("Paste")
 local undoRemote = state:WaitForChild("Undo")
+local themeRemote = state:WaitForChild("Theme")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
@@ -287,6 +288,8 @@ pasteButton.Size = UDim2.fromOffset(98, 34)
 local expandButton = button(actions, "EXPAND", GREEN)
 expandButton.Size = UDim2.fromOffset(130, 34)
 expandButton.Visible = false
+local themeButton = button(actions, "THEME", PICKED)
+themeButton.Size = UDim2.fromOffset(150, 34)
 local crewButton = button(actions, "CREW", PICKED)
 crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
@@ -478,7 +481,7 @@ for i, def in LandConfig.Pieces do
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK
-	b.Text = ("%s\n$%d"):format(def.name, def.price)
+	b.Text = def.quest and ("%s\nQuest reward"):format(def.name) or ("%s\n$%d"):format(def.name, def.price)
 	b.Parent = pieceRow
 	corner(b, 6)
 	pieceButtons[def.id] = b
@@ -505,6 +508,25 @@ local function cellsFor(def, gx, gz, dir)
 		for along = 0, def.size[2] - 1 do
 			table.insert(cells, { gx + fx * along + rx * across, gz + fz * along + rz * across })
 		end
+	end
+	return cells
+end
+
+-- The belt levels a piece takes, as on the server: a ramp both, a raised belt level 1, the rest the ground.
+local function levelsOf(def)
+	if def.kind == "ramp" then
+		return { 0, 1 }
+	end
+	return { def.level or 0 }
+end
+
+local function cellKey(x, z, level)
+	return level > 0 and ("%d,%d,%d"):format(x, z, level) or (x .. "," .. z)
+end
+
+local function withLevels(cells, levels)
+	for _, cell in cells do
+		cell[3] = levels
 	end
 	return cells
 end
@@ -588,9 +610,11 @@ local function updateGhost()
 	if tool == "move" and moving then
 		local def = pieceDefs[moving.id]
 		for _, cell in cellsFor(def, moving.gx, moving.gz, moving.dir) do
-			own[cell[1] .. "," .. cell[2]] = true
+			for _, level in levelsOf(def) do
+				own[cellKey(cell[1], cell[2], level)] = true
+			end
 		end
-		cells = cellsFor(def, gx, gz, dir)
+		cells = withLevels(cellsFor(def, gx, gz, dir), levelsOf(def))
 	elseif tool == "copy" then
 		local sx, sz = copyStart and copyStart.gx or gx, copyStart and copyStart.gz or gz
 		for x = math.min(sx, gx), math.max(sx, gx) do
@@ -602,7 +626,8 @@ local function updateGhost()
 	elseif tool == "paste" then
 		if clipboard then
 			for _, entry in clipboard.list do
-				for _, cell in cellsFor(pieceDefs[entry.id], gx + entry.dx, gz + entry.dz, entry.dir) do
+				local def = pieceDefs[entry.id]
+				for _, cell in withLevels(cellsFor(def, gx + entry.dx, gz + entry.dz, entry.dir), levelsOf(def)) do
 					table.insert(cells, cell)
 				end
 			end
@@ -613,17 +638,22 @@ local function updateGhost()
 		end
 		showArrow = false
 	elseif tool == "move" or removing then
-		cells = { { gx, gz } }
+		cells = { { gx, gz, { 0, 1 } } }
 		picking = true
 		showArrow = false
 	else
-		cells = cellsFor(selected, gx, gz, dir)
+		cells = withLevels(cellsFor(selected, gx, gz, dir), levelsOf(selected))
 		cost = selected.price
 	end
 	for _, cell in cells do
 		local x, z = cell[1], cell[2]
-		local k = x .. "," .. z
-		local free = not taken[k] or own[k]
+		local free = true
+		for _, level in cell[3] or {} do
+			local k = cellKey(x, z, level)
+			if taken[k] and not own[k] then
+				free = false
+			end
+		end
 		if not onPlot(x, z) or (picking and free) or (not picking and tool ~= "copy" and not free) then
 			valid = false
 		end
@@ -752,6 +782,8 @@ end
 
 local function setBuilding(on)
 	building = on
+	-- Local-only flag so other menus leave the build keys alone (M is "move" here, the map elsewhere).
+	player:SetAttribute("Building", on)
 	bar.Visible = on
 	if not on then
 		crewPanel.Visible = false
@@ -810,6 +842,41 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		setTool("paste")
 	end
 end)
+
+-- THEME cycles the free plot themes (fence, sign and lamps).
+local function currentTheme()
+	local info = myPlot()
+	local id = info and info:GetAttribute("Theme") or ""
+	for i, theme in LandConfig.Themes do
+		if theme.id == id then
+			return i
+		end
+	end
+	return 1
+end
+local function refreshThemeButton()
+	themeButton.Text = "THEME: " .. LandConfig.Themes[currentTheme()].name:upper()
+end
+themeButton.Activated:Connect(function()
+	if busy then
+		return
+	end
+	local nextTheme = LandConfig.Themes[currentTheme() % #LandConfig.Themes + 1]
+	busy = true
+	local ok, done, message = pcall(function()
+		return themeRemote:InvokeServer(nextTheme.id)
+	end)
+	busy = false
+	if ok and message then
+		setInfo(message, done and GREEN or RED)
+	end
+	task.delay(0.2, refreshThemeButton)
+end)
+
+player:GetAttributeChangedSignal("LandPlot"):Connect(function()
+	task.delay(0.2, refreshThemeButton)
+end)
+refreshThemeButton()
 
 RunService.RenderStepped:Connect(updateGhost)
 

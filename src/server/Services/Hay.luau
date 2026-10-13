@@ -20,14 +20,12 @@ local pieces = {} -- piece part -> time it last moved or was made
 local count = 0
 local overlap = OverlapParams.new()
 
-local COLORS = {
-	Color3.fromRGB(219, 204, 153),
-	Color3.fromRGB(205, 189, 136),
-	Color3.fromRGB(189, 168, 112),
-	Color3.fromRGB(168, 149, 95),
-	Color3.fromRGB(133, 115, 71),
-	Color3.fromRGB(150, 148, 96), -- the odd greener stalk
-}
+local HayLooks = require(ReplicatedStorage.Shared.Config.HayLooks)
+
+-- The look for a hay type (Config/HayLooks), meadow when unknown.
+function Hay.look(hayType)
+	return HayLooks[hayType or "meadow"] or HayLooks.meadow
+end
 
 Hay.folder = nil
 
@@ -96,12 +94,16 @@ local function trim()
 end
 
 -- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
-local function makeStraw()
+-- A strand in its region's colors and shape.
+local function makeStraw(hayType)
+	local look = Hay.look(hayType)
+	local c = look.colors[rng:NextInteger(1, #look.colors)]
+	local thick = rng:NextNumber(look.thick[1], look.thick[2])
 	local piece = Instance.new("Part")
 	piece.Name = "Straw"
-	piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), rng:NextNumber(0.1, 0.14), rng:NextNumber(0.1, 0.14))
-	piece.Color = COLORS[rng:NextInteger(1, #COLORS)]
-	piece.Material = Enum.Material.Fabric
+	piece.Size = Vector3.new(rng:NextNumber(look.length[1], look.length[2]), thick, thick * rng:NextNumber(0.85, 1.15))
+	piece.Color = Color3.fromRGB(c[1], c[2], c[3])
+	piece.Material = look.material and Enum.Material[look.material] or Enum.Material.Fabric
 	piece.CustomPhysicalProperties = PhysicalProperties.new(0.3, 1.2, 0, 1, 1)
 	return piece
 end
@@ -144,11 +146,11 @@ local function makeNeedle(cframe, ownerId, hayType)
 	return piece
 end
 
--- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of straw.
+-- kind is "Needle" for a visible needle (of the kind found in hayType), otherwise a strand of hayType's straw.
 function Hay.spawnPiece(position, velocity, ownerId, kind, hayType)
 	local cframe = CFrame.new(position)
 		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
-	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw()
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId, hayType) or makeStraw(hayType)
 	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth

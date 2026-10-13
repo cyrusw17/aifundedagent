@@ -18,6 +18,9 @@ local Factory = require(Shared.Config.Factory)
 local LandConfig = require(Shared.Config.Land)
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
+local GameConfig = require(Shared.Config.Game)
+local Sorters = require(Shared.Config.Sorters)
+local Economy = require(Shared.Economy)
 local Props = require(script.Parent.Props)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
@@ -43,6 +46,12 @@ for _, def in LandConfig.Pieces do
 	pieces[def.id] = def
 end
 
+local themes = {}
+for _, theme in LandConfig.Themes do
+	themes[theme.id] = theme
+end
+local DEFAULT_THEME = LandConfig.Themes[1]
+
 local plots = {} -- index -> plot record
 local plotOf = {} -- player -> plot record
 local lastAction = {} -- player -> os.clock() of their last place or remove
@@ -52,8 +61,39 @@ local vehiclesFolder = nil
 local part = Machines.part
 local sign = Machines.sign
 
-local function key(gx, gz)
+-- A tile's key, as Conveyors.luau keys its grid: "gx,gz" on the ground, "gx,gz,1" on the raised belt level.
+local addBinPrompt -- defined with the plot setup below
+local dress -- plot themes, defined with the plot setup below
+
+local function key(gx, gz, level)
+	if level and level > 0 then
+		return ("%d,%d,%d"):format(gx, gz, level)
+	end
 	return gx .. "," .. gz
+end
+
+-- The belt levels a piece takes: a ramp both, a raised belt level 1, everything else the ground.
+local function levelsOf(def)
+	if def.kind == "ramp" then
+		return { 0, 1 }
+	end
+	return { def.level or 0 }
+end
+
+-- The piece at a tile, the raised one first (it is the one on top).
+local function itemAt(plot, gx, gz)
+	return plot.taken[key(gx, gz, 1)] or plot.taken[key(gx, gz)]
+end
+
+-- The piece with this id anchored at (gx, gz), on either level.
+local function anchoredAt(plot, id, gx, gz)
+	for _, level in { 1, 0 } do
+		local item = plot.taken[key(gx, gz, level)]
+		if item and item.id == id and item.gx == gx and item.gz == gz then
+			return item
+		end
+	end
+	return nil
 end
 
 local function step(dir)
@@ -128,6 +168,7 @@ local function publish(plot)
 	info:SetAttribute("Crew", table.concat(crew, ","))
 	info:SetAttribute("Likes", plot.likes or 0)
 	info:SetAttribute("LockedRows", plot.locked or 0)
+	info:SetAttribute("Theme", plot.theme or "")
 	plot.likePrompt.Enabled = plot.ownerId ~= nil
 	plot.likePrompt.ObjectText = plot.ownerName and (plot.ownerName .. "'s farm") or ""
 	if plot.ownerId then
@@ -427,10 +468,12 @@ end
 local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	local item = { id = def.id, gx = gx, gz = gz, dir = dir, cells = cellsFor(def, gx, gz, dir), instances = {}, stored = stored, fill = fill }
 	local frame = Conveyors.frame(plot.grid, gx, gz, dir)
-	if def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
+	if def.kind == "ramp" then
+		table.insert(item.instances, Conveyors.ramp(plot.grid, gx, gz, dir, def.up).Parent)
+	elseif def.kind == "belt" or def.kind == "separator" or def.kind == "press" then
 		-- A sorter sits over belt tiles of its own, so a line runs straight through it.
 		for _, cell in item.cells do
-			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir)
+			local belt = Conveyors.place(plot.grid, cell[1], cell[2], dir, nil, def.level)
 			table.insert(item.instances, belt.Parent)
 		end
 	end
@@ -455,20 +498,29 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, buildBlueprint(plot, item, def))
 	end
 	for _, cell in item.cells do
-		plot.taken[key(cell[1], cell[2])] = item
+		for _, level in levelsOf(def) do
+			plot.taken[key(cell[1], cell[2], level)] = item
+		end
 	end
 	table.insert(plot.list, item)
 	return item
 end
 
 local function destroyItem(plot, item)
+	local models = {}
 	for _, instance in item.instances do
+		models[instance] = true
 		instance:Destroy()
 	end
-	for _, cell in item.cells do
-		local k = key(cell[1], cell[2])
-		plot.taken[k] = nil
-		plot.grid.tiles[k] = nil
+	for k, it in plot.taken do
+		if it == item then
+			plot.taken[k] = nil
+		end
+	end
+	for k, tile in plot.grid.tiles do
+		if models[tile.model] then
+			plot.grid.tiles[k] = nil
+		end
 	end
 	local i = table.find(plot.list, item)
 	if i then
@@ -486,8 +538,21 @@ end
 local function fits(plot, def, gx, gz, dir, ignore)
 	for _, cell in cellsFor(def, gx, gz, dir) do
 		local x, z = cell[1], cell[2]
-		local taken = plot.taken[key(x, z)]
-		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z or (taken and taken ~= ignore) then
+		if x < 0 or z < 0 or x >= plot.tiles.X or z >= plot.tiles.Z then
+			return false
+		end
+		for _, level in levelsOf(def) do
+			local taken = plot.taken[key(x, z, level)]
+			if taken and taken ~= ignore then
+				return false
+			end
+		end
+		-- Only a plain belt runs under a raised belt; machines are too tall.
+		local below, above = plot.taken[key(x, z)], plot.taken[key(x, z, 1)]
+		if def.level == 1 and below and below ~= ignore and pieces[below.id].kind ~= "belt" then
+			return false
+		end
+		if def.kind ~= "ramp" and (def.level or 0) == 0 and def.kind ~= "belt" and above and above ~= ignore then
 			return false
 		end
 		if rowFromBack(plot, z) < (plot.locked or 0) then
@@ -515,6 +580,9 @@ local function saveItems(player, plot)
 	s.land.items = items
 	s.land.plot = plot.index
 	s.land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
+	s.land.binSorted = plot.binSorted or nil
+	s.land.theme = plot.theme
+	s.land.savedAt = os.time() -- for the mailbox: how long the farm sat while its owner was away
 	s.land.needles = plot.bin.contents(player.UserId)
 	local crew = {}
 	for userId in plot.crew do
@@ -542,9 +610,12 @@ local function parkVehicles(player, plot)
 		end
 	end
 	if not at then
-		-- No parking pad: on the lane in front of the plot, facing east.
-		local gate = Vector3.new(plot.corner.X + plot.size.X / 2, 0, plot.laneZ)
-		at = CFrame.lookAt(gate, gate + Vector3.xAxis) * CFrame.new(0, 0, -10)
+		-- No parking pad: on the lane in front of the plot. Plots across the lane from each other share a middle, so
+		-- the south row parks west of it facing east and the north row east of it facing west: nose to nose, 6 apart,
+		-- each on its own side of the lane.
+		local away = if plot.def.open == "S" then -1 else 1
+		local nose = Vector3.new(plot.corner.X + plot.size.X / 2 + away * 3, 0, plot.laneZ + away * 3)
+		at = CFrame.lookAt(nose, nose - Vector3.xAxis * away)
 	end
 	-- The truck's middle sits half its length back from the front of the pad.
 	local truckCF = at * CFrame.new(0, 0.3, def.length / 2) -- on top of the pad
@@ -583,6 +654,42 @@ local function drawLocks(plot)
 	end
 end
 
+-- The owner can buy dividers that sort the plot's needle bin by type.
+addBinPrompt = function(plot)
+	local floor = plot.bin.model:FindFirstChild("Floor")
+	if not floor then
+		return
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DividerPrompt"
+	prompt.ActionText = ("Add type dividers $%d"):format(LandConfig.BinDividersPrice)
+	prompt.ObjectText = "Needle bin"
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = floor
+	prompt.Triggered:Connect(function(player)
+		if plot.owner ~= player then
+			Data.toast(player, "Only the farm's owner can add dividers to its bin.")
+			return
+		end
+		if plot.binSorted then
+			return
+		end
+		local paid, why = Bank.charge(player, LandConfig.BinDividersPrice, "Land: bin dividers")
+		if not paid then
+			Data.toast(player, why or "Not enough money.")
+			return
+		end
+		plot.binSorted = true
+		plot.bin.splitByType()
+		prompt.Enabled = false
+		saveItems(player, plot)
+		Data.toast(player, "Your needle bin now sorts needles into a corner per type.")
+	end)
+	plot.binPrompt = prompt
+end
+
 local function release(plot)
 	if plot.owner then
 		plotOf[plot.owner] = nil
@@ -597,10 +704,19 @@ local function release(plot)
 	end
 	clearPlot(plot)
 	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
+	if plot.binSorted then
+		-- Dividers belong to the owner's save; the next owner gets a plain bin.
+		plot.bin.model:Destroy()
+		plot.bin = Machines.needleBin(plot.model, plot.binFrame)
+		plot.binSorted = nil
+		addBinPrompt(plot)
+	end
 	plot.leftOut = nil
 	plot.crew = {}
 	plot.locked = 0
+	dress(plot, nil)
 	drawLocks(plot)
+	plot.mailLabel.Text = "MAILBOX\nNo mail."
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
 end
@@ -624,6 +740,14 @@ local function claim(plot, player, saved)
 	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
+	dress(plot, saved.theme)
+	if saved.binSorted then
+		plot.binSorted = true
+		plot.bin.splitByType()
+		if plot.binPrompt then
+			plot.binPrompt.Enabled = false
+		end
+	end
 	for _, userId in (typeof(saved.crew) == "table" and saved.crew or {}) do
 		if typeof(userId) == "number" and userId ~= player.UserId then
 			plot.crew[userId] = true
@@ -739,6 +863,10 @@ local function onPlace(player, id, gx, gz, dir)
 	if not fits(plot, def, gx, gz, dir) then
 		return false, "That spot is taken or off your land."
 	end
+	local s = Data.get(player)
+	if def.quest and not (s and typeof(s.quests) == "table" and typeof(s.quests.earned) == "table" and s.quests.earned[def.id]) then
+		return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
+	end
 	local paid, short = Bank.charge(player, def.price, "Built a " .. def.name:lower())
 	if not paid then
 		return false, short
@@ -761,7 +889,7 @@ local function onRemove(player, gx, gz)
 	if not isCell(gx) or not isCell(gz) then
 		return false, nil
 	end
-	local item = plot.taken[key(gx, gz)]
+	local item = itemAt(plot, gx, gz)
 	if not item then
 		return false, "Nothing built there."
 	end
@@ -787,7 +915,7 @@ end
 -- The piece covering a tile: { id, gx, gz, dir } of its anchor, so the client can pick it up to move it.
 local function onPick(player, gx, gz)
 	local plot = plotOf[player]
-	local item = plot and isCell(gx) and isCell(gz) and plot.taken[key(gx, gz)]
+	local item = plot and isCell(gx) and isCell(gz) and itemAt(plot, gx, gz)
 	if not item then
 		return false, "Nothing built there."
 	end
@@ -804,7 +932,10 @@ local function onMove(player, fromX, fromZ, gx, gz, dir)
 	if not isCell(fromX) or not isCell(fromZ) or not isCell(gx) or not isCell(gz) or typeof(dir) ~= "string" or not Conveyors.Dirs[dir] then
 		return false, nil
 	end
-	local item = plot.taken[key(fromX, fromZ)]
+	local item = itemAt(plot, fromX, fromZ)
+	if item and (item.gx ~= fromX or item.gz ~= fromZ) then
+		item = plot.taken[key(fromX, fromZ)]
+	end
 	if not item or item.gx ~= fromX or item.gz ~= fromZ then
 		return false, "That piece isn't there any more."
 	end
@@ -865,11 +996,13 @@ local function onPaste(player, list, gx, gz)
 			return false, "Part of that doesn't fit there."
 		end
 		for _, cell in cellsFor(def, ax, az, entry.dir) do
-			local k = key(cell[1], cell[2])
-			if claimed[k] then
-				return false, "Part of that doesn't fit there."
+			for _, level in levelsOf(def) do
+				local k = key(cell[1], cell[2], level)
+				if claimed[k] then
+					return false, "Part of that doesn't fit there."
+				end
+				claimed[k] = true
 			end
-			claimed[k] = true
 		end
 		total += def.price
 		table.insert(todo, { def = def, gx = ax, gz = az, dir = entry.dir })
@@ -903,8 +1036,8 @@ local function onUndo(player)
 	if entry.kind == "place" then
 		local gone, back = 0, 0
 		for _, a in entry.anchors do
-			local item = plot.taken[key(a.gx, a.gz)]
-			if item and item.id == a.id and item.gx == a.gx and item.gz == a.gz then
+			local item = anchoredAt(plot, a.id, a.gx, a.gz)
+			if item then
 				destroyItem(plot, item)
 				gone += 1
 				back += a.price -- pieces removed since were already refunded, so only those still standing count
@@ -931,9 +1064,9 @@ local function onUndo(player)
 		afterEdit(player, plot)
 		return true, ("Put the %s back."):format(def.name:lower())
 	elseif entry.kind == "move" then
-		local item = plot.taken[key(entry.to.gx, entry.to.gz)]
+		local item = anchoredAt(plot, entry.id, entry.to.gx, entry.to.gz)
 		local def = pieces[entry.id]
-		if not item or item.id ~= entry.id or item.gx ~= entry.to.gx or item.gz ~= entry.to.gz
+		if not item
 			or not fits(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, item) then
 			return false, "Can't move it back now."
 		end
@@ -975,6 +1108,25 @@ local function onExpand(player)
 	return true, ("Your plot grew by a row of %d tiles."):format(plot.tiles.X)
 end
 
+-- Puts the owner's plot in another theme (free).
+local function onTheme(player, id)
+	local plot = plotOf[player]
+	if not plot then
+		return false, "Buy a plot first."
+	end
+	if typeof(id) ~= "string" or not themes[id] then
+		return false, nil
+	end
+	if os.clock() - (lastAction[player] or 0) < 0.5 then
+		return false, nil
+	end
+	lastAction[player] = os.clock()
+	dress(plot, id)
+	saveItems(player, plot)
+	publish(plot)
+	return true, ("Your farm is now %s."):format(themes[id].name:lower())
+end
+
 -- Adds (on = true) or removes a player from the owner's farm crew.
 local function onCrew(player, userId, on)
 	local plot = plotOf[player]
@@ -1006,16 +1158,49 @@ local function onCrew(player, userId, on)
 	return true, on and "Added to your crew." or "Removed from your crew."
 end
 
-local function fence(parent, a, b)
+local function fence(parent, a, b, theme)
+	theme = theme or DEFAULT_THEME
 	local length = (b - a).Magnitude
 	local along = CFrame.lookAt((a + b) / 2, b)
+	if theme.style == "wall" then
+		part(parent, "Wall", Vector3.new(1.2, 2.2, length + 1.2), along + Vector3.new(0, 1.1, 0), theme.rail.color, theme.rail.material)
+		part(parent, "Cap", Vector3.new(1.5, 0.35, length + 1.4), along + Vector3.new(0, 2.35, 0), theme.post.color, theme.post.material)
+		return
+	end
 	for i = 0, math.ceil(length / 6) do
 		local p = a + (b - a).Unit * math.min(i * 6, length)
-		part(parent, "Post", Vector3.new(0.6, FENCE_HEIGHT, 0.6), CFrame.new(p + Vector3.new(0, FENCE_HEIGHT / 2, 0)), Rustic.WoodDark, Enum.Material.Wood)
+		part(parent, "Post", Vector3.new(0.6, FENCE_HEIGHT, 0.6), CFrame.new(p + Vector3.new(0, FENCE_HEIGHT / 2, 0)), theme.post.color, theme.post.material)
 	end
 	for _, y in { 1.1, 2.4 } do
-		part(parent, "Rail", Vector3.new(0.25, 0.4, length), along + Vector3.new(0, y, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+		part(parent, "Rail", Vector3.new(0.25, 0.4, length), along + Vector3.new(0, y, 0), theme.rail.color, theme.rail.material)
 	end
+end
+
+-- A lamp post with a warm lantern, for the lane corners of a plot.
+local function lamp(parent, at, theme)
+	part(parent, "LampPost", Vector3.new(0.5, 7, 0.5), CFrame.new(at + Vector3.new(0, 3.5, 0)), theme.lamp.color, theme.lamp.material)
+	local lantern = part(parent, "Lantern", Vector3.new(0.9, 1.1, 0.9), CFrame.new(at + Vector3.new(0, 7.4, 0)), Color3.fromRGB(235, 200, 140), Enum.Material.Neon)
+	lantern.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 205, 150)
+	light.Range = 18
+	light.Brightness = 1.2
+	light.Parent = lantern
+end
+
+-- Builds the plot's fence, sign and lamps in a theme (an id from LandConfig.Themes; unknown ids get the default).
+dress = function(plot, themeId)
+	local theme = themes[themeId] or DEFAULT_THEME
+	plot.theme = theme.id
+	plot.fences:ClearAllChildren()
+	for _, line in plot.fenceLines do
+		fence(plot.fences, line[1], line[2], theme)
+	end
+	for _, corner in plot.lampAt do
+		lamp(plot.fences, corner, theme)
+	end
+	plot.signPost.Color, plot.signPost.Material = theme.post.color, theme.post.material
+	plot.signBoard.Color, plot.signBoard.Material = theme.board.color, theme.board.material
 end
 
 local function zoneOf(def)
@@ -1056,10 +1241,14 @@ local function buildPlot(parent, index, def)
 	local fences = Instance.new("Model")
 	fences.Name = "Fence"
 	fences.Parent = model
-	fence(fences, Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1))
-	fence(fences, Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1))
 	local farZ = def.open == "S" and z0 or z1
-	fence(fences, Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ))
+	local laneEdge = def.open == "S" and z1 or z0
+	local fenceLines = {
+		{ Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1) },
+		{ Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1) },
+		{ Vector3.new(x0, 0, farZ), Vector3.new(x1, 0, farZ) },
+	}
+	local lampAt = { Vector3.new(x0, 0, laneEdge), Vector3.new(x1, 0, laneEdge) }
 
 	-- The needle bin sits at the left end of the strip (seen from the lane), with its SELL NEEDLES pad toward the middle:
 	-- the west end on plots south of the lane, the east end on the turned-around plots north of it.
@@ -1072,6 +1261,14 @@ local function buildPlot(parent, index, def)
 	local board = part(model, "SignBoard", Vector3.new(8, 2.4, 0.4), CFrame.new((x0 + x1) / 2, 5.4, stripZ), Rustic.Wood, Enum.Material.WoodPlanks)
 	board.CanCollide = false
 	local label = sign(post, "", Vector3.new(0, 6, 0))
+	-- The mailbox beside the sign: what the farm earned while its owner was away.
+	local mailAt = Vector3.new((x0 + x1) / 2 + 6, 0, stripZ)
+	local mailPost = part(model, "MailPost", Vector3.new(0.4, 3.6, 0.4), CFrame.new(mailAt + Vector3.new(0, 1.8, 0)), Rustic.WoodDark, Enum.Material.Wood)
+	local mailBox = part(model, "Mailbox", Vector3.new(1.4, 1.2, 2.2), CFrame.new(mailAt + Vector3.new(0, 4.1, 0)), Rustic.Metal, Enum.Material.Metal)
+	part(model, "MailFlag", Vector3.new(0.1, 0.8, 0.4), CFrame.new(mailAt + Vector3.new(0.75, 4.5, 0.5)), Rustic.PaintRed, Enum.Material.SmoothPlastic)
+	mailPost.CanCollide = false
+	local mailLabel = sign(mailBox, "MAILBOX\nNo mail.", Vector3.new(0, 2.6, 0))
+	mailLabel.Parent.MaxDistance = 30
 	-- Visitors like the farm here, once a week.
 	local likePrompt = Instance.new("ProximityPrompt")
 	likePrompt.Name = "LikePrompt"
@@ -1118,11 +1315,21 @@ local function buildPlot(parent, index, def)
 		ownerName = nil,
 		grid = Conveyors.newGrid(model, corner),
 		bin = Machines.needleBin(model, binFrame),
+		binFrame = binFrame,
+		fences = fences,
+		fenceLines = fenceLines,
+		lampAt = lampAt,
+		signPost = post,
+		mailLabel = mailLabel,
+		signBoard = board,
+		theme = DEFAULT_THEME.id,
 		list = {},
 		taken = {},
 		crew = {},
 	}
 	plots[index] = plot
+	addBinPrompt(plot)
+	dress(plot, DEFAULT_THEME.id)
 	likePrompt.Triggered:Connect(function(player)
 		local ownerId = plot.ownerId
 		if not ownerId then
@@ -1270,6 +1477,76 @@ local function restoreNeedles(player, plot, land)
 	land.needles = inBin
 end
 
+-- The mailbox: while the owner was away, the silo kept feeding the line, but only from bales already in it (no
+-- income out of nothing). Works on the save before the plot is built, so the silos come back emptier and the found
+-- needles land in the bin. Needs a hay buyer on the plot; the best sorter there sets speed and needles found.
+local MAIL_MAX_AWAY = 8 * 3600
+local function mailbox(player, land)
+	local away = math.min(os.time() - (land.savedAt or os.time()), MAIL_MAX_AWAY)
+	if away < 60 or typeof(land.items) ~= "table" then
+		return nil
+	end
+	local silos, stored, hasBuyer, best = {}, 0, false, nil
+	for _, s in land.items do
+		local def = typeof(s) == "table" and pieces[s.id]
+		if def and def.kind == "silo" and typeof(s.stored) == "number" and s.stored > 0 then
+			table.insert(silos, s)
+			stored += s.stored
+		elseif def and def.kind == "buyer" then
+			hasBuyer = true
+		elseif def and def.kind == "separator" then
+			for _, tier in Sorters do
+				if tier.id == def.id and (not best or tier.recovery > best.recovery) then
+					best = tier
+				end
+			end
+		end
+	end
+	if stored == 0 then
+		return nil
+	end
+	if not hasBuyer then
+		return ("Your silo holds %d bales, but there is no hay buyer on your line, so nothing sold while you were away."):format(stored)
+	end
+	local hayPerBale = GameConfig.PiecesPerBale * GameConfig.HayPerPiece
+	local perBale = LandConfig.SiloFeedSeconds
+	if best then
+		perBale = math.max(perBale, Machines.sortSeconds(best.id, hayPerBale))
+	end
+	local bales = math.min(stored, math.floor(away / perBale))
+	if bales <= 0 then
+		return nil
+	end
+	-- Take the bales out of the silos, first silo first.
+	local left = bales
+	for _, s in silos do
+		local take = math.min(s.stored, left)
+		s.stored -= take
+		left -= take
+	end
+	local hay = bales * hayPerBale
+	local hidden = math.floor(hay * GameConfig.NeedleChancePerHay + 0.5)
+	local cash, found = 0, 0
+	if best then
+		found = math.floor(hidden * best.recovery + 0.5)
+		cash = math.floor(hay * Economy.HAY_PRICE)
+		local needles = land.needles or {}
+		local id = Needle.default.id
+		needles[id] = (needles[id] or 0) + found
+		land.needles = needles
+	else
+		cash = Economy.rawLoadValue(hay, hidden)
+	end
+	Bank.earn(player, cash, "While you were away")
+	local hours = away / 3600
+	local when = hours >= 1 and ("%.1f hours"):format(hours) or ("%d minutes"):format(math.floor(away / 60))
+	local letter = ("While you were away (%s) your silo fed %d bales: +$%d"):format(when, bales, cash)
+	if found > 0 then
+		letter ..= (", and %d needles are waiting in your bin"):format(found)
+	end
+	return letter .. "."
+end
+
 local function onLoaded(player)
 	local s = Data.get(player)
 	if not s then
@@ -1293,8 +1570,10 @@ local function onLoaded(player)
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
+	local letter = mailbox(player, s.land)
 	claim(plot, player, s.land)
 	restoreNeedles(player, plot, s.land)
+	plot.mailLabel.Text = letter and ("MAILBOX\n" .. letter) or "MAILBOX\nNo mail."
 	parkVehicles(player, plot)
 	task.spawn(sendHome, player, plot)
 	local message = ("Your farm is on %s."):format(plot.def.name)
@@ -1302,6 +1581,13 @@ local function onLoaded(player)
 		message ..= (" %d saved pieces don't fit here; they're still kept in your save."):format(#plot.leftOut)
 	end
 	Data.toast(player, message)
+	if letter then
+		task.delay(4, function()
+			if player.Parent then
+				Data.toast(player, letter)
+			end
+		end)
+	end
 end
 
 function Land.build(worldFolder)
@@ -1315,7 +1601,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -1349,6 +1635,7 @@ function Land.build(worldFolder)
 	remotes.Copy.OnServerInvoke = guard(onCopy)
 	remotes.Paste.OnServerInvoke = guard(onPaste)
 	remotes.Undo.OnServerInvoke = guard(onUndo)
+	remotes.Theme.OnServerInvoke = guard(onTheme)
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
 		local plot = plotOf[owner]

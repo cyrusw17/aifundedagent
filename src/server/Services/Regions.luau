@@ -4,15 +4,18 @@
 -- door and cave, the lighthouse, the pyramid, the wreck, the quarry, the Weaver's workshop and more).
 -- Placement uses a fixed seed, so every server looks alike. Ground heights come from WorldShape, the same math the
 -- terrain was written from, so nothing waits for the terrain to finish.
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
+local GloveConfig = require(Shared.Config.Gloves)
 local Rustic = require(Shared.Config.Rustic)
 local WorldLabel = require(Shared.WorldLabel)
 local WorldShape = require(script.Parent.WorldShape)
 local Bales = require(script.Parent.Bales)
 local Props = require(script.Parent.Props)
+local Data = require(script.Parent.Data)
 
 local Regions = {}
 
@@ -106,9 +109,35 @@ local function boardText(board, text, faces)
 	return WorldLabel.surface(board, text, faces or { Enum.NormalId.Front, Enum.NormalId.Back })
 end
 
--- A wooden board on a post, readable from both sides.
+-- Moves a point off any road, out to clearance studs past its edge (signs placed by hand must never stand in a lane).
+local ROAD_HALF = Map.RoadWidth / 2
+local function offRoad(x, z, clearance)
+	for _ = 1, 12 do
+		local d = WorldShape.nearestRoad(x, z)
+		if not d or d >= ROAD_HALF + clearance then
+			break
+		end
+		-- Step away from the center line: the direction in which the distance grows.
+		local function far(px, pz)
+			return WorldShape.nearestRoad(px, pz) or ROAD_HALF + clearance + 50
+		end
+		local g = Vector2.new(far(x + 1, z) - far(x - 1, z), far(x, z + 1) - far(x, z - 1))
+		if g.Magnitude < 1e-3 then
+			g = Vector2.new(1, 0)
+		end
+		g = g.Unit * (ROAD_HALF + clearance - d + 0.5)
+		x += g.X
+		z += g.Y
+	end
+	return x, z
+end
+Regions.offRoad = offRoad
+
+-- A wooden board on a post, readable from both sides. Never on a road: it steps to the roadside.
 local function signpost(parent, x, z, facing, text, width)
 	width = width or 11
+	-- The board can stand across the road's direction, so keep half its width clear as well.
+	x, z = offRoad(x, z, width / 2 + 2)
 	local model = Instance.new("Model")
 	model.Name = "Signpost"
 	local base = spot(x, z, facing)
@@ -173,6 +202,50 @@ local function building(parent, name, cframe, w, d, h, opts)
 	return model
 end
 Regions.building = building
+
+-- A townsperson: a blocky figure in work clothes with a name over their head and a Talk prompt. Tagged "QuestGiver"
+-- with a QuestGiver id, so the quest system can take the prompt over (set QuestHandled on the model and it stops
+-- saying its own lines). Until then each one says its lines in turn.
+local function townsperson(parent, id, name, cframe, shirt, lines)
+	local model = Instance.new("Model")
+	model.Name = name
+	local skin = Color3.fromRGB(204, 162, 128)
+	for _, side in { -1, 1 } do
+		part(model, "Leg", Vector3.new(0.9, 2.6, 1), cframe * CFrame.new(side * 0.5, 1.3, 0), Rustic.WoodDark, Enum.Material.Fabric)
+		part(model, "Arm", Vector3.new(0.8, 2.4, 0.9), cframe * CFrame.new(side * 1.45, 3.6, 0), shirt, Enum.Material.Fabric)
+	end
+	local torso = part(model, "Torso", Vector3.new(2, 2.4, 1.1), cframe * CFrame.new(0, 3.8, 0), shirt, Enum.Material.Fabric)
+	local head = part(model, "Head", Vector3.new(1.2, 1.2, 1.2), cframe * CFrame.new(0, 5.6, 0), skin, Enum.Material.SmoothPlastic)
+	part(model, "HatBrim", Vector3.new(2.2, 0.15, 2.2), cframe * CFrame.new(0, 6.25, 0), Rustic.Cloth, Enum.Material.Fabric)
+	part(model, "HatTop", Vector3.new(1.3, 0.6, 1.3), cframe * CFrame.new(0, 6.6, 0), Rustic.Cloth, Enum.Material.Fabric)
+	model.PrimaryPart = torso
+	for _, p in model:GetChildren() do
+		p.CanCollide = false
+	end
+	billboard(head, name, Vector3.new(0, 2.2, 0), 60)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = name
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = torso
+	model:SetAttribute("QuestGiver", id)
+	CollectionService:AddTag(model, "QuestGiver")
+	local turn = {}
+	prompt.Triggered:Connect(function(player)
+		if model:GetAttribute("QuestHandled") then
+			return
+		end
+		local i = (turn[player] or 0) % #lines + 1
+		turn[player] = i
+		if Data.get(player) then
+			Data.toast(player, ("%s: %s"):format(name, lines[i]))
+		end
+	end)
+	model.Parent = parent
+	return model
+end
+Regions.townsperson = townsperson
 
 -- Trees in each region's style ---------------------------------------------------------------------------------
 
@@ -328,18 +401,18 @@ end
 
 -- How many of each kind of tree grow in each region.
 local PLANTING = {
-	shore = { { "oak", 30 } },
-	valley = { { "oak", 55 }, { "pine", 10 } },
-	homestead = { { "oak", 30 } },
-	spindle = { { "pine", 12 } },
+	shore = { { "oak", 45 } },
+	valley = { { "oak", 75 }, { "pine", 14 } },
+	homestead = { { "oak", 40 } },
+	spindle = { { "pine", 30 } },
 	pine = { { "pine", 190 }, { "oak", 10 } },
 	haunted = { { "dead", 110 } },
 	snow = { { "snowpine", 110 } },
-	volcano = { { "charred", 40 } },
-	desert = { { "cactus", 50 } },
+	volcano = { { "charred", 55 } },
+	desert = { { "cactus", 70 } },
 	swamp = { { "willow", 60 }, { "reeds", 45 } },
 	keys = { { "palm", 70 } },
-	bobbin = { { "dead", 8 } },
+	bobbin = { { "dead", 14 } },
 }
 
 local ROCK_COLORS = {
@@ -372,6 +445,22 @@ local function claim(x, z)
 	local key = math.floor(x / 32) * 65536 + math.floor(z / 32)
 	taken[key] = taken[key] or {}
 	table.insert(taken[key], Vector2.new(x, z))
+end
+
+-- Marks the ground under everything in a folder as taken, so no tree grows through a landmark.
+local function claimParts(folder)
+	for _, p in folder:GetDescendants() do
+		if p:IsA("BasePart") then
+			local cf, size = p.ExtentsCFrame, p.ExtentsSize
+			local nx, nz = math.min(12, math.ceil(size.X / 8)), math.min(12, math.ceil(size.Z / 8))
+			for i = 0, nx do
+				for k = 0, nz do
+					local at = cf * Vector3.new((i / nx - 0.5) * size.X, 0, (k / nz - 0.5) * size.Z)
+					claim(at.X, at.Z)
+				end
+			end
+		end
+	end
 end
 
 -- Whether something can stand here: on dry, not too steep land, off roads, the highway and building spots.
@@ -550,6 +639,100 @@ local function hayFields(r, rng)
 	end
 end
 
+-- Farm life ------------------------------------------------------------------------------------------------------
+
+-- The nearest open spot to (x, z): dry, gentle, off roads, and clear of anything already placed.
+local function findSpot(x, z, margin)
+	for radius = 0, 240, 12 do
+		local steps = math.max(1, math.floor(radius / 6))
+		for i = 0, steps - 1 do
+			local a = i / steps * math.pi * 2
+			local px, pz = x + math.cos(a) * radius, z + math.sin(a) * radius
+			local ok, h = buildable(px, pz, margin)
+			if ok and not crowded(px, pz, margin) then
+				return px, pz, h
+			end
+		end
+	end
+	return nil
+end
+
+-- A windmill on a stone base. Its sails are their own model, tagged "WindmillSails"; Ambient.client.luau turns them.
+local function windmill(folder, x, z)
+	local px, pz, h = findSpot(x, z, 14)
+	if not px then
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = "Windmill"
+	local base = CFrame.new(px, h - 1, pz) * CFrame.Angles(0, math.rad(30), 0)
+	post(model, "Tower", 26, 10, base, Rustic.PaintCream, Enum.Material.WoodPlanks)
+	post(model, "Footing", 3, 13, base * CFrame.new(0, -1, 0), Rustic.Stone, Enum.Material.Cobblestone)
+	part(model, "Cap", Vector3.new(9, 5, 9), base * CFrame.new(0, 27.5, 0), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+	part(model, "Door", Vector3.new(4, 7, 0.4), base * CFrame.new(0, 4.5, -5.1), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	local sails = Instance.new("Model")
+	sails.Name = "WindmillSails"
+	local hubCF = base * CFrame.new(0, 27, -5.2)
+	local hub = part(sails, "Hub", Vector3.new(1.6, 2, 2), hubCF * CFrame.Angles(0, math.pi / 2, 0), IRON, Enum.Material.Metal, Enum.PartType.Cylinder, false)
+	for i = 0, 3 do
+		local arm = hubCF * CFrame.Angles(0, 0, i * math.pi / 2)
+		part(sails, "Spar", Vector3.new(0.5, 18, 0.4), arm * CFrame.new(0, 9, -0.3), Rustic.WoodDark, Enum.Material.Wood, nil, false)
+		part(sails, "Sail", Vector3.new(4, 14, 0.15), arm * CFrame.new(2.2, 10, -0.4), Rustic.Cloth, Enum.Material.Fabric, nil, false)
+	end
+	sails.PrimaryPart = hub
+	-- Streams in whole, so the client never sees sails without their hub.
+	sails.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	sails.Parent = model
+	CollectionService:AddTag(sails, "WindmillSails")
+	model.Parent = folder
+	claim(px, pz)
+	return model
+end
+
+-- A cow standing in a field, head down. Purely scenery: nothing collides, so it never blocks a truck.
+local COW_COATS = { { Color3.fromRGB(236, 230, 218), Color3.fromRGB(46, 40, 36) }, { Color3.fromRGB(122, 78, 52), Color3.fromRGB(236, 230, 218) }, { Color3.fromRGB(70, 58, 48), Color3.fromRGB(70, 58, 48) } }
+local function cow(folder, x, z, h, rng)
+	local model = Instance.new("Model")
+	model.Name = "Cow"
+	local coat = COW_COATS[rng:NextInteger(1, #COW_COATS)]
+	local base = CFrame.new(x, h, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local body = part(model, "Body", Vector3.new(3.2, 3, 6), base * CFrame.new(0, 3.6, 0), coat[1], Enum.Material.Fabric, nil, false)
+	part(model, "Patch", Vector3.new(3.3, 1.8, 2.2), base * CFrame.new(0, 4, 0.8), coat[2], Enum.Material.Fabric, nil, false)
+	part(model, "Head", Vector3.new(2, 2, 2.4), base * CFrame.new(0, 2.6, -3.8) * CFrame.Angles(math.rad(-35), 0, 0), coat[1], Enum.Material.Fabric, nil, false)
+	part(model, "Muzzle", Vector3.new(1.6, 1, 0.6), base * CFrame.new(0, 1.7, -4.9) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(214, 170, 160), Enum.Material.SmoothPlastic, nil, false)
+	for _, lx in { -1, 1 } do
+		for _, lz in { -1, 1 } do
+			part(model, "Leg", Vector3.new(0.8, 2.4, 0.8), base * CFrame.new(lx * 1.1, 1.2, lz * 2.2), coat[1], Enum.Material.Fabric, nil, false)
+		end
+	end
+	model.PrimaryPart = body
+	CollectionService:AddTag(model, "Cow")
+	model.Parent = folder
+end
+
+local function herd(folder, r, count, rng)
+	local made, tries = 0, 0
+	while made < count and tries < count * 20 do
+		tries += 1
+		local cx, cz = randomIn(r, rng)
+		local ok = WorldShape.regionAt(cx, cz) == r and buildable(cx, cz, 14) and not crowded(cx, cz, 14)
+		if not ok then
+			continue
+		end
+		-- A few cows together.
+		for _ = 1, rng:NextInteger(2, 4) do
+			local x, z = cx + rng:NextNumber(-12, 12), cz + rng:NextNumber(-12, 12)
+			local fine, h = buildable(x, z, 4)
+			if fine and not crowded(x, z, 4) then
+				cow(folder, x, z, h, rng)
+				claim(x, z)
+				made += 1
+			end
+		end
+	end
+	return made
+end
+
 -- Landmarks -----------------------------------------------------------------------------------------------------
 
 local LANDMARKS = {}
@@ -573,7 +756,7 @@ function LANDMARKS.homestead(folder)
 
 	building(folder, "TradingPost", CFrame.new(0, y, -1590) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "warehouse" })
 	building(folder, "Museum", CFrame.new(90, y, -1580) * CFrame.Angles(0, math.pi, 0), 34, 24, 16, { sign = "MUSEUM", prop = "museum", wall = Rustic.PaintCream, roof = Rustic.PaintBlue })
-	for i, z in { -1420, -1470, -1520 } do
+	for i, z in { -1405, -1490, -1530 } do
 		building(folder, "Sawmill", CFrame.new(165, y, z) * CFrame.Angles(0, math.pi / 2, 0), 26, 20, 12, { sign = i == 1 and "SAWMILL ROW" or nil, prop = "mill" })
 	end
 	building(folder, "Workshop", CFrame.new(-150, y, -1600) * CFrame.Angles(0, math.pi * 0.75, 0), 24, 20, 11, { sign = "WORKSHOP", prop = "workshop" })
@@ -593,12 +776,46 @@ function LANDMARKS.homestead(folder)
 	part(folder, "WellRoof", Vector3.new(9, 0.5, 5), well * CFrame.new(0, 8, 0), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
 
 	-- An arch where the North Road comes in.
-	local arch = spot(80, -1300, Vector2.new(0.6, 0.8))
+	-- On the road's center line, facing along it (the road runs (120, -1260) -> (0, -1330) here).
+	local arch = spot(80, -1283.3, Vector2.new(-120, -70).Unit)
 	for _, side in { -1, 1 } do
 		post(folder, "ArchPost", 16, 1.6, arch * CFrame.new(side * 11, -1, 0), Rustic.WoodDark, Enum.Material.Wood)
 	end
 	local beam = part(folder, "ArchBeam", Vector3.new(26, 3, 1), arch * CFrame.new(0, 14, 0), Rustic.Wood, Enum.Material.WoodPlanks)
 	boardText(beam, "HOMESTEAD VALLEY")
+
+	-- The Homestead branch of the bank (the Economy thread's counter can hook the BankCounter tag), facing the well.
+	local bank = building(folder, "HomesteadBank", CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0), 30, 22, 13, { sign = "SAVINGS & LOAN", wall = Rustic.PaintCream, roof = Rustic.PaintGreen, material = Enum.Material.Brick })
+	local counter = part(bank, "Counter", Vector3.new(10, 3.5, 2), CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 2.75, 3), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	CollectionService:AddTag(counter, "BankCounter")
+
+	CollectionService:AddTag(board, "BountyBoard")
+
+	-- The people of the hub. The quest system takes them over by their QuestGiver id.
+	local people = Instance.new("Folder")
+	people.Name = "Townsfolk"
+	people.Parent = folder
+	local function facing(x, z, tx, tz)
+		local p = Vector3.new(x, y, z)
+		return CFrame.lookAt(p, Vector3.new(tx, y, tz))
+	end
+	townsperson(people, "bounty", "Marshal Hettie", facing(10, -1474, 0, -1440), Rustic.PaintBlue, {
+		"Jobs go up on the board every morning. Bring the hay, get paid.",
+		"Folks out past the Spindle pay double for clean bales.",
+	})
+	townsperson(people, "trader", "Trader Oskar", facing(-12, -1572, 0, -1440), Rustic.PaintGreen, {
+		"I'll trade for anything with a shine on it. Needles most of all.",
+		"Pine needles from the west woods? Bring me those.",
+	})
+	townsperson(people, "elder", "Old Wren", facing(-14, -1436, 0, -1440), Rustic.PaintRedDark, {
+		"Twelve shards, they say, and the Spindle door opens.",
+		"The tailor down on the south shore knows more than she lets on.",
+		"When the gold beam goes up, ride for it. Rich hay never lasts.",
+	})
+	townsperson(people, "ferrymaster", "Ferrymaster Bo", facing(70, -1400, 80, -1300), IRON, {
+		"Ferries leave from Swamp Port and Ash Dock. Trailers ride free.",
+		"The zeppelin lifts off the field east of here, trucks and all.",
+	})
 end
 
 function LANDMARKS.spindle(folder)
@@ -750,7 +967,7 @@ end
 
 function LANDMARKS.snow(folder)
 	-- The ski lodge at the end of the Snow Road.
-	building(folder, "SkiLodge", spot(-650, -1600, Vector2.new(0, 1), 46), 34, 24, 13, { sign = "SNOW PEAK LODGE", roof = SNOW })
+	building(folder, "SkiLodge", spot(-650, -1625, Vector2.new(0, 1), 46), 34, 24, 13, { sign = "SNOW PEAK LODGE", roof = SNOW })
 	-- The hidden door: a stitched seam in the rock high on the ridge.
 	local x, z = -1060, -1700
 	local base = spot(x, z, Vector2.new(1, 0.4))
@@ -773,7 +990,7 @@ function LANDMARKS.volcano(folder, rng)
 	billboard(spire, "VOLCANO", Vector3.new(0, 30, 0), 900)
 
 	-- The Old Quarry at the foot: cut stone, a cracked mine cart track and a locked chest.
-	local q = CFrame.new(690, 30, -1245)
+	local q = CFrame.new(740, 30, -1300)
 	for i = 1, 9 do
 		local size = Vector3.new(rng:NextNumber(4, 7), rng:NextNumber(3, 6), rng:NextNumber(4, 7))
 		part(folder, "QuarryStone", size, q * CFrame.new(rng:NextNumber(-30, 30), size.Y / 2, rng:NextNumber(-25, 25)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color3.fromRGB(122, 112, 104), Enum.Material.Slate)
@@ -788,7 +1005,7 @@ function LANDMARKS.volcano(folder, rng)
 	local cart = q * CFrame.new(4, 1.6, 18)
 	part(folder, "MineCart", Vector3.new(5, 2.6, 3.6), cart, IRON, Enum.Material.Metal)
 	part(folder, "Chest", Vector3.new(3, 2, 2), q * CFrame.new(-26, 1, -18), Rustic.WoodDark, Enum.Material.WoodPlanks)
-	signpost(folder, 640, -1290, Vector2.new(-0.6, -0.8), "OLD QUARRY", 8)
+	signpost(folder, 680, -1275, Vector2.new(-0.6, 0.8), "OLD QUARRY", 8)
 end
 
 function LANDMARKS.desert(folder, rng)
@@ -811,7 +1028,7 @@ function LANDMARKS.desert(folder, rng)
 		claim(x, z)
 	end
 	for i = 0, 2 do
-		local base = spot(1260 + i * 16, -230, Vector2.new(0, 1))
+		local base = spot(1170 + i * 16, -222, Vector2.new(0, 1))
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, -2.5), Rustic.Cloth, Enum.Material.Fabric)
 		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, 2.5) * CFrame.Angles(0, math.pi, 0), Rustic.Cloth, Enum.Material.Fabric)
 	end
@@ -820,13 +1037,13 @@ end
 
 function LANDMARKS.swamp(folder, rng)
 	-- Boardwalks out over the bog, with lily pads in the pools.
-	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1300, 545), Vector2.new(1380, 360) } } do
+	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1440, 495), Vector2.new(1500, 360) } } do
 		local a, b = walk[1], walk[2]
 		local n = math.floor((b - a).Magnitude / 6)
+		local along = CFrame.lookAt(Vector3.zero, Vector3.new(b.X - a.X, 0, b.Y - a.Y))
 		for i = 0, n do
 			local p = a:Lerp(b, i / n)
-			local look = CFrame.lookAt(Vector3.new(p.X, 0, p.Y), Vector3.new(b.X, 0, b.Y))
-			local base = look.Rotation + Vector3.new(p.X, 1.4, p.Y)
+			local base = along + Vector3.new(p.X, 1.4, p.Y)
 			part(folder, "Boardwalk", Vector3.new(6, 0.5, 6.2), base, Rustic.Wood, Enum.Material.WoodPlanks)
 			if i % 2 == 0 then
 				for _, side in { -1, 1 } do
@@ -917,11 +1134,92 @@ local JUNCTIONS = {
 	{ 150, 610, Vector2.new(0, -1), "< PINE FOREST   SWAMP >" },
 	{ -1190, -740, Vector2.new(1, 0), "^ HOMESTEAD   WRECK >" },
 	{ -620, -1320, Vector2.new(1, 0), "< SNOW PEAK   HOMESTEAD >" },
-	{ 230, -1500, Vector2.new(-1, 0), "VOLCANO, ASH DOCK >" },
+	{ 220, -1475, Vector2.new(-1, 0), "VOLCANO, ASH DOCK >" },
 	{ 1300, -400, Vector2.new(0, -1), "< HIGHWAY   SWAMP v" },
 	{ 1560, 500, Vector2.new(-1, 0), "SWAMP PORT >\nFerry to Thimble Keys" },
 	{ 1480, -1170, Vector2.new(-1, 0), "ASH DOCK >\nFerry to Bobbin Rock" },
 }
+
+-- A sign at the roadside wherever a road crosses into another region: its name and the hay that grows there.
+local function borderSigns(folder)
+	local placed = {}
+	local count = 0
+	for _, road in Map.Roads do
+		-- A road out of Meadow's gate starts in Meadow, so its first region gets a sign too.
+		local start = road.points[1]
+		local current = WorldShape.meadowDistance(start.X, start.Y) < 4 and "meadow" or nil
+		local candidate, run = nil, 0
+		for i = 1, #road.points - 1 do
+			local a, b = road.points[i], road.points[i + 1]
+			local dir = (b - a).Unit
+			local n = math.max(1, math.ceil((b - a).Magnitude / 8))
+			for k = 0, n - 1 do
+				local p = a:Lerp(b, k / n)
+				local r = WorldShape.inMeadow(p.X, p.Y) and "meadow" or WorldShape.regionAt(p.X, p.Y)
+				local id = r and (r == "meadow" and r or r.id)
+				if not id or id == current then
+					candidate, run = nil, 0
+					continue
+				end
+				if id ~= candidate then
+					candidate, run = id, 0
+				end
+				run += 1
+				-- The new region has to hold for 40 studs, so a wobbly border doesn't sprout a row of signs.
+				if run < 5 then
+					continue
+				end
+				local first = current == nil
+				current, candidate, run = id, nil, 0
+				if first or id == "meadow" then
+					continue
+				end
+				local at = p - dir * 16 + Vector2.new(-dir.Y, dir.X) * (Map.RoadWidth / 2 + 4)
+				local near = false
+				for _, q in placed do
+					if (q - at).Magnitude < 80 then
+						near = true
+						break
+					end
+				end
+				if near then
+					continue
+				end
+				table.insert(placed, at)
+				local region = WorldShape.region(id)
+				local hay = GloveConfig.HayTypes[region.hayType]
+				local text = string.upper(region.name)
+				if hay then
+					text ..= ("\n%s, tier %d"):format(hay.name, hay.tier)
+				end
+				signpost(folder, at.X, at.Y, -dir, text, 13)
+				count += 1
+			end
+		end
+	end
+	return count
+end
+
+-- Labels that read from far off, so the big landmarks find you: the Spindle on the skyline, the snow peak, Bobbin.
+local function skyline(folder)
+	for _, def in {
+		{ "spindle", "THE SPINDLE" },
+		{ "snow", "SNOW PEAK" },
+		{ "bobbin", "BOBBIN ROCK" },
+	} do
+		local peak = WorldShape.region(def[1]).peak
+		local top = WorldShape.heightAt(peak.center.X, peak.center.Y)
+		-- A persistent model so the label streams to every client however far away it is.
+		local holder = Instance.new("Model")
+		holder.Name = def[2]
+		holder.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+		holder.Parent = folder
+		local anchor = part(holder, "SkylineLabel", Vector3.new(1, 1, 1), CFrame.new(peak.center.X, top + 30, peak.center.Y), Rustic.Stone, nil, nil, false)
+		anchor.Transparency = 1
+		anchor.CanQuery = false
+		billboard(anchor, def[2], Vector3.zero, 4000)
+	end
+end
 
 function Regions.build(worldFolder)
 	local folder = Instance.new("Folder")
@@ -936,12 +1234,21 @@ function Regions.build(worldFolder)
 		sub.Parent = folder
 		local landmark = LANDMARKS[r.id]
 		if landmark then
-			landmark(sub, rng)
+			-- One broken landmark shouldn't take the rest of the map down with it.
+			local ok, err = pcall(landmark, sub, rng)
+			if not ok then
+				warn(("[Needlewood] %s landmarks failed: %s"):format(r.name, tostring(err)))
+			end
+			claimParts(sub)
 		end
 		for _, planting in PLANTING[r.id] or {} do
 			trees += plant(sub, r, planting[1], planting[2], rng)
 		end
 		rocks(sub, r, 18, rng)
+		if r.id == "valley" or r.id == "shore" or r.id == "homestead" then
+			herd(sub, r, r.id == "homestead" and 6 or 12, rng)
+			windmill(sub, r.cx + r.rx * 0.35, r.cz - r.rz * 0.2)
+		end
 		hayFields(r, rng)
 		made += 1
 		task.wait() -- spread the work out so the server keeps ticking
@@ -968,6 +1275,16 @@ function Regions.build(worldFolder)
 	for _, j in JUNCTIONS do
 		signpost(signs, j[1], j[2], j[3], j[4], 12)
 	end
+	local ok, borders = pcall(borderSigns, signs)
+	if not ok then
+		warn("[Needlewood] Region signs failed: " .. tostring(borders))
+		borders = 0
+	end
+	local skyOk, skyErr = pcall(skyline, signs)
+	if not skyOk then
+		warn("[Needlewood] Skyline labels failed: " .. tostring(skyErr))
+	end
+	print(("[Needlewood] %d junction signs, %d region signs"):format(#JUNCTIONS, borders))
 
 	print(("[Needlewood] Stitched Isles: %d regions, %d trees, %d hay fields"):format(made, trees, #Regions.fields))
 	return folder

@@ -135,18 +135,29 @@ function Kit.list(parent, gap)
 	return list
 end
 
--- Shrinks a panel that is w x h pixels so it always fits the screen with a margin.
+-- UI size from Settings (the "SettingUiSize" player attribute) as a scale.
+local UI_SIZES = { small = 0.85, normal = 1, large = 1.15 }
+function Kit.userScale()
+	local player = Players.LocalPlayer
+	return player and UI_SIZES[player:GetAttribute("SettingUiSize") or "normal"] or 1
+end
+
+-- Shrinks a panel that is w x h pixels so it always fits the screen with a margin (and follows the UI size setting).
 function Kit.fit(frame, w, h)
 	local scale = Instance.new("UIScale")
 	scale.Parent = frame
 	local function update()
 		local camera = Workspace.CurrentCamera
 		local view = camera and camera.ViewportSize or Vector2.new(1024, 768)
-		scale.Scale = math.clamp(math.min((view.X - 24) / w, (view.Y - 60) / h), 0.45, 1)
+		local fits = math.min((view.X - 24) / w, (view.Y - 60) / h)
+		scale.Scale = math.clamp(math.min(fits, Kit.userScale()), 0.45, 1.15)
 	end
 	update()
 	if Workspace.CurrentCamera then
 		Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	end
+	if Players.LocalPlayer then
+		Players.LocalPlayer:GetAttributeChangedSignal("SettingUiSize"):Connect(update)
 	end
 	return scale
 end

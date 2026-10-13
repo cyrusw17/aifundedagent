@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
+local GloveConfig = require(ReplicatedStorage.Shared.Config.Gloves)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
 local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
@@ -75,11 +76,13 @@ end
 local function buildShovel()
 	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
 	return addMesh(buildTool("Shovel", tip, {
-		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
+		-- A small hand spade, about 3.3 studs end to end (handle -0.8 to blade tip 2.5). Its reach comes from
+		-- Config ShovelReach/ToolReach, not from its length.
+		{ "Shaft", Vector3.new(0.3, 0.8, 0.3), CFrame.new(0, 1.2, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
-			Vector3.new(1.2, 1.5, 0.12),
-			CFrame.new(0, 4.35, 0),
+			Vector3.new(0.9, 0.9, 0.12),
+			CFrame.new(0, 2.05, 0),
 			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
@@ -333,13 +336,24 @@ function Avatar.refreshSpeed(player)
 		end
 		weight = state.loadWeight or state.loadHay
 		tier = state.loadTier or 0
+		-- Bales in a wheelbarrow weigh a fraction of their weight: the wheel takes most of it.
+		for _, bale in state.barrow or {} do
+			local baleWeight, baleTier = Gloves.baleWeight(bale.body)
+			weight += baleWeight * Config.WheelbarrowLoadFactor
+			tier = math.max(tier, baleTier)
+		end
 		if state.carryBale and state.carryBale.body then
 			local baleWeight, baleTier = Gloves.baleWeight(state.carryBale.body)
 			weight += baleWeight
 			tier = math.max(tier, baleTier)
 		end
 	end
-	rig.humanoid.WalkSpeed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	rig.humanoid.WalkSpeed = speed
+	-- How hard the load is on you, 0 (easy) to 1 (crawling), for the client's camera bob and stagger.
+	local range = math.max(rig.defaultSpeed - GloveConfig.MinWalkSpeed, 1)
+	player:SetAttribute("Strain", math.clamp((rig.defaultSpeed - speed) / range, 0, 1))
+	player:SetAttribute("UnderGeared", weight > 0 and Gloves.shortBy(player, tier) > 0)
 end
 
 function Avatar.getRoot(player)
