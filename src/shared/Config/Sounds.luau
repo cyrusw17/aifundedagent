@@ -33,4 +33,29 @@ return {
 	-- Q while driving (Vehicles.luau plays it on the truck so everyone near hears it). Placeholder: a ping pitched
 	-- right down; swap in a "truck horn" id.
 	TruckHorn = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.8, pitch = 0.32, distance = 140 },
+
+	-- Region ambience (RegionAmbience.client.luau): two quiet loops under everything, mixed per region as you walk or
+	-- drive in. Placeholders from the default character sounds (the falling-wind and the swimming-water loops);
+	-- swap in "wind ambience loop" and "waves loop" / "rain loop" ids from the Toolbox.
+	AmbientWind = { id = "rbxasset://sounds/action_falling.mp3", volume = 0.14, pitch = 0.45 },
+	AmbientWater = { id = "rbxasset://sounds/action_swim.mp3", volume = 0.1, pitch = 0.55 },
+	-- Per region: wind and water as a share of their volume, and the wind's pitch (low = a hollow moan).
+	-- Rain anywhere adds water (the weather's patter).
+	RegionAmbience = {
+		meadow = { wind = 0.35, water = 0, windPitch = 0.45 },
+		shore = { wind = 0.4, water = 0.8, windPitch = 0.45 },
+		valley = { wind = 0.3, water = 0.35, windPitch = 0.45 },
+		homestead = { wind = 0.25, water = 0, windPitch = 0.45 },
+		spindle = { wind = 0.7, water = 0, windPitch = 0.4 },
+		pine = { wind = 0.55, water = 0, windPitch = 0.4 },
+		haunted = { wind = 0.6, water = 0.2, windPitch = 0.3 },
+		snow = { wind = 1, water = 0, windPitch = 0.5 },
+		volcano = { wind = 0.7, water = 0, windPitch = 0.32 },
+		desert = { wind = 0.8, water = 0, windPitch = 0.55 },
+		swamp = { wind = 0.2, water = 0.7, windPitch = 0.35 },
+		keys = { wind = 0.45, water = 1, windPitch = 0.5 },
+		bobbin = { wind = 0.8, water = 0.7, windPitch = 0.4 },
+		sky = { wind = 1, water = 0, windPitch = 0.6 },
+		cave = { wind = 0.4, water = 0.15, windPitch = 0.22 },
+	},
 }

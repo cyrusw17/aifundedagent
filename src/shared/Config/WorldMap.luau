@@ -98,7 +98,7 @@ return {
 			hills = { { 9, 110 }, { 3, 30 } },
 			materials = { top = "Mud", alt = "Slate", cliff = "Basalt", beach = "Mud" },
 			hayType = "haunted",
-			style = { accent = Color3.fromRGB(110, 96, 130), fog = Color3.fromRGB(140, 140, 150) },
+			style = { accent = Color3.fromRGB(110, 96, 130), fog = Color3.fromRGB(140, 140, 150), density = 0.14 },
 		},
 		{
 			id = "snow",
@@ -111,7 +111,7 @@ return {
 			snowLine = 70, -- everything above this is snow
 			materials = { top = "Snow", alt = "Glacier", cliff = "Slate", beach = "Snow" },
 			hayType = "snow",
-			style = { accent = Color3.fromRGB(112, 150, 178), fog = Color3.fromRGB(209, 219, 230) },
+			style = { accent = Color3.fromRGB(112, 150, 178), fog = Color3.fromRGB(209, 219, 230), density = 0.04 },
 		},
 		{
 			id = "volcano",
@@ -148,7 +148,7 @@ return {
 			pools = { level = -0.5, threshold = -0.18, scale = 55 }, -- low spots fill with bog water
 			materials = { top = "Mud", alt = "LeafyGrass", cliff = "Ground", beach = "Mud" },
 			hayType = "swamp",
-			style = { accent = Color3.fromRGB(153, 173, 71), fog = Color3.fromRGB(153, 163, 143) },
+			style = { accent = Color3.fromRGB(153, 173, 71), fog = Color3.fromRGB(153, 163, 143), density = 0.08 },
 		},
 		{
 			id = "keys",

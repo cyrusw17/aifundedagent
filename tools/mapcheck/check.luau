@@ -104,6 +104,13 @@ for _, r in Map.Regions do
 end
 Weather.force("desert", "dust", 60)
 if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+local SoundsConfig = require({ __path = "Shared.Config.Sounds" })
+for _, id in { "meadow", "sky", "cave" } do
+	if not SoundsConfig.RegionAmbience[id] then weatherOk = false print("WARN no ambience for", id) end
+end
+for _, r in Map.Regions do
+	if not SoundsConfig.RegionAmbience[r.id] then weatherOk = false print("WARN no ambience for", r.id) end
+end
 print("weather", weatherOk and "ok" or "WRONG")
 
 -- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
