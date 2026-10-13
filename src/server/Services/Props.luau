@@ -246,12 +246,11 @@ function Props.weldTo(model, anchor)
 	model.Parent = anchor
 end
 
--- The props with no job yet, set around base camp: a wheelbarrow by the bale drop-off, a crate and a round bale by
--- the field bales, logs and spare tools by the hay shop. Skipped quietly if they were not imported.
+-- The props with no job yet, set around base camp: a wheelbarrow by the bale drop-off, a crate and a small stack of
+-- bales by the field bales, logs and spare tools by the hay shop. Skipped quietly if they were not imported.
 local DRESSING = {
 	{ "wheelbarrow", Vector3.new(-14, 0, -3), 30, true },
 	{ "hay_crate", Vector3.new(-28, 0, -15), 10, true },
-	{ "round_bale", Vector3.new(-28, 0, -21), 0, true },
 	{ "log", Vector3.new(9, 0, -19), 90, true },
 	{ "log", Vector3.new(9, 0, -20.8), 92, true },
 }
@@ -288,6 +287,15 @@ function Props.dressBaseCamp(parent)
 			for _, part in partsOf(model) do
 				part.CanCollide = false
 			end
+			model.Parent = folder
+		end
+	end
+
+	-- A small stack of square bales by the crate, the same size as the game's bales: two side by side, one on top.
+	local bale = Vector3.new(4.6, 2.6, 3.2)
+	for _, spot in { Vector3.new(-28, 1.3, -20.4), Vector3.new(-28, 1.3, -23.6), Vector3.new(-28, 3.9, -22) } do
+		local model = Props.make("hay_bale", CFrame.new(spot), bale)
+		if model then
 			model.Parent = folder
 		end
 	end
