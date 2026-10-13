@@ -15,7 +15,7 @@ export type Discovery = { id: string, name: string, at: Vector2?, flat: string?,
 type FlatZone = { name: string, min: Vector2, max: Vector2, height: number, blend: number, material: string? }
 return {
 	-- Bump when the shape changes: a place baked in Studio with an older version is rewritten on Play.
-	Version = 1,
+	Version = 2, -- 2: Cave Lane and Bobbin Track
 	Seed = 23,
 
 	SeaLevel = -4, -- the open sea's surface
@@ -172,6 +172,7 @@ return {
 			peak = { center = Vector2.new(2790, -1890), radius = 230, height = 170, power = 0.8 },
 			materials = { top = "Rock", alt = "Slate", cliff = "Slate", beach = "Slate" },
 			hayType = "bobbin",
+			fieldFlat = "BobbinFields", -- too steep for fields to find their own spot: one goes on this terrace
 			style = { accent = Color3.fromRGB(120, 110, 150), fog = Color3.fromRGB(180, 180, 196) },
 		},
 	},
@@ -207,6 +208,8 @@ return {
 		{ name = "KeysHarbor", min = Vector2.new(2780, 20), max = Vector2.new(2880, 130), height = 3, blend = 40 },
 		{ name = "BobbinPier", min = Vector2.new(2510, -1840), max = Vector2.new(2570, -1760), height = 3, blend = 30 },
 		{ name = "Workshop", min = Vector2.new(2760, -1920), max = Vector2.new(2820, -1860), height = 182, blend = 40 },
+		-- A terrace above the Bobbin Track for the rock's only hay field (the rest of the rock is too steep).
+		{ name = "BobbinFields", min = Vector2.new(2793, -1686), max = Vector2.new(2825, -1658), height = 14, blend = 24 },
 		{ name = "HighwayWest", min = Vector2.new(1800, -460), max = Vector2.new(1880, -380), height = 3, blend = 40 },
 		{ name = "HighwayEast", min = Vector2.new(2720, -330), max = Vector2.new(2800, -250), height = 3, blend = 40 },
 	} :: { FlatZone }),
@@ -290,6 +293,19 @@ return {
 			points = {
 				Vector2.new(2760, -290), Vector2.new(2960, -300), Vector2.new(3160, -200), Vector2.new(3080, 20),
 				Vector2.new(2880, 75),
+			},
+		},
+		{
+			name = "Cave Lane", -- off the North Road, west round the Spindle's south foot to the Crystal Cave mouth
+			points = {
+				Vector2.new(-30, -600), Vector2.new(-200, -760), Vector2.new(-320, -900), Vector2.new(-338, -948),
+			},
+		},
+		{
+			name = "Bobbin Track", -- from the Bobbin Rock pier round the rock's low south shore (the top is a climb)
+			points = {
+				Vector2.new(2544, -1800), Vector2.new(2615, -1715), Vector2.new(2706, -1659), Vector2.new(2811, -1645),
+				Vector2.new(2913, -1677), Vector2.new(2984, -1739),
 			},
 		},
 	},

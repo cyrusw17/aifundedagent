@@ -20,3 +20,12 @@ seconds, then reports part counts, any solid part standing in a road lane, and a
 
 To run another service headless, add it (and the configs it needs) to `MODULES` in `run.py`, add stubs for what it
 calls, and call its build/start from a check file. Gaps in the mock show up as Luau errors naming the missing member.
+
+## Reachability (reach.luau)
+
+Runs after check.luau on the map it built. It walks the road graph from Meadow (roads, flat zones, the highway,
+ferries between their port flats, the zeppelin to Sky Island) and warns on: a road not reachable from spawn; a lane
+narrower than a Rusty Pickup with a Medium Trailer plus 2 studs (roads, highway, ferry lanes); a road steeper than
+MaxGrade + 0.06; a region with no hay field; a hay field underwater, inside the ground, more than 70 studs from a
+reachable road, or behind water or a slope over 0.45 on the way in; a landmark underwater or more than a 260-stud walk
+from a road; a secret underwater or inside the rock.

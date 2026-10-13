@@ -650,6 +650,30 @@ local function field(regionName, hayType, center, y, count, rng)
 end
 
 -- Fields beside the roads of a region, so a truck can pull up to them.
+local FIELD_REACH = 60 -- a field's center at most this far from its road, so a trailer backs right up to it
+local FIELD_SLOPE = 0.4 -- rise per stud a pickup and trailer can pull up between the road and the field
+
+-- Can a truck with a trailer drive straight from (ax, az) to (bx, bz)? Dry the whole way and never too steep.
+local function drivable(ax, az, bx, bz)
+	local length = math.sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+	local steps = math.max(1, math.floor(length / 4))
+	local step = length / steps
+	local last = nil
+	for s = 0, steps do
+		local t = s / steps
+		local h, water = WorldShape.column(ax + (bx - ax) * t, az + (bz - az) * t)
+		if water and water > h + 1 then
+			return false
+		end
+		if last and math.abs(h - last) / step > FIELD_SLOPE then
+			return false
+		end
+		last = h
+	end
+	return true
+end
+Regions.drivable = drivable
+
 local function hayFields(r, rng)
 	local made = 0
 	for _ = 1, 400 do
@@ -657,8 +681,11 @@ local function hayFields(r, rng)
 			break
 		end
 		local x, z = randomIn(r, rng)
-		local d = WorldShape.nearestRoad(x, z)
-		if WorldShape.regionAt(x, z) ~= r or not d or d < 24 or d > 90 or crowded(x, z, 22) then
+		local d, _, _, rx, rz = WorldShape.nearestRoad(x, z)
+		if WorldShape.regionAt(x, z) ~= r or not d or d < 24 or d > FIELD_REACH or crowded(x, z, 22) then
+			continue
+		end
+		if not drivable(rx, rz, x, z) then
 			continue
 		end
 		local ok, h = buildable(x, z, 18)
@@ -683,6 +710,14 @@ local function hayFields(r, rng)
 			end
 		end
 		made += 1
+	end
+	if made == 0 and r.fieldFlat then
+		for _, zone in Map.Flat do
+			if zone.name == r.fieldFlat then
+				local mid = (zone.min + zone.max) / 2
+				field(r.name, r.hayType, Vector3.new(mid.X, zone.height, mid.Y), zone.height, rng:NextInteger(Map.BalesPerField[1], Map.BalesPerField[2]), rng)
+			end
+		end
 	end
 end
 
