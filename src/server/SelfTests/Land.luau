@@ -727,12 +727,25 @@ return function(SelfTest)
 
 		-- Build actions are debounced (ownPlot: 0.12 s between a player's actions), so wait between them like a
 		-- player's clicks would.
-		local before = #mine.list
+		-- The check looks for the belt itself at the spot (not the piece count, which other suites' farms and
+		-- lines can change while this one waits), and on the plot the player builds on right now.
+		local function beltAt(plot)
+			for _, item in plot.list do
+				if item.id == "belt" and item.gx == spot[1] and item.gz == spot[2] then
+					return item
+				end
+			end
+			return nil
+		end
 		task.wait(0.2)
+		if L.plotOf[player] ~= mine or beltAt(mine) or not L.fits(mine, def, spot[1], spot[2], "N") then
+			t.skip("place and undo", "the player's farm changed while the suite ran")
+			return
+		end
 		local placed, placeWhy = L.onPlace(player, "belt", spot[1], spot[2], "N")
-		t.check("place builds a belt", placed and #mine.list == before + 1, placeWhy)
+		t.check("place builds a belt", placed and beltAt(mine) ~= nil, ("%s: %s"):format(tostring(placed), tostring(placeWhy)))
 		task.wait(0.2)
 		local undone, undoWhy = L.onUndo(player)
-		t.check("undo takes it away again", undone and #mine.list == before, undoWhy)
+		t.check("undo takes it away again", undone and beltAt(mine) == nil, ("%s: %s"):format(tostring(undone), tostring(undoWhy)))
 	end)
 end
