@@ -64,7 +64,7 @@ RUSTIC = {
     "lilac": ((0.70, 0.57, 0.78), (0.60, 0.47, 0.69), (0.44, 0.33, 0.52)),        # Epic needle tier #9A78B0
     "gold": ((0.90, 0.76, 0.42), (0.79, 0.65, 0.29), (0.58, 0.46, 0.18)),         # quest gold #C9A54A, no glow
     "coral": ((0.93, 0.62, 0.52), (0.85, 0.50, 0.42), (0.62, 0.34, 0.28)),        # Thimble Keys coral needle
-    "brass": ((0.80, 0.66, 0.38), (0.66, 0.52, 0.26), (0.46, 0.35, 0.17)),        # Bobbin Rock brass needle
+    "brass": ((0.82, 0.69, 0.40), (0.71, 0.58, 0.28), (0.50, 0.40, 0.18)),        # Bobbin Rock brass needle (181, 148, 72)
     # Flat, untextured.
     "tire": (None, (0.13, 0.12, 0.11), None),
     "glass": (None, (0.20, 0.26, 0.28), None),

@@ -553,6 +553,25 @@ function Machines.needleBin(parent, frame)
 
 	-- Puts saved needles ({ [key] = count }, as contents returns) straight back in the bin, plain ones tied in bundles,
 	-- laid in rows on the floor (anchored, so a big pile can't spill).
+	-- Lays count saved needles of one key at spot() as Needle.bundleIn would leave them: a crate once there are
+	-- LineMath.CRATE_AT bundles' worth (or mutated needles), bundles of 10, and loose singles, all anchored.
+	local function placeStack(spot, ownerId, id, mult, polished, grade, count)
+		local stack = mult == 1 and (count // Needle.BUNDLE) * Needle.BUNDLE or count
+		if (mult == 1 and stack >= LineMath.CRATE_AT * Needle.BUNDLE) or (mult > 1 and count >= LineMath.CRATE_AT) then
+			Needle.setGrade(Needle.bundle(spot(), ownerId, id, polished, stack, mult), grade).Anchored = true
+			count -= stack
+		end
+		if mult == 1 then
+			while count >= Needle.BUNDLE do
+				Needle.setGrade(Needle.bundle(spot(), ownerId, id, polished), grade).Anchored = true
+				count -= Needle.BUNDLE
+			end
+		end
+		for _ = 1, count do
+			Needle.setGrade(Needle.make(spot(), ownerId, id, mult, polished), grade).Anchored = true
+		end
+	end
+
 	function bin.fill(ownerId, byKey)
 		local perRow, rows = 4, 24
 		local placed = 0
@@ -581,27 +600,10 @@ function Machines.needleBin(parent, frame)
 					stacked += 1
 					return floor * CFrame.new(at + Vector3.new((col - 1) * 0.7, 0.3 + layer * 0.6, (row - 1) * 0.7))
 				end
-				if mult == 1 then
-					while count >= Needle.BUNDLE do
-						Needle.setGrade(Needle.bundle(cornerSpot(), ownerId, id, polished), grade).Anchored = true
-						count -= Needle.BUNDLE
-					end
-				end
-				for _ = 1, count do
-					Needle.setGrade(Needle.make(cornerSpot(), ownerId, id, mult, polished), grade).Anchored = true
-				end
+				placeStack(cornerSpot, ownerId, id, mult, polished, grade, count)
 				continue
 			end
-			if mult == 1 then
-				while count >= Needle.BUNDLE do
-					Needle.setGrade(Needle.bundle(nextSpot(), ownerId, id, polished), grade).Anchored = true
-					count -= Needle.BUNDLE
-				end
-			end
-			for _ = 1, count do
-				local n = Needle.setGrade(Needle.make(nextSpot(), ownerId, id, mult, polished), grade)
-				n.Anchored = true
-			end
+			placeStack(nextSpot, ownerId, id, mult, polished, grade, count)
 		end
 		refresh()
 	end

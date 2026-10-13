@@ -845,17 +845,20 @@ local function buildStall(parent)
 		send(player, { kind = "nearby", players = nearbyFor(player) })
 	end)
 	-- The Blender trading post (Config/Props trading_post, built facing -Z like this stall) when it has been imported.
-	-- The part-built stall then hides but stays in place: the counter keeps the prompt and the sign keeps its text.
+	-- The part-built stall stays as the fallback: each client hides it only once the mesh has actually loaded
+	-- (Props.weldTo, PropMeshes.client.luau), so the stall is never invisible while the mesh streams in. The counter
+	-- keeps the prompt, the sign keeps its text, and the stall parts keep their collision.
 	local mesh = Props.make("trading_post", origin * CFrame.new(0, H / 2, 0), 24)
 	if mesh then
-		mesh.Parent = model
-		Props.restOn(mesh, ground)
+		local look = {}
 		for _, p in model:GetChildren() do
 			if p:IsA("BasePart") and p ~= board then
-				p.Transparency = 1
-				p.CanCollide = false
+				table.insert(look, p)
 			end
 		end
+		mesh.Parent = model
+		Props.restOn(mesh, ground)
+		Props.weldTo(mesh, counter, look)
 	end
 	post = counter
 	return model

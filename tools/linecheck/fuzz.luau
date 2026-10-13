@@ -219,6 +219,67 @@ do
 		mutated, N, N / math.max(mutated, 1), lo, hi, mean, 1 - mutated / N + multSum / N))
 end
 
+-- 8-hour soak (CEO #35): a maxed plot (six optical sorters on Star hay, the most needles a bale can hold, with a
+-- price hold so nothing is sold) throws its needles into one bin for 8 simulated hours. The bin ties and crates them
+-- with the real LineMath.pack every 10 seconds, as Needle.bundleIn does. Needle parts must stay bounded and no needle
+-- may be lost or made.
+do
+	local NeedleS = require({ __path = "Services.Needle" })
+	local LineRateS = require({ __path = "Shared.LineRate" })
+	local LineMathS = require({ __path = "Shared.LineMath" })
+	local SORTERS, HAY, TIER = 6, "star", "optical_sorter"
+	local rate = LineRateS.line(HAY, TIER).needles * SORTERS -- needles a minute into the bin
+	local needleId = LineRateS.needleFor(HAY)
+	local grade = LineRateS.line(HAY, TIER).grade
+	local parts = {} -- { key, count }
+	local thrown, peak, peakAt, keysSeen = 0, 0, 0, {}
+	local carry = 0
+	local STEP = 10
+	for t = STEP, 8 * 3600, STEP do
+		carry += rate * STEP / 60
+		while carry >= 1 do
+			carry -= 1
+			local key = LineMathS.keyOf(needleId, NeedleS.rollMutation(), false, grade)
+			keysSeen[key] = true
+			table.insert(parts, { key, 1 })
+			thrown += 1
+		end
+		-- Merge until nothing is left to merge this tick (indices shift after each merge, so plan again).
+		local plan = LineMathS.pack(parts, NeedleS.BUNDLE)
+		while #plan > 0 do
+			local m = plan[1]
+			local gone = {}
+			for _, i in m.parts do
+				gone[i] = true
+			end
+			local kept = {}
+			for i, p in parts do
+				if not gone[i] then
+					table.insert(kept, p)
+				end
+			end
+			table.insert(kept, { m.key, m.count })
+			parts = kept
+			plan = LineMathS.pack(parts, NeedleS.BUNDLE)
+		end
+		if #parts > peak then
+			peak, peakAt = #parts, t
+		end
+	end
+	local held, keys = 0, 0
+	for _, p in parts do
+		held += p[2]
+	end
+	for _ in keysSeen do
+		keys += 1
+	end
+	local bound = keys * (NeedleS.BUNDLE - 1 + 2 * (LineMathS.CRATE_AT - 1) + 1)
+	check("soak: no needle lost or made in 8 hours", held == thrown, ("%d thrown, %d in the bin"):format(thrown, held))
+	check("soak: needle parts stay bounded", peak <= bound, ("peak %d parts, bound %d for %d keys"):format(peak, bound, keys))
+	print(("soak: 8 h of %d %s sorters on %s hay = %d needles (%d keys) in %d parts at the end, peak %d parts at %.1f h (each part 2 instances with its twine)"):format(
+		SORTERS, TIER, HAY, thrown, keys, #parts, peak, peakAt / 3600))
+end
+
 print(("linecheck: %d random keys, %d pocket operations over 300 players (%d sales paying $%d, %d needles out); %d failures"):format(5000, ops, allSales, allPaid, allTaken, failures))
 check("the fuzz really sold and took needles", allSales > 100 and allPaid > 0 and allTaken > 1000)
 if failures > 0 then
