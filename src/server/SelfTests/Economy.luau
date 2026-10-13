@@ -167,14 +167,26 @@ return function(SelfTest)
 			local loan = Bank.account(state).loans.truck
 			if loan then
 				local principal = truck.price - down
-				t.equal("the loan puts the principal in the bank", Bank.account(state).balance, principal)
+				t.equal("taking a loan charges the down payment", Bank.wallet(state), 0)
+				t.equal("loan money doesn't land in the bank balance", Bank.account(state).balance, 0)
+				t.equal("the bank holds the whole price for purchases", Bank.held(state), truck.price)
+				t.equal("so shops can spend the price", Bank.spendable(state), truck.price)
+				t.equal("but it isn't your own money", Bank.liquid(state), 0)
+				t.check("loan money can't be withdrawn", not Bank.withdraw(player, "all"))
 				t.equal("payback is principal plus the fee", loan.owed, math.ceil(principal * (1 + terms.interest)))
 				t.check("a second truck loan is refused", not Bank.takeLoan(player, "truck", truck.id))
+				t.check("loan money buys the truck", (Bank.charge(player, truck.price, "SelfTest truck")))
+				t.equal("which spends what the bank held", Bank.held(state), 0)
+				t.equal("and none of your own", Bank.liquid(state), 0)
 				local owedBefore = loan.owed
 				local got, paid = Bank.earn(player, 1000, "SelfTest sale")
 				t.equal("a sale repays the loan's share", paid, math.floor(1000 * terms.repayShare + 0.5))
 				t.equal("and the rest reaches the wallet", got, 1000 - paid)
 				t.equal("the loan shrinks by the repayment", loan.owed, owedBefore - paid)
+				local walletBefore, owedNow = Bank.wallet(state), loan.owed
+				Bank.give(player, 100, "SelfTest refund")
+				t.equal("a refund pays the loan down first", loan.owed, owedNow - 100)
+				t.equal("so none of it reaches the wallet", Bank.wallet(state), walletBefore)
 				local sales = 0
 				while Bank.account(state).loans.truck and sales < 1000 do
 					Bank.earn(player, 1000, "SelfTest sale")
@@ -184,13 +196,14 @@ return function(SelfTest)
 				t.equal("nothing is owed afterwards", Bank.owed(state), 0)
 			end
 
-			-- Paying a loan off early from the bank.
+			-- Paying a loan off early: loan money not yet spent goes back first.
 			reset(0, 10000)
 			Bank.give(player, down, "SelfTest down payment")
 			if Bank.takeLoan(player, "truck", truck.id) then
-				Bank.give(player, truck.price * 2, "SelfTest cash")
-				t.check("pay off early", (Bank.payLoan(player, "truck")))
+				local owed = Bank.account(state).loans.truck.owed
+				t.check("pay off early with the unspent loan money", (Bank.payLoan(player, "truck")))
 				t.equal("an early payoff clears the loan", Bank.account(state).loans.truck, nil)
+				t.equal("what the loan held beyond the payback comes back to you", Bank.liquid(state), truck.price - owed)
 			end
 
 			-- Trading post fees (a real two-player trade needs a second player, so only the rules are checked here).
