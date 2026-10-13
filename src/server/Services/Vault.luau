@@ -47,9 +47,9 @@ function Vault.build(parent, frame, getOwnerId, saved)
 	local function totals()
 		local count, value = 0, 0
 		for key, n in held do
-			local id, mult, polished = Needle.parseKey(key)
+			local id, mult, polished, grade = Needle.parseKey(key)
 			count += n
-			value += Needle.priceOf(id, mult, polished) * n
+			value += Needle.priceOf(id, mult, polished, grade) * n
 		end
 		return count, value
 	end
@@ -88,7 +88,7 @@ function Vault.build(parent, frame, getOwnerId, saved)
 		end
 		local moved = 0
 		for _, n in Needle.takeHeld(player) do
-			local key = Needle.keyOf(n.id, n.mult, n.polished)
+			local key = Needle.keyOf(n.id, n.mult, n.polished, n.grade)
 			held[key] = (held[key] or 0) + 1
 			moved += 1
 		end

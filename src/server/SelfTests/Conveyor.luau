@@ -27,6 +27,11 @@ return function(SelfTest)
 		t.check("parseKey round trip", id == "cosmic" and mult == 3 and polished == true, ("%s %s %s"):format(id, mult, tostring(polished)))
 		local whole, rest = LineMath.bundles(23, 10)
 		t.check("23 needles pack as 2 bundles + 3", whole == 2 and rest == 3)
+		t.equal("optical sorter grades S", Needle.gradeFor("optical_sorter"), "S")
+		t.equal("conveyor sorter grades B", Needle.gradeFor("conveyor_sorter"), "B")
+		t.check("an S needle sells for more than a B", Needle.priceOf("steel", 1, false, "S") > Needle.priceOf("steel", 1, false, "B"))
+		t.check("Cosmic needles are Legendary", Needle.rarity("cosmic") ~= nil and Needle.rarity("cosmic").name == "Legendary")
+		t.check("steel needles have no rarity sparkle", Needle.rarity("steel") == nil)
 		t.near("optical sorter takes 2 s a bale", Machines.sortSeconds("optical_sorter", 90), 2, 0.01)
 
 		-- Line blueprints keep good copies and refuse bad ones.
