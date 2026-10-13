@@ -37,6 +37,7 @@ step "needle index";  "$LUAU" tests/needle_index.luau | tail -1; [ "${PIPESTATUS
 step "daily contracts"; "$LUAU" tests/contracts.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/contracts.luau"
 step "boosts";        "$LUAU" tests/boosts.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/boosts.luau"
 step "boost week";    python3 tools/boost_sim.py | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tools/boost_sim.py"
+step "reveal";        "$LUAU" tests/reveal.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/reveal.luau"
 step "haycheck";      python3 tools/haycheck/run.py "$LUAU" --fuzz | grep -E "passed|FAIL" | tail -3; [ "${PIPESTATUS[0]}" = 0 ] || bad "haycheck"
 step "line_sim";      python3 tools/line_sim.py --check >/dev/null || { python3 tools/line_sim.py --check | tail -6; bad "line_sim --check"; }
 

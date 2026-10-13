@@ -28,6 +28,7 @@ local Props = require(script.Parent.Props)
 local Prices = require(ReplicatedStorage.Shared.Config.Prices)
 local LineMath = require(ReplicatedStorage.Shared.LineMath)
 local Pity = require(ReplicatedStorage.Shared.Pity)
+local Reveal = require(ReplicatedStorage.Shared.Reveal)
 local NeedleIndex = require(script.Parent.NeedleIndex)
 
 local Needle = {}
@@ -314,6 +315,62 @@ function Needle.look(id, mult)
 	return look[1], look[2] and Enum.Material.Neon or Enum.Material.Metal
 end
 
+-- A slow glint for a rare reveal: big soft sparkles drifting off the needle while it hangs, on their own attachment.
+local function revealGlint(n, color, seconds)
+	local at = Instance.new("Attachment")
+	at.Name = "RevealGlint"
+	at.Parent = n
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 10
+	e.Lifetime = NumberRange.new(0.8, 1.3)
+	e.Speed = NumberRange.new(0.3, 1)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.LightEmission = 1
+	e.Color = ColorSequence.new(Color3.new(1, 1, 1), color)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.6), NumberSequenceKeypoint.new(1, 0) })
+	e.Parent = at
+	task.delay(seconds, function()
+		e.Enabled = false
+	end)
+	Debris:AddItem(at, seconds + 1.5)
+end
+
+-- Confetti for a mutation: one burst of little colored flakes, on its own attachment.
+local CONFETTI -- built on first use (the offline checks have no ColorSequenceKeypoint)
+local function confetti(n, color)
+	CONFETTI = CONFETTI
+		or ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 92, 92)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 210, 60)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 220, 120)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(90, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 120, 255)),
+		})
+	local at = Instance.new("Attachment")
+	at.Name = "RevealConfetti"
+	at.Parent = n
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 0
+	e.Lifetime = NumberRange.new(1, 1.8)
+	e.Speed = NumberRange.new(8, 14)
+	e.SpreadAngle = Vector2.new(60, 60)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Acceleration = Vector3.new(0, -18, 0)
+	e.Drag = 1.5
+	e.RotSpeed = NumberRange.new(-300, 300)
+	e.Rotation = NumberRange.new(0, 360)
+	e.Color = CONFETTI
+	e.Size = NumberSequence.new(0.18)
+	e.Parent = at
+	e:Emit(40)
+	local sparks = e:Clone()
+	sparks.Color = ColorSequence.new(color)
+	sparks.LightEmission = 1
+	sparks.Parent = at
+	sparks:Emit(12)
+	Debris:AddItem(at, 2.5)
+end
+
 local function sound(parent, id, volume)
 	local s = Instance.new("Sound")
 	s.SoundId = id
@@ -420,27 +477,36 @@ function Needle.polish(n)
 end
 
 -- Makes a needle at position. ownerId is who it belongs to while it sits in a bin. mult > 1 makes it mutated.
-function Needle.spawn(position, ownerId, needleId, mult, polished)
+-- A mutated needle is dressed by Props.mutationLook (H15: Wet, Golden, Storm, Rainbow, Giant by mult, or lookKind
+-- when the caller knows better, like a storm find); builds without it fall back to the gold 1.6x needle.
+function Needle.spawn(position, ownerId, needleId, mult, polished, lookKind)
 	needleId = needleId or Needle.default.id
 	mult = mult or 1
+	local dressed = mult > 1 and Props.mutationLook ~= nil
+	local grow = (mult > 1 and not dressed) and 1.6 or 1
 	-- The low-poly Blender needle (Config/Props needle_lite) when imported: one shared mesh, tinted by Color, so a
 	-- field or bin of thousands stays cheap. Otherwise a plain cylinder of the same size.
 	local n = Props.meshPart("needle_lite")
 	if n then
-		n.Size = (mult > 1 and 1.6 or 1) * LITE_SIZE
+		n.Size = grow * LITE_SIZE
 	else
 		n = Instance.new("Part")
 		n.Shape = Enum.PartType.Cylinder
-		n.Size = mult > 1 and SIZE * 1.6 or SIZE
+		n.Size = grow * SIZE
 	end
 	n.Name = "Needle"
 	n.CFrame = CFrame.new(position)
-	n.Color, n.Material = Needle.look(needleId, mult)
+	n.Color, n.Material = Needle.look(needleId, if dressed then 1 else mult)
 	n.CollisionGroup = Groups.Loose
 	n:SetAttribute("OwnerId", ownerId)
 	n:SetAttribute("NeedleId", needleId)
 	NeedleIndex.found(ownerId, needleId, mult)
-	if mult > 1 then
+	if dressed then
+		n:SetAttribute("Mutation", mult)
+		local kind = lookKind or Props.mutationKind(mult)
+		Props.mutationLook(n, kind)
+		n:SetAttribute("MutationLook", kind)
+	elseif mult > 1 then
 		n:SetAttribute("Mutation", mult)
 		local shine = mult == WET.mult and WET_COLOR or MUTATED_COLOR
 		local sparkle = Instance.new("Sparkles")
@@ -514,7 +580,9 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	if mult == nil then
 		mult, near = Needle.rollMutation(Needle.weatherAt(from))
 	end
-	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult), grade)
+	-- A real mutation found during a Thunderstorm always looks Storm (Props H15).
+	local stormy = mult >= MUTATION_MIN and Needle.weatherAt(from) > 1
+	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult, nil, stormy and "storm" or nil), grade)
 	n.Anchored = true
 	n.CanCollide = false
 	local light = Instance.new("PointLight")
@@ -523,7 +591,23 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	light.Brightness = 3
 	light.Parent = n
 	glint(n, mult > 1 and 30 or 8)
-	if mult > 1 and mult ~= WET.mult then
+	-- The reveal (H14, Shared/Reveal): Epic and up hang a little longer with a slow glint and nudge the owner's
+	-- camera; mutations burst confetti and real ones get the fanfare and a server banner. All of it rides on
+	-- attachments, so the needle's own look (H15) is left alone.
+	local rarity = Needle.rarity(needleId)
+	local reveal = Reveal.of(Needle.value(n), rarity and rarity.name, mult, WET.mult)
+	local shine = mult > 1 and (mult == WET.mult and WET_COLOR or MUTATED_COLOR) or (rarity and rarity.color) or n.Color
+	if reveal.glint then
+		revealGlint(n, shine, 1.5)
+		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+		if owner then
+			Feedback.juice(owner, "reveal", reveal.nudge)
+		end
+	end
+	if reveal.confetti then
+		confetti(n, shine)
+	end
+	if reveal.banner then
 		sound(n, FANFARE, 1)
 		announce(ownerId, needleId, mult)
 	end
@@ -550,7 +634,7 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 	end
 
 	task.spawn(function()
-		local hover = mult > 1 and 1.5 or near and 0.9 or 0.35
+		local hover = mult > 1 and 1.5 or near and 0.9 or reveal.glint and 0.8 or 0.35
 		local lift = from + Vector3.new(0, 1.5, 0)
 		local started = os.clock()
 		while n.Parent and os.clock() - started < hover do
@@ -588,7 +672,8 @@ function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
 				n:SetNetworkOwner(nil)
 			end)
 			glint(n, 6)
-			Feedback.needle(n, Needle.value(n)) -- a ding pitched by what the needle is worth
+			-- a ding pitched by what the needle is worth, and a step higher for each rung of the reveal
+			Feedback.play("NeedleDing", n, Feedback.needlePitch(Needle.value(n)) * reveal.pitch)
 		end
 	end)
 	return n

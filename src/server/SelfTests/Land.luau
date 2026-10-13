@@ -239,8 +239,145 @@ local function registerSaves(SelfTest)
 	end)
 end
 
+-- "PlayTogether" (CEO H17): away earnings (the cap and the double-pay guard), the +10% together bonus with its alt
+-- guard ($25,000 sold), and JOIN FARM. Uses stand-in players and a free plot, so it needs no second player.
+local function registerTogether(SelfTest)
+	SelfTest.register("PlayTogether", function(t)
+		local L = Land.test
+		local Away = require(game:GetService("ReplicatedStorage").Shared.Away)
+		local Prices = require(game:GetService("ReplicatedStorage").Shared.Config.Prices)
+		local LandCfg = require(game:GetService("ReplicatedStorage").Shared.Config.Land)
+		local Bales = require(Services.Bales)
+		local RateLimit = require(game:GetService("ReplicatedStorage").Shared.RateLimit)
+
+		-- Away earnings: pure arithmetic first, then the mailbox on a save.
+		local now = 1000000
+		t.check("away: under a minute pays nothing", Away.span(now - 59, now) == 0)
+		t.check("away: a clock that went backwards pays nothing", Away.span(now + 500, now) == 0)
+		t.check("away: no savedAt pays nothing", Away.span(nil, now) == 0 and Away.span(0 / 0, now) == 0)
+		t.check("away: capped at 8 hours", Away.span(now - 72 * 3600, now) == Away.MAX_SECONDS and Away.MAX_SECONDS == 8 * 3600)
+		t.check("away: 8 hours and 3 days pay the same", Away.bales(Away.span(now - 8 * 3600, now), 20, 1e9) == Away.bales(Away.span(now - 72 * 3600, now), 20, 1e9))
+		t.check("away: half the line's rate", Away.bales(3600, 20, 1e9) == 600)
+		t.check("away: never more bales than the silos hold", Away.bales(8 * 3600, 20, 37) == 37)
+		t.check("away: no rate or no hay pays nothing", Away.bales(3600, 0, 50) == 0 and Away.bales(3600, 20, 0) == 0)
+
+		local owner = fakeOwner(-931)
+		local function land(stored, ago)
+			return {
+				owned = true,
+				savedAt = os.time() - ago,
+				items = {
+					{ id = "silo", gx = 0, gz = 0, dir = "N", stored = stored },
+					{ id = "hay_buyer", gx = 4, gz = 0, dir = "N" },
+					{ id = "optical_sorter", gx = 3, gz = 0, dir = "N" },
+				},
+				needles = {},
+			}
+		end
+		local a = land(1e6, 72 * 3600)
+		local okA = pcall(L.mailbox, owner, a)
+		local first = 1e6 - a.items[1].stored
+		local b = land(1e6, 8 * 3600)
+		pcall(L.mailbox, owner, b)
+		t.check("mailbox: 3 days away pays the same as 8 hours", okA and first > 0 and first == 1e6 - b.items[1].stored, ("%s vs %s"):format(first, 1e6 - b.items[1].stored))
+		local before = a.items[1].stored
+		t.check("mailbox: a second load pays nothing", L.mailbox(owner, a) == nil and a.items[1].stored == before)
+		local c = land(5, 8 * 3600)
+		pcall(L.mailbox, owner, c)
+		t.check("mailbox: takes no more than the silo holds", c.items[1].stored == 0)
+		local d = land(10, 3600)
+		d.savedAt = "yesterday"
+		t.check("mailbox: a broken savedAt pays nothing", L.mailbox(owner, d) == nil and d.items[1].stored == 10)
+
+		-- Together bonus: the alt guard at exactly $25,000 sold.
+		local need = Prices.Trade.MinSoldToGiveCash
+		t.check("together: the guard is $25,000 sold", need == 25000, need)
+		t.check("together: a slot that sold $24,999 can't help", not L.seasonedState({ bank = { sold = need - 1 } }))
+		t.check("together: a slot that sold $25,000 can help", L.seasonedState({ bank = { sold = need } }))
+		t.check("together: one-time rewards don't count", not L.seasonedState({ bank = { earned = need * 4, sold = 0 } }))
+		t.check("together: no save can't help", not L.seasonedState(nil))
+
+		local function fakePlayer(userId, at)
+			local root = { Position = at }
+			return {
+				UserId = userId,
+				DisplayName = "P" .. userId,
+				Character = {
+					FindFirstChild = function(_, name)
+						return name == "HumanoidRootPart" and root or nil
+					end,
+				},
+			}
+		end
+		local host = fakePlayer(-932, Vector3.new(0, 0, 0))
+		local plot = { owner = host, ownerId = -932, corner = Vector3.new(100, 0, 100), size = Vector3.new(72, 0, 72), crew = { [-933] = true } }
+		local crew = fakePlayer(-933, Vector3.new(130, 3, 130))
+		local friend = fakePlayer(-934, Vector3.new(110, 3, 160))
+		local stranger = fakePlayer(-935, Vector3.new(120, 3, 120))
+		local outside = fakePlayer(-936, Vector3.new(300, 3, 300))
+		local friendsOf = { [-934] = true, [-936] = true }
+		local isFriend = function(_, other)
+			return friendsOf[other.UserId] == true
+		end
+		local sold = { [-933] = true, [-934] = true, [-935] = true, [-936] = true }
+		local isSeasoned = function(p)
+			return sold[p.UserId] == true
+		end
+		t.check("together: crew on the farm switches it on", L.helperOn(plot, { host, crew }, isFriend, isSeasoned) == crew)
+		t.check("together: a friend on the farm switches it on", L.helperOn(plot, { host, friend }, isFriend, isSeasoned) == friend)
+		t.check("together: a stranger doesn't", L.helperOn(plot, { host, stranger }, isFriend, isSeasoned) == nil)
+		t.check("together: a friend off the farm doesn't", L.helperOn(plot, { host, outside }, isFriend, isSeasoned) == nil)
+		t.check("together: the owner alone doesn't", L.helperOn(plot, { host }, isFriend, isSeasoned) == nil)
+		sold[-933], sold[-934] = nil, nil
+		t.check("together: a crew alt under $25,000 doesn't", L.helperOn(plot, { host, crew, friend }, isFriend, isSeasoned) == nil)
+		t.check("together: an empty farm has no bonus", L.helperOn({ corner = plot.corner, size = plot.size }, { crew }, isFriend, isSeasoned) == nil)
+		t.check("together: the bonus is +10%", LandCfg.TogetherBonus == 1.1)
+
+		-- The boost on real bales on a free plot: once per bale, on top of a rich field's boost, never on sorted bales.
+		local free = freePlots(L)[1]
+		if free then
+			local mid = free.corner + Vector3.new(free.size.X / 2, 3, free.size.Z / 2)
+			local plain = Bales.spawn(mid, false)
+			local rich = Bales.spawn(mid + Vector3.new(8, 0, 0), false)
+			local done = Bales.spawn(mid + Vector3.new(-8, 0, 0), false)
+			for _, bale in { plain, rich, done } do
+				bale.body.Anchored = true
+			end
+			rich.body:SetAttribute("NeedleBoost", 2)
+			done.sorted = true
+			L.boostBales(free)
+			L.boostBales(free)
+			local function near(x, y)
+				return typeof(x) == "number" and math.abs(x - y) < 1e-6
+			end
+			t.check("together: a bale on the farm gets 1.1x needles", near(plain.body:GetAttribute("NeedleBoost"), 1.1), plain.body:GetAttribute("NeedleBoost"))
+			t.check("together: boosted once, not every second", plain.body:GetAttribute("TogetherBoost") == true)
+			t.check("together: stacks on a rich field's 2x", near(rich.body:GetAttribute("NeedleBoost"), 2.2), rich.body:GetAttribute("NeedleBoost"))
+			t.check("together: sorted bales are left alone", done.body:GetAttribute("NeedleBoost") == nil)
+			for _, bale in { plain, rich, done } do
+				pcall(Bales.consume, bale)
+			end
+		else
+			t.skip("together: bale boost", "no free plot")
+		end
+
+		-- JOIN FARM: never your own farm, nobody's farm here, and rate-limited.
+		local visitor = fakeOwner(-937)
+		L.joinLimit:forget(visitor)
+		local ok1, why1 = Land.joinFarm(visitor, visitor.UserId)
+		t.check("join farm: refuses your own farm", ok1 == false and tostring(why1):find("own farm") ~= nil, why1)
+		local ok2, why2 = Land.joinFarm(visitor, -999999)
+		t.check("join farm: refuses a player with no farm here", ok2 == false and tostring(why2):find("don't have a farm") ~= nil, why2)
+		local ok3, why3 = Land.joinFarm(visitor, -999999)
+		t.check("join farm: rate-limited", ok3 == false and why3 == RateLimit.BUSY, why3)
+		L.joinLimit:forget(visitor)
+		t.check("join farm: hasFarm is false for nobody", Land.hasFarm(-999999) == false)
+	end)
+end
+
 return function(SelfTest)
 	registerSaves(SelfTest)
+	registerTogether(SelfTest)
 	SelfTest.register("Land", function(t)
 		local L = Land.test
 		if not L then
@@ -335,42 +472,6 @@ return function(SelfTest)
 			t.check("one already in the offer isn't announced again", mutatedNew({ needles = { ["ice*7"] = 1 } }, { needles = { ["ice*7"] = 2 } }) == nil)
 		else
 			t.check("NameTags.test and Trade.test exist", false)
-		end
-
-		-- Play-together bonus and JOIN FARM.
-		if L.helperOn then
-			local function fakePlayer(userId, at)
-				local root = { Position = at }
-				local character = {
-					FindFirstChild = function(_, name)
-						return name == "HumanoidRootPart" and root or nil
-					end,
-				}
-				return { UserId = userId, Character = character, DisplayName = "P" .. userId }
-			end
-			local owner = fakePlayer(-901, Vector3.new(0, 0, 0))
-			local plot = { owner = owner, ownerId = -901, corner = Vector3.new(100, 0, 100), size = Vector3.new(72, 0, 72), crew = { [-902] = true } }
-			local mate = fakePlayer(-902, Vector3.new(130, 3, 130))
-			local yes = function()
-				return true
-			end
-			t.check("a fresh slot (no sales) can't switch the bonus on, crew or friend", L.helperOn(plot, { owner, mate }, yes) == nil)
-			t.check("an empty farm has no bonus", L.helperOn({ corner = plot.corner, size = plot.size }, { mate }, yes) == nil)
-			local LandCfg = require(game:GetService("ReplicatedStorage").Shared.Config.Land)
-			t.check("the bonus is +10%", LandCfg.TogetherBonus == 1.1)
-		end
-		local okLb, Lb = pcall(require, Services.Leaderboards)
-		if okLb and Lb.test and Lb.test.joinTarget then
-			local list = { { userId = 1, score = 9 }, { userId = 2, score = 5 }, { userId = 3, score = 1 } }
-			local farms = { [2] = true, [3] = true }
-			local hasFarm = function(id)
-				return farms[id] == true
-			end
-			t.check("JOIN FARM skips players without a farm here", Lb.test.joinTarget(list, { UserId = 9 }, hasFarm).userId == 2)
-			t.check("JOIN FARM never sends you to your own farm", Lb.test.joinTarget(list, { UserId = 2 }, hasFarm).userId == 3)
-			t.check("JOIN FARM finds nobody on an empty server", Lb.test.joinTarget(list, { UserId = 9 }, function()
-				return false
-			end) == nil)
 		end
 
 		-- Plots: six, all the same size and price, all with a bin and a mailbox.

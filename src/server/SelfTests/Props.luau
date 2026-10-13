@@ -343,6 +343,31 @@ return function(SelfTest)
 			t.check("clearing the skin puts the sorter's own look back", plank.Material == Enum.Material.WoodPlanks and plank.Color == Color3.fromRGB(120, 90, 60))
 		end
 
+		-- 3f. Each mutation kind looks different from plain and from the others, and plain comes back exactly.
+		do
+			local n = Instance.new("Part")
+			n.Size = Vector3.new(1.2, 0.15, 0.17)
+			n.Color = Color3.fromRGB(150, 150, 160)
+			n.Material = Enum.Material.Metal
+			n.Anchored = true
+			n.CFrame = t.place()
+			n.Parent = Workspace
+			t.cleanup(n)
+			local seen, same = {}, {}
+			for _, kind in Props.MutationKinds do
+				Props.mutationLook(n, kind)
+				local key = ("%s %s %.2f"):format(tostring(n.Color), n.Material.Name, n.Size.X)
+				if seen[key] then
+					table.insert(same, kind .. " = " .. seen[key])
+				end
+				seen[key] = kind
+			end
+			t.check("every mutation kind has its own look", #same == 0, #same > 0 and table.concat(same, ", ") or nil)
+			Props.mutationLook(n, nil)
+			t.check("a needle goes back to its plain look", n.Material == Enum.Material.Metal and n.Size == Vector3.new(1.2, 0.15, 0.17) and #n:GetChildren() == 0)
+			t.check("x2 is Wet and x25 is Giant", Props.mutationKind(2) == "wet" and Props.mutationKind(25) == "giant" and Props.mutationKind(1) == nil)
+		end
+
 		-- 4. Nothing Import 3D made is left lying in the Workspace.
 		local stray = {}
 		if Workspace:FindFirstChild("Scene") then
