@@ -52,41 +52,24 @@ local function buildTool(name, tip, parts)
 	return tool
 end
 
--- A tool that looks like a Rustic Blender prop, or nil if the prop was not imported. The handle stays as the
--- invisible grip. The prop is turned blade-up (it is modeled blade-down) so the blade leads like the part tools,
--- with the end of its handle just below the hand.
-local function buildMeshTool(name, tip, prop)
-	local tool = Instance.new("Tool")
-	tool.Name = name
-	tool.CanBeDropped = false
-	tool.ToolTip = tip
-
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.4, 1.6, 0.4)
-	handle.Transparency = 1
-	handle.CanCollide = false
-	handle.Parent = tool
-
+-- Gives a part-built tool the Rustic Blender prop's look when it was imported. The part tool stays as the fallback,
+-- shown until the mesh has loaded on each client (see Props.weldTo). The prop is turned blade-up (it is modeled
+-- blade-down) so the blade leads like the part tools, with the end of its handle just below the hand.
+local function addMesh(tool, prop)
+	local handle = tool.Handle
 	local length = PropsConfig.Sizes[prop]
 	local center = CFrame.new(0, length / 2 - PropsConfig.GripFromEnd, 0)
 	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
-	if not model then
-		tool:Destroy()
-		return nil
+	if model then
+		Props.weldTo(model, handle, tool)
 	end
-	Props.weldTo(model, handle)
 	return tool
 end
 
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
 	local tip = "Face a bale to smash it, or a pile to scoop it, and click."
-	local mesh = buildMeshTool("Shovel", tip, "basic_shovel")
-	if mesh then
-		return mesh
-	end
-	return buildTool("Shovel", tip, {
+	return addMesh(buildTool("Shovel", tip, {
 		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
@@ -95,16 +78,12 @@ local function buildShovel()
 			Color3.fromRGB(128, 117, 105),
 			Enum.Material.Metal,
 		},
-	})
+	}), "basic_shovel")
 end
 
 -- A long shaft with a crossbar and a row of teeth at the end.
 local function buildRake()
 	local tip = "Face loose hay and click to drag it toward you."
-	local mesh = buildMeshTool("Rake", tip, "garden_rake")
-	if mesh then
-		return mesh
-	end
 	local steel = Color3.fromRGB(107, 94, 84)
 	local parts = {
 		{ "Shaft", Vector3.new(0.4, 3.6, 0.4), CFrame.new(0, 2.6, 0), WOOD, Enum.Material.Wood },
@@ -119,7 +98,7 @@ local function buildRake()
 			Enum.Material.Metal,
 		})
 	end
-	return buildTool("Rake", tip, parts)
+	return addMesh(buildTool("Rake", tip, parts), "garden_rake")
 end
 
 -- Finds a shoulder joint for either rig type. side is "Right" or "Left".
