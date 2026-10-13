@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local Events = {}
 
 local listeners = {}
+local isolated = {} -- player -> the one listener that hears their events (Quests.sandbox, so tests leave saves alone)
 
 function Events.on(fn)
 	table.insert(listeners, fn)
@@ -24,7 +25,7 @@ function Events.fire(who, kind, amount, info)
 	if typeof(player) ~= "Instance" or not player:IsA("Player") then
 		return
 	end
-	for _, fn in listeners do
+	for _, fn in (isolated[player] and { isolated[player] }) or listeners do
 		task.spawn(function()
 			local ok, err = pcall(fn, player, kind, amount or 1, info or {})
 			if not ok then
@@ -32,6 +33,12 @@ function Events.fire(who, kind, amount, info)
 			end
 		end)
 	end
+end
+
+-- While set, only `fn` hears this player's events (nil clears it). For Quests.sandbox: self-test events must not
+-- reach the codex, achievements or anything else that writes the real save.
+function Events.isolate(player, fn)
+	isolated[player] = fn
 end
 
 return Events

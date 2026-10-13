@@ -380,6 +380,17 @@ return function(SelfTest)
 				t.skip("master_needle gives its reward", "the Loom Room's pedestal is not built")
 			end
 
+			-- The sandbox keeps its events to itself: nothing else (the codex) hears them.
+			local heard = false
+			Events.on(function(who)
+				if who == player then
+					heard = true
+				end
+			end)
+			Events.fire(player, "raked", 1, {})
+			t.wait(0.2)
+			t.check("sandbox events reach only the quest system", not heard)
+
 			-- Timed mazes: a run moves the labyrinth quest on, a slow one doesn't pass the 45 second step, and the
 			-- first finish of the day is recorded (paid outside a sandbox) once.
 			q.active.straw_labyrinth = { step = 1, n = 0, seen = {} }

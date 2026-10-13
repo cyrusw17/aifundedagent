@@ -1161,7 +1161,7 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 						Machines.pay(ownerId, value, ("Paid $%d for %d sorted hay."):format(value, hay), "Hay buyer")
 						-- Line sales count for daily bounties and quests, like a sale at the hay shop (Gameplay).
 						if seller then
-							Events.fire(seller, "bale_sold", 1, { hayType = hayType })
+							Events.fire(seller, "bale_sold", 1, { hayType = hayType, sorted = true })
 						end
 						Events.fire(ownerId, "hay_sold", hay)
 					end
@@ -1183,8 +1183,12 @@ function Machines.hayBuyer(parent, frame, title, payTo)
 					elseif Hay.isPiece(p) and not Needle.isNeedle(p) then -- a visible needle stays for its finder to pick up
 						hay, ownerId, hayType = Config.HayPerPiece * Hay.strandsIn(p), p:GetAttribute("OwnerId"), hayTypeOf(p)
 						clean = p:GetAttribute("Sorted") == true -- from a sorted bale that broke: its needles are gone
+						local seller, amount = ownerId, hay
 						take = function()
 							Hay.remove(p)
+							if seller then
+								Events.fire(seller, "hay_sold", amount, { hayType = hayType })
+							end
 						end
 					end
 					if hay > 0 and ownerId and payTo then

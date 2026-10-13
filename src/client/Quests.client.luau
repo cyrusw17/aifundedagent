@@ -430,6 +430,12 @@ card.Activated:Connect(function()
 end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.Q and player:GetAttribute("SaveSlot") then
+		-- In a truck, Q is the horn (Truck.client.luau); the log still opens from the quest card.
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		local seat = humanoid and humanoid.SeatPart
+		if seat and seat:GetAttribute("Truck") then
+			return
+		end
 		Menus.toggle("Quests")
 	end
 end)
