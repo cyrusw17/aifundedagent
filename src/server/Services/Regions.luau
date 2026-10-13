@@ -220,6 +220,25 @@ local function building(parent, name, cframe, w, d, h, opts)
 		local board = part(model, "Sign", Vector3.new(math.min(w - 2, 16), 2.4, 0.3), cframe * CFrame.new(0, h + 0.2, -d / 2 - 0.2), Rustic.PaintCream, Enum.Material.WoodPlanks)
 		boardText(board, opts.sign, { Enum.NormalId.Front })
 	end
+	-- Night lights (#26): a lantern beside the door and a warm glow inside that spills out of the doorway. Their
+	-- names hold "Lantern" / "Lamp", so WorldClock switches them on at dusk and off at dawn.
+	if opts.lit ~= false then
+		local lantern = part(model, "DoorLantern", Vector3.new(0.8, 1.2, 0.8), cframe * CFrame.new(door / 2 + 1.2, math.min(h * 0.6, 7) + 1, -d / 2 - 1), Color3.fromRGB(255, 196, 110), Enum.Material.Neon, nil, false)
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 190, 120)
+		light.Range = 16
+		light.Brightness = 1.2
+		light.Shadows = false
+		light.Parent = lantern
+		local inside = part(model, "LampGlow", Vector3.new(1, 1, 1), cframe * CFrame.new(0, h * 0.6 + 1, 0), Color3.fromRGB(255, 196, 110), Enum.Material.Neon, nil, false)
+		inside.Transparency = 1
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 180, 110)
+		glow.Range = math.min(24, math.max(w, d))
+		glow.Brightness = 1.5
+		glow.Shadows = false
+		glow.Parent = inside
+	end
 	model.PrimaryPart = floor
 	-- With StreamingEnabled: a building streams in whole (never a roof without walls), and from far away it still
 	-- shows as a low-detail mesh, so the skyline never pops.
@@ -1043,7 +1062,8 @@ function LANDMARKS.haunted(folder, rng)
 	end
 	for i = 0, 8 do
 		local p = Vector2.new(-1120, -760):Lerp(Vector2.new(-900, -1060), i / 8) + Vector2.new(11, 0)
-		local base = CFrame.new(at(p.X, p.Y))
+		local lx, lz = offRoad(p.X, p.Y, 1.5) -- the road bends near the end; keep every post out of the lane
+		local base = CFrame.new(at(lx, lz))
 		post(folder, "LanternPost", 7, 0.4, base, Color3.fromRGB(40, 36, 36), Enum.Material.Metal)
 		local glow = part(folder, "Lantern", Vector3.new(1, 1.2, 1), base * CFrame.new(0, 7.4, 0), Color3.fromRGB(150, 210, 190), Enum.Material.Neon, nil, false)
 		light(glow, Color3.fromRGB(140, 220, 200), 20, 0.8)
