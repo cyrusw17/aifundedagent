@@ -12,6 +12,7 @@ local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
 local Land = require(script.Parent.Land)
+local WorldMap = require(script.Parent.WorldMap)
 
 local World = {}
 
@@ -147,6 +148,9 @@ function World.build()
 
 	-- The land office and the buildable plots south of the main road.
 	Land.build(folder)
+
+	-- The rest of the Stitched Isles around Meadow: every region, the highway, the ferries and the zeppelin.
+	WorldMap.build(folder)
 end
 
 return World

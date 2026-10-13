@@ -1,0 +1,997 @@
+--!nonstrict
+-- Everything standing on the Stitched Isles outside Meadow: each region's trees in its own LT2 style, rocks, hay
+-- fields with that region's hay, signposts, and the landmarks from the world map (the Homestead hub, the Spindle
+-- door and cave, the lighthouse, the pyramid, the wreck, the quarry, the Weaver's workshop and more).
+-- Placement uses a fixed seed, so every server looks alike. Ground heights come from WorldShape, the same math the
+-- terrain was written from, so nothing waits for the terrain to finish.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Map = require(Shared.Config.WorldMap)
+local Rustic = require(Shared.Config.Rustic)
+local WorldShape = require(script.Parent.WorldShape)
+local Bales = require(script.Parent.Bales)
+local Props = require(script.Parent.Props)
+
+local Regions = {}
+
+local IRON = Color3.new(0.48, 0.48, 0.47) -- weathered grey iron (BUILD_REGISTRY.md), never rusty orange
+local SNOW = Color3.fromRGB(226, 228, 226)
+local SEA = Map.SeaLevel
+
+-- Every hay field in the world, for the rich field rotation: { region, center, bales = { bale record } }
+Regions.fields = {}
+
+-- Parts ---------------------------------------------------------------------------------------------------------
+
+local function part(parent, name, size, cframe, color, material, shape, collide)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = true
+	p.CanTouch = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then
+		p.Shape = shape
+	end
+	if collide == false then
+		p.CanCollide = false
+	end
+	p.Parent = parent
+	return p
+end
+
+local function wedge(parent, name, size, cframe, color, material)
+	local p = Instance.new("WedgePart")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = true
+	p.CanTouch = false
+	p.Parent = parent
+	return p
+end
+
+-- A cylinder standing upright (Roblox cylinders lie along X).
+local function post(parent, name, height, thick, base, color, material, collide)
+	return part(parent, name, Vector3.new(height, thick, thick), base * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), color, material, Enum.PartType.Cylinder, collide)
+end
+
+local function light(p, color, range, brightness)
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Range = range
+	l.Brightness = brightness or 1
+	l.Shadows = false
+	l.Parent = p
+	return l
+end
+
+local function ground(x, z)
+	return WorldShape.heightAt(x, z)
+end
+
+local function at(x, z, yOffset)
+	return Vector3.new(x, ground(x, z) + (yOffset or 0), z)
+end
+
+-- A spot on the ground facing a direction (Vector2).
+local function spot(x, z, facing, y)
+	local p = Vector3.new(x, y or ground(x, z), z)
+	facing = facing or Vector2.new(0, -1)
+	return CFrame.lookAt(p, p + Vector3.new(facing.X, 0, facing.Y))
+end
+
+-- A label floating over a part, seen from a distance.
+local function billboard(parent, text, offset, distance, size)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = size or UDim2.fromOffset(260, 56)
+	gui.StudsOffset = offset or Vector3.new(0, 6, 0)
+	gui.MaxDistance = distance or 140
+	gui.LightInfluence = 0
+	gui.Parent = parent
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(240, 232, 210)
+	label.TextStrokeTransparency = 0.4
+	label.Text = text
+	label.Parent = gui
+	return label
+end
+Regions.billboard = billboard
+
+local function boardText(board, text, faces)
+	for _, face in faces or { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.CanvasSize = Vector2.new(board.Size.X * 50, board.Size.Y * 50)
+		gui.LightInfluence = 1
+		gui.Parent = board
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(40, 34, 28)
+		label.Text = text
+		label.Parent = gui
+	end
+end
+
+-- A wooden board on a post, readable from both sides.
+local function signpost(parent, x, z, facing, text, width)
+	width = width or 11
+	local model = Instance.new("Model")
+	model.Name = "Signpost"
+	local base = spot(x, z, facing)
+	part(model, "Post", Vector3.new(0.6, 7, 0.6), base * CFrame.new(0, 3, 0.4), Rustic.WoodDark, Enum.Material.Wood)
+	local board = part(model, "Board", Vector3.new(width, 3.6, 0.4), base * CFrame.new(0, 6.2, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+	boardText(board, text)
+	model.Parent = parent
+	return model
+end
+Regions.signpost = signpost
+
+-- A simple plank building: four walls with a door gap in front, a gable roof. Used as the collision shell and as the
+-- look until a Blender building of that name is imported (then the mesh rides on it, PropMeshes.client.luau).
+local function building(parent, name, cframe, w, d, h, opts)
+	opts = opts or {}
+	local model = Instance.new("Model")
+	model.Name = name
+	local wall = opts.wall or Rustic.Wood
+	local roofColor = opts.roof or Rustic.PaintRedDark
+	local material = opts.material or Enum.Material.WoodPlanks
+	local t = 0.8
+	local door = math.min(opts.door or 8, w - 4)
+	local floor = part(model, "Floor", Vector3.new(w, 1, d), cframe * CFrame.new(0, 0.5, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	part(model, "Back", Vector3.new(w, h, t), cframe * CFrame.new(0, h / 2 + 1, d / 2 - t / 2), wall, material)
+	for _, side in { -1, 1 } do
+		part(model, "Side", Vector3.new(t, h, d), cframe * CFrame.new(side * (w / 2 - t / 2), h / 2 + 1, 0), wall, material)
+		local front = (w - door) / 2
+		part(model, "Front", Vector3.new(front, h, t), cframe * CFrame.new(side * (w / 2 - front / 2), h / 2 + 1, -d / 2 + t / 2), wall, material)
+	end
+	part(model, "Lintel", Vector3.new(door, h * 0.3, t), cframe * CFrame.new(0, h * 0.85 + 1, -d / 2 + t / 2), wall, material)
+	-- Gable roof: two slabs meeting over the middle.
+	local rise = math.min(w, d) * 0.3
+	local slant = math.sqrt((w / 2) ^ 2 + rise ^ 2) + 0.6
+	local angle = math.atan2(rise, w / 2)
+	for _, side in { -1, 1 } do
+		part(
+			model,
+			"Roof",
+			Vector3.new(slant, 0.8, d + 1.6),
+			cframe * CFrame.new(side * w / 4, h + 1 + rise / 2, 0) * CFrame.Angles(0, 0, -side * angle),
+			roofColor,
+			Enum.Material.WoodPlanks
+		)
+	end
+	for _, side in { -1, 1 } do
+		wedge(model, "Gable", Vector3.new(0.6, rise, w / 2), cframe * CFrame.new(side * w / 4, h + 1 + rise / 2, d / 2 - t / 2) * CFrame.Angles(0, side * math.pi / 2, 0), wall, material)
+	end
+	if opts.sign then
+		local board = part(model, "Sign", Vector3.new(math.min(w - 2, 16), 2.4, 0.3), cframe * CFrame.new(0, h + 0.2, -d / 2 - 0.2), Rustic.PaintCream, Enum.Material.WoodPlanks)
+		boardText(board, opts.sign, { Enum.NormalId.Front })
+	end
+	model.PrimaryPart = floor
+	-- The Blender building of this kind, when imported, takes over the look. Its front (Blender -Y) faces cframe's
+	-- LookVector; every Rustic export has its front at +Z, hence the half turn.
+	if opts.prop and Props.has(opts.prop) then
+		local mesh = Props.make(opts.prop, cframe * CFrame.new(0, (h + rise) / 2 + 1, 0), Vector3.new(w + 1, h + rise + 1, d + 1), CFrame.Angles(0, math.pi, 0))
+		if mesh then
+			Props.weldTo(mesh, floor, model)
+		end
+	end
+	model.Parent = parent
+	return model
+end
+Regions.building = building
+
+-- Trees in each region's style ---------------------------------------------------------------------------------
+
+local TREES = {}
+
+function TREES.oak(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "Tree"
+	local height = rng:NextNumber(10, 14) * s
+	local thick = rng:NextNumber(1.4, 1.9) * s
+	post(model, "Trunk", height, thick, base, Rustic.Bark, Enum.Material.Wood)
+	local colors = { Rustic.Leaves, Rustic.LeavesDark, Rustic.LeavesDry }
+	for i = 1, 3 do
+		local size = Vector3.new(rng:NextNumber(6, 9), rng:NextNumber(4, 6), rng:NextNumber(6, 9)) * s
+		local offset = Vector3.new(rng:NextNumber(-2.5, 2.5) * s, height + rng:NextNumber(-1.5, 2.5), rng:NextNumber(-2.5, 2.5) * s)
+		part(model, "Leaves", size, base * CFrame.new(offset) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), colors[rng:NextInteger(1, 3)], Enum.Material.Grass, nil, false)
+	end
+	model.Parent = parent
+end
+
+local function pineTiers(model, base, height, s, rng, color, snowy)
+	local tiers = 3
+	for i = 1, tiers do
+		local k = 1 - (i - 1) / tiers
+		local size = Vector3.new(9 * k + 2, 4.2, 9 * k + 2) * Vector3.new(s, s, s)
+		local y = height * (0.42 + (i - 1) * 0.22)
+		local cf = base * CFrame.new(0, y, 0) * CFrame.Angles(0, math.rad(45 * i) + rng:NextNumber(-0.2, 0.2), 0)
+		part(model, "Needles", size, cf, color, Enum.Material.Grass, nil, false)
+		if snowy then
+			part(model, "Snow", Vector3.new(size.X * 0.85, 0.8, size.Z * 0.85), cf * CFrame.new(0, size.Y / 2 + 0.3, 0), SNOW, Enum.Material.Snow, nil, false)
+		end
+	end
+end
+
+function TREES.pine(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "PineTree"
+	local height = rng:NextNumber(18, 26) * s
+	post(model, "Trunk", height, rng:NextNumber(1.3, 1.8) * s, base, Rustic.Bark, Enum.Material.Wood)
+	pineTiers(model, base, height, s, rng, rng:NextNumber() < 0.5 and Rustic.LeavesDark or Color3.fromRGB(62, 80, 54), false)
+	model.Parent = parent
+end
+
+function TREES.snowpine(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "SnowPine"
+	local height = rng:NextNumber(16, 22) * s
+	post(model, "Trunk", height, rng:NextNumber(1.2, 1.6) * s, base, Rustic.Bark, Enum.Material.Wood)
+	pineTiers(model, base, height, s, rng, Color3.fromRGB(64, 82, 66), true)
+	model.Parent = parent
+end
+
+function TREES.dead(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "DeadTree"
+	local bark = Color3.fromRGB(58, 50, 52)
+	local height = rng:NextNumber(12, 18) * s
+	local thick = rng:NextNumber(1.2, 1.7) * s
+	local lean = CFrame.Angles(rng:NextNumber(-0.12, 0.12), 0, rng:NextNumber(-0.12, 0.12))
+	post(model, "Trunk", height, thick, base * lean, bark, Enum.Material.Wood)
+	for i = 1, 3 do
+		local length = height * rng:NextNumber(0.25, 0.4)
+		local cf = base
+			* lean
+			* CFrame.new(0, height * (0.45 + i * 0.13), 0)
+			* CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), math.rad(rng:NextNumber(35, 65)))
+			* CFrame.new(0, length / 2, 0)
+		part(model, "Branch", Vector3.new(length, thick * 0.45, thick * 0.45), cf * CFrame.Angles(0, 0, math.pi / 2), bark, Enum.Material.Wood, Enum.PartType.Cylinder, false)
+	end
+	model.Parent = parent
+end
+
+function TREES.charred(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "CharredTree"
+	local height = rng:NextNumber(6, 11) * s
+	local thick = rng:NextNumber(1.1, 1.6) * s
+	post(model, "Trunk", height, thick, base * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.15, 0.15)), Color3.fromRGB(38, 34, 32), Enum.Material.Slate)
+	local length = height * 0.4
+	local cf = base * CFrame.new(0, height * 0.7, 0) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), math.rad(50)) * CFrame.new(0, length / 2, 0)
+	part(model, "Branch", Vector3.new(length, thick * 0.4, thick * 0.4), cf * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(38, 34, 32), Enum.Material.Slate, Enum.PartType.Cylinder, false)
+	model.Parent = parent
+end
+
+function TREES.palm(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "PalmTree"
+	local height = rng:NextNumber(14, 20) * s
+	local bend = rng:NextNumber(0.1, 0.25)
+	local turn = base * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local half = height / 2
+	local lower = turn * CFrame.Angles(bend * 0.5, 0, 0)
+	post(model, "Trunk", half + 0.4, 1.3 * s, lower, Rustic.Wood, Enum.Material.Wood)
+	local upper = lower * CFrame.new(0, half, 0) * CFrame.Angles(bend, 0, 0)
+	post(model, "Trunk", half, 1.1 * s, upper, Rustic.Wood, Enum.Material.Wood)
+	local crown = upper * CFrame.new(0, half, 0)
+	for i = 1, 5 do
+		local leaf = crown * CFrame.Angles(0, i * math.pi * 2 / 5, 0) * CFrame.Angles(math.rad(-20), 0, 0) * CFrame.new(0, 0, -3.5 * s)
+		part(model, "Frond", Vector3.new(2.2 * s, 0.3, 7 * s), leaf, Color3.fromRGB(96, 120, 70), Enum.Material.Grass, nil, false)
+	end
+	model.Parent = parent
+end
+
+function TREES.cactus(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "Cactus"
+	local green = Color3.fromRGB(92, 116, 74)
+	local height = rng:NextNumber(5, 9) * s
+	post(model, "Stem", height, 1.6 * s, base, green, Enum.Material.Grass)
+	for _, side in { -1, 1 } do
+		if rng:NextNumber() < 0.75 then
+			local y = height * rng:NextNumber(0.35, 0.6)
+			part(model, "Arm", Vector3.new(1.8 * s, 1, 1) * Vector3.new(1, s, s), base * CFrame.new(side * 1.3 * s, y, 0), green, Enum.Material.Grass, nil, false)
+			post(model, "ArmUp", height * 0.35, 1.0 * s, base * CFrame.new(side * 2 * s, y, 0), green, Enum.Material.Grass, false)
+		end
+	end
+	model.Parent = parent
+end
+
+function TREES.willow(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "Willow"
+	local height = rng:NextNumber(10, 14) * s
+	post(model, "Trunk", height, 1.8 * s, base * CFrame.Angles(rng:NextNumber(-0.1, 0.1), 0, rng:NextNumber(-0.1, 0.1)), Color3.fromRGB(70, 62, 50), Enum.Material.Wood)
+	local canopy = base * CFrame.new(0, height, 0) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0)
+	part(model, "Canopy", Vector3.new(12, 3, 12) * Vector3.new(s, 1, s), canopy, Rustic.LeavesDark, Enum.Material.Grass, nil, false)
+	for _, side in { -1, 1 } do
+		part(model, "Drape", Vector3.new(11 * s, height * 0.55, 1.2), canopy * CFrame.new(0, -height * 0.27, side * 5.2 * s), Color3.fromRGB(84, 98, 60), Enum.Material.Grass, nil, false)
+	end
+	model.Parent = parent
+end
+
+function TREES.reeds(parent, base, s, rng)
+	local model = Instance.new("Model")
+	model.Name = "Reeds"
+	for _ = 1, 3 do
+		local cf = base * CFrame.new(rng:NextNumber(-1.2, 1.2), 0, rng:NextNumber(-1.2, 1.2)) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.15, 0.15))
+		post(model, "Reed", rng:NextNumber(4, 6) * s, 0.35, cf, Color3.fromRGB(110, 120, 70), Enum.Material.Grass, false)
+	end
+	model.Parent = parent
+end
+
+function TREES.crystal(parent, base, s, rng)
+	local colors = { Color3.fromRGB(176, 150, 220), Color3.fromRGB(140, 196, 214), Color3.fromRGB(214, 160, 190) }
+	local color = colors[rng:NextInteger(1, 3)]
+	local height = rng:NextNumber(4, 9) * s
+	local p = part(parent, "Crystal", Vector3.new(1.6 * s, height, 1.6 * s), base * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, math.pi), rng:NextNumber(-0.3, 0.3)) * CFrame.new(0, height / 2, 0), color, Enum.Material.Neon)
+	p.Transparency = 0.15
+	if rng:NextNumber() < 0.4 then
+		light(p, color, 18, 0.8)
+	end
+end
+
+-- How many of each kind of tree grow in each region.
+local PLANTING = {
+	shore = { { "oak", 30 } },
+	valley = { { "oak", 55 }, { "pine", 10 } },
+	homestead = { { "oak", 30 } },
+	spindle = { { "pine", 12 } },
+	pine = { { "pine", 190 }, { "oak", 10 } },
+	haunted = { { "dead", 110 } },
+	snow = { { "snowpine", 110 } },
+	volcano = { { "charred", 40 } },
+	desert = { { "cactus", 50 } },
+	swamp = { { "willow", 60 }, { "reeds", 45 } },
+	keys = { { "palm", 70 } },
+	bobbin = { { "dead", 8 } },
+}
+
+local ROCK_COLORS = {
+	default = { Rustic.Stone, Rustic.StoneDark, Rustic.Rock },
+	snow = { Color3.fromRGB(150, 150, 156), Color3.fromRGB(120, 120, 128) },
+	volcano = { Color3.fromRGB(64, 58, 56), Color3.fromRGB(44, 40, 40) },
+	desert = { Color3.fromRGB(186, 156, 112), Color3.fromRGB(160, 132, 96) },
+	haunted = { Color3.fromRGB(80, 76, 84), Color3.fromRGB(60, 58, 64) },
+}
+
+-- Placement -----------------------------------------------------------------------------------------------------
+
+local taken = {} -- grid cell -> list of Vector2 already used
+
+local function crowded(x, z, gap)
+	local cx, cz = math.floor(x / 32), math.floor(z / 32)
+	for i = cx - 1, cx + 1 do
+		for k = cz - 1, cz + 1 do
+			for _, p in taken[i * 65536 + k] or {} do
+				if (p.X - x) ^ 2 + (p.Y - z) ^ 2 < gap * gap then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+local function claim(x, z)
+	local key = math.floor(x / 32) * 65536 + math.floor(z / 32)
+	taken[key] = taken[key] or {}
+	table.insert(taken[key], Vector2.new(x, z))
+end
+
+-- Whether something can stand here: on dry, not too steep land, off roads, the highway and building spots.
+local function buildable(x, z, margin)
+	if WorldShape.inMeadow(x, z) then
+		return false
+	end
+	local h, water, material = WorldShape.column(x, z)
+	if water or h < SEA + 1.5 or material == "CrackedLava" then
+		return false
+	end
+	local d = WorldShape.nearestRoad(x, z)
+	if d and d < Map.RoadWidth / 2 + margin then
+		return false
+	end
+	if WorldShape.highwayDistance(x, z) < Map.Highway.width / 2 + margin then
+		return false
+	end
+	for _, zone in Map.Flat do
+		if WorldShape.rectDistance(x, z, zone.min, zone.max) < margin then
+			return false
+		end
+	end
+	local sx = WorldShape.heightAt(x + 4, z) - WorldShape.heightAt(x - 4, z)
+	local sz = WorldShape.heightAt(x, z + 4) - WorldShape.heightAt(x, z - 4)
+	if math.sqrt(sx * sx + sz * sz) / 8 > 0.7 then
+		return false
+	end
+	return true, h
+end
+
+-- A random spot inside a region's oval (well clear of its coast).
+local function randomIn(r, rng)
+	local angle = rng:NextNumber(0, math.pi * 2)
+	local radius = math.sqrt(rng:NextNumber()) * 0.92
+	return r.cx + math.cos(angle) * r.rx * radius, r.cz + math.sin(angle) * r.rz * radius
+end
+
+local function plant(folder, r, kind, count, rng)
+	local placed, tries = 0, 0
+	while placed < count and tries < count * 30 do
+		tries += 1
+		local x, z = randomIn(r, rng)
+		if WorldShape.regionAt(x, z) ~= r or crowded(x, z, kind == "reeds" and 5 or 10) then
+			continue
+		end
+		local ok, h = buildable(x, z, 6)
+		if not ok then
+			continue
+		end
+		-- Trees thin out high on the snow peak and the volcano.
+		if (kind == "snowpine" and h > 190) or (kind == "charred" and h > 120) then
+			continue
+		end
+		TREES[kind](folder, CFrame.new(x, h - 1, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), rng:NextNumber(0.85, 1.3), rng)
+		claim(x, z)
+		placed += 1
+	end
+	return placed
+end
+
+local function rocks(folder, r, count, rng)
+	local colors = ROCK_COLORS[r.id] or ROCK_COLORS.default
+	for _ = 1, count do
+		local x, z = randomIn(r, rng)
+		if WorldShape.regionAt(x, z) == r and not crowded(x, z, 6) then
+			local ok, h = buildable(x, z, 4)
+			if ok then
+				local size = Vector3.new(rng:NextNumber(2, 8), rng:NextNumber(1.5, 5), rng:NextNumber(2, 7))
+				local cf = CFrame.new(x, h + size.Y * 0.2, z) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.3, 0.3))
+				part(folder, "Rock", size, cf, colors[rng:NextInteger(1, #colors)], Enum.Material.Slate)
+				claim(x, z)
+			end
+		end
+	end
+end
+
+-- Hay ---------------------------------------------------------------------------------------------------------------
+
+-- Bale colors by hay, so each region's hay reads at a glance (the mesh, when imported, keeps its own straw look).
+local HAY_TINT = {
+	pine = Color3.fromRGB(150, 124, 84),
+	desert = Color3.fromRGB(204, 178, 120),
+	snow = Color3.fromRGB(200, 204, 196),
+	swamp = Color3.fromRGB(128, 132, 84),
+	volcano = Color3.fromRGB(120, 96, 80),
+	cave = Color3.fromRGB(170, 160, 196),
+	sky = Color3.fromRGB(226, 220, 196),
+	haunted = Color3.fromRGB(132, 120, 140),
+	keys = Color3.fromRGB(214, 196, 150),
+	bobbin = Color3.fromRGB(150, 140, 120),
+}
+
+local function tint(b, hayType)
+	local color = HAY_TINT[hayType]
+	if color and b and b.body then
+		b.body.Color = color
+	end
+end
+
+-- A field of bales around a point. y is the ground height there.
+local function field(regionName, hayType, center, y, count, rng)
+	local entry = { region = regionName, hayType = hayType, center = center, bales = {}, rich = false }
+	local function track(b)
+		if not b then
+			return
+		end
+		tint(b, hayType)
+		entry.bales[b] = true
+		-- The bale that grows back is the same hay, and stays in this field.
+		b.onRegrow = function(fresh)
+			entry.bales[b] = nil
+			track(fresh)
+			if entry.rich and fresh then
+				fresh.body:SetAttribute("NeedleBoost", 2)
+			end
+		end
+	end
+	local placed = {}
+	for _ = 1, count * 4 do
+		if #placed >= count then
+			break
+		end
+		local p = center + Vector3.new(rng:NextNumber(-9, 9), 0, rng:NextNumber(-9, 9))
+		local ok = true
+		for _, other in placed do
+			if (other - p).Magnitude < 5.5 then
+				ok = false
+				break
+			end
+		end
+		if ok then
+			table.insert(placed, p)
+			local gy = y or WorldShape.heightAt(p.X, p.Z)
+			track(Bales.spawn(Vector3.new(p.X, gy - 0.35, p.Z), true, false, hayType))
+		end
+	end
+	table.insert(Regions.fields, entry)
+	return entry
+end
+
+-- Fields beside the roads of a region, so a truck can pull up to them.
+local function hayFields(r, rng)
+	local made = 0
+	for _ = 1, 400 do
+		if made >= Map.FieldsPerRegion then
+			break
+		end
+		local x, z = randomIn(r, rng)
+		local d = WorldShape.nearestRoad(x, z)
+		if WorldShape.regionAt(x, z) ~= r or not d or d < 24 or d > 90 or crowded(x, z, 22) then
+			continue
+		end
+		local ok, h = buildable(x, z, 18)
+		if not ok then
+			continue
+		end
+		-- The whole field must be fairly level.
+		local level = true
+		for _, o in { Vector2.new(10, 0), Vector2.new(-10, 0), Vector2.new(0, 10), Vector2.new(0, -10) } do
+			if math.abs(WorldShape.heightAt(x + o.X, z + o.Y) - h) > 2.5 then
+				level = false
+				break
+			end
+		end
+		if not level then
+			continue
+		end
+		field(r.name, r.hayType, Vector3.new(x, h, z), nil, rng:NextInteger(Map.BalesPerField[1], Map.BalesPerField[2]), rng)
+		for i = -1, 1 do
+			for k = -1, 1 do
+				claim(x + i * 10, z + k * 10)
+			end
+		end
+		made += 1
+	end
+end
+
+-- Landmarks -----------------------------------------------------------------------------------------------------
+
+local LANDMARKS = {}
+
+function LANDMARKS.homestead(folder)
+	local y = 8
+	-- The plaza: market stalls, the trading post, the museum, a sawmill row and the bounty board round a well.
+	local stalls = Instance.new("Folder")
+	stalls.Name = "NeedleMarket"
+	stalls.Parent = folder
+	local colors = { Rustic.PaintRed, Rustic.PaintGreen, Rustic.PaintBlue, Rustic.PaintYellow }
+	for i = 0, 3 do
+		local base = CFrame.new(-100, y, -1530 + i * 34) * CFrame.Angles(0, -math.pi / 2, 0)
+		part(stalls, "Counter", Vector3.new(12, 3.5, 3), base * CFrame.new(0, 1.75, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+		for _, x in { -5.5, 5.5 } do
+			post(stalls, "Pole", 9, 0.5, base * CFrame.new(x, 0, 2), Rustic.Wood, Enum.Material.Wood)
+		end
+		part(stalls, "Canopy", Vector3.new(13, 0.4, 7), base * CFrame.new(0, 9, 0.5) * CFrame.Angles(math.rad(10), 0, 0), colors[i + 1], Enum.Material.Fabric)
+	end
+	billboard(part(stalls, "MarketSign", Vector3.new(1, 1, 1), CFrame.new(-100, y + 12, -1480), Rustic.Wood, nil, nil, false), "NEEDLE MARKET", Vector3.zero, 220)
+
+	building(folder, "TradingPost", CFrame.new(0, y, -1590) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "warehouse" })
+	building(folder, "Museum", CFrame.new(90, y, -1580) * CFrame.Angles(0, math.pi, 0), 34, 24, 16, { sign = "MUSEUM", prop = "museum", wall = Rustic.PaintCream, roof = Rustic.PaintBlue })
+	for i, z in { -1420, -1470, -1520 } do
+		building(folder, "Sawmill", CFrame.new(165, y, z) * CFrame.Angles(0, math.pi / 2, 0), 26, 20, 12, { sign = i == 1 and "SAWMILL ROW" or nil, prop = "mill" })
+	end
+	building(folder, "Workshop", CFrame.new(-150, y, -1600) * CFrame.Angles(0, math.pi * 0.75, 0), 24, 20, 11, { sign = "WORKSHOP", prop = "workshop" })
+
+	-- The bounty board and the well in the middle.
+	local board = part(folder, "BountyBoard", Vector3.new(14, 8, 0.6), CFrame.new(0, y + 6, -1480), Rustic.Wood, Enum.Material.WoodPlanks)
+	boardText(board, "BOUNTY BOARD\nNew jobs every day")
+	for _, x in { -6.5, 6.5 } do
+		post(folder, "BoardPost", 10, 0.7, CFrame.new(x, y, -1480), Rustic.WoodDark, Enum.Material.Wood)
+	end
+	local well = CFrame.new(0, y, -1440)
+	post(folder, "Well", 3, 8, well, Rustic.Stone, Enum.Material.Cobblestone)
+	part(folder, "WellWater", Vector3.new(0.2, 6.4, 6.4), well * CFrame.new(0, 2.9, 0) * CFrame.Angles(0, 0, math.pi / 2), Rustic.Water, Enum.Material.Glass, Enum.PartType.Cylinder, false)
+	for _, x in { -3.6, 3.6 } do
+		post(folder, "WellPost", 8, 0.5, well * CFrame.new(x, 0, 0), Rustic.WoodDark, Enum.Material.Wood)
+	end
+	part(folder, "WellRoof", Vector3.new(9, 0.5, 5), well * CFrame.new(0, 8, 0), Rustic.PaintRedDark, Enum.Material.WoodPlanks)
+
+	-- An arch where the North Road comes in.
+	local arch = spot(80, -1300, Vector2.new(0.6, 0.8))
+	for _, side in { -1, 1 } do
+		post(folder, "ArchPost", 16, 1.6, arch * CFrame.new(side * 11, -1, 0), Rustic.WoodDark, Enum.Material.Wood)
+	end
+	local beam = part(folder, "ArchBeam", Vector3.new(26, 3, 1), arch * CFrame.new(0, 14, 0), Rustic.Wood, Enum.Material.WoodPlanks)
+	boardText(beam, "HOMESTEAD VALLEY")
+end
+
+function LANDMARKS.spindle(folder)
+	-- The sealed door on the Spindle's east face, with a socket for each of the twelve shards of the Master Needle.
+	local x, z = 155, -990
+	local base = spot(x, z, Vector2.new(1, 0))
+	local stone = Color3.fromRGB(150, 142, 160)
+	part(folder, "DoorFrame", Vector3.new(20, 26, 4), base * CFrame.new(0, 12, 2.5), stone, Enum.Material.Slate)
+	local door = part(folder, "SpindleDoor", Vector3.new(14, 20, 1), base * CFrame.new(0, 10, 0.2), Color3.fromRGB(96, 86, 120), Enum.Material.Slate)
+	for i = 0, 11 do
+		local a = i / 12 * math.pi * 2
+		local socket = part(folder, "ShardSocket", Vector3.new(0.6, 1, 1), door.CFrame * CFrame.new(math.cos(a) * 5, math.sin(a) * 5 + 2, -0.6) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(242, 183, 5), Enum.Material.Neon, Enum.PartType.Cylinder, false)
+		socket.Transparency = 0.6
+	end
+	billboard(door, "THE SPINDLE\nTwelve shards open this door", Vector3.new(0, 14, 0), 160)
+
+	-- The Observatory on the Spindle's shoulder (meteor showers land here).
+	local ox, oz = 30, -1080
+	local oy = ground(ox, oz)
+	local obs = Instance.new("Model")
+	obs.Name = "Observatory"
+	post(obs, "Tower", 18, 16, CFrame.new(ox, oy - 2, oz), Rustic.PaintCream, Enum.Material.Concrete)
+	local dome = part(obs, "Dome", Vector3.new(15, 15, 15), CFrame.new(ox, oy + 16, oz), IRON, Enum.Material.Metal, Enum.PartType.Ball)
+	part(obs, "Scope", Vector3.new(9, 1.6, 1.6), CFrame.new(ox, oy + 21, oz) * CFrame.Angles(0, 0.6, math.rad(40)), Rustic.Metal, Enum.Material.Metal, Enum.PartType.Cylinder)
+	obs.PrimaryPart = dome
+	if Props.has("observatory") then
+		local mesh = Props.make("observatory", CFrame.new(ox, oy + 12, oz), nil, CFrame.Angles(0, math.pi, 0))
+		if mesh then
+			Props.restOn(mesh, oy - 1)
+			Props.weldTo(mesh, dome, obs)
+		end
+	end
+	obs.Parent = folder
+
+	-- The cave mouth on the west foot: a stone arch and a lantern.
+	local mouth = Map.Cave.mouth
+	local arch = CFrame.lookAt(mouth, mouth + Vector3.new(-1, 0, 0.1))
+	for _, side in { -1, 1 } do
+		part(folder, "CavePillar", Vector3.new(3, 16, 3), arch * CFrame.new(side * 9, 2, 0), Rustic.StoneDark, Enum.Material.Slate)
+	end
+	part(folder, "CaveLintel", Vector3.new(22, 3, 3.4), arch * CFrame.new(0, 11, 0), Rustic.StoneDark, Enum.Material.Slate)
+	local lantern = part(folder, "Lantern", Vector3.new(1, 1.4, 1), arch * CFrame.new(-7, 8, -2), Color3.fromRGB(255, 200, 120), Enum.Material.Neon, nil, false)
+	light(lantern, Color3.fromRGB(255, 190, 120), 22, 1.2)
+	signpost(folder, mouth.X - 18, mouth.Z + 14, Vector2.new(-1, 0), "CRYSTAL CAVE", 9)
+end
+
+function LANDMARKS.cave(folder, rng)
+	-- Crystals all round the cavern and a field of crystal hay on its floor.
+	local c = Map.Cave.chamber
+	local floorY = c.center.Y - c.radius * 0.45 + 4
+	for i = 1, 26 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local d = rng:NextNumber(c.radius * 0.35, c.radius * 0.75)
+		TREES.crystal(folder, CFrame.new(c.center.X + math.cos(a) * d, floorY - 0.5, c.center.Z + math.sin(a) * d), rng:NextNumber(0.8, 1.6), rng)
+	end
+	for i = 1, 6 do
+		local a = i / 6 * math.pi * 2
+		local p = Map.Cave.mouth:Lerp(c.center, i / 7)
+		local lamp = part(folder, "CaveLamp", Vector3.new(0.8, 0.8, 0.8), CFrame.new(p + Vector3.new(math.cos(a) * 2, 4, 0)), Color3.fromRGB(255, 196, 120), Enum.Material.Neon, nil, false)
+		light(lamp, Color3.fromRGB(255, 190, 120), 26, 1)
+	end
+	field("Crystal Cave", Map.Cave.hayType, Vector3.new(c.center.X, floorY, c.center.Z), floorY, 8, rng)
+end
+
+function LANDMARKS.valley(folder)
+	-- A jetty into Mirror Lake, and the stone ruins of the Sunken Harbor on its bed (Low Tide uncovers them later).
+	local lake = Map.Lake
+	local shore = Vector2.new(lake.center.X - lake.radius - 20, lake.center.Y)
+	local level = lake.level
+	for i = 0, 6 do
+		local x = shore.X + i * 8
+		part(folder, "JettyDeck", Vector3.new(8, 0.6, 10), CFrame.new(x, level + 1.6, shore.Y), Rustic.Wood, Enum.Material.WoodPlanks)
+		for _, side in { -1, 1 } do
+			post(folder, "JettyPost", 10, 0.7, CFrame.new(x, level - 8, shore.Y + side * 4.5), Rustic.WoodDark, Enum.Material.Wood)
+		end
+	end
+	for i = 1, 7 do
+		local a = i / 7 * math.pi * 2
+		local p = Vector3.new(lake.center.X + math.cos(a) * 40, level - lake.depth + 6, lake.center.Y + math.sin(a) * 40)
+		part(folder, "HarborRuin", Vector3.new(4, 10 + (i % 3) * 3, 4), CFrame.new(p) * CFrame.Angles(0.1 * (i % 2), a, 0), Rustic.StoneDark, Enum.Material.Cobblestone)
+	end
+	signpost(folder, shore.X - 6, shore.Y + 10, Vector2.new(-1, 0), "MIRROR LAKE", 9)
+end
+
+function LANDMARKS.shore(folder)
+	-- The lighthouse on the south coast: it flashes at night (its code is a puzzle for later).
+	local x, z = 420, 860
+	local y = ground(x, z)
+	local tower = Instance.new("Model")
+	tower.Name = "Lighthouse"
+	for i = 0, 4 do
+		local color = i % 2 == 0 and Rustic.PaintCream or Rustic.PaintRed
+		post(tower, "Tower", 8, 12 - i * 1.2, CFrame.new(x, y + i * 8, z), color, Enum.Material.Concrete)
+	end
+	part(tower, "Gallery", Vector3.new(1, 10, 10), CFrame.new(x, y + 40.5, z) * CFrame.Angles(0, 0, math.pi / 2), IRON, Enum.Material.Metal, Enum.PartType.Cylinder)
+	local lamp = part(tower, "Lamp", Vector3.new(4, 4, 4), CFrame.new(x, y + 43, z), Color3.fromRGB(255, 236, 190), Enum.Material.Neon, Enum.PartType.Ball, false)
+	light(lamp, Color3.fromRGB(255, 230, 180), 60, 2)
+	part(tower, "Cap", Vector3.new(6, 2.4, 6), CFrame.new(x, y + 46.5, z), Rustic.PaintRedDark, Enum.Material.Metal)
+	tower.PrimaryPart = lamp
+	tower.Parent = folder
+
+	-- The Tailor's shack, where the mystery starts.
+	building(folder, "TailorShack", spot(-250, 660, Vector2.new(0, 1), 4), 18, 14, 9, { sign = "THE TAILOR", roof = Rustic.PaintGreen })
+	signpost(folder, -230, 690, Vector2.new(0, 1), "THE TAILOR'S SHACK", 10)
+end
+
+function LANDMARKS.pine(folder)
+	-- The old mill by the end of the Shore Road, with log piles.
+	building(folder, "PineMill", spot(-1210, 190, Vector2.new(1, 0), 18), 30, 22, 14, { sign = "PINE MILL", prop = "mill", roof = Rustic.PaintGreen })
+	-- A log pile beside it: three logs on the ground, two on top.
+	for layer = 0, 1 do
+		for k = 0, 2 - layer do
+			local x = -1180 + k * 2.3 + layer * 1.15
+			part(folder, "Log", Vector3.new(14, 2.2, 2.2), CFrame.new(x, 18 + 1.1 + layer * 2, 214) * CFrame.Angles(0, math.pi / 2, 0), Rustic.Bark, Enum.Material.Wood, Enum.PartType.Cylinder)
+		end
+	end
+	signpost(folder, -1120, 120, Vector2.new(1, 0.3), "PINE FOREST", 9)
+end
+
+function LANDMARKS.haunted(folder, rng)
+	-- The Wreck of the Bobbin, half sunk on the west shore. The captain's cabin hides the Moth-Eaten Map.
+	local cf = CFrame.new(-1770, -2, -860) * CFrame.Angles(0, math.rad(20), math.rad(12))
+	local hull = Color3.fromRGB(70, 58, 48)
+	part(folder, "Hull", Vector3.new(16, 10, 60), cf * CFrame.new(0, 3, 0), hull, Enum.Material.WoodPlanks)
+	wedge(folder, "Bow", Vector3.new(16, 10, 14), cf * CFrame.new(0, 3, -37), hull, Enum.Material.WoodPlanks)
+	part(folder, "Deck", Vector3.new(15, 1, 58), cf * CFrame.new(0, 8.4, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	building(folder, "CaptainsCabin", cf * CFrame.new(0, 8.4, 18), 12, 12, 7, { roof = hull })
+	post(folder, "Mast", 34, 1.4, cf * CFrame.new(0, 8, -6) * CFrame.Angles(0, 0, math.rad(-18)), Rustic.WoodDark, Enum.Material.Wood)
+	signpost(folder, -1700, -830, Vector2.new(-1, 0), "WRECK OF THE BOBBIN", 11)
+
+	-- Graves and lanterns along the grove road.
+	for i = 1, 14 do
+		local x, z = -1180 + rng:NextNumber(-90, 90), -780 + rng:NextNumber(-60, 60)
+		if buildable(x, z, 4) and not crowded(x, z, 4) then
+			local base = spot(x, z, Vector2.new(0, -1))
+			part(folder, "Gravestone", Vector3.new(2.4, 3.4, 0.6), base * CFrame.new(0, 1.2, 0) * CFrame.Angles(rng:NextNumber(-0.15, 0.15), 0, rng:NextNumber(-0.15, 0.15)), Color3.fromRGB(110, 106, 116), Enum.Material.Slate)
+			claim(x, z)
+		end
+	end
+	for i = 0, 8 do
+		local p = Vector2.new(-1120, -760):Lerp(Vector2.new(-900, -1060), i / 8) + Vector2.new(11, 0)
+		local base = CFrame.new(at(p.X, p.Y))
+		post(folder, "LanternPost", 7, 0.4, base, Color3.fromRGB(40, 36, 36), Enum.Material.Metal)
+		local glow = part(folder, "Lantern", Vector3.new(1, 1.2, 1), base * CFrame.new(0, 7.4, 0), Color3.fromRGB(150, 210, 190), Enum.Material.Neon, nil, false)
+		light(glow, Color3.fromRGB(140, 220, 200), 20, 0.8)
+	end
+	signpost(folder, -1150, -700, Vector2.new(0.3, 1), "HAUNTED GROVE\nStay on the road at night", 11)
+end
+
+function LANDMARKS.snow(folder)
+	-- The ski lodge at the end of the Snow Road.
+	building(folder, "SkiLodge", spot(-650, -1600, Vector2.new(0, 1), 46), 34, 24, 13, { sign = "SNOW PEAK LODGE", roof = SNOW })
+	-- The hidden door: a stitched seam in the rock high on the ridge.
+	local x, z = -1060, -1700
+	local base = spot(x, z, Vector2.new(1, 0.4))
+	local seam = part(folder, "HiddenDoor", Vector3.new(8, 12, 1.2), base * CFrame.new(0, 5, 0), Color3.fromRGB(110, 120, 134), Enum.Material.Slate)
+	for i = -2, 2 do
+		part(folder, "Stitch", Vector3.new(2.4, 0.3, 0.3), seam.CFrame * CFrame.new(0, i * 2, -0.7) * CFrame.Angles(0, 0, math.rad(i % 2 == 0 and 30 or -30)), Color3.fromRGB(170, 220, 240), Enum.Material.Neon, nil, false)
+	end
+	signpost(folder, -660, -1460, Vector2.new(0, 1), "SNOW PEAK\nLodge ahead", 9)
+end
+
+function LANDMARKS.volcano(folder, rng)
+	-- The Magma Spindle stands in the crater over the lava.
+	local peak = WorldShape.region("volcano").peak
+	local c = peak.center
+	local floor = ground(c.X, c.Y)
+	local spire = part(folder, "MagmaSpindle", Vector3.new(3, 46, 3), CFrame.new(c.X, floor + 22, c.Y) * CFrame.Angles(0, 0.4, 0.05), Color3.fromRGB(90, 40, 30), Enum.Material.Basalt)
+	local glow = part(folder, "LavaGlow", Vector3.new(peak.crater * 1.4, 1, peak.crater * 1.4), CFrame.new(c.X, floor + 1.5, c.Y), Color3.fromRGB(230, 110, 40), Enum.Material.Neon, nil, false)
+	glow.Transparency = 0.35
+	light(glow, Color3.fromRGB(255, 120, 50), 60, 2)
+	billboard(spire, "VOLCANO", Vector3.new(0, 30, 0), 900, UDim2.fromOffset(200, 50))
+
+	-- The Old Quarry at the foot: cut stone, a cracked mine cart track and a locked chest.
+	local q = CFrame.new(690, 30, -1245)
+	for i = 1, 9 do
+		local size = Vector3.new(rng:NextNumber(4, 7), rng:NextNumber(3, 6), rng:NextNumber(4, 7))
+		part(folder, "QuarryStone", size, q * CFrame.new(rng:NextNumber(-30, 30), size.Y / 2, rng:NextNumber(-25, 25)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color3.fromRGB(122, 112, 104), Enum.Material.Slate)
+	end
+	for i = 0, 7 do
+		local cf = q * CFrame.new(-20 + i * 6, 0.2, 18)
+		for _, side in { -1, 1 } do
+			part(folder, "Rail", Vector3.new(6, 0.3, 0.3), cf * CFrame.new(0, 0, side * 1.2), IRON, Enum.Material.Metal)
+		end
+		part(folder, "Sleeper", Vector3.new(0.6, 0.3, 3.4), cf, Rustic.WoodDark, Enum.Material.Wood)
+	end
+	local cart = q * CFrame.new(4, 1.6, 18)
+	part(folder, "MineCart", Vector3.new(5, 2.6, 3.6), cart, IRON, Enum.Material.Metal)
+	part(folder, "Chest", Vector3.new(3, 2, 2), q * CFrame.new(-26, 1, -18), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	signpost(folder, 640, -1290, Vector2.new(-0.6, -0.8), "OLD QUARRY", 8)
+end
+
+function LANDMARKS.desert(folder, rng)
+	-- The Buried Pyramid: stepped sandstone, half under the dunes.
+	local c = Vector3.new(1500, 10, -580)
+	local stone = Color3.fromRGB(190, 160, 112)
+	for i = 0, 5 do
+		local w = 96 - i * 16
+		part(folder, "PyramidStep", Vector3.new(w, 8, w), CFrame.new(c + Vector3.new(0, i * 8 - 2, 0)), stone, Enum.Material.Sandstone)
+	end
+	local door = part(folder, "PyramidDoor", Vector3.new(8, 10, 1), CFrame.new(c + Vector3.new(0, 7, 48.6)), Color3.fromRGB(60, 50, 40), Enum.Material.Slate)
+	billboard(door, "BURIED PYRAMID", Vector3.new(0, 10, 0), 200)
+
+	-- The oasis: palms round the pool, and a camp of tents.
+	local o = Map.Oasis
+	for i = 1, 8 do
+		local a = i / 8 * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+		local x, z = o.center.X + math.cos(a) * (o.radius + 12), o.center.Y + math.sin(a) * (o.radius + 12)
+		TREES.palm(folder, CFrame.new(x, ground(x, z) - 1, z), rng:NextNumber(0.9, 1.2), rng)
+		claim(x, z)
+	end
+	for i = 0, 2 do
+		local base = spot(1260 + i * 16, -230, Vector2.new(0, 1))
+		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, -2.5), Rustic.Cloth, Enum.Material.Fabric)
+		wedge(folder, "Tent", Vector3.new(8, 6, 5), base * CFrame.new(0, 3, 2.5) * CFrame.Angles(0, math.pi, 0), Rustic.Cloth, Enum.Material.Fabric)
+	end
+	signpost(folder, 1060, -470, Vector2.new(-1, 0), "DESERT DUNES", 9)
+end
+
+function LANDMARKS.swamp(folder, rng)
+	-- Boardwalks out over the bog, with lily pads in the pools.
+	for _, walk in { { Vector2.new(1000, 545), Vector2.new(1060, 700) }, { Vector2.new(1300, 545), Vector2.new(1380, 360) } } do
+		local a, b = walk[1], walk[2]
+		local n = math.floor((b - a).Magnitude / 6)
+		for i = 0, n do
+			local p = a:Lerp(b, i / n)
+			local look = CFrame.lookAt(Vector3.new(p.X, 0, p.Y), Vector3.new(b.X, 0, b.Y))
+			local base = look.Rotation + Vector3.new(p.X, 1.4, p.Y)
+			part(folder, "Boardwalk", Vector3.new(6, 0.5, 6.2), base, Rustic.Wood, Enum.Material.WoodPlanks)
+			if i % 2 == 0 then
+				for _, side in { -1, 1 } do
+					post(folder, "BoardwalkPost", 5, 0.5, base * CFrame.new(side * 2.8, -4, 0), Rustic.WoodDark, Enum.Material.Wood)
+				end
+			end
+		end
+	end
+	for _ = 1, 50 do
+		local x, z = 1120 + rng:NextNumber(-500, 500), 470 + rng:NextNumber(-300, 300)
+		local h, water = WorldShape.column(x, z)
+		if water and water > SEA and water - h < 3 then
+			part(folder, "LilyPad", Vector3.new(0.2, 3, 3), CFrame.new(x, water + 0.1, z) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(96, 128, 70), Enum.Material.Grass, Enum.PartType.Cylinder, false)
+		end
+	end
+	signpost(folder, 980, 540, Vector2.new(-1, 0), "THE SWAMP\nMud slows trucks", 10)
+end
+
+function LANDMARKS.keys(folder)
+	-- A harbor market by the ferry, and tide-pool rocks.
+	for i = 0, 2 do
+		local base = spot(2905 + i * 16, 40, Vector2.new(-1, 0), 2)
+		part(folder, "Counter", Vector3.new(3, 3.5, 10), base * CFrame.new(0, 1.75, 0), Rustic.WoodDark, Enum.Material.WoodPlanks)
+		part(folder, "Awning", Vector3.new(7, 0.4, 12), base * CFrame.new(0, 8, 0) * CFrame.Angles(0, 0, math.rad(10)), ({ Rustic.PaintBlue, Rustic.PaintCream, Rustic.PaintGreen })[i + 1], Enum.Material.Fabric)
+		for _, z in { -5, 5 } do
+			post(folder, "Pole", 8, 0.4, base * CFrame.new(2.5, 0, z), Rustic.Wood, Enum.Material.Wood)
+		end
+	end
+	signpost(folder, 2780, -270, Vector2.new(-1, 0), "THIMBLE KEYS", 9)
+end
+
+function LANDMARKS.bobbin(folder)
+	-- The Weaver's lost workshop on top of the rock: broken stone walls and the twelfth shard on a pedestal.
+	local zone
+	for _, f in Map.Flat do
+		if f.name == "Workshop" then
+			zone = f
+		end
+	end
+	local mid = (zone.min + zone.max) / 2
+	local base = CFrame.new(mid.X, zone.height, mid.Y)
+	local stone = Color3.fromRGB(110, 106, 112)
+	for i, w in { { Vector3.new(30, 12, 2), CFrame.new(0, 6, -14) }, { Vector3.new(2, 9, 26), CFrame.new(-14, 4.5, 0) }, { Vector3.new(14, 6, 2), CFrame.new(8, 3, 14) } } do
+		part(folder, "WorkshopWall" .. i, w[1], base * w[2], stone, Enum.Material.Cobblestone)
+	end
+	part(folder, "Pedestal", Vector3.new(3, 4, 3), base * CFrame.new(0, 2, 0), stone, Enum.Material.Slate)
+	local shard = part(folder, "Shard", Vector3.new(0.6, 3, 0.6), base * CFrame.new(0, 5.6, 0) * CFrame.Angles(0, 0, 0.2), Color3.fromRGB(242, 183, 5), Enum.Material.Neon, nil, false)
+	light(shard, Color3.fromRGB(255, 200, 80), 24, 1.5)
+	billboard(shard, "THE WEAVER'S WORKSHOP", Vector3.new(0, 6, 0), 200)
+end
+
+-- The Graveyard of Ships: wrecks on the reef between the main island and Bobbin Rock, clear of the ferry lane.
+local function graveyard(folder, rng)
+	local lane = Map.Channels[2]
+	local made = 0
+	for _ = 1, 60 do
+		if made >= 6 then
+			break
+		end
+		local x, z = 2150 + rng:NextNumber(-260, 260), -1560 + rng:NextNumber(-200, 200)
+		local d = WorldShape.segment(x, z, lane.from.X, lane.from.Y, lane.to.X, lane.to.Y)
+		if d > lane.width / 2 + 70 then
+			local cf = CFrame.new(x, SEA - 6, z) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), rng:NextNumber(0, math.pi * 2), rng:NextNumber(0.2, 0.5))
+			part(folder, "Wreck", Vector3.new(12, 9, 44), cf, Color3.fromRGB(64, 54, 46), Enum.Material.WoodPlanks)
+			post(folder, "WreckMast", 22, 1.1, cf * CFrame.new(0, 3, -6) * CFrame.Angles(0.3, 0, 0), Rustic.WoodDark, Enum.Material.Wood)
+			made += 1
+		end
+	end
+end
+
+-- The sky island's trees and its field of cloud hay.
+local function skyIsland(folder, rng)
+	local sky = Map.SkyIsland
+	for i = 1, 16 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local d = rng:NextNumber(30, sky.radius * 0.7)
+		local x, z = sky.center.X + math.cos(a) * d, sky.center.Y + math.sin(a) * d
+		TREES.oak(folder, CFrame.new(x, sky.top - 2, z), rng:NextNumber(0.9, 1.3), rng)
+	end
+	field("Sky Island", "sky", Vector3.new(sky.center.X, sky.top - 1, sky.center.Y + 40), sky.top - 1.5, 9, rng)
+	signpost(folder, sky.center.X + 10, sky.center.Y + 150, Vector2.new(0, 1), "SKY ISLAND", 9)
+end
+
+-- Signs where the roads branch, so nobody gets lost.
+local JUNCTIONS = {
+	{ -30, -600, Vector2.new(0, 1), "^ HOMESTEAD VALLEY\nMIRROR LAKE  >" },
+	{ 100, -748, Vector2.new(0, 1), "< HOMESTEAD   DESERT >" },
+	{ 150, 610, Vector2.new(0, -1), "< PINE FOREST   SWAMP >" },
+	{ -1190, -740, Vector2.new(1, 0), "^ HOMESTEAD   WRECK >" },
+	{ -620, -1320, Vector2.new(1, 0), "< SNOW PEAK   HOMESTEAD >" },
+	{ 230, -1500, Vector2.new(-1, 0), "VOLCANO, ASH DOCK >" },
+	{ 1300, -400, Vector2.new(0, -1), "< HIGHWAY   SWAMP v" },
+	{ 1560, 500, Vector2.new(-1, 0), "SWAMP PORT >\nFerry to Thimble Keys" },
+	{ 1480, -1170, Vector2.new(-1, 0), "ASH DOCK >\nFerry to Bobbin Rock" },
+}
+
+function Regions.build(worldFolder)
+	local folder = Instance.new("Folder")
+	folder.Name = "Isles"
+	folder.Parent = worldFolder
+	local rng = Random.new(Map.Seed)
+	local trees, made = 0, 0
+
+	for _, r in WorldShape.regions do
+		local sub = Instance.new("Folder")
+		sub.Name = r.name
+		sub.Parent = folder
+		local landmark = LANDMARKS[r.id]
+		if landmark then
+			landmark(sub, rng)
+		end
+		for _, planting in PLANTING[r.id] or {} do
+			trees += plant(sub, r, planting[1], planting[2], rng)
+		end
+		rocks(sub, r, 18, rng)
+		hayFields(r, rng)
+		made += 1
+		task.wait() -- spread the work out so the server keeps ticking
+	end
+
+	local cave = Instance.new("Folder")
+	cave.Name = "Crystal Cave"
+	cave.Parent = folder
+	LANDMARKS.cave(cave, rng)
+
+	local sea = Instance.new("Folder")
+	sea.Name = "Graveyard of Ships"
+	sea.Parent = folder
+	graveyard(sea, rng)
+
+	local sky = Instance.new("Folder")
+	sky.Name = "Sky Island"
+	sky.Parent = folder
+	skyIsland(sky, rng)
+
+	local signs = Instance.new("Folder")
+	signs.Name = "Signs"
+	signs.Parent = folder
+	for _, j in JUNCTIONS do
+		signpost(signs, j[1], j[2], j[3], j[4], 12)
+	end
+
+	print(("[Needlewood] Stitched Isles: %d regions, %d trees, %d hay fields"):format(made, trees, #Regions.fields))
+	return folder
+end
+
+return Regions

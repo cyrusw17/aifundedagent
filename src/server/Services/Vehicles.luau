@@ -778,9 +778,11 @@ local function updateCargo()
 				end
 				-- Whoever hauls a bale gets paid for it at the sell shop, even if it was pushed in rather than carried.
 				b.ownerId = b.ownerId or player.UserId
+				-- Lashed on a ferry (Ferry.luau) the truck is part of the server's ferry, so its cargo is too.
+				local simulator = if model:GetAttribute("OnFerry") then nil else player
 				pcall(function()
-					if b.body:GetNetworkOwner() ~= player then
-						b.body:SetNetworkOwner(player)
+					if b.body:GetNetworkOwner() ~= simulator then
+						b.body:SetNetworkOwner(simulator)
 					end
 				end)
 			end
