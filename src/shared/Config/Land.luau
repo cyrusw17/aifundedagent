@@ -2,11 +2,12 @@
 -- Land plots, what can be built on them, and preset saves. Placeholders to tune from playtests.
 -- Positions are world studs on Meadow Farm's flat ground (Y = 0). The flat zone, keep-clear rect and plot road that
 -- make room for all this are in Meadow.luau ("Plots").
-local PRICE = 1500 -- every plot costs the same
+local Prices = require(script.Parent.Prices)
+local PRICE = Prices.Plot -- every plot costs the same (Config/Prices explains why)
 local TILES = Vector2.new(12, 10) -- and has the same grid
 
 return {
-	RefundShare = 0.5, -- removing a piece gives back this share of its price
+	RefundShare = Prices.RefundShare, -- removing a piece gives back this share of its price
 
 	-- Every plot is the same: the same price, the same grid of 6 stud conveyor tiles (tiles.X across by tiles.Y deep) and
 	-- the same layout, so a save rebuilds the same on whichever free plot a player gets on any server. The six plot zones
@@ -30,15 +31,15 @@ return {
 	-- Separators are the Machines.luau needle sorter; their id is the tier in Sorters.luau, which sets how many needles
 	-- they find and how fast they work.
 	Pieces = {
-		{ id = "belt", kind = "belt", name = "Conveyor belt", price = 20, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
-		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = 150, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
-		{ id = "silo", kind = "silo", name = "Hay silo", price = 3000, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
-		{ id = "parking", kind = "parking", name = "Parking pad", price = 100, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
-		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = 250, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
-		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = 1500, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
-		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = 5000, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
-		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = 15000, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
-		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = 50000, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "belt", kind = "belt", name = "Conveyor belt", price = Prices.Pieces.belt, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
+		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = Prices.Pieces.hay_buyer, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
+		{ id = "silo", kind = "silo", name = "Hay silo", price = Prices.Pieces.silo, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
+		{ id = "parking", kind = "parking", name = "Parking pad", price = Prices.Pieces.parking, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
+		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = Prices.Pieces.hand_sieve, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
+		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = Prices.Pieces.shaker_table, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
+		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
+		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
+		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
 	},
 
 	SiloCapacity = 60, -- bales

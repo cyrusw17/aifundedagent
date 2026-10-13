@@ -2,7 +2,8 @@
 -- Trailers that hitch behind a truck (Vehicles.luau). Sizes follow the Blender beds in BUILD_REGISTRY.md and
 -- blender/props/vehicles.py: the inside of the bed holds `along` x `across` bales a layer, the floor top is 3.5 (the
 -- conveyor dock's belt height), and the walls are `wall` tall. Axles are offsets behind the bed's center, so the
--- tongue always carries a little weight. Prices are placeholders.
+-- tongue always carries a little weight. Prices come from Config/Prices.
+local Prices = require(script.Parent.Prices)
 export type Trailer = {
 	id: string,
 	name: string,
@@ -21,7 +22,7 @@ local Trailers: { Trailer } = {
 	{
 		id = "wagon_trailer",
 		name = "Wagon Trailer",
-		price = 1500,
+		price = Prices.Trailers.wagon_trailer,
 		along = 1,
 		across = 2,
 		wall = 2.6,
@@ -33,7 +34,7 @@ local Trailers: { Trailer } = {
 	{
 		id = "small_trailer",
 		name = "Small Trailer",
-		price = 8000,
+		price = Prices.Trailers.small_trailer,
 		along = 2,
 		across = 2,
 		wall = 2.6,
@@ -45,7 +46,7 @@ local Trailers: { Trailer } = {
 	{
 		id = "medium_trailer",
 		name = "Medium Trailer",
-		price = 30000,
+		price = Prices.Trailers.medium_trailer,
 		along = 5,
 		across = 2,
 		length = 24,
@@ -58,7 +59,7 @@ local Trailers: { Trailer } = {
 	{
 		id = "large_trailer",
 		name = "Large Trailer",
-		price = 120000,
+		price = Prices.Trailers.large_trailer,
 		along = 6,
 		across = 3,
 		wall = 5.4,
@@ -70,7 +71,7 @@ local Trailers: { Trailer } = {
 	{
 		id = "bale_rack_trailer",
 		name = "Bale Rack",
-		price = 200000,
+		price = Prices.Trailers.bale_rack_trailer,
 		along = 5,
 		across = 2,
 		wall = 8,

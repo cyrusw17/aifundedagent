@@ -1,6 +1,7 @@
 --!strict
 -- Trucks sold at the dealer (docs/ITEMS.md). Only the first one can be bought for now; the rest are on the lot
--- with a COMING SOON tag. Prices are placeholders. Lengths match the Blender meshes (Config/Props.luau).
+-- with a COMING SOON tag. Prices come from Config/Prices. Lengths match the Blender meshes (Config/Props.luau).
+local Prices = require(script.Parent.Prices)
 export type Truck = {
 	id: string,
 	name: string,
@@ -18,7 +19,7 @@ local Trucks: { Truck } = {
 	{
 		id = "rusty_pickup",
 		name = "Rusty Pickup",
-		price = 6000,
+		price = Prices.Trucks.rusty_pickup,
 		blurb = "Your first truck. Pulls the Wagon Trailer.",
 		available = true,
 		style = "pickup",
@@ -30,7 +31,7 @@ local Trucks: { Truck } = {
 	{
 		id = "farm_flatbed",
 		name = "Farm Flatbed",
-		price = 25000,
+		price = Prices.Trucks.farm_flatbed,
 		blurb = "Pulls up to a Small trailer.",
 		available = false,
 		style = "flatbed",
@@ -41,7 +42,7 @@ local Trucks: { Truck } = {
 	{
 		id = "box_truck",
 		name = "Box Truck",
-		price = 90000,
+		price = Prices.Trucks.box_truck,
 		blurb = "Pulls up to a Medium trailer.",
 		available = false,
 		style = "box",
@@ -52,7 +53,7 @@ local Trucks: { Truck } = {
 	{
 		id = "heavy_hauler",
 		name = "Heavy Hauler",
-		price = 350000,
+		price = Prices.Trucks.heavy_hauler,
 		blurb = "Pulls up to a Large trailer. Needs fuel.",
 		available = false,
 		style = "hauler",
@@ -63,7 +64,7 @@ local Trucks: { Truck } = {
 	{
 		id = "semi_rig",
 		name = "Semi Rig",
-		price = 1500000,
+		price = Prices.Trucks.semi_rig,
 		blurb = "Pulls the Double trailer on highways.",
 		available = false,
 		style = "semi",
