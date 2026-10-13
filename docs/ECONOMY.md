@@ -515,6 +515,14 @@ and credit, but not toward that $25,000, which Bank tracks separately as `sold`.
 from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
 a clock nobody can game; sales already are one.
 
+Two kinds of repeatable pay count as selling on purpose. **Daily bounties** ("Bounty: ", $300 to $450 each, three a
+day) are paid for real farming (sell 15 bales, break 12, pick up 8 needles), so they're sales with a bonus; reaching
+$25,000 on bounties alone would take about three weeks of daily play, which is real progress, not an alt trick.
+**Offline pay** ("While you were away") is what your own sorter line made while you were gone, so it needs a built
+farm first. Daily maze runs ("Maze: ") stay out of `sold` because they pay for running, not farming. The health
+check's contract rule 6 reads the one-time list from Bank.luau, so any new reward note must either match a one-time
+prefix or be a known sale.
+
 ## Where each number lives
 
 | Number | In `Config/Prices.luau` | Read by |
