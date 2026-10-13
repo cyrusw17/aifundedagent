@@ -24,8 +24,10 @@ local SEED = Meadow.Seed * 17.31
 local AIR = Enum.Material.Air
 local GROUND = Enum.Material.Ground
 local WATER = Enum.Material.Water
-local GRASS = Enum.Material.Grass
-local LEAFY = Enum.Material.LeafyGrass
+-- Never Enum.Material.Grass: only Grass grows the tall decoration blades, and Terrain.Decoration cannot be turned
+-- off from a script or Rojo (it is not scriptable). The meadow is LeafyGrass with darker Moss patches instead.
+local GRASS = Enum.Material.LeafyGrass
+local LEAFY = Enum.Material.Moss
 local ROCK = Enum.Material.Rock
 local SAND = Enum.Material.Sand
 local MUD = Enum.Material.Mud
@@ -131,7 +133,8 @@ local function setColors(terrain)
 		terrain.Decoration = false
 	end)
 	terrain:SetMaterialColor(Enum.Material.Grass, Rustic.Grass)
-	terrain:SetMaterialColor(Enum.Material.LeafyGrass, Rustic.LeafyGrass)
+	terrain:SetMaterialColor(Enum.Material.LeafyGrass, Rustic.Grass)
+	terrain:SetMaterialColor(Enum.Material.Moss, Rustic.LeafyGrass)
 	terrain:SetMaterialColor(Enum.Material.Ground, Rustic.Dirt)
 	terrain:SetMaterialColor(Enum.Material.Mud, Rustic.Mud)
 	terrain:SetMaterialColor(Enum.Material.Sand, Rustic.Sand)
