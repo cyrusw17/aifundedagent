@@ -3,16 +3,17 @@
 -- background, and builds everything on them (Regions), the Longstitch Highway, the ferries and the zeppelin. Also
 -- runs the rich field: every few minutes one hay field somewhere on the map gets a gold beam and 2x needles.
 -- Config: src/shared/Config/WorldMap.luau.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Map = require(Shared.Config.WorldMap)
-local Data = require(script.Parent.Data)
+local Announce = require(script.Parent.Announce)
 local WorldTerrain = require(script.Parent.WorldTerrain)
 local Regions = require(script.Parent.Regions)
 local Highway = require(script.Parent.Highway)
 local Ferry = require(script.Parent.Ferry)
+local WorldShape = require(script.Parent.WorldShape)
 
 local WorldMap = {}
 
@@ -61,6 +62,33 @@ local function worldWalls(folder)
 		wall.CanQuery = false
 		wall.CanTouch = false
 		wall.Parent = folder
+	end
+end
+
+-- In Studio: lists anything solid standing in a road lane (a truck would hit it), so a blocked road shows up in the
+-- Output the first time the map is built rather than when someone drives into it.
+local function auditRoads(folder)
+	local half = Map.RoadWidth / 2 - 1
+	local blocked = {}
+	for _, p in folder:GetDescendants() do
+		if not (p:IsA("BasePart") and p.Anchored and p.CanCollide and p.Transparency < 1) then
+			continue
+		end
+		local cf, size = p.ExtentsCFrame, p.ExtentsSize
+		local bottom, top = cf.Y - size.Y / 2, cf.Y + size.Y / 2
+		for _, o in { Vector3.zero, Vector3.new(size.X / 2, 0, size.Z / 2), Vector3.new(-size.X / 2, 0, size.Z / 2), Vector3.new(size.X / 2, 0, -size.Z / 2), Vector3.new(-size.X / 2, 0, -size.Z / 2) } do
+			local at = cf * (o * 0.9)
+			local d, h = WorldShape.nearestRoad(at.X, at.Z)
+			if d and d < half and top > h + 0.6 and bottom < h + 9 then
+				table.insert(blocked, ("%s at (%d, %d) on the %s"):format(p:GetFullName(), at.X, at.Z, select(3, WorldShape.nearestRoad(at.X, at.Z)) or "road"))
+				break
+			end
+		end
+	end
+	if #blocked > 0 then
+		warn(("[Needlewood] %d parts stand in a road lane:\n  %s"):format(#blocked, table.concat(blocked, "\n  ", 1, math.min(#blocked, 25))))
+	else
+		print("[Needlewood] Road check: every road lane is clear")
 	end
 end
 
@@ -138,11 +166,7 @@ local function pickRich(parent)
 	-- For map screens: where the rich field is now (a UI can mark it).
 	ReplicatedStorage:SetAttribute("RichField", rich.center)
 	ReplicatedStorage:SetAttribute("RichFieldRegion", rich.region)
-	for _, player in Players:GetPlayers() do
-		if Data.get(player) then
-			Data.toast(player, ("Rich field in %s: 2x needles for %d minutes. Follow the gold beam!"):format(rich.region, Map.RichMinutes))
-		end
-	end
+	Announce.say(("Rich field in %s: 2x needles for %d minutes. Follow the gold beam!"):format(rich.region, Map.RichMinutes), "event")
 end
 
 function WorldMap.build(worldFolder)
@@ -168,6 +192,13 @@ function WorldMap.build(worldFolder)
 		local ok, err = pcall(step[2], folder)
 		if not ok then
 			warn(("[Needlewood] Stitched Isles %s failed: %s"):format(step[1], tostring(err)))
+		end
+	end
+
+	if RunService:IsStudio() then
+		local isles = folder:FindFirstChild("Isles")
+		if isles then
+			task.spawn(auditRoads, isles)
 		end
 	end
 
