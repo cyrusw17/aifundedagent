@@ -262,6 +262,30 @@ return function(SelfTest)
 		t.equal("part count back to where it started", partsHere(), baseline)
 	end)
 
+	-- The clip-worthy reveal (CEO, Cyrus 22:54): which finds get the camera push-in, card and chat line, and that a
+	-- find with no one to show it to still lands (the push-in itself is client-side; MORNING_PLAYTEST covers it).
+	SelfTest.register("NeedleReveal", function(t)
+		local Reveal = require(Shared.Reveal)
+		local Needle = require(Services.Needle)
+		local wet = require(Shared.Config.Prices).WetMutation.mult
+		local steel = Reveal.of(30, Needle.rarity("steel") and Needle.rarity("steel").name, 1, wet)
+		local cosmicRarity = Needle.rarity("cosmic")
+		local cosmic = Reveal.of(3000, cosmicRarity and cosmicRarity.name, 1, wet)
+		t.check("a plain steel needle gets no clip", not steel.clip and not steel.chat)
+		t.check("a Cosmic needle clips and goes to chat", cosmic.clip and cosmic.chat)
+		t.check("a Wet needle clips but stays out of chat", Reveal.of(30, nil, wet, wet).clip and not Reveal.of(30, nil, wet, wet).chat)
+		local c1 = Reveal.allow(cosmic, 0, nil, nil)
+		local c2 = Reveal.allow(cosmic, 1, 0, 0)
+		t.check("a second Legendary straight after waits its turn", c1 and not c2)
+		-- A find with nobody to show it to (an owner not in the game) still flies and lands, with no clip sent. A live
+		-- player's find is left to MORNING_PLAYTEST: it would write the Cosmic entry into the tester's needle index.
+		local spot = t.place()
+		local n = Needle.throw(spot.Position + Vector3.new(0, 3, 0), spot.Position, GHOST, "cosmic", nil, 1, false)
+		t.cleanup(n)
+		t.wait(Reveal.CLIP_SECONDS + 1)
+		t.check("a Cosmic find for an absent owner still lands", n.Parent ~= nil and not n.Anchored, n.Anchored)
+	end)
+
 	-- Load test (CEO #17): an optical line fed a bale every 2 s (30 bales a minute) for 60 s with the whole map
 	-- loaded. Reports the server heartbeat and the Workspace part count, and fails below 45 Hz.
 	SelfTest.register("ConveyorLoad", function(t)
