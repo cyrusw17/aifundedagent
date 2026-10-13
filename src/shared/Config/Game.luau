@@ -17,7 +17,7 @@ return {
 	PiecesPerBale = 90, -- small straw strands spilled by one bale
 	MaxLoosePieces = 450, -- the oldest pieces vanish past this, so the server never fills with hay
 	LooseHayLifetime = 90, -- seconds before untouched hay shrinks away
-	LooseNeedleLifetime = 600, -- a spilled needle nobody picks up stays this long (it is worth finding)
+	LooseNeedleLifetime = 600, -- a spilled needle or a raked pile nobody picks up stays this long
 	MaxLooseNeedles = 120, -- past this many lying around, the oldest needle goes
 	BaleRefillSeconds = 45, -- placeholder until we decide how bales refill
 
@@ -39,6 +39,10 @@ return {
 	ComboMaxBonus = 10,
 	RakeRadius = 6, -- strands this close to the click get gathered
 	RakeGatherDistance = 2.5, -- the rake pulls hay to this far in front of you
+	-- Hay piles: raking at least PileMin strands together into one spot packs them into a single pile the shovel
+	-- takes in one scoop (it ignores the per-scoop size; only your carry room limits it).
+	PileMin = 40,
+	PileRadius = 3,
 	RakeStrokeSeconds = 0.45, -- how long one stroke keeps pulling
 	RakeMaxSpeed = 16,
 	RakeCooldownSeconds = 0.75,
