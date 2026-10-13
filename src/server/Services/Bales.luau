@@ -265,6 +265,11 @@ function Bales.breakOpen(player, b)
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
 				Hay.spawnPiece(center + offset, velocity, baleOwner)
 			end
+			-- Now and then a needle tumbles out with the hay.
+			if rng:NextNumber() < Config.VisibleNeedleChance then
+				local offset = Vector3.new(rng:NextNumber(-1, 1), 2 + wave * 0.5, rng:NextNumber(-1, 1))
+				Hay.spawnPiece(center + offset, Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)), baleOwner, "Needle")
+			end
 			task.wait(0.22)
 		end
 	end)
@@ -347,8 +352,11 @@ function Bales.drop(player)
 	b.body.AssemblyLinearVelocity = Vector3.zero
 	b.body.AssemblyAngularVelocity = Vector3.zero
 	b.prompt.ActionText = "Pick up"
+	-- A set-down bale is a loose physical block: never welded or anchored, so it can ride in a truck bed and slide
+	-- or tip like real cargo. Roblox picks its network owner automatically, so a bale in a moving truck follows the
+	-- driver's physics instead of lagging behind.
 	pcall(function()
-		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same bale
+		b.body:SetNetworkOwnershipAuto()
 	end)
 
 	Avatar.clearCarry(player)

@@ -1,12 +1,17 @@
 --!nonstrict
--- Loose hay pieces. A broken bale leaves a pile of them. The shovel scoops pieces up, the rake drags them across
--- the ground, and pieces left on the sell pad sell. Every piece is a small real part.
+-- Loose hay. A broken bale spills into a pile of small straw strands with the odd needle hidden among them. The
+-- shovel scoops pieces up, the rake drags them across the ground, and pieces left on the sell pad sell. Every
+-- strand is a small real part, capped at MaxLoosePieces so the server stays light.
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Groups = require(script.Parent.Groups)
+-- The game's one shared needle (Needle.luau, from the conveyor work) when it is present, so a needle spilled from
+-- a bale looks, picks up and sells the same as one anywhere else. Without it, a local stand-in is used.
+local NeedleModule = script.Parent:FindFirstChild("Needle")
+local Needle = NeedleModule and require(NeedleModule)
 
 local Hay = {}
 
@@ -17,9 +22,11 @@ local overlap = OverlapParams.new()
 
 local COLORS = {
 	Color3.fromRGB(219, 204, 153),
+	Color3.fromRGB(205, 189, 136),
 	Color3.fromRGB(189, 168, 112),
 	Color3.fromRGB(168, 149, 95),
 	Color3.fromRGB(133, 115, 71),
+	Color3.fromRGB(150, 148, 96), -- the odd greener stalk
 }
 
 Hay.folder = nil
@@ -87,26 +94,98 @@ local function trim()
 	end
 end
 
-function Hay.spawnPiece(position, velocity, ownerId)
+-- A loose strand of straw: thin, a little bent, in a spread of weathered hay colors.
+local function makeStraw()
 	local piece = Instance.new("Part")
-	piece.Name = "HayPiece"
-	piece.Size = Vector3.new(rng:NextNumber(0.9, 1.5), 0.3, 0.3)
-	piece.CFrame = CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.3, 0.3))
+	piece.Name = "Straw"
+	piece.Size = Vector3.new(rng:NextNumber(0.5, 1.1), rng:NextNumber(0.1, 0.14), rng:NextNumber(0.1, 0.14))
 	piece.Color = COLORS[rng:NextInteger(1, #COLORS)]
 	piece.Material = Enum.Material.Fabric
+	piece.CustomPhysicalProperties = PhysicalProperties.new(0.3, 1.2, 0, 1, 1)
+	return piece
+end
+
+local function addGlint(piece)
+	local glint = Instance.new("ParticleEmitter")
+	glint.Name = "Glint"
+	glint.Rate = 1.2
+	glint.Lifetime = NumberRange.new(0.25, 0.4)
+	glint.Speed = NumberRange.new(0)
+	glint.LightEmission = 1
+	glint.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.5, 0.35),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	glint.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	glint.Parent = piece
+end
+
+-- A needle hiding in the hay: a thin steel sliver that catches the light now and then, so a sharp eye can spot it.
+local function makeNeedle(cframe, ownerId)
+	if Needle then
+		local piece = Needle.make(cframe, ownerId)
+		addGlint(piece)
+		return piece
+	end
+	local piece = Instance.new("Part")
+	piece.Name = "Needle"
+	piece.Shape = Enum.PartType.Cylinder
+	piece.Size = Vector3.new(0.75, 0.09, 0.09)
+	piece.Color = Color3.fromRGB(196, 198, 202)
+	piece.Material = Enum.Material.Metal
+	piece.Reflectance = 0.35
+	piece.CustomPhysicalProperties = PhysicalProperties.new(2, 0.8, 0, 1, 1)
+	piece:SetAttribute("Needle", true)
+	addGlint(piece)
+	return piece
+end
+
+-- kind is "Needle" for a visible needle, otherwise a strand of straw.
+function Hay.spawnPiece(position, velocity, ownerId, kind)
+	local cframe = CFrame.new(position)
+		* CFrame.Angles(rng:NextNumber(-0.4, 0.4), rng:NextNumber(0, math.pi * 2), rng:NextNumber(-0.4, 0.4))
+	local piece = kind == "Needle" and makeNeedle(cframe, ownerId) or makeStraw()
+	piece.CFrame = cframe
 	piece.TopSurface = Enum.SurfaceType.Smooth
 	piece.BottomSurface = Enum.SurfaceType.Smooth
 	piece.CollisionGroup = Groups.Loose
-	piece.CustomPhysicalProperties = PhysicalProperties.new(0.4, 1, 0, 1, 1)
 	piece.AssemblyLinearVelocity = velocity
 	piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
 	piece:SetAttribute("OwnerId", ownerId)
 	pieces[piece] = os.clock()
 	count += 1
+	-- A needle can be clicked up and destroyed elsewhere, so forget a piece however it leaves.
+	piece.Destroying:Connect(function()
+		if pieces[piece] then
+			pieces[piece] = nil
+			count -= 1
+		end
+	end)
 	piece.Parent = Hay.folder
+	-- The server simulates loose hay. Otherwise a nearby player's client owns each strand's physics and quietly
+	-- overrides the rake's pull, which is why raking used to feel weak.
+	pcall(function()
+		piece:SetNetworkOwner(nil)
+	end)
 	trim()
 	return piece
 end
+
+function Hay.isNeedle(part)
+	if Needle and Needle.isNeedle(part) then
+		return true
+	end
+	return part:GetAttribute("Needle") == true
+end
+
+-- What a found needle is worth: the shared needle's full value, or the raw $1 without it.
+function Hay.needleValue(part)
+	return Needle and Needle.value(part) or 1
+end
+
+-- True when needles are the shared kind, which players pick up by clicking rather than with the shovel.
+Hay.sharedNeedles = Needle ~= nil
 
 -- Pieces within radius of position, nearest first, at most max of them.
 function Hay.near(position, radius, max)
@@ -155,24 +234,37 @@ function Hay.flyToPlayer(root, list)
 	end
 end
 
--- The rake drags pieces toward the player and spreads them sideways, so a pile smears across the ground.
-function Hay.rake(center, fromPosition, radius, ownerId)
-	local moved = 0
-	for _, piece in Hay.near(center, radius, nil) do
-		local toward = Vector3.new(fromPosition.X - piece.Position.X, 0, fromPosition.Z - piece.Position.Z)
-		local distance = toward.Magnitude
-		if distance > 3 then
-			local dir = toward.Unit
-			local side = Vector3.new(-dir.Z, 0, dir.X) * rng:NextNumber(-7, 7)
-			local speed = math.clamp(distance * 1.5, 8, 22)
-			piece.AssemblyLinearVelocity = dir * speed + side + Vector3.new(0, rng:NextNumber(4, 8), 0)
-			piece.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-6, 6), rng:NextNumber(-6, 6), rng:NextNumber(-6, 6))
-		end
+-- The rake gathers. For a short stroke every strand around the click slides along the ground toward a spot just in
+-- front of the player, so a scattered spill gets pulled into a neat row. Strands keep their own fall and tumble a
+-- little, but they are steered rather than flung, which suits small light straw.
+function Hay.rake(center, gatherAt, radius, ownerId)
+	local list = Hay.near(center, radius, nil)
+	for _, piece in list do
 		piece:SetAttribute("OwnerId", ownerId)
 		pieces[piece] = os.clock()
-		moved += 1
+		-- Each strand stops a slightly different distance short of the gather spot, so they pile in a row, not a point.
+		piece:SetAttribute("RakeStop", rng:NextNumber(0.6, 2.2))
 	end
-	return moved
+	task.spawn(function()
+		local started = os.clock()
+		while os.clock() - started < Config.RakeStrokeSeconds do
+			for _, piece in list do
+				if piece.Parent and pieces[piece] then
+					local toward = Vector3.new(gatherAt.X - piece.Position.X, 0, gatherAt.Z - piece.Position.Z)
+					local distance = toward.Magnitude
+					local fall = math.min(piece.AssemblyLinearVelocity.Y, 2)
+					if distance > (piece:GetAttribute("RakeStop") or 1) then
+						local speed = math.clamp(distance * 2.2, 3, Config.RakeMaxSpeed)
+						piece.AssemblyLinearVelocity = toward.Unit * speed + Vector3.new(0, fall, 0)
+					else
+						piece.AssemblyLinearVelocity = Vector3.new(0, fall, 0)
+					end
+				end
+			end
+			RunService.Heartbeat:Wait()
+		end
+	end)
+	return #list
 end
 
 return Hay
