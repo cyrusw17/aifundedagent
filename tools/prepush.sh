@@ -26,6 +26,7 @@ step "contracts";     python3 tools/check_contracts.py | tail -1; [ "${PIPESTATU
 step "mapcheck";      python3 tools/mapcheck/run.py "$LUAU" | grep -E "^TOTAL|^blocking"; [ "${PIPESTATUS[0]}" = 0 ] || bad "mapcheck"
 step "linecheck";     python3 tools/linecheck/run.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck"
 step "line math";     "$LUAU" tests/line_math.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/line_math.luau"
+step "haycheck";      python3 tools/haycheck/run.py "$LUAU" | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "haycheck"
 step "line_sim";      python3 tools/line_sim.py --check >/dev/null || { python3 tools/line_sim.py --check | tail -6; bad "line_sim --check"; }
 
 rm -rf "$TMP"
