@@ -43,8 +43,24 @@ def _longest(o):
     return "xyz"[ext.index(max(ext))]
 
 
+LOW = [False]  # set by low_poly(): pieces placed many times skip bevels and use fewer sides
+
+
+def low_poly(build):
+    """Build a tile placed many times (conveyors): no bevels, 6-sided cylinders."""
+    def wrapped(f):
+        LOW[0] = True
+        try:
+            return build(f)
+        finally:
+            LOW[0] = False
+    wrapped.__doc__ = build.__doc__
+    wrapped.__name__ = build.__name__
+    return wrapped
+
+
 def part(f, o, kind, along=None, rnd=True):
-    return f.apply(f.shape(o, round_edges=rnd), kind, along=along or _longest(o))
+    return f.apply(f.shape(o, round_edges=rnd and not LOW[0]), kind, along=along or _longest(o))
 
 
 def bx(f, size, loc, kind, along=None, rot=(0, 0, 0), rnd=True):
@@ -56,6 +72,8 @@ AXIS_ROT = {"x": (0, math.pi / 2, 0), "y": (math.pi / 2, 0, 0), "z": (0, 0, 0)}
 
 
 def cy(f, r, depth, loc, kind, axis="z", verts=12, rnd=True, along=None):
+    if LOW[0]:
+        verts = min(verts, 6)
     o = cyl(r * S, depth * S, tuple(c * S for c in loc), verts=verts, rot=AXIS_ROT[axis])
     return part(f, o, kind, along or axis, rnd)
 
@@ -413,8 +431,8 @@ def hopper_feeder(f):
     for y in (-2.85, 2.85):
         parts.append(bx(f, (5.6, 0.35, 0.35), (0, y, bot_z + 0.2), "handle", along="x"))
     # Hay filling the bin, heaped above the rim.
-    parts.append(frustum(f, (0, 0), bot_z + 0.3, (2.1, 2.7), top_z - 0.25, (5.0, 5.4), "hay"))
-    parts.append(frustum(f, (0.2, 0), top_z - 0.3, (4.8, 5.0), top_z + 0.9, (2.0, 2.4), "hay"))
+    parts += tag([frustum(f, (0, 0), bot_z + 0.3, (2.1, 2.7), top_z - 0.25, (5.0, 5.4), "hay"),
+                  frustum(f, (0.2, 0), top_z - 0.3, (4.8, 5.0), top_z + 0.9, (2.0, 2.4), "hay")], "HayFill")
     # Neck and slide gate.
     parts.append(frustum(f, (0, 0), 5.1, (2.0, 2.6), bot_z + 0.05, (2.6, 3.2), "handle", wall=0.22))
     parts.append(bx(f, (0.15, 3.4, 0.7), (1.15, 0, 5.6), "metal", along="y"))
@@ -497,7 +515,7 @@ def shaker_table(f):
     parts.append(obox(f, (wx + 0.3, -1.85, 2.4), (wx + 0.3, -2.4, 2.4), 0.16, 0.16, "handle"))
     parts.append(obox(f, (wx, -1.55, 2.9), (w / 2 + 0.1, -1.55, z - 0.3), 0.22, 0.22, "handle"))
     # Hay being shaken.
-    parts += tag(hay_lump(f, (-0.8, 0.2), (2.8, 2.6, 0.9), z), "Shaker")
+    parts += tag(hay_lump(f, (-0.8, 0.2), (2.8, 2.6, 0.9), z), "HayFill")
     return parts
 
 
@@ -1018,12 +1036,67 @@ def alien_collector(f):
     return parts
 
 
+def starbeam_collector(f):
+    """Starbeam collector (Conveyor's Starbeam.luau): an iron arch over one belt tile that catches a
+    falling star and drops a Star hay bale onto the belt every 10 minutes. A glowing five-point star
+    (tagged Star, spins about the vertical axis) hangs in an iron ring at the top, glow rings run down
+    the beam to a bale-sized cradle mouth just above the belt."""
+    parts = belt_run(f, -TILE / 2, TILE / 2)
+    top = 19.4
+    # Two curved iron legs on each side of the belt meet in a ring at the top.
+    for y in (-1, 1):
+        for x in (-1, 1):
+            foot = (x * 2.45, y * 2.45, 0.2)
+            knee = (x * 1.9, y * 2.6, 9.5)
+            crown = (x * 0.9, y * 1.8, top - 2.6)
+            parts.append(obox(f, foot, knee, 0.5, 0.5, "metal"))
+            parts.append(obox(f, knee, crown, 0.42, 0.42, "metal"))
+            parts.append(cy(f, 0.4, 0.3, (foot[0], foot[1], 0.15), "metal", verts=8))
+            parts.append(cy(f, 0.28, 0.28, knee, "glow", verts=6, rnd=False))
+    # Crown ring (vertical, across the belt) around the star.
+    n = 12
+    rr = 2.4
+    for i in range(n):
+        a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+        parts.append(obox(f, (0, rr * math.cos(a0 - 0.04), top + rr * math.sin(a0 - 0.04)),
+                          (0, rr * math.cos(a1 + 0.04), top + rr * math.sin(a1 + 0.04)), 0.4, 0.4, "metal", rnd=False))
+    parts.append(cy(f, 1.1, 1.0, (0, 0, top - 2.9), "metal", verts=10))
+    # The star: a thick five-point outline standing in the ring.
+    pts = []
+    for k in range(10):
+        a = math.pi / 2 + k * math.pi / 5
+        r = 1.8 if k % 2 == 0 else 0.75
+        pts.append((r * math.cos(a), top + r * math.sin(a)))
+    star = extrude(f, pts, "yz", -0.35, 0.35, "glow", rnd=False)
+    parts += tag([star], "Star")
+    # Beam: stacked glow rings from the crown down to the cradle.
+    for k in range(6):
+        z = top - 4.2 - k * 1.7
+        parts.append(cy(f, 1.3 - k * 0.06, 0.12, (0, 0, z), "glow", verts=12, rnd=False))
+    # Cradle mouth: an open iron frame the bale drops through, bale-sized, its bottom 1 stud above the belt.
+    z0 = BELT_Z + 1.0
+    for y in (-1.9, 1.9):
+        parts.append(bx(f, (5.4, 0.3, 0.3), (0, y, z0 + 3.0), "metal", rnd=False))
+        parts.append(bx(f, (5.4, 0.3, 0.3), (0, y, z0), "metal", rnd=False))
+    for x in (-2.6, 2.6):
+        parts.append(bx(f, (0.3, 4.1, 0.3), (x, 0, z0 + 3.0), "metal", rnd=False))
+        for y in (-1.9, 1.9):
+            parts.append(bx(f, (0.3, 0.3, 3.0), (x, y, z0 + 1.5), "metal", rnd=False))
+    for y in (-1.9, 1.9):
+        for x in (-2.6, 2.6):
+            parts.append(obox(f, (x, y, z0 + 3.0), (x * 0.4, y * 0.95, top - 4.2), 0.25, 0.25, "metal", rnd=False))
+    # Little star studs on the legs' feet so it reads as alien from far off.
+    for x, y in ((-2.45, -2.45), (2.45, -2.45), (-2.45, 2.45), (2.45, 2.45)):
+        parts.append(cy(f, 0.3, 0.2, (x, y, 0.4), "glow", verts=5, rnd=False))
+    return parts
+
+
 PROPS = {
-    "conveyor_straight": conveyor_straight,
-    "conveyor_corner": conveyor_corner,
-    "conveyor_ramp": conveyor_ramp,
-    "splitter": splitter,
-    "merger": merger,
+    "conveyor_straight": low_poly(conveyor_straight),
+    "conveyor_corner": low_poly(conveyor_corner),
+    "conveyor_ramp": low_poly(conveyor_ramp),
+    "splitter": low_poly(splitter),
+    "merger": low_poly(merger),
     "hopper_feeder": hopper_feeder,
     "hand_sieve": hand_sieve,
     "shaker_table": shaker_table,
@@ -1038,6 +1111,7 @@ PROPS = {
     "alloy_mixer": alloy_mixer,
     "sorter_boost_oil": sorter_boost_oil,
     "alien_collector": alien_collector,
+    "starbeam_collector": low_poly(starbeam_collector),
 }
 
 
