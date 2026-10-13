@@ -28,13 +28,13 @@ end
 -- The rarest hays these gloves handle with no extra slowdown, by name ("Desert grass and Frozen hay").
 local function rated(def: any): string?
 	local bestTier = -1
-	for _, hay in Gloves.HayTypes do
+	for _, hay: any in Gloves.HayTypes do
 		if hay.tier <= def.tier and hay.tier > bestTier then
 			bestTier = hay.tier
 		end
 	end
 	local names = {}
-	for _, hay in Gloves.HayTypes do
+	for _, hay: any in Gloves.HayTypes do
 		if hay.tier == bestTier then
 			table.insert(names, hay.name)
 		end
