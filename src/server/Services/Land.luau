@@ -2218,7 +2218,7 @@ local function mailbox(player, land)
 		player:SetAttribute("AwayCash", (player:GetAttribute("AwayCash") or 0) + cash)
 		player:SetAttribute("AwayBales", (player:GetAttribute("AwayBales") or 0) + bales)
 		player:SetAttribute("AwayNeedles", (player:GetAttribute("AwayNeedles") or 0) + found)
-		player:SetAttribute("AwaySeconds", math.max(player:GetAttribute("AwaySeconds") or 0, away))
+		player:SetAttribute("AwaySeconds", math.max((player:GetAttribute("AwaySeconds") or 0) :: number, away))
 	end
 	local hours = away / 3600
 	local when = hours >= 1 and ("%.1f hours"):format(hours) or ("%d minutes"):format(math.floor(away / 60))
