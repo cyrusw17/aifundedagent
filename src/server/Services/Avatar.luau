@@ -56,26 +56,13 @@ local function buildTool(name, tip, parts)
 end
 
 -- Gives a part-built tool the Rustic Blender prop's look when it was imported. The part tool stays as the fallback,
--- shown until the mesh has loaded on each client (see Props.weldTo). The prop is turned blade-up (it is modeled
--- blade-down) so the blade leads like the part tools, and it spans the same length as the part tool, from the end
--- of the handle to the tip of the blade, so the swap never shrinks what is in your hand.
+-- shown until the mesh has loaded on each client (see Props.weldTo). The prop keeps its true Blender size (a small
+-- shovel, as Cyrus asked) and is turned blade-up (it is modeled blade-down) so the blade leads like the part tools,
+-- with the end of its handle just below the hand.
 local function addMesh(tool, prop)
 	local handle = tool.Handle
-	local low, high = math.huge, -math.huge
-	for _, part in tool:GetDescendants() do
-		if part:IsA("BasePart") then
-			local y = handle.CFrame:ToObjectSpace(part.CFrame).Y
-			local half = part.Size.Y / 2
-			low = math.min(low, y - half)
-			high = math.max(high, y + half)
-		end
-	end
-	local length = high - low
-	if length <= 0 then
-		length = PropsConfig.Sizes[prop]
-		low = -PropsConfig.GripFromEnd
-	end
-	local center = CFrame.new(0, low + length / 2, 0)
+	local length = PropsConfig.Sizes[prop]
+	local center = CFrame.new(0, length / 2 - PropsConfig.GripFromEnd, 0)
 	local model = Props.make(prop, handle.CFrame * center, length, CFrame.Angles(0, 0, math.pi))
 	if model then
 		Props.weldTo(model, handle, tool)
