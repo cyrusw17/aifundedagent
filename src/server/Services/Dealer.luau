@@ -356,6 +356,16 @@ local function onBuy(player, id)
 	return true, ("Sold! The %s is yours. Watch the garage door."):format(def.name)
 end
 
+-- For self-tests (SelfTests/Biome.luau): the same purchase the counter panel makes.
+Dealer.buy = function(player, id)
+	return onBuy(player, id)
+end
+
+-- Where a player stands to buy: the sales rug in front of the counter.
+function Dealer.counterPosition()
+	return counter and counter.Position
+end
+
 function Dealer.build(worldFolder)
 	folder = Instance.new("Folder")
 	folder.Name = "Dealer"

@@ -117,14 +117,17 @@ function Catalog.items(tab)
 	elseif tab == "Build" then
 		local hasLand = (attr("LandPlot") or 0) > 0
 		for _, def in LandConfig.Pieces do
-			table.insert(rows, {
-				id = def.id,
-				name = def.name,
-				blurb = def.blurb,
-				price = Prices.Pieces[def.id] or def.price,
-				state = hasLand and "buy" or "needland",
-				place = hasLand and "plot" or "landoffice",
-			})
+			-- Quest rewards (Starbeam Collector) are earned, not bought.
+			if not def.quest then
+				table.insert(rows, {
+					id = def.id,
+					name = def.name,
+					blurb = def.blurb,
+					price = Prices.Pieces[def.id] or def.price,
+					state = hasLand and "buy" or "needland",
+					place = hasLand and "plot" or "landoffice",
+				})
+			end
 		end
 	elseif tab == "Trailers" then
 		for _, def in Trailers do

@@ -385,14 +385,29 @@ Waypoint.changed.Event:Connect(function(position)
 	end
 end)
 
+-- Truck models, found once and then as they arrive (scanning the whole world every second stutters on phones).
+local trucks = {}
+local function noteTruck(d)
+	if d:IsA("Model") and d:GetAttribute("TruckId") then
+		trucks[d] = true
+	end
+end
+for _, d in Workspace:GetDescendants() do
+	noteTruck(d)
+end
+Workspace.DescendantAdded:Connect(noteTruck)
+Workspace.DescendantRemoving:Connect(function(d)
+	trucks[d] = nil
+end)
+
 local truckDots = {}
 local function refreshTrucks()
 	for _, d in truckDots do
 		d:Destroy()
 	end
 	table.clear(truckDots)
-	for _, model in Workspace:GetDescendants() do
-		if model:IsA("Model") and model:GetAttribute("TruckId") and model:GetAttribute("OwnerId") == player.UserId then
+	for model in trucks do
+		if model.Parent and model:GetAttribute("OwnerId") == player.UserId then
 			local p = model:GetPivot().Position
 			local d =
 				Kit.label(canvas, "TRUCK", { size = 10, font = F.Bold, color = C.Ink, align = "center", wrap = false })
@@ -981,5 +996,9 @@ Menus.event("ShopTab").Event:Connect(function(tabName)
 	if index then
 		currentTab = index
 	end
-	Menus.open("Shop")
+	if Menus.current() == "Shop" then
+		selectTab(currentTab)
+	else
+		Menus.open("Shop")
+	end
 end)

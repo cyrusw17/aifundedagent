@@ -61,7 +61,9 @@ function Hay.init(parent)
 			local now = os.clock()
 			for piece, born in pieces do
 				-- Needles stay much longer than straw, so there is time to find them, but not forever.
-				local life = if needleSet[piece] then Config.LooseNeedleLifetime else Config.LooseHayLifetime
+				local life = if needleSet[piece] or piece:GetAttribute("Strands")
+					then Config.LooseNeedleLifetime
+					else Config.LooseHayLifetime
 				if now - born > life then
 					Hay.fadeOut(piece)
 				end
@@ -96,7 +98,9 @@ local function trimKind(isNeedle, over)
 	while over() do
 		local oldest, oldestTime = nil, math.huge
 		for piece, born in pieces do
-			if born < oldestTime and (needleSet[piece] == true) == isNeedle then
+			-- Piles are a player's raked work, so the cap never takes them.
+			local kindMatches = (needleSet[piece] == true) == isNeedle and not piece:GetAttribute("Strands")
+			if born < oldestTime and kindMatches then
 				oldest, oldestTime = piece, born
 			end
 		end
@@ -264,6 +268,97 @@ end
 -- The rake gathers. For a short stroke every strand around the click slides along the ground toward a spot just in
 -- front of the player, so a scattered spill gets pulled into a neat row. Strands keep their own fall and tumble a
 -- little, but they are steered rather than flung, which suits small light straw.
+-- How many strands a loose piece stands for: 1, or a whole pile's worth.
+function Hay.strandsIn(piece)
+	return piece:GetAttribute("Strands") or 1
+end
+
+function Hay.isPile(piece)
+	return piece:GetAttribute("Strands") ~= nil
+end
+
+-- Sizes a pile's mound to how much hay is in it.
+local function shapePile(pile, n)
+	local width = math.min(1.6 + n * 0.035, 6)
+	local height = math.min(0.5 + n * 0.012, 2.2)
+	pile.Size = Vector3.new(width, height, width * 0.85)
+	pile:SetAttribute("Strands", n)
+end
+
+-- Takes n strands off a pile (for a scoop that has less room than the pile). The rest stays.
+function Hay.takeFromPile(pile, n)
+	local left = Hay.strandsIn(pile) - n
+	if left <= 0 then
+		Hay.remove(pile)
+	else
+		shapePile(pile, left)
+	end
+end
+
+-- Packs the loose strands raked around a spot into one pile, once there are PileMin of them (an existing pile there
+-- grows instead). Sorted hay only piles with sorted hay, so a pile is sorted or not as a whole.
+local function packPile(at, ownerId)
+	local groups = {}
+	for _, piece in Hay.near(at, Config.PileRadius, nil) do
+		if not needleSet[piece] then
+			local key = piece:GetAttribute("Sorted") and "sorted" or "raw"
+			groups[key] = groups[key] or { strands = 0, parts = {}, pile = nil }
+			local g = groups[key]
+			if Hay.isPile(piece) and not g.pile then
+				g.pile = piece
+			else
+				table.insert(g.parts, piece)
+			end
+			g.strands += Hay.strandsIn(piece)
+		end
+	end
+	for key, g in groups do
+		if g.strands >= Config.PileMin and (#g.parts > 0) then
+			local pile = g.pile
+			if not pile then
+				local first = g.parts[1]
+				local hayType = first:GetAttribute("HayType") or "meadow"
+				local look = Hay.look(hayType)
+				local c = look.colors[1]
+				pile = Instance.new("Part")
+				pile.Name = "HayPile"
+				pile.Color = Color3.fromRGB(c[1], c[2], c[3])
+				pile.Material = Enum.Material.Fabric
+				pile.CollisionGroup = Groups.Loose
+				pile.CustomPhysicalProperties = PhysicalProperties.new(0.6, 1.5, 0, 1, 1)
+				-- A rounded mound: a sphere mesh stretched to the part (a Ball part would have to stay round).
+				local mound = Instance.new("SpecialMesh")
+				mound.MeshType = Enum.MeshType.Sphere
+				mound.Parent = pile
+				pile:SetAttribute("HayType", hayType)
+				if key == "sorted" then
+					pile:SetAttribute("Sorted", true)
+				end
+				pile:SetAttribute("OwnerId", ownerId)
+				shapePile(pile, g.strands)
+				pile.CFrame = CFrame.new(at.X, at.Y + pile.Size.Y / 2, at.Z)
+				pieces[pile] = os.clock()
+				count += 1
+				pile.Destroying:Connect(function()
+					forget(pile)
+				end)
+				pile.Parent = Hay.folder
+				pcall(function()
+					pile:SetNetworkOwner(nil)
+				end)
+			end
+			for _, piece in g.parts do
+				Hay.remove(piece)
+			end
+			-- Grow it upward, so the bigger mound does not sink into the ground and pop out.
+			local oldHeight = pile.Size.Y
+			shapePile(pile, g.strands)
+			pile.CFrame += Vector3.new(0, (pile.Size.Y - oldHeight) / 2, 0)
+			pieces[pile] = os.clock()
+		end
+	end
+end
+
 function Hay.rake(center, gatherAt, radius, ownerId)
 	local list = Hay.near(center, radius, nil)
 	for _, piece in list do
@@ -293,6 +388,9 @@ function Hay.rake(center, gatherAt, radius, ownerId)
 			end
 			RunService.Heartbeat:Wait()
 		end
+		-- Raking a big enough heap together packs it into one pile the shovel can take at once.
+		task.wait(0.25)
+		packPile(gatherAt - Vector3.new(0, 2.5, 0), ownerId)
 	end)
 	return #list
 end

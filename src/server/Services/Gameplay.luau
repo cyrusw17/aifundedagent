@@ -108,9 +108,10 @@ local function sellPieces(pieces)
 				+ math.floor(Hay.needleValue(piece) * Prices.HandFoundNeedleShare)
 			byOwner[ownerId] = byOwner[ownerId] or 0
 		else
-			byOwner[ownerId] = (byOwner[ownerId] or 0) + 1
+			local n = Hay.strandsIn(piece) -- a raked pile counts as all the strands in it
+			byOwner[ownerId] = (byOwner[ownerId] or 0) + n
 			if not piece:GetAttribute("Sorted") then
-				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + 1
+				unsortedByOwner[ownerId] = (unsortedByOwner[ownerId] or 0) + n
 			end
 		end
 		Hay.remove(piece)
