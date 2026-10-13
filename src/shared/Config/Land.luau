@@ -43,11 +43,15 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = Prices.Pieces.conveyor_sorter, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = Prices.Pieces.magnet_drum, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = Prices.Pieces.optical_sorter, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		{ id = "splitter", kind = "splitter", rule = "alternate", name = "Splitter", price = Prices.Pieces.splitter, size = { 1, 1 }, blurb = "Sends loads out its left and right sides in turn. Put belts on both sides." },
+		{ id = "sort_splitter", kind = "splitter", rule = "sorted", name = "Sorted splitter", price = Prices.Pieces.sort_splitter, size = { 1, 1 }, blurb = "Sorted bales go left, everything else right, so unsorted hay can loop back to a sorter." },
+		{ id = "display_wall", kind = "display", name = "Needle display", price = Prices.Pieces.display_wall, size = { 1, 1 }, blurb = "Show off your rarest needles. Click a peg to hang one from your pocket." },
+		{ id = "hay_press", kind = "press", name = "Hay press", price = Prices.Pieces.hay_press, size = { 1, 2 }, blurb = "Presses sorted bales into thatch blocks. Click a block to carry its thatch for blueprints." },
 		-- Blueprints (LT2 style): place a see-through template, then fill it. Drop bales into it for thatch, or use
-		-- needles from your pocket at it for iron. bales / needles is how much it takes.
-		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, blurb = "Fill with 1 bale (thatch) or 4 needles (iron)." },
-		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, blurb = "A wall along the back of the tile. Fill with 3 bales or 12 needles." },
-		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, blurb = "Fill with 2 bales or 8 needles." },
+		-- needles from your pocket at it for iron, or thatch from a hay press. bales / needles / thatch is how much it takes.
+		{ id = "blueprint_post", kind = "blueprint", shape = "post", name = "Fence post blueprint", price = Prices.Pieces.blueprint_post, size = { 1, 1 }, bales = 1, needles = 4, thatch = 1, blurb = "Fill with 1 bale or 1 thatch, or 4 needles for iron." },
+		{ id = "blueprint_wall", kind = "blueprint", shape = "wall", name = "Wall blueprint", price = Prices.Pieces.blueprint_wall, size = { 1, 1 }, bales = 3, needles = 12, thatch = 4, blurb = "A wall along the back of the tile. Fill with 3 bales, 4 thatch or 12 needles." },
+		{ id = "blueprint_floor", kind = "blueprint", shape = "floor", name = "Floor tile blueprint", price = Prices.Pieces.blueprint_floor, size = { 1, 1 }, bales = 2, needles = 8, thatch = 2, blurb = "Fill with 2 bales, 2 thatch or 8 needles." },
 	},
 
 	SiloCapacity = 60, -- bales
