@@ -36,7 +36,7 @@ Saving: DataStores only work in Studio if the place is published to Roblox and G
 
 Each tool does one job. Number keys (or the hotbar) switch tools; press the same number again for bare hands.
 
-- **Picking up a barrel:** walk up to it and a small "Pick up" button appears. Click or tap it (or press F). It works with any tool in hand and puts the tool away. You carry the real barrel and walk slower. The button changes to "Put down"; click it, click anywhere, or press G to set the barrel down. It falls and rolls. A barrel left out in the field disappears after 3 minutes; set it on the brown BARREL DROP-OFF pad by the spawn and it stays until you smash or sell it.
+- **Picking up a barrel:** walk up to it and a small "Pick up" button appears. Click or tap it (or press F). It only shows with empty hands: press the tool's number again to put the tool away. With a tool out, clicks go to the tool. You carry the real barrel and walk slower. The button changes to "Put down"; click it, click anywhere, or press G to set the barrel down. It falls and rolls. A barrel left out in the field disappears after 3 minutes; set it on the brown BARREL DROP-OFF pad by the spawn and it stays until you smash or sell it.
 - **Shovel (slot 1, equipped on spawn):** face a barrel and click: it smashes open, the staves and hoops fly apart and the hay spills out as a pile of loose pieces. Face the pile and click to scoop a few pieces at a time into your arms.
 - **Rake (slot 2):** face loose hay and click. The rake drags the pieces toward you and spreads them across the ground.
 - **Selling:** the yellow SELL pad in front of the hay shop sells automatically. Step onto it holding hay, set a whole barrel on it, or rake loose pieces onto it.

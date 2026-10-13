@@ -278,6 +278,9 @@ function Barrels.pickup(player, b)
 	if not state or not root or state.carryBarrel or b.gone or b.carriedBy or b.breaking then
 		return
 	end
+	if Avatar.equippedKind(player) ~= nil then
+		return -- only bare hands lift a whole barrel; with a tool out, a click belongs to the tool
+	end
 	if (b.body.Position - root.Position).Magnitude > Config.PickupReach + 4 then
 		return
 	end
@@ -302,7 +305,7 @@ function Barrels.pickup(player, b)
 	b.prompt.ActionText = "Put down"
 
 	scheduleRegrow(b)
-	Avatar.setCarry(player) -- puts any tool away, since a barrel takes both hands
+	Avatar.setCarry(player)
 	Data.sync(player)
 end
 

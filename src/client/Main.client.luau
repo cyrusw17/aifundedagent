@@ -152,15 +152,41 @@ end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 
 -- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
+-- The barrels' Pick up buttons are for bare hands only. With a tool out they are hidden, so a click with the
+-- shovel or rake goes to the tool instead of grabbing the barrel. This setting only affects this player.
+local CollectionService = game:GetService("CollectionService")
+local promptsOn = true
+
+local function setPrompt(barrel)
+	local prompt = barrel:FindFirstChildOfClass("ProximityPrompt") or barrel:WaitForChild("ProximityPrompt", 5)
+	if prompt then
+		prompt.Enabled = promptsOn
+	end
+end
+
+local function updatePrompts()
+	local character = player.Character
+	promptsOn = not (character and character:FindFirstChildOfClass("Tool"))
+	for _, barrel in CollectionService:GetTagged("HayBarrel") do
+		task.spawn(setPrompt, barrel)
+	end
+end
+CollectionService:GetInstanceAddedSignal("HayBarrel"):Connect(setPrompt)
+
 local function watchCharacter(character)
 	for _, child in character:GetChildren() do
 		hookTool(child)
 	end
 	character.ChildAdded:Connect(function(child)
 		hookTool(child)
+		updatePrompts()
 		refresh()
 	end)
-	character.ChildRemoved:Connect(refresh)
+	character.ChildRemoved:Connect(function()
+		updatePrompts()
+		refresh()
+	end)
+	updatePrompts()
 	refresh()
 end
 player.CharacterAdded:Connect(watchCharacter)
