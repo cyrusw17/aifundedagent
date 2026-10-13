@@ -130,10 +130,14 @@ CFrame = {
 }
 
 -- Odds and ends ---------------------------------------------------------------------------------------------------
+local C3 = {}
+C3.__index = C3
+local function c3(r, g, b) return setmetatable({ R = r, G = g, B = b }, C3) end
+function C3.Lerp(a, b, t) return c3(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t) end
 Color3 = {
-	new = function(r, g, b) return { R = r, G = g, B = b } end,
-	fromRGB = function(r, g, b) return { R = r / 255, G = g / 255, B = b / 255 } end,
-	fromHSV = function(h, s, v) return { R = v, G = v, B = v } end,
+	new = function(r, g, b) return c3(r or 0, g or 0, b or 0) end,
+	fromRGB = function(r, g, b) return c3(r / 255, g / 255, b / 255) end,
+	fromHSV = function(h, s, v) return c3(v, v, v) end,
 }
 UDim2 = {
 	new = function(...) return { ... } end,
