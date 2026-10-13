@@ -1,10 +1,10 @@
 --!nonstrict
 -- What each tool does when you click with it. The click itself comes from the tool's server-side Activated
 -- signal. The client also reports where the click pointed (ToolAim), so a tool works on the exact hay piece or
--- barrel you clicked. If no aim arrives, the tool works on what is in front of you.
---   shovel: smash the clicked barrel, or scoop the clicked hay piece and the pieces next to it
+-- bale you clicked. If no aim arrives, the tool works on what is in front of you.
+--   shovel: smash the clicked bale, or scoop the clicked hay piece and the pieces next to it
 --   rake:   drag the loose pieces around the click back toward you, spreading them across the ground
--- Bare hands lift a whole barrel with its Pick up button (see Barrels.luau).
+-- Bare hands lift a whole bale with its Pick up button (see Bales.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -12,7 +12,7 @@ local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
-local Barrels = require(script.Parent.Barrels)
+local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 
 local Tools = {}
@@ -53,15 +53,15 @@ local function currentAim(player, root)
 end
 
 local function useShovel(player, root, aim)
-	local barrel
+	local bale
 	if aim then
-		barrel = aim.part and Barrels.fromPart(aim.part)
+		bale = aim.part and Bales.fromPart(aim.part)
 	else
-		barrel = Barrels.inFront(root, Config.ShovelReach)
+		bale = Bales.inFront(root, Config.ShovelReach)
 	end
-	if barrel and not barrel.carriedBy then
+	if bale and not bale.carriedBy then
 		Avatar.swing(player, "Shovel", function()
-			Barrels.breakOpen(player, barrel)
+			Bales.breakOpen(player, bale)
 		end)
 		return
 	end
@@ -81,7 +81,7 @@ local function useShovel(player, root, aim)
 	end
 
 	if #targetPieces(1) == 0 then
-		Data.toast(player, "No hay there. Click a barrel or a hay piece.")
+		Data.toast(player, "No hay there. Click a bale or a hay piece.")
 		return
 	end
 	if state.loadHay + Config.HayPerPiece > Config.CarryCapacity then
@@ -128,7 +128,7 @@ function Tools.init()
 	Avatar.onToolActivated = function(player, kind)
 		local root = Avatar.getRoot(player)
 		local state = Data.get(player)
-		if not root or not state or state.carryBarrel then
+		if not root or not state or state.carryBale then
 			return
 		end
 		local aim = currentAim(player, root)
@@ -139,12 +139,12 @@ function Tools.init()
 		end
 	end
 
-	-- Putting a carried barrel down from the keyboard (G) or a click. The barrel's own button does the same.
+	-- Putting a carried bale down from the keyboard (G) or a click. The bale's own button does the same.
 	local dropRemote = Instance.new("RemoteEvent")
-	dropRemote.Name = "DropBarrel"
+	dropRemote.Name = "DropBale"
 	dropRemote.Parent = ReplicatedStorage
 	dropRemote.OnServerEvent:Connect(function(player)
-		Barrels.drop(player)
+		Bales.drop(player)
 	end)
 end
 

@@ -51,7 +51,7 @@ end
 
 -- The shaft and blade point out of the top of the handle, so the blade leads when the arm reaches forward.
 local function buildShovel()
-	return buildTool("Shovel", "Face a barrel to smash it, or a pile to scoop it, and click.", {
+	return buildTool("Shovel", "Face a bale to smash it, or a pile to scoop it, and click.", {
 		{ "Shaft", Vector3.new(0.4, 3, 0.4), CFrame.new(0, 2.3, 0), WOOD, Enum.Material.Wood },
 		{
 			"Blade",
@@ -137,7 +137,7 @@ local function setup(player, character)
 	}
 	rigs[player] = rig
 
-	-- No shovel while carrying a barrel.
+	-- No shovel while carrying a bale.
 	character.ChildAdded:Connect(function(child)
 		if rig.carrying and child:IsA("Tool") then
 			task.defer(function()
@@ -233,7 +233,7 @@ function Avatar.swing(player, kind, onImpact)
 	return true
 end
 
--- Both arms hold a barrel in front of the chest; walking slows down and the shovel is put away.
+-- Both arms hold a bale in front of the chest; walking slows down and the shovel is put away.
 function Avatar.setCarry(player)
 	local rig = rigs[player]
 	if not rig or rig.carrying then

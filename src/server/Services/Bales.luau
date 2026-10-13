@@ -1,6 +1,7 @@
 --!nonstrict
--- Hay barrels. Bare hands lift a whole barrel and carry it. The shovel smashes it open: the staves fly apart and
--- the hay spills into a pile of loose pieces (see Hay.luau). A set-down barrel falls and rolls like any object.
+-- Wrapped hay bales. Bare hands lift a whole bale and carry it. Set one down and it lands on whatever is in front
+-- of you, so bales stack into piles. The shovel cuts a bale open: the twine snaps and the hay spills into a pile of
+-- loose pieces (see Hay.luau). Bales are real physical blocks.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
@@ -13,52 +14,56 @@ local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
 
-local Barrels = {}
+local Bales = {}
 
 local rng = Random.new()
 local folder = nil
-local dropOff = nil -- the pad where set-down barrels are kept for later
-local byBody = {} -- barrel body part -> barrel record
+local dropOff = nil -- the pad where set-down bales are kept for later
+local byBody = {} -- bale body part -> bale record
 
-local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X, so this stands them up
-local HAY_BASE = CFrame.new(2.6, 0, 0) -- the hay sits on the top end of the barrel, along its X axis
-local CARRY_OFFSET = CFrame.new(0, 0.3, -2.6) * UPRIGHT
-local WOOD = Color3.fromRGB(139, 90, 43)
-local HAY = Color3.fromRGB(232, 201, 90)
+local SIZE = Vector3.new(4.6, 2.6, 3.2) -- length, height, depth of one bale
+local CARRY_OFFSET = CFrame.new(0, 0.4, -2.8)
+local HAY = Color3.fromRGB(226, 190, 92)
+local TWINE = Color3.fromRGB(120, 86, 48)
+local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
 
-local function buildBarrel(position)
+local function buildBale(position)
 	local body = Instance.new("Part")
-	body.Name = "HayBarrel"
-	body.Shape = Enum.PartType.Cylinder
-	body.Size = Vector3.new(5, 4, 4)
-	body.CFrame = CFrame.new(position + Vector3.new(0, 2.5, 0)) * UPRIGHT
-	body.Color = WOOD
-	body.Material = Enum.Material.Wood
+	body.Name = "HayBale"
+	body.Size = SIZE
+	body.CFrame = CFrame.new(position + Vector3.new(0, SIZE.Y / 2, 0)) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0)
+	body.Color = HAY
+	body.Material = Enum.Material.Fabric
+	body.TopSurface = Enum.SurfaceType.Smooth
+	body.BottomSurface = Enum.SurfaceType.Smooth
 	body.Anchored = true
-	body.CustomPhysicalProperties = PhysicalProperties.new(0.6, 0.8, 0.2, 1, 1)
+	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart.
+	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
 
-	local hay = Instance.new("Part")
-	hay.Name = "HayTop"
-	hay.Shape = Enum.PartType.Cylinder
-	hay.Size = Vector3.new(0.8, 3.6, 3.6)
-	hay.CFrame = body.CFrame * HAY_BASE
-	hay.Color = HAY
-	hay.Material = Enum.Material.Fabric
-	hay.CanCollide = false
-	hay.Massless = true
-	hay.Parent = body
+	-- The twine bands wrap the bale. They are visual only and ride along with it.
+	for _, x in TWINE_X do
+		local band = Instance.new("Part")
+		band.Name = "Twine"
+		band.Size = Vector3.new(0.12, SIZE.Y + 0.06, SIZE.Z + 0.06)
+		band.CFrame = body.CFrame * CFrame.new(x, 0, 0)
+		band.Color = TWINE
+		band.Material = Enum.Material.Fabric
+		band.CanCollide = false
+		band.CanQuery = false
+		band.Massless = true
+		band.Parent = body
+		local weld = Instance.new("Weld")
+		weld.Part0 = body
+		weld.Part1 = band
+		weld.C0 = CFrame.new(x, 0, 0)
+		weld.Parent = band
+	end
 
-	local weld = Instance.new("Weld")
-	weld.Part0 = body
-	weld.Part1 = hay
-	weld.C0 = HAY_BASE
-	weld.Parent = hay
-
-	-- The small Pick up / Put down button. Click or tap it (or press its key). It lives on the barrel, so
+	-- The small Pick up / Put down button. Click or tap it (or press its key). It lives on the bale, so
 	-- while you carry it the button travels with you and puts it down.
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Pick up"
-	prompt.ObjectText = "Hay barrel"
+	prompt.ObjectText = "Hay bale"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.PickupReach
 	prompt.RequiresLineOfSight = false
@@ -67,12 +72,12 @@ local function buildBarrel(position)
 	prompt.UIOffset = Vector2.new(0, 24)
 	prompt.Parent = body
 
-	CollectionService:AddTag(body, "HayBarrel")
-	return body, hay, prompt
+	CollectionService:AddTag(body, "HayBale")
+	return body, prompt
 end
 
--- Removes a barrel from the world for good (sold, smashed, or timed out).
-function Barrels.consume(b)
+-- Removes a bale from the world for good (sold, smashed, or timed out).
+function Bales.consume(b)
 	if b.gone then
 		return
 	end
@@ -81,8 +86,8 @@ function Barrels.consume(b)
 	b.body:Destroy()
 end
 
--- The nearest barrel standing within reach and roughly in front of the player, or nil.
-function Barrels.inFront(root, reach)
+-- The nearest bale standing within reach and roughly in front of the player, or nil.
+function Bales.inFront(root, reach)
 	local look = root.CFrame.LookVector
 	local best, bestDistance = nil, reach
 	for body, b in byBody do
@@ -99,12 +104,12 @@ function Barrels.inFront(root, reach)
 	return best
 end
 
-function Barrels.fromPart(part)
+function Bales.fromPart(part)
 	return byBody[part] or (part.Parent and byBody[part.Parent]) or nil
 end
 
--- True when the barrel rests on the drop-off pad (checked in the pad's own flat space, ignoring height).
-function Barrels.isAtDropOff(b)
+-- True when the bale rests on the drop-off pad (checked in the pad's own flat space, ignoring height).
+function Bales.isAtDropOff(b)
 	if not dropOff or b.gone then
 		return false
 	end
@@ -112,7 +117,7 @@ function Barrels.isAtDropOff(b)
 	return math.abs(spot.X) <= dropOff.Size.X / 2 and math.abs(spot.Z) <= dropOff.Size.Z / 2 and spot.Y < 8
 end
 
--- Barrels left out in the world disappear after a while. Barrels on the drop-off pad are kept.
+-- Bales left out in the world disappear after a while. Bales on the drop-off pad are kept.
 local function startDespawnTimer(b)
 	b.dropToken += 1
 	local token = b.dropToken
@@ -120,27 +125,27 @@ local function startDespawnTimer(b)
 		if b.gone or b.carriedBy or b.home or b.dropToken ~= token then
 			return
 		end
-		if Barrels.isAtDropOff(b) then
-			task.delay(Config.DroppedBarrelSeconds, check) -- still stored, look again later
+		if Bales.isAtDropOff(b) then
+			task.delay(Config.DroppedBaleSeconds, check) -- still stored, look again later
 			return
 		end
-		Barrels.consume(b)
+		Bales.consume(b)
 	end
-	task.delay(Config.DroppedBarrelSeconds, check)
+	task.delay(Config.DroppedBaleSeconds, check)
 end
 
-function Barrels.setDropOff(part)
+function Bales.setDropOff(part)
 	dropOff = part
 end
 
--- A home barrel is gone from its spot (smashed or lifted), so a fresh one grows back there.
+-- A home bale is gone from its spot (smashed or lifted), so a fresh one grows back there.
 local function scheduleRegrow(b)
 	if not b.home then
 		return
 	end
 	b.home = false
-	task.delay(Config.BarrelRefillSeconds, function()
-		Barrels.spawn(b.spawnPosition, true, true)
+	task.delay(Config.BaleRefillSeconds, function()
+		Bales.spawn(b.spawnPosition, true, true)
 	end)
 end
 
@@ -164,7 +169,7 @@ local function debrisPart(shape, size, cframe, color, material, velocity)
 	return part
 end
 
--- Straw and dust thrown up when the barrel bursts.
+-- Straw and dust thrown up when the bale bursts.
 local function burstEffects(position)
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
@@ -201,9 +206,9 @@ local function burstEffects(position)
 	Debris:AddItem(anchor, 2.5)
 end
 
--- The shovel smashes a barrel open: it shudders, the staves and hoops burst outward, and the hay
+-- The shovel cuts a bale open: it shudders, the twine snaps, the bale bursts into flakes, and the hay
 -- pours out in three waves into a pile.
-function Barrels.breakOpen(player, b)
+function Bales.breakOpen(player, b)
 	if b.gone or b.carriedBy or b.breaking then
 		return
 	end
@@ -222,64 +227,57 @@ function Barrels.breakOpen(player, b)
 		end
 
 		local center = rest.Position
-		Barrels.consume(b)
+		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0))
 
-		local barrelOwner = player.UserId
-		for i = 1, 12 do
-			local angle = (i / 12) * math.pi * 2
-			local radial = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			local cframe = CFrame.new(center + radial * 1.85) * CFrame.Angles(0, -angle, 0)
+		local baleOwner = player.UserId
+		-- The twine snaps and flies off, and the bale's packed hay bursts into flakes.
+		for _, x in TWINE_X do
 			debrisPart(
 				Enum.PartType.Block,
-				Vector3.new(0.35, 4.6, 1.0),
-				cframe,
-				WOOD,
-				Enum.Material.Wood,
-				radial * rng:NextNumber(10, 18) + Vector3.new(0, rng:NextNumber(8, 16), 0)
+				Vector3.new(0.12, 0.12, SIZE.Z + 0.5),
+				rest * CFrame.new(x, SIZE.Y / 2, 0),
+				TWINE,
+				Enum.Material.Fabric,
+				Vector3.new(rng:NextNumber(-6, 6), rng:NextNumber(10, 14), rng:NextNumber(-6, 6))
 			)
 		end
-		for _, y in { -1.4, 1.4 } do
+		for i = 1, 6 do
+			local x = -SIZE.X / 2 + (i - 0.5) * SIZE.X / 6
+			local flake = rest * CFrame.new(x, 0, 0)
+			local out = (flake.Position - center).Unit
 			debrisPart(
-				Enum.PartType.Cylinder,
-				Vector3.new(0.25, 4.3, 4.3),
-				CFrame.new(center + Vector3.new(0, y, 0)) * UPRIGHT,
-				Color3.fromRGB(70, 70, 76),
-				Enum.Material.Metal,
-				Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(6, 10), rng:NextNumber(-4, 4))
+				Enum.PartType.Block,
+				Vector3.new(SIZE.X / 6, SIZE.Y * 0.8, SIZE.Z * 0.8),
+				flake,
+				HAY,
+				Enum.Material.Fabric,
+				out * rng:NextNumber(6, 10) + Vector3.new(rng:NextNumber(-2, 2), rng:NextNumber(5, 9), rng:NextNumber(-2, 2))
 			)
 		end
-		debrisPart(
-			Enum.PartType.Cylinder,
-			Vector3.new(0.4, 3.8, 3.8),
-			CFrame.new(center + Vector3.new(0, -2.2, 0)) * UPRIGHT,
-			WOOD,
-			Enum.Material.Wood,
-			Vector3.new(rng:NextNumber(-3, 3), 3, rng:NextNumber(-3, 3))
-		)
 
 		-- The hay pours out in waves so it looks like it spills, not like it teleports.
 		local waves = 3
-		local perWave = math.ceil(Config.PiecesPerBarrel / waves)
+		local perWave = math.ceil(Config.PiecesPerBale / waves)
 		for wave = 1, waves do
 			for _ = 1, perWave do
 				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
-				Hay.spawnPiece(center + offset, velocity, barrelOwner)
+				Hay.spawnPiece(center + offset, velocity, baleOwner)
 			end
 			task.wait(0.22)
 		end
 	end)
 end
 
-function Barrels.pickup(player, b)
+function Bales.pickup(player, b)
 	local state = Data.get(player)
 	local root = Avatar.getRoot(player)
-	if not state or not root or state.carryBarrel or b.gone or b.carriedBy or b.breaking then
+	if not state or not root or state.carryBale or b.gone or b.carriedBy or b.breaking then
 		return
 	end
 	if Avatar.equippedKind(player) ~= nil then
-		return -- only bare hands lift a whole barrel; with a tool out, a click belongs to the tool
+		return -- only bare hands lift a whole bale; with a tool out, a click belongs to the tool
 	end
 	if (b.body.Position - root.Position).Magnitude > Config.PickupReach + 4 then
 		return
@@ -288,9 +286,9 @@ function Barrels.pickup(player, b)
 	b.carriedBy = player
 	b.ownerId = player.UserId
 	b.dropToken += 1
-	state.carryBarrel = b
+	state.carryBale = b
 
-	-- The barrel itself is welded in front of the player, so what you carry is the real barrel.
+	-- The bale itself is welded in front of the player, so what you carry is the real bale.
 	b.body.Anchored = false
 	b.body.CanCollide = false
 	b.body.Massless = true
@@ -309,15 +307,15 @@ function Barrels.pickup(player, b)
 	Data.sync(player)
 end
 
--- Put the carried barrel down with a small toss. It lands and rolls like any physical object.
-function Barrels.drop(player)
+-- Put the carried bale down in front of you. It lands square on the ground or on top of the bale there.
+function Bales.drop(player)
 	local state = Data.get(player)
-	local b = state and state.carryBarrel
+	local b = state and state.carryBale
 	if not b or b.gone then
 		return
 	end
 	local root = Avatar.getRoot(player)
-	state.carryBarrel = nil
+	state.carryBale = nil
 	Data.sync(player)
 
 	if b.carryWeld then
@@ -327,31 +325,41 @@ function Barrels.drop(player)
 	b.carriedBy = nil
 
 	if not root or not root.Parent then
-		Barrels.consume(b)
+		Bales.consume(b)
 		return
 	end
 
+	-- Set it down square to the player on top of whatever is in front: the ground, or another bale, so bales stack.
 	local look = root.CFrame.LookVector
-	b.body.CFrame = CFrame.new(root.Position + look * 4 + Vector3.new(0, 1, 0)) * UPRIGHT
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = flat.Magnitude > 0.01 and flat.Unit or Vector3.new(0, 0, -1)
+	local spot = root.Position + flat * (SIZE.Z / 2 + 2.2)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { b.body, root.Parent, Hay.folder }
+	local down = workspace:Raycast(spot + Vector3.new(0, Config.StackReach, 0), Vector3.new(0, -Config.StackReach - 20, 0), params)
+	local floorY = down and down.Position.Y or (root.Position.Y - 3)
+	local center = Vector3.new(spot.X, floorY + SIZE.Y / 2 + 0.05, spot.Z)
+	b.body.CFrame = CFrame.lookAt(center, center + flat)
 	b.body.Massless = false
 	b.body.CanCollide = true
 	b.body.Anchored = false
-	b.body.AssemblyLinearVelocity = look * 8 + Vector3.new(0, 4, 0)
+	b.body.AssemblyLinearVelocity = Vector3.zero
+	b.body.AssemblyAngularVelocity = Vector3.zero
 	b.prompt.ActionText = "Pick up"
 	pcall(function()
-		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same barrel
+		b.body:SetNetworkOwner(nil) -- the server keeps control so every player sees the same bale
 	end)
 
 	Avatar.clearCarry(player)
 	startDespawnTimer(b)
 end
 
--- position is the ground point under the barrel. home barrels regrow after being smashed or lifted.
-function Barrels.spawn(position, home, fadeIn)
-	local body, hay, prompt = buildBarrel(position)
+-- position is the ground point under the bale. home bales regrow after being smashed or lifted.
+function Bales.spawn(position, home, fadeIn)
+	local body, prompt = buildBale(position)
 	local b = {
 		body = body,
-		hay = hay,
 		prompt = prompt,
 		home = home,
 		spawnPosition = position,
@@ -366,30 +374,32 @@ function Barrels.spawn(position, home, fadeIn)
 	body.Parent = folder
 
 	if fadeIn then
-		body.Transparency = 1
-		hay.Transparency = 1
 		local info = TweenInfo.new(0.7)
-		TweenService:Create(body, info, { Transparency = 0 }):Play()
-		TweenService:Create(hay, info, { Transparency = 0 }):Play()
+		for _, part in { body, unpack(body:GetChildren()) } do
+			if part:IsA("BasePart") then
+				part.Transparency = 1
+				TweenService:Create(part, info, { Transparency = 0 }):Play()
+			end
+		end
 	end
 
 	prompt.Triggered:Connect(function(player)
 		if b.carriedBy == player then
-			Barrels.drop(player)
+			Bales.drop(player)
 		elseif not b.carriedBy then
-			Barrels.pickup(player, b)
+			Bales.pickup(player, b)
 		end
 	end)
 end
 
-function Barrels.init(worldFolder)
+function Bales.init(worldFolder)
 	folder = worldFolder
 
 	local function watch(player)
 		local function onCharacter(character)
 			local humanoid = character:WaitForChild("Humanoid")
 			humanoid.Died:Connect(function()
-				Barrels.drop(player)
+				Bales.drop(player)
 			end)
 		end
 		player.CharacterAdded:Connect(onCharacter)
@@ -402,14 +412,14 @@ function Barrels.init(worldFolder)
 		watch(player)
 	end
 
-	-- A barrel does not stay stuck to a player who left the game.
+	-- A bale does not stay stuck to a player who left the game.
 	Players.PlayerRemoving:Connect(function(player)
 		for _, b in byBody do
 			if b.carriedBy == player then
-				Barrels.consume(b)
+				Bales.consume(b)
 			end
 		end
 	end)
 end
 
-return Barrels
+return Bales

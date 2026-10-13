@@ -2,7 +2,7 @@
 -- Builds the first base camp from code so it works without hand-placing anything in Studio.
 local Workspace = game:GetService("Workspace")
 
-local Barrels = require(script.Parent.Barrels)
+local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Tools = require(script.Parent.Tools)
 local Gameplay = require(script.Parent.Gameplay)
@@ -67,11 +67,11 @@ function World.build()
 	spawn.Color = Color3.fromRGB(200, 180, 120)
 	spawn.Parent = folder
 
-	Barrels.init(folder)
+	Bales.init(folder)
 	Hay.init(folder)
 	Tools.init()
 	for i = 0, 2 do
-		Barrels.spawn(Vector3.new(-18 + i * 7, 0, -18), true)
+		Bales.spawn(Vector3.new(-18 + i * 7, 0, -18), true)
 	end
 
 	-- Hay shop: a simple building with a counter you walk up to.
@@ -107,7 +107,7 @@ function World.build()
 	)
 	addSign(counter, "HAY SHOP", Vector3.new(0, 6, 0))
 
-	-- Sell pad in front of the counter. Walk onto it with hay, or set a barrel down on it.
+	-- Sell pad in front of the counter. Walk onto it with hay, or set a bale down on it.
 	local pad = newPart(
 		folder,
 		"SellPad",
@@ -120,17 +120,17 @@ function World.build()
 	addSign(pad, "SELL HERE", Vector3.new(0, 5, 0))
 	Gameplay.wireSellPad(pad)
 
-	-- Barrel drop-off between the barrels and the shop. Barrels set down here stay until you smash or sell them.
+	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(
 		folder,
-		"BarrelDropOff",
+		"BaleDropOff",
 		Vector3.new(14, 0.2, 10),
 		CFrame.new(0, 0.1, -4),
 		Color3.fromRGB(150, 110, 70),
 		Enum.Material.WoodPlanks
 	)
-	addSign(dropOff, "BARREL DROP-OFF", Vector3.new(0, 5, 0))
-	Barrels.setDropOff(dropOff)
+	addSign(dropOff, "BALE DROP-OFF", Vector3.new(0, 5, 0))
+	Bales.setDropOff(dropOff)
 end
 
 return World

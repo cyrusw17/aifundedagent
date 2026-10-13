@@ -69,11 +69,11 @@ toast.Visible = false
 toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
-local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
+local dropRemote = ReplicatedStorage:WaitForChild("DropBale")
 local aimRemote = ReplicatedStorage:WaitForChild("ToolAim")
 
 -- The server runs every tool click. All the client adds is where the click pointed, so the shovel and rake
--- work on the exact hay piece or barrel under the cursor. Without it they act on what is in front of you.
+-- work on the exact hay piece or bale under the cursor. Without it they act on what is in front of you.
 local mouse = player:GetMouse()
 local hookedTools = setmetatable({}, { __mode = "k" })
 
@@ -95,7 +95,7 @@ local function hookTool(child)
 	end
 end
 
--- While carrying a barrel, a click on the world or G puts it down (its Put down button does the same).
+-- While carrying a bale, a click on the world or G puts it down (its Put down button does the same).
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or not player:GetAttribute("Carrying") then
 		return
@@ -108,7 +108,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 local HINTS = {
-	Shovel = "Shovel: click a barrel or hay",
+	Shovel = "Shovel: click a bale or hay",
 	Rake = "Rake: click loose hay",
 }
 
@@ -120,10 +120,10 @@ local function refresh()
 	local carrying = player:GetAttribute("Carrying")
 	cashLabel.Text = ("$%d"):format(cash)
 	if carrying then
-		loadLabel.Text = "Carrying a barrel"
+		loadLabel.Text = "Carrying a bale"
 		hintLabel.Text = "Click or G: set it down"
 	else
-		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a barrel"
+		hintLabel.Text = tool and HINTS[tool.Name] or "Hands: press Pick up on a bale"
 		loadLabel.Text = ("Hay carried %d / %d"):format(hay, cap)
 	end
 	bar.Size = UDim2.fromScale(math.clamp(hay / cap, 0, 1), 1)
@@ -152,13 +152,13 @@ end
 player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 
 -- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
--- The barrels' Pick up buttons are for bare hands only. With a tool out they are hidden, so a click with the
--- shovel or rake goes to the tool instead of grabbing the barrel. This setting only affects this player.
+-- The bales' Pick up buttons are for bare hands only. With a tool out they are hidden, so a click with the
+-- shovel or rake goes to the tool instead of grabbing the bale. This setting only affects this player.
 local CollectionService = game:GetService("CollectionService")
 local promptsOn = true
 
-local function setPrompt(barrel)
-	local prompt = barrel:FindFirstChildOfClass("ProximityPrompt") or barrel:WaitForChild("ProximityPrompt", 5)
+local function setPrompt(bale)
+	local prompt = bale:FindFirstChildOfClass("ProximityPrompt") or bale:WaitForChild("ProximityPrompt", 5)
 	if prompt then
 		prompt.Enabled = promptsOn
 	end
@@ -167,11 +167,11 @@ end
 local function updatePrompts()
 	local character = player.Character
 	promptsOn = not (character and character:FindFirstChildOfClass("Tool"))
-	for _, barrel in CollectionService:GetTagged("HayBarrel") do
-		task.spawn(setPrompt, barrel)
+	for _, bale in CollectionService:GetTagged("HayBale") do
+		task.spawn(setPrompt, bale)
 	end
 end
-CollectionService:GetInstanceAddedSignal("HayBarrel"):Connect(setPrompt)
+CollectionService:GetInstanceAddedSignal("HayBale"):Connect(setPrompt)
 
 local function watchCharacter(character)
 	for _, child in character:GetChildren() do

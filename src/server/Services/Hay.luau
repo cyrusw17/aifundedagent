@@ -1,5 +1,5 @@
 --!nonstrict
--- Loose hay pieces. A broken barrel leaves a pile of them. The shovel scoops pieces up, the rake drags them across
+-- Loose hay pieces. A broken bale leaves a pile of them. The shovel scoops pieces up, the rake drags them across
 -- the ground, and pieces left on the sell pad sell. Every piece is a small real part.
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
