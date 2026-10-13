@@ -741,6 +741,8 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 	end
 	if def.kind == "separator" then
 		local sorter = Machines.sorter(plot.items, frame, def.id, plot.bin, payeeFor(plot))
+		sorter:SetAttribute("OwnerId", plot.ownerId)
+		CollectionService:AddTag(sorter, "PlotSorter") -- GildedSorters gilds it for an owner with the gilded index skin
 		table.insert(item.instances, sorter)
 		local nextDef = pieces[UPGRADE_NEXT[def.id] or ""]
 		if nextDef then
