@@ -390,6 +390,7 @@ game = { GetService = function(_, name)
 	return services[name] or setmetatable({}, { __index = function() return function() return nil end end })
 end }
 workspace = services.Workspace
+workspace.GetServerTimeNow = function() return os.clock() end
 SPAWNED = 0
 task = {
 	wait = function() return 0 end,
