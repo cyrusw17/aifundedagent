@@ -314,20 +314,8 @@ local function parkVehicles(player, plot)
 	end
 	-- The truck's middle sits half its length back from the front of the pad.
 	local truckCF = at * CFrame.new(0, 0.3, def.length / 2) -- on top of the pad
-	local ok, err = pcall(function()
-		local model = Vehicles.build(def, truckCF, vehiclesFolder)
-		model.Name = player.Name .. "'s " .. def.name
-		Vehicles.makeDrivable(model, player)
-		Vehicles.setOwned(player, model)
-		Vehicles.place(model, truckCF)
-		local trailerId = s.trailers and s.trailers[1]
-		-- The trailer hitch belongs to Vehicles.luau (biome thread); used once it exists.
-		local spawnTrailer = (Vehicles :: any).spawnTrailer
-		if trailerId and spawnTrailer then
-			spawnTrailer(trailerId, model)
-		end
-		Vehicles.release(model, player)
-	end)
+	local trailerId = s.trailers and s.trailers[1]
+	local ok, err = pcall(Vehicles.spawnOwned, player, truckId, truckCF, { trailer = trailerId, parent = vehiclesFolder })
 	if not ok then
 		warn("[Needlewood] couldn't park the truck on the plot: " .. tostring(err))
 	end

@@ -29,7 +29,7 @@ return {
 		{ id = "belt", kind = "belt", name = "Conveyor belt", price = 20, size = { 1, 1 }, blurb = "One 6 stud tile. Rotate to turn corners." },
 		{ id = "hay_buyer", kind = "buyer", name = "Hay buyer", price = 150, size = { 1, 1 }, blurb = "Pays full price for sorted hay. Unsorted bales sell cheap." },
 		{ id = "silo", kind = "silo", name = "Hay silo", price = 3000, size = { 2, 2 }, blurb = "Drop bales next to it. Feeds them out the front onto a belt, one at a time." },
-		{ id = "parking", kind = "parking", name = "Parking pad", price = 100, size = { 2, 6 }, blurb = "Your truck and trailer park here when you load in." },
+		{ id = "parking", kind = "parking", name = "Parking pad", price = 100, size = { 2, 8 }, blurb = "Your truck and trailer park here when you load in." },
 		{ id = "hand_sieve", kind = "separator", name = "Hand sieve", price = 250, size = { 1, 2 }, blurb = "Finds 15% of the needles. Slow but cheap." },
 		{ id = "shaker_table", kind = "separator", name = "Shaker table", price = 1500, size = { 1, 2 }, blurb = "Finds 35% of the needles." },
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = 5000, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
@@ -66,7 +66,7 @@ return {
 					{ id = "belt", gx = 6, gz = 5, dir = "E" },
 					{ id = "hay_buyer", gx = 7, gz = 5, dir = "E" },
 					-- Truck and hitched trailer park on the east side, facing north toward the lane.
-					{ id = "parking", gx = 10, gz = 8, dir = "N" },
+					{ id = "parking", gx = 10, gz = 9, dir = "N" },
 				} :: { any }),
 			},
 		},
