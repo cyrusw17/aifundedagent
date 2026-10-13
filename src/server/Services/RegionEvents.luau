@@ -111,6 +111,14 @@ local function finish()
 	end
 	running = nil
 	for b in event.bales do
+		-- Event hay is a loose pile (no spawned bales): whatever is left of it goes when the event ends.
+		if b.field then
+			if b.body.Parent then
+				b.body:Destroy()
+			end
+			b.gone = true
+			continue
+		end
 		-- Untouched: still lying where it landed, nobody's, not carried.
 		if not b.gone and not b.carriedBy and not b.ownerId and b.body.Parent and (b.body.Position - b.spawnPosition).Magnitude < 6 then
 			Bales.consume(b)
@@ -145,8 +153,10 @@ function RegionEvents.run(id, minutes)
 		if def.id == "meteor_shower" then
 			task.spawn(streak, spot, folder or workspace)
 		end
-		local b = Bales.spawn(spot - Vector3.new(0, 0.35, 0), false, true, def.hay or region.hayType)
+		-- A loose pile, not a bale (Cyrus: no spawned bales); it does not grow back.
+		local b = Bales.spawn(spot - Vector3.new(0, 0.35, 0), true, true, def.hay or region.hayType)
 		if b then
+			b.noRegrow = true
 			if def.hay == "star" then
 				-- Fallen stars glow so they can be found in the dark.
 				local glow = Instance.new("PointLight")

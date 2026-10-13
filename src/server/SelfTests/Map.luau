@@ -213,9 +213,22 @@ return function(SelfTest)
 		end
 		t.check("every road starts at Meadow, a road, a plaza or the highway", #loose == 0, #loose > 0 and table.concat(loose, ", ") or nil)
 
+		-- A3 at 2x: the Ridge Cut tunnels through Stitch Ridge, and the Return Ferry sails round the east coast.
+		local tunnelH, _, _, _, tube = WorldShape.column(0, -2300)
+		t.check("the Ridge Cut runs in a tunnel under Stitch Ridge", tube ~= nil and tube.land == true and tunnelH > tube.roof + 10, ("top %.0f"):format(tunnelH))
+		t.equal("...and its floor is the ground there", WorldShape.heightAt(0, -2300), 8)
+		local returnFerry = nil
+		for _, route in Map.Ferry.Routes do
+			if route.via then
+				returnFerry = route
+			end
+		end
+		t.check("the Return Ferry sails round the coast to Meadow Shore", returnFerry ~= nil and returnFerry.b.name == "Meadow Shore")
+		t.check("Sky Island is out for now", Map.SkyIsland == nil and Map.Zeppelin == nil)
+
 		-- Ferries and the zeppelin ----------------------------------------------------------------------------
 		local shuttles = Ferry.all()
-		t.equal("ferries and zeppelin running", #shuttles, #Map.Ferry.Routes + 1)
+		t.equal("ferries and zeppelin running", #shuttles, #Map.Ferry.Routes + (Map.Zeppelin and 1 or 0))
 		for _, shuttle in shuttles do
 			local name = shuttle.def.name
 			t.check(name .. ": deck is a free physics body held by its course", not shuttle.root.Anchored and shuttle.align.Parent ~= nil)
@@ -323,7 +336,7 @@ return function(SelfTest)
 
 		-- Wilds -----------------------------------------------------------------------------------------------
 		local Wilds = require(Services.Wilds)
-		for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+		for _, id in { "ember_cache", "captains_lantern", "geode_heart", Map.SkyIsland and "lost_kite" or nil } do
 			local found = Wilds.Secrets[id]
 			t.check(("secret %s is hidden on the map, with a reward in Prices"):format(id), found ~= nil and found.part.Parent ~= nil and Prices.Secrets[id] ~= nil)
 		end

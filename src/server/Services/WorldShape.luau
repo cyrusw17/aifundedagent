@@ -71,7 +71,9 @@ for i, def in Map.Regions do
 	r.index = i
 	r.salt = i * 1.7
 	r.cx, r.cz = def.center.X, def.center.Y
-	r.rx, r.rz = def.radius.X, def.radius.Y
+	-- The coast lies a little past the region's radius (Config Coast), so neighbors run into one mainland.
+	local coast = def.coast or Map.Coast or 1
+	r.rx, r.rz = def.radius.X * coast, def.radius.Y * coast
 	-- Past 1.45 radii a region has no say at all, so most points only ask two or three regions.
 	r.reach = 1.45
 	regions[i] = r
@@ -130,6 +132,15 @@ local function regionHeight(r, x, z)
 		-- A rough, ridged face on big mountains.
 		h += 10 * math.abs(noise(x, z, 40, r.salt + 7)) * smoothstep(0, r.peak.radius, r.peak.radius - math.sqrt((x - r.peak.center.X) ^ 2 + (z - r.peak.center.Y) ^ 2))
 	end
+	if r.spine then
+		-- A long rocky ridge along a line (Stitch Ridge).
+		local sp = r.spine
+		local d = segment(x, z, sp.from.X, sp.from.Y, sp.to.X, sp.to.Y)
+		if d < sp.width then
+			local k = (1 - d / sp.width) ^ sp.power
+			h += sp.height * k + 14 * math.abs(noise(x, z, 50, r.salt + 8)) * k
+		end
+	end
 	if r.dunes then
 		-- Long dune ridges that run north-south.
 		local ridge = 1 - math.abs(noise(x / 2.2, z, r.dunes.scale, r.salt + 5))
@@ -141,6 +152,14 @@ end
 -- Roads -----------------------------------------------------------------------------------------------------------
 -- Each road is cut into short pieces with a height at each end. The heights follow the land, smoothed, never steeper
 -- than MaxGrade, and never under the sea (over water a road becomes a causeway).
+
+-- Roads that tunnel through high ground (Config road.tunnel): name -> { height, cover }.
+local tunnels = {}
+for _, road in Map.Roads do
+	if road.tunnel then
+		tunnels[road.name] = road.tunnel
+	end
+end
 
 local roadPieces = {} -- { ax, az, bx, bz, ha, hb, road }
 local roadGrid = {} -- cell key -> list of pieces
@@ -208,7 +227,7 @@ local function layRoads()
 		for _, s in samples do
 			-- Ports, plazas and the highway ends are flat zones: the road arrives at their height, so a truck rolls
 			-- straight onto a pier or the highway deck with no step.
-			s.h = math.max(WorldShape.applyFlats(s.x, s.z, baseHeight(s.x, s.z)), SEA + 2.5)
+			s.h = road.level or math.max((WorldShape.applyFlats(s.x, s.z, baseHeight(s.x, s.z))), SEA + 2.5)
 			for _, zone in Map.Flat do
 				if rectDistance(s.x, s.z, zone.min, zone.max) <= 0 then
 					s.pin = zone.height
@@ -343,8 +362,10 @@ end
 
 local function applyFlats(x, z, h)
 	local zoneMaterial = nil
+	local nearest = math.huge -- how far outside the nearest flat zone (0 inside)
 	for _, zone in Map.Flat do
 		local d = rectDistance(x, z, zone.min, zone.max)
+		nearest = math.min(nearest, d)
 		if d < zone.blend then
 			local f = 1 - smoothstep(0, zone.blend, d)
 			h = lerp(h, zone.height, f)
@@ -353,7 +374,7 @@ local function applyFlats(x, z, h)
 			end
 		end
 	end
-	return h, zoneMaterial
+	return h, zoneMaterial, nearest
 end
 WorldShape.applyFlats = applyFlats
 
@@ -383,7 +404,8 @@ function WorldShape.column(x, z)
 	local water = nil
 	local h0
 
-	h, material = applyFlats(x, z, h)
+	local flatD
+	h, material, flatD = applyFlats(x, z, h)
 
 	-- Sea lanes stay deep so the ferries clear the bottom. They only deepen sea that is already there.
 	for _, lane in Map.Channels do
@@ -405,8 +427,25 @@ function WorldShape.column(x, z)
 		water = Map.Oasis.level
 	end
 
+	-- Rivers: a trench down to the river bed, full of water at sea level. Meadow keeps its own ground.
+	for _, river in Map.Rivers do
+		local half = river.width / 2
+		local best = math.huge
+		for i = 1, #river.points - 1 do
+			local a, b = river.points[i], river.points[i + 1]
+			best = math.min(best, (segment(x, z, a.X, a.Y, b.X, b.Y)))
+		end
+		if best < half + 30 and dm > 0 then
+			local bed = river.depth + 3 * noise(x, z, 30, 21)
+			h = math.min(h, lerp(bed, h, smoothstep(half * 0.6, half + 30, best)))
+			if h < SEA then
+				water = SEA
+			end
+		end
+	end
+
 	-- Bog pools in the swamp.
-	if region and region.pools and landness > 0.05 then
+	if region and region.pools and landness > 0.05 and flatD > 20 then
 		local p = region.pools
 		local n = noise(x, z, p.scale, region.salt + 11)
 		if n < p.threshold then
@@ -420,9 +459,16 @@ function WorldShape.column(x, z)
 
 	-- Roads cut and fill the land to their own height.
 	h0 = h
-	local roadD, roadH = nearestRoad(x, z)
+	local roadD, roadH, roadName = nearestRoad(x, z)
 	local onRoad = false
-	if roadD and roadD < ROAD_HALF + ROAD_BLEND then
+	local tube = nil
+	local tunnel = roadName and tunnels[roadName]
+	if tunnel and roadD < ROAD_HALF + ROAD_BLEND and h > roadH + tunnel.cover then
+		-- Deep under a ridge a tunnel road bores through instead of cutting: the rock stays, the lane is hollow.
+		if roadD < ROAD_HALF + 2 then
+			tube = { floor = roadH, roof = roadH + tunnel.height, land = true }
+		end
+	elseif roadD and roadD < ROAD_HALF + ROAD_BLEND then
 		h = lerp(h, roadH, 1 - smoothstep(ROAD_HALF, ROAD_HALF + ROAD_BLEND, roadD))
 		onRoad = roadD < ROAD_HALF + noise(x, z, 9, 4) * 1.5
 		if onRoad and water and h >= water then
@@ -432,7 +478,6 @@ function WorldShape.column(x, z)
 
 	-- The Longstitch Highway is parts: keep the sea under its bridge, and dig a bed for the undersea tube.
 	local hwD, hwX = WorldShape.highwayDistance(x, z)
-	local tube = nil
 	local hw = Map.Highway
 	if hwD < hw.width / 2 + 6 and hwX > hw.Profile[2][1] and hwX < hw.Profile[#hw.Profile][1] - 20 then
 		local deck = WorldShape.highwayY(hwX)
@@ -487,7 +532,10 @@ function WorldShape.heightAt(x, z)
 	if WorldShape.inMeadow(x, z) then
 		return MeadowTerrain.heightAt(x, z)
 	end
-	local h = WorldShape.column(x, z)
+	local h, _, _, _, tube = WorldShape.column(x, z)
+	if tube and tube.land then
+		return tube.floor -- in a road tunnel the ground is its floor
+	end
 	return h
 end
 

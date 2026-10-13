@@ -80,10 +80,11 @@ for _, route in RMap.Ferry.Routes do
 		link(a, b)
 	end
 end
-local zf = flatAt(Vector2.new(RMap.Zeppelin.a.pos.X, RMap.Zeppelin.a.pos.Z))
+-- Sky Island and its zeppelin are out for now (Config WorldMap.Zeppelin is nil).
+local zf = RMap.Zeppelin and flatAt(Vector2.new(RMap.Zeppelin.a.pos.X, RMap.Zeppelin.a.pos.Z))
 if zf then
 	link(zf, "sky")
-else
+elseif RMap.Zeppelin then
 	warn("zeppelin field is not a flat zone")
 end
 
@@ -110,7 +111,7 @@ end
 if not reached.highway then
 	warn("the Longstitch Highway is not reachable")
 end
-if not reached.sky then
+if RMap.Zeppelin and not reached.sky then
 	warn("Sky Island is not reachable")
 end
 
@@ -198,7 +199,7 @@ for _, entry in RRegions.fields do
 	perRegion[entry.region] = (perRegion[entry.region] or 0) + 1
 end
 for _, r in RMap.Regions do
-	if not perRegion[r.name] and r.id ~= "spindle" then -- the Spindle's hay is the Crystal Cave's
+	if not perRegion[r.name] and r.id ~= "spindle" and not r.noFields then -- the Spindle's hay is the Crystal Cave's
 		warn("region has no hay field", r.name)
 	end
 end

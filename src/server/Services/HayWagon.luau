@@ -1,6 +1,6 @@
 --!nonstrict
--- The Hay Wagon: a free, slow ride for players (no cargo) on a loop from base camp up the North Road to Homestead,
--- back to camp, then down the South road and the Swamp Road to Swamp Port and back. New players see the isles
+-- The Hay Wagon: a free, slow ride for players (no cargo) on a loop from base camp through the Ridge Cut to
+-- Homestead, back to camp, then down the South road and the West Road to Pine Forest and back. New players see the isles
 -- before they own a truck; trucks stay the way to haul. A little tractor pulls it.
 --
 -- It is anchored and moved along the road every frame, and nothing on it collides, so it never blocks a lane or
@@ -57,12 +57,14 @@ end
 -- The loop as legs: { stop name at the end, polyline }.
 local function legs()
 	local camp = Vector2.new(0, 26)
-	local north = concat({ camp }, roadPoints(Meadow.Roads, "North"), roadPoints(Map.Roads, "North Road"))
-	local south = concat({ camp, Vector2.new(120, 26) }, roadPoints(Meadow.Roads, "South"), { Vector2.new(150, 640) }, roadPoints(Map.Roads, "Swamp Road"))
+	local north = concat({ camp }, roadPoints(Meadow.Roads, "North"), roadPoints(Map.Roads, "Ridge Cut"))
+	-- The West Road as far as the Pine Mill.
+	local west = table.move(roadPoints(Map.Roads, "West Road"), 1, 9, 1, {})
+	local south = concat({ camp, Vector2.new(120, 26) }, roadPoints(Meadow.Roads, "South"), west)
 	return {
 		{ stop = "Homestead", line = north },
 		{ stop = "Base Camp", line = reversed(north) },
-		{ stop = "Swamp Port", line = south },
+		{ stop = "Pine Forest", line = south },
 		{ stop = "Base Camp", line = reversed(south) },
 	}
 end
@@ -213,7 +215,7 @@ function HayWagon.build(parent)
 		if not seen[leg.stop] then
 			seen[leg.stop] = true
 			local at = leg.samples[#leg.samples]
-			local text = ("HAY WAGON STOP\n%s\nFree: Camp, Homestead, Swamp Port"):format(leg.stop:upper())
+			local text = ("HAY WAGON STOP\n%s\nFree: Camp, Homestead, Pine Forest"):format(leg.stop:upper())
 			if Regions.signpost then
 				pcall(Regions.signpost, folder, at.X + 12, at.Z, Vector2.new(-1, 0), text, 12)
 			end

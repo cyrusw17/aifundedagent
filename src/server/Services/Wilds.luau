@@ -1,6 +1,6 @@
 --!nonstrict
 -- The far regions' dangers and secrets (backlog Map #9):
---   * Volcano heat: the crater is too hot to stand in without tier 4 gloves (Iron Gauntlets or Magma Grips). Anyone
+--   * Volcano heat: the crater is too hot to stand in without a tier 4 shovel (Iron Spade or Magma Shovel). Anyone
 --     else is pushed back over the rim with a warning. In the crater: the Ember Cache.
 --   * The Ghost Road: a causeway of pale planks from the Wreck of the Bobbin out to Ghost Isle, solid only at night
 --     (WorldClock.isNight). At dawn it fades over FADE seconds, then lets go. On Ghost Isle: the Captain's Lantern.
@@ -24,14 +24,14 @@ local Regions = require(script.Parent.Regions)
 
 local Wilds = {}
 
-local HEAT_TIER = 4 -- gloves at or above this tier shrug off the crater's heat
+local HEAT_TIER = 4 -- a shovel at or above this tier (GloveTier attribute) shrugs off the crater's heat
 local HEAT_RADIUS = 105 -- studs from the volcano's peak center, inside the rim
 local HEAT_FLOOR = 40 -- studs below the rim top that count as "in the crater" (the outer slopes are fine)
 local FADE = 20 -- seconds the Ghost Road takes to fade at dawn
 
 local GHOST = Color3.fromRGB(170, 230, 210)
-local GHOST_ROAD = { from = Vector2.new(-1735, -780), to = Vector2.new(-2030, -780), y = 4, width = 16 }
-local GHOST_ISLE = { center = Vector2.new(-2075, -780), radius = 42, top = 4 }
+local GHOST_ROAD = { from = Vector2.new(-3540, -2780), to = Vector2.new(-3835, -2780), y = 4, width = 16 }
+local GHOST_ISLE = { center = Vector2.new(-3880, -2780), radius = 42, top = 4 }
 
 local function part(parent, name, size, cframe, color, material, collide)
 	local p = Instance.new("Part")
@@ -72,11 +72,11 @@ local function claimSecret(player, id, name)
 		return false
 	end
 	state.secrets = state.secrets or {}
-	-- A secret inside the crater's heat (the Ember Cache) needs the same heat-proof gloves as getting there.
+	-- A secret inside the crater's heat (the Ember Cache) needs the same heat-proof shovel as getting there.
 	local spot = Wilds.Secrets[id]
 	local hot = id == "ember_cache" or (spot and spot.part and Wilds.inHeat(spot.part.Position))
 	if hot and not Wilds.heatProof(player) then
-		Data.toast(player, "Too hot to search! Tier 4 gloves (Iron Gauntlets or Magma Grips) handle the crater's heat.")
+		Data.toast(player, "Too hot to search! A tier 4 shovel (Iron Spade or Magma Shovel) handles the crater's heat.")
 		return false
 	end
 	if state.secrets[id] then
@@ -150,7 +150,7 @@ local function heatLoop()
 				root.AssemblyLinearVelocity = Vector3.new(out.X * 55, 45, out.Y * 55)
 				if not warned[player] or os.clock() - warned[player] > 8 then
 					warned[player] = os.clock()
-					Data.toast(player, "Too hot! Tier 4 gloves (Iron Gauntlets or Magma Grips) let you into the crater.")
+					Data.toast(player, "Too hot! A tier 4 shovel (Iron Spade or Magma Shovel) lets you into the crater.")
 				end
 			end
 		end
@@ -281,6 +281,9 @@ end
 
 local function sky(folder)
 	local s = Map.SkyIsland
+	if not s then
+		return -- Sky Island is out for now, and the kite with it
+	end
 	-- A stone ledge jutting out just under the west rim; drop off the edge to land on it.
 	local x, z = s.center.X - s.radius - 2, s.center.Y
 	local ledge = part(folder, "KiteLedge", Vector3.new(18, 2, 14), CFrame.new(x, s.top - 16, z), Color3.fromRGB(150, 146, 140), Enum.Material.Slate)
@@ -298,6 +301,7 @@ local HIDDEN = {
 	valley = { kind = "tree", name = "Hollow Willow", riddle = "a willow keeps a secret" },
 	homestead = { kind = "cairn", name = "Founders' Cairn", riddle = "the first settlers stacked their stones" },
 	spindle = { kind = "cairn", name = "Echo Cairn", riddle = "stones that listen" },
+	ridge = { kind = "cairn", name = "Tunnel Diggers' Cairn", riddle = "the tunnel diggers left a marker" },
 	pine = { kind = "tree", name = "Hollow Pine", riddle = "one pine is empty inside" },
 	haunted = { kind = "tree", name = "Whispering Oak", riddle = "the dead tree whispers" },
 	snow = { kind = "shed", name = "Buried Ski Shed", riddle = "a roof pokes out of the snow" },

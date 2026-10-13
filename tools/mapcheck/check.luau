@@ -190,7 +190,7 @@ print("events", eventsOk and "ok" or "WRONG")
 -- Wilds: the four secrets exist, the crater is hot, the Ghost Road holds only at night.
 local Wilds = require({ __path = "Services.Wilds" })
 local wildsOk = true
-for _, id in { "ember_cache", "captains_lantern", "geode_heart", "lost_kite" } do
+for _, id in { "ember_cache", "captains_lantern", "geode_heart", Map.SkyIsland and "lost_kite" or nil } do
 	if not Wilds.Secrets[id] or not Prices.Secrets[id] then
 		wildsOk = false
 		print("WARN secret missing", id)

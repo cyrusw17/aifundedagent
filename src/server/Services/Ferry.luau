@@ -456,14 +456,38 @@ local function setBoards(shuttle, text)
 	end
 end
 
--- Moves the deck from one stop to the other: speeds up, cruises, slows down.
+-- Moves the deck from one stop to the other along the route's path (the two stops, or round its via points):
+-- speeds up, cruises, slows down, and turns to face along each leg of the way.
 local function travel(shuttle, from, to)
-	local distance = (to.Position - from.Position).Magnitude
+	local points = { from.Position }
+	local via = shuttle.via
+	if via then
+		local forward = from == shuttle.stops[1].cframe
+		for i = forward and 1 or #via, forward and #via or 1, forward and 1 or -1 do
+			table.insert(points, via[i])
+		end
+	end
+	table.insert(points, to.Position)
+	local legs, distance = {}, 0
+	for i = 1, #points - 1 do
+		local length = (points[i + 1] - points[i]).Magnitude
+		table.insert(legs, { a = points[i], b = points[i + 1], start = distance, length = length })
+		distance += length
+	end
+	-- The deck always faces from stop A to stop B along a leg, so it backs along the way home.
+	local function facing(leg)
+		local dir = leg.b - leg.a
+		if to ~= shuttle.stops[2].cframe then
+			dir = -dir
+		end
+		return CFrame.lookAt(Vector3.zero, Vector3.new(dir.X, 0, dir.Z))
+	end
 	local speed = shuttle.def.speed
 	local ramp = math.min(distance / 2, speed * 3)
 	local elapsed = 0
 	local covered = 0
 	local v = 0
+	local leg = 1
 	while covered < distance do
 		local dt = RunService.Heartbeat:Wait()
 		elapsed += dt
@@ -471,14 +495,24 @@ local function travel(shuttle, from, to)
 		local target = left < ramp and math.max(2, speed * left / ramp) or speed
 		v = math.min(target, v + speed / 3 * dt)
 		covered = math.min(distance, covered + v * dt)
-		local alpha = covered / distance
-		shuttle.align.Position = from.Position:Lerp(to.Position, alpha)
+		while leg < #legs and covered > legs[leg].start + legs[leg].length do
+			leg += 1
+		end
+		local l = legs[leg]
+		shuttle.align.Position = l.a:Lerp(l.b, math.clamp((covered - l.start) / math.max(l.length, 0.01), 0, 1))
+		if #legs > 1 then
+			-- Swing round onto the new heading over the first 60 studs of each leg.
+			local turn = leg > 1 and math.clamp((covered - l.start) / 60, 0, 1) or 1
+			local rotation = leg > 1 and facing(legs[leg - 1]):Lerp(facing(l), turn) or facing(l)
+			shuttle.orient.CFrame = rotation
+		end
 		local remaining = math.ceil((distance - covered) / math.max(v, 1))
 		if math.floor(elapsed) ~= math.floor(elapsed - dt) then
 			setBoards(shuttle, ("%s\nUnderway, arriving in about %ds"):format(shuttle.def.name:upper(), remaining))
 		end
 	end
 	shuttle.align.Position = to.Position
+	shuttle.orient.CFrame = to.Rotation
 end
 
 local function run(shuttle)
@@ -510,7 +544,7 @@ end
 
 -- Builds one shuttle between two stops. Each stop is { name, cframe (deck top center at the stop, facing the way
 -- to the other stop) }. aprons are plates at the piers that bridge the gap while docked.
-local function startShuttle(def, stops, parent, labels, aprons)
+local function startShuttle(def, stops, parent, labels, aprons, via)
 	local model, root, gates = buildDeck(def, stops[1].cframe, parent)
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "Course"
@@ -539,6 +573,8 @@ local function startShuttle(def, stops, parent, labels, aprons)
 		root = root,
 		gates = gates,
 		align = align,
+		orient = orient,
+		via = via,
 		stops = stops,
 		labels = labels,
 		aprons = aprons,
@@ -566,20 +602,30 @@ function Ferry.build(worldFolder)
 
 	for _, route in F.Routes do
 		local a2, b2 = route.a.pierEnd, route.b.pierEnd
-		local dir2 = (b2 - a2).Unit
-		local dir = Vector3.new(dir2.X, 0, dir2.Y)
+		-- Each pier points out along the first (or last) leg; without via that is straight at the other pier.
+		local via = route.via
+		local outA2 = ((via and via[1] or b2) - a2).Unit
+		local outB2 = (b2 - (via and via[#via] or a2)).Unit
+		local dirA = Vector3.new(outA2.X, 0, outA2.Y)
+		local dirB = Vector3.new(outB2.X, 0, outB2.Y)
 		local _, boardA = buildPier(folder, route.a.shore, a2, deckTop, 30, route.a.name)
 		local _, boardB = buildPier(folder, route.b.shore, b2, deckTop, 30, route.b.name)
 		local labels = { boardLabel(boardA, Vector3.new(0, 3, 0)), boardLabel(boardB, Vector3.new(0, 3, 0)) }
 		local aprons = {
-			apron(folder, Vector3.new(a2.X, deckTop, a2.Y), dir, deckTop, 30),
-			apron(folder, Vector3.new(b2.X, deckTop, b2.Y), -dir, deckTop, 30),
+			apron(folder, Vector3.new(a2.X, deckTop, a2.Y), dirA, deckTop, 30),
+			apron(folder, Vector3.new(b2.X, deckTop, b2.Y), -dirB, deckTop, 30),
 		}
-		-- The deck docks with its end against the pier end; it always faces from A to B.
+		-- The deck docks with its end against the pier end; it faces from A to B.
 		local half = F.Length / 2 + 0.6
-		local facing = CFrame.lookAt(Vector3.zero, dir)
-		local stopA = CFrame.new(Vector3.new(a2.X, deckTop, a2.Y) + dir * half) * facing
-		local stopB = CFrame.new(Vector3.new(b2.X, deckTop, b2.Y) - dir * half) * facing
+		local stopA = CFrame.new(Vector3.new(a2.X, deckTop, a2.Y) + dirA * half) * CFrame.lookAt(Vector3.zero, dirA)
+		local stopB = CFrame.new(Vector3.new(b2.X, deckTop, b2.Y) - dirB * half) * CFrame.lookAt(Vector3.zero, dirB)
+		local path = nil
+		if via then
+			path = {}
+			for _, p in via do
+				table.insert(path, Vector3.new(p.X, deckTop, p.Y))
+			end
+		end
 		startShuttle({
 			name = route.name,
 			length = F.Length,
@@ -589,13 +635,17 @@ function Ferry.build(worldFolder)
 			warn = F.Warn,
 			fare = Prices.Travel.ferry,
 		}, {
-			{ name = route.a.name, cframe = stopA, edge = Vector3.new(a2.X, deckTop, a2.Y), inland = -dir },
-			{ name = route.b.name, cframe = stopB, edge = Vector3.new(b2.X, deckTop, b2.Y), inland = dir },
-		}, folder, labels, aprons)
+			{ name = route.a.name, cframe = stopA, edge = Vector3.new(a2.X, deckTop, a2.Y), inland = -dirA },
+			{ name = route.b.name, cframe = stopB, edge = Vector3.new(b2.X, deckTop, b2.Y), inland = dirB },
+		}, folder, labels, aprons, path)
 	end
 
 	-- The zeppelin: it lands on the Homestead field, and docks beside a platform at the edge of Sky Island.
+	-- Sky Island is out for now (Config WorldMap.Zeppelin is nil).
 	local Z = Map.Zeppelin
+	if not Z then
+		return folder
+	end
 	local a, b = Z.a.pos, Z.b.pos
 	local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Unit
 	local facing = CFrame.lookAt(Vector3.zero, flat)

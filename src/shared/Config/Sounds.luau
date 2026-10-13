@@ -45,6 +45,7 @@ return {
 		meadow = { wind = 0.35, water = 0, windPitch = 0.45 },
 		shore = { wind = 0.4, water = 0.8, windPitch = 0.45 },
 		valley = { wind = 0.3, water = 0.35, windPitch = 0.45 },
+		ridge = { wind = 0.55, water = 0.05, windPitch = 0.6 },
 		homestead = { wind = 0.25, water = 0, windPitch = 0.45 },
 		spindle = { wind = 0.7, water = 0, windPitch = 0.4 },
 		pine = { wind = 0.55, water = 0, windPitch = 0.4 },

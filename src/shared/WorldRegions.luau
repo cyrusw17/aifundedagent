@@ -15,7 +15,7 @@ WorldRegions.Cave = { id = "cave", name = "Crystal Cave", style = { accent = Col
 
 -- The region at a Vector3 (or nil out at sea).
 function WorldRegions.at(position)
-	if position.Y > Map.SkyIsland.top - 60 then
+	if Map.SkyIsland and position.Y > Map.SkyIsland.top - 60 then
 		local d = Vector2.new(position.X, position.Z) - Map.SkyIsland.center
 		if d.Magnitude < Map.SkyIsland.radius + 40 then
 			return WorldRegions.Sky
