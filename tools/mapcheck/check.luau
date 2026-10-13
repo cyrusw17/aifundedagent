@@ -104,6 +104,13 @@ for _, r in Map.Regions do
 end
 Weather.force("desert", "dust", 60)
 if Weather.get("desert") ~= "dust" then weatherOk = false print("WARN weather force did not stick") end
+local SoundsConfig = require({ __path = "Shared.Config.Sounds" })
+for _, id in { "meadow", "sky", "cave" } do
+	if not SoundsConfig.RegionAmbience[id] then weatherOk = false print("WARN no ambience for", id) end
+end
+for _, r in Map.Regions do
+	if not SoundsConfig.RegionAmbience[r.id] then weatherOk = false print("WARN no ambience for", r.id) end
+end
 print("weather", weatherOk and "ok" or "WRONG")
 
 -- Region events: each one drops its bales near its region's fields, off the roads, with the Prices boost.
@@ -149,6 +156,16 @@ if Wilds.inHeat(quarry) then wildsOk = false print("WARN heat reaches the quarry
 Lighting.ClockTime = 0
 Wilds.refreshGhost()
 if not Wilds.ghostSolid() then wildsOk = false print("WARN the Ghost Road is not solid at midnight") end
+local hiddenCount = 0
+for rid, h in Wilds.Hidden do
+	hiddenCount += 1
+	local d = (Vector2.new(h.spot.X, h.spot.Z) - h.sign).Magnitude
+	if d < 40 or d > 220 then wildsOk = false print("WARN hidden spot too near or far from its sign", rid, d) end
+end
+for _, r in Map.Regions do
+	if not Wilds.Hidden[r.id] then wildsOk = false print("WARN no hidden spot in", r.id) end
+end
+print("hidden spots", hiddenCount)
 print("wilds", wildsOk and "ok" or "WRONG")
 
 -- Discoveries: every landmark is found standing on it, every region standing in its middle, and nothing in Meadow.

@@ -10,8 +10,8 @@ local WorldRegions = {}
 
 local MEADOW_STYLE = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) }
 WorldRegions.Meadow = { id = "meadow", name = "Meadow Farm", style = MEADOW_STYLE, hayType = "meadow" }
-WorldRegions.Sky = { id = "sky", name = "Sky Island", style = { accent = Color3.fromRGB(200, 170, 90), fog = Color3.fromRGB(214, 226, 240) }, hayType = "sky" }
-WorldRegions.Cave = { id = "cave", name = "Crystal Cave", style = { accent = Color3.fromRGB(150, 110, 200), fog = Color3.fromRGB(70, 60, 90) }, hayType = "cave" }
+WorldRegions.Sky = { id = "sky", name = "Sky Island", style = { accent = Color3.fromRGB(200, 170, 90), fog = Color3.fromRGB(214, 226, 240), density = -0.08 }, hayType = "sky" }
+WorldRegions.Cave = { id = "cave", name = "Crystal Cave", style = { accent = Color3.fromRGB(150, 110, 200), fog = Color3.fromRGB(70, 60, 90), density = 0.12 }, hayType = "cave" }
 
 -- The region at a Vector3 (or nil out at sea).
 function WorldRegions.at(position)

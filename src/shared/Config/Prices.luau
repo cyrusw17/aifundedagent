@@ -299,6 +299,7 @@ Prices.Secrets = {
 	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
 	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
 	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
+	hidden = 4000, -- each region's hidden spot (hidden_<region>, 12 of them), a short walk off a road from its Old Sign clue (placeholder for Econ)
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

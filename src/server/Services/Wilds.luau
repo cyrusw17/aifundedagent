@@ -19,6 +19,8 @@ local WorldClock = require(script.Parent.WorldClock)
 local Data = require(script.Parent.Data)
 local Bank = require(script.Parent.Bank)
 local Announce = require(script.Parent.Announce)
+local Discoveries = require(script.Parent.Discoveries)
+local Regions = require(script.Parent.Regions)
 
 local Wilds = {}
 
@@ -75,11 +77,14 @@ local function claimSecret(player, id, name)
 		return false
 	end
 	state.secrets[id] = 1
-	local reward = Prices.Secrets[id] or 0
+	local reward = Prices.Secrets[id] or (string.sub(id, 1, 7) == "hidden_" and Prices.Secrets.hidden) or 0
 	if reward > 0 then
 		Bank.earn(player, reward, "Secret: " .. name)
 	end
 	Data.toast(player, ("Secret found: the %s! +$%d"):format(name, reward))
+	if Discoveries.info(id) then
+		Discoveries.discover(player, id) -- stamps it on the map
+	end
 	Announce.say(("%s found a secret: the %s!"):format(player.DisplayName, name), "gold")
 	return true
 end
@@ -273,11 +278,148 @@ local function sky(folder)
 	part(folder, "KiteTail", Vector3.new(0.2, 0.2, 6), kite.CFrame * CFrame.new(0, 0, 4.6), Color3.fromRGB(240, 220, 160), Enum.Material.Fabric, false)
 end
 
+-- Hidden spots -------------------------------------------------------------------------------------------------
+-- One per region: a hollow tree, a buried shed, a stone cairn or a sunken chest, a short walk off one of the region's
+-- roads. No marker points at it. An Old Sign at the roadside gives the clue in paces and a compass direction
+-- ("north" is -Z). Finding it pays Prices.Secrets.hidden once per slot and stamps it as a discovery.
+
+local HIDDEN = {
+	shore = { kind = "tree", name = "Hollow Driftwood Oak", riddle = "the old oak is hollow" },
+	valley = { kind = "tree", name = "Hollow Willow", riddle = "a willow keeps a secret" },
+	homestead = { kind = "cairn", name = "Founders' Cairn", riddle = "the first settlers stacked their stones" },
+	spindle = { kind = "cairn", name = "Echo Cairn", riddle = "stones that listen" },
+	pine = { kind = "tree", name = "Hollow Pine", riddle = "one pine is empty inside" },
+	haunted = { kind = "tree", name = "Whispering Oak", riddle = "the dead tree whispers" },
+	snow = { kind = "shed", name = "Buried Ski Shed", riddle = "a roof pokes out of the snow" },
+	volcano = { kind = "cairn", name = "Ash Cairn", riddle = "stones the ash forgot" },
+	desert = { kind = "shed", name = "Buried Prospector's Shed", riddle = "the sand swallowed a shed" },
+	swamp = { kind = "chest", name = "Sunken Bog Chest", riddle = "a chest sinks in the mud" },
+	keys = { kind = "chest", name = "Castaway's Chest", riddle = "a castaway buried his chest" },
+	bobbin = { kind = "shed", name = "Spool Shed", riddle = "a shed full of thread, half buried" },
+}
+Wilds.Hidden = {} -- region id -> { id, name, part, sign = Vector3, spot = Vector3 }
+
+local DIRECTIONS = { "east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east" }
+local function compass(dx, dz)
+	-- +X east, +Z south.
+	local a = math.atan2(dz, dx)
+	return DIRECTIONS[(math.floor(a / (math.pi / 4) + 0.5) % 8) + 1]
+end
+
+-- A spot in this region 50 to 120 studs off one of its roads: dry, fairly level, away from fields.
+local function hiddenSpot(region, rng)
+	local pieces = {}
+	for _, road in Map.Roads do
+		for k = 1, #road.points - 1 do
+			local a, b = road.points[k], road.points[k + 1]
+			for t = 0.2, 0.8, 0.2 do
+				local p = a:Lerp(b, t)
+				local reach = math.max(region.radius.X, region.radius.Y) + 150
+				if (p - region.center).Magnitude < reach and not WorldShape.inMeadow(p.X, p.Y) then
+					local dir = (b - a).Unit
+					table.insert(pieces, { p = p, n = Vector2.new(-dir.Y, dir.X) })
+				end
+			end
+		end
+	end
+	for _ = 1, 200 do
+		if #pieces == 0 then
+			return nil
+		end
+		local piece = pieces[rng:NextInteger(1, #pieces)]
+		local side = rng:NextInteger(0, 1) * 2 - 1
+		local spot = piece.p + piece.n * side * rng:NextNumber(50, 120) + Vector2.new(rng:NextNumber(-20, 20), rng:NextNumber(-20, 20))
+		local d = WorldShape.nearestRoad(spot.X, spot.Y)
+		local h, water = WorldShape.column(spot.X, spot.Y)
+		local level = true
+		for _, o in { Vector2.new(4, 0), Vector2.new(-4, 0), Vector2.new(0, 4), Vector2.new(0, -4) } do
+			local h2, w2 = WorldShape.column(spot.X + o.X, spot.Y + o.Y)
+			if w2 or math.abs(h2 - h) > 2.5 then
+				level = false
+			end
+		end
+		local clear = WorldShape.regionAt(spot.X, spot.Y) == region and not water and level and (not d or d > 30)
+		for _, entry in Regions.fields do
+			if clear and (Vector2.new(entry.center.X, entry.center.Z) - spot).Magnitude < 40 then
+				clear = false
+			end
+		end
+		if clear then
+			return Vector3.new(spot.X, h, spot.Y), piece.p
+		end
+	end
+	return nil
+end
+
+local function hiddenLook(parent, kind, at, rng)
+	local cf = CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	if kind == "tree" then
+		local trunk = part(parent, "HollowTrunk", Vector3.new(5, 14, 5), cf * CFrame.new(0, 6.5, 0), Color3.fromRGB(92, 74, 54), Enum.Material.Wood)
+		trunk.Shape = Enum.PartType.Cylinder
+		trunk.CFrame = trunk.CFrame * CFrame.Angles(0, 0, math.rad(90))
+		part(parent, "HollowCanopy", Vector3.new(14, 9, 14), cf * CFrame.new(0, 16, 0), Color3.fromRGB(86, 110, 62), Enum.Material.Grass, false)
+		part(parent, "Hollow", Vector3.new(2.4, 3.2, 0.4), cf * CFrame.new(0, 2.2, -2.45), Color3.fromRGB(28, 22, 18), Enum.Material.SmoothPlastic, false)
+		return cf * CFrame.new(0, 2.2, -3)
+	elseif kind == "shed" then
+		part(parent, "BuriedRoofL", Vector3.new(7, 0.5, 9), cf * CFrame.new(-1.9, 1.3, 0) * CFrame.Angles(0, 0, math.rad(30)), Color3.fromRGB(110, 80, 60), Enum.Material.WoodPlanks)
+		part(parent, "BuriedRoofR", Vector3.new(7, 0.5, 9), cf * CFrame.new(1.9, 1.3, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color3.fromRGB(110, 80, 60), Enum.Material.WoodPlanks)
+		part(parent, "ShedChimney", Vector3.new(1, 2.4, 1), cf * CFrame.new(2, 2.4, 2.5), Color3.fromRGB(120, 110, 104), Enum.Material.Brick)
+		return cf * CFrame.new(0, 1.2, -5)
+	elseif kind == "chest" then
+		part(parent, "SunkChest", Vector3.new(3.6, 1.6, 2.4), cf * CFrame.new(0, 0.3, 0) * CFrame.Angles(0.15, 0, 0.1), Color3.fromRGB(80, 60, 44), Enum.Material.WoodPlanks)
+		part(parent, "SunkChestBand", Vector3.new(3.7, 0.3, 2.5), cf * CFrame.new(0, 0.9, 0) * CFrame.Angles(0.15, 0, 0.1), Color3.fromRGB(120, 110, 100), Enum.Material.Metal)
+		return cf * CFrame.new(0, 0.8, 0)
+	end
+	-- cairn
+	for i = 0, 3 do
+		local r = 2.6 - i * 0.5
+		local stone = part(parent, "CairnStone", Vector3.new(r, 1.2, r * 0.9), cf * CFrame.new(0, 0.6 + i * 1.1, 0) * CFrame.Angles(0, i * 0.7, 0), Color3.fromRGB(128, 122, 116), Enum.Material.Slate)
+		stone.Shape = Enum.PartType.Block
+	end
+	return cf * CFrame.new(0, 1, -1.8)
+end
+
+local function hiddenSpots(folder)
+	local signpost = Regions.signpost
+	for _, r in Map.Regions do
+		local def = HIDDEN[r.id]
+		local region = WorldShape.region(r.id)
+		if def and region then
+			local rng = Random.new(Map.Seed * 31 + #r.id * 7 + string.byte(r.id, 1))
+			local at, roadPoint = hiddenSpot(region, rng)
+			if at then
+				local id = "hidden_" .. r.id
+				local holder = Instance.new("Model")
+				holder.Name = "Hidden_" .. r.id
+				holder.Parent = folder
+				local findAt = hiddenLook(holder, def.kind, at, rng)
+				local ground = WorldShape.column(findAt.X, findAt.Z)
+				if findAt.Y < ground + 0.6 then
+					findAt = findAt + Vector3.new(0, ground + 0.6 - findAt.Y, 0) -- never inside a slope
+				end
+				-- The find itself: a small dark bundle you search in the hollow, under the roof, in the chest.
+				local find = secret(holder, id, def.name, findAt, Vector3.new(1.2, 0.8, 1.2), Color3.fromRGB(70, 56, 44), Enum.Material.Fabric)
+				find.CanCollide = false
+				Discoveries.addHidden(id, def.name)
+				local offset = Vector2.new(at.X, at.Z) - roadPoint
+				local paces = math.floor(offset.Magnitude / 2.5 / 5 + 0.5) * 5
+				local text = ("OLD SIGN\n%d paces %s,\n%s"):format(paces, compass(offset.X, offset.Y), def.riddle)
+				if signpost then
+					signpost(holder, roadPoint.X, roadPoint.Y, offset.Unit, text, 12)
+				end
+				Wilds.Hidden[r.id] = { id = id, name = def.name, part = find, spot = at, sign = roadPoint }
+			else
+				warn("[Needlewood] no hidden spot found in " .. r.name)
+			end
+		end
+	end
+end
+
 function Wilds.build(folder)
 	local wilds = Instance.new("Folder")
 	wilds.Name = "Wilds"
 	wilds.Parent = folder
-	for _, step in { { "volcano", volcano }, { "ghost road", ghostRoad }, { "cave", cave }, { "sky", sky } } do
+	for _, step in { { "volcano", volcano }, { "ghost road", ghostRoad }, { "cave", cave }, { "sky", sky }, { "hidden spots", hiddenSpots } } do
 		local ok, err = pcall(step[2], wilds)
 		if not ok then
 			warn(("[Needlewood] Wilds %s failed: %s"):format(step[1], tostring(err)))
