@@ -118,7 +118,11 @@ end
 local function useRake(player, root, aim)
 	local center = aim and aim.position or spotInFront(root, Config.RakeRadius)
 	Avatar.swing(player, "Rake", function()
-		Hay.rake(center, root.Position, Config.RakeRadius, player.UserId)
+		-- Gather toward the ground a couple of studs in front of the player, on the side the hay is on.
+		local flat = Vector3.new(center.X - root.Position.X, 0, center.Z - root.Position.Z)
+		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
+		local gatherAt = root.Position + dir * Config.RakeGatherDistance
+		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
 	end)
 end
 
