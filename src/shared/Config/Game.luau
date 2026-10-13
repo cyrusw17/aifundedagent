@@ -13,10 +13,11 @@ return {
 	BarrelRefillSeconds = 45, -- placeholder until we decide how barrels refill
 
 	-- Tools
-	ShovelReach = 9, -- a barrel this close and in front of you gets smashed
+	ShovelReach = 9, -- with no click aim, a barrel this close and in front of you gets smashed
+	ToolReach = 18, -- how far from you a click can be for a tool to act on it
 	PickupReach = 10, -- how close the Pick up button shows
 	ShovelPieces = 6, -- pieces per scoop
-	ShovelRadius = 4.5, -- pieces this close to the spot in front of you get scooped
+	ShovelRadius = 3, -- pieces this close to the clicked spot get scooped, nearest first
 	ScoopCooldownSeconds = 0.85,
 	RakeRadius = 7,
 	RakeCooldownSeconds = 0.75,

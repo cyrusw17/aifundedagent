@@ -1,10 +1,12 @@
 --!nonstrict
--- What each tool does when you click with it. Everything runs on the server from the tool's own Activated
--- signal, so a click works no matter what the client scripts do. The target is whatever is in front of you.
---   shovel: smash the barrel in front of you, or scoop a few loose pieces in front of you
---   rake:   drag the loose pieces in front of you back toward you, spreading them across the ground
--- Bare hands lift a whole barrel with its Pick up prompt (see Barrels.luau).
+-- What each tool does when you click with it. The click itself comes from the tool's server-side Activated
+-- signal. The client also reports where the click pointed (ToolAim), so a tool works on the exact hay piece or
+-- barrel you clicked. If no aim arrives, the tool works on what is in front of you.
+--   shovel: smash the clicked barrel, or scoop the clicked hay piece and the pieces next to it
+--   rake:   drag the loose pieces around the click back toward you, spreading them across the ground
+-- Bare hands lift a whole barrel with its Pick up button (see Barrels.luau).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -16,6 +18,10 @@ local Hay = require(script.Parent.Hay)
 local Tools = {}
 
 local rng = Random.new()
+local aims = {} -- player -> { position, part, time } from the latest click
+
+local AIM_FRESH = 0.4 -- seconds an aim counts as belonging to the current click
+local AIM_WAIT = 0.15 -- how long a click waits for its aim to arrive
 
 -- The spot on the ground a little in front of the player.
 local function spotInFront(root, distance)
@@ -27,9 +33,33 @@ local function spotInFront(root, distance)
 	return root.Position + flat.Unit * distance - Vector3.new(0, 2, 0)
 end
 
-local function useShovel(player, root)
-	local barrel = Barrels.inFront(root, Config.ShovelReach)
-	if barrel then
+-- The aim for this click if the client sent one in reach, waiting briefly since it may land just after the click.
+local function currentAim(player, root)
+	local started = os.clock()
+	while true do
+		local aim = aims[player]
+		if aim and os.clock() - aim.time < AIM_FRESH then
+			aims[player] = nil
+			if (aim.position - root.Position).Magnitude <= Config.ToolReach then
+				return aim
+			end
+			return nil
+		end
+		if os.clock() - started > AIM_WAIT then
+			return nil
+		end
+		task.wait()
+	end
+end
+
+local function useShovel(player, root, aim)
+	local barrel
+	if aim then
+		barrel = aim.part and Barrels.fromPart(aim.part)
+	else
+		barrel = Barrels.inFront(root, Config.ShovelReach)
+	end
+	if barrel and not barrel.carriedBy then
 		Avatar.swing(player, "Shovel", function()
 			Barrels.breakOpen(player, barrel)
 		end)
@@ -37,12 +67,21 @@ local function useShovel(player, root)
 	end
 
 	local state = Data.get(player)
-	local spot = spotInFront(root, Config.ShovelReach / 2)
 	if not state then
 		return
 	end
-	if #Hay.near(spot, Config.ShovelRadius, 1) == 0 then
-		Data.toast(player, "Nothing to scoop here. Face a barrel or a pile of hay and click.")
+	-- The clicked spot, or else the ground in front of you. Pieces right at your feet count too.
+	local function targetPieces(max)
+		local center = aim and aim.position or spotInFront(root, Config.ShovelReach / 2)
+		local list = Hay.near(center, Config.ShovelRadius, max)
+		if #list == 0 and not aim then
+			list = Hay.near(root.Position - Vector3.new(0, 2.5, 0), Config.ShovelRadius, max)
+		end
+		return list
+	end
+
+	if #targetPieces(1) == 0 then
+		Data.toast(player, "No hay there. Click a barrel or a hay piece.")
 		return
 	end
 	if state.loadHay + Config.HayPerPiece > Config.CarryCapacity then
@@ -52,9 +91,8 @@ local function useShovel(player, root)
 
 	Avatar.swing(player, "Shovel", function()
 		-- The swing takes a moment, so look again when the shovel lands and respect the carry limit.
-		local landed = spotInFront(root, Config.ShovelReach / 2)
 		local room = math.floor((Config.CarryCapacity - state.loadHay) / Config.HayPerPiece)
-		local list = Hay.near(landed, Config.ShovelRadius, math.min(Config.ShovelPieces, room))
+		local list = targetPieces(math.min(Config.ShovelPieces, room))
 		if #list == 0 then
 			return
 		end
@@ -66,26 +104,42 @@ local function useShovel(player, root)
 	end)
 end
 
-local function useRake(player, root)
+local function useRake(player, root, aim)
+	local center = aim and aim.position or spotInFront(root, Config.RakeRadius)
 	Avatar.swing(player, "Rake", function()
-		Hay.rake(spotInFront(root, Config.RakeRadius), root.Position, Config.RakeRadius, player.UserId)
+		Hay.rake(center, root.Position, Config.RakeRadius, player.UserId)
 	end)
 end
 
 function Tools.init()
-	Avatar.onToolActivated = function(player, kind)
-		local root = Avatar.getRoot(player)
-		if not root or (Data.get(player) and Data.get(player).carryBarrel) then
+	local aimRemote = Instance.new("RemoteEvent")
+	aimRemote.Name = "ToolAim"
+	aimRemote.Parent = ReplicatedStorage
+	aimRemote.OnServerEvent:Connect(function(player, position, part)
+		if typeof(position) ~= "Vector3" or (part ~= nil and typeof(part) ~= "Instance") then
 			return
 		end
+		aims[player] = { position = position, part = part, time = os.clock() }
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		aims[player] = nil
+	end)
+
+	Avatar.onToolActivated = function(player, kind)
+		local root = Avatar.getRoot(player)
+		local state = Data.get(player)
+		if not root or not state or state.carryBarrel then
+			return
+		end
+		local aim = currentAim(player, root)
 		if kind == "Shovel" then
-			useShovel(player, root)
+			useShovel(player, root, aim)
 		elseif kind == "Rake" then
-			useRake(player, root)
+			useRake(player, root, aim)
 		end
 	end
 
-	-- Putting a carried barrel down from the keyboard (G) or a click. The barrel's own prompt does the same.
+	-- Putting a carried barrel down from the keyboard (G) or a click. The barrel's own button does the same.
 	local dropRemote = Instance.new("RemoteEvent")
 	dropRemote.Name = "DropBarrel"
 	dropRemote.Parent = ReplicatedStorage

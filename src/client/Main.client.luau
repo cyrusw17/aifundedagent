@@ -70,9 +70,32 @@ toast.Parent = gui
 Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 12)
 
 local dropRemote = ReplicatedStorage:WaitForChild("DropBarrel")
+local aimRemote = ReplicatedStorage:WaitForChild("ToolAim")
 
--- Tools and the Pick up button are handled entirely on the server. The only input here: while carrying a barrel,
--- a click on the world or G puts it down (its Put down button does the same).
+-- The server runs every tool click. All the client adds is where the click pointed, so the shovel and rake
+-- work on the exact hay piece or barrel under the cursor. Without it they act on what is in front of you.
+local mouse = player:GetMouse()
+local hookedTools = setmetatable({}, { __mode = "k" })
+
+local function sendAim()
+	local ray = workspace.CurrentCamera:ScreenPointToRay(mouse.X, mouse.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 300, params)
+	if hit then
+		aimRemote:FireServer(hit.Position, hit.Instance)
+	end
+end
+
+local function hookTool(child)
+	if child:IsA("Tool") and not hookedTools[child] then
+		hookedTools[child] = true
+		child.Activated:Connect(sendAim)
+	end
+end
+
+-- While carrying a barrel, a click on the world or G puts it down (its Put down button does the same).
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or not player:GetAttribute("Carrying") then
 		return
@@ -85,8 +108,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 local HINTS = {
-	Shovel = "Shovel: face a barrel or hay, click",
-	Rake = "Rake: face loose hay, click",
+	Shovel = "Shovel: click a barrel or hay",
+	Rake = "Rake: click loose hay",
 }
 
 local function refresh()
@@ -130,7 +153,13 @@ player:GetAttributeChangedSignal("ToastId"):Connect(showToast)
 
 -- Equipping or putting away a tool moves it in and out of the character, so watch that for the hint.
 local function watchCharacter(character)
-	character.ChildAdded:Connect(refresh)
+	for _, child in character:GetChildren() do
+		hookTool(child)
+	end
+	character.ChildAdded:Connect(function(child)
+		hookTool(child)
+		refresh()
+	end)
 	character.ChildRemoved:Connect(refresh)
 	refresh()
 end
