@@ -124,10 +124,6 @@ choices(row("Sound effects"), "effects", { { "OFF", 0 }, { "LOW", 0.35 }, { "MID
 choices(row("Screen size"), "uiSize", { { "SMALL", "small" }, { "NORMAL", "normal" }, { "LARGE", "large" } })
 choices(row("Shadows"), "shadows", { { "ON", true }, { "OFF", false } })
 choices(row("Floating labels"), "labels", { { "ON", true }, { "OFF", false } })
--- Comfort (Hay thread): ToolRepeat.client and Throw.client read these.
-choices(row("Hold click to keep scooping"), "holdScoop", { { "ON", true }, { "OFF", false } })
-choices(row("Carry a bale"), "holdCarry", { { "TOGGLE", false }, { "HOLD F", true } })
-choices(row("Throw button (phone)"), "bigThrow", { { "NORMAL", false }, { "BIG", true } })
 
 local help = row("Tutorial")
 local replay = Kit.button(help, "PLAY AGAIN", "wood", UDim2.fromOffset(130, 32))

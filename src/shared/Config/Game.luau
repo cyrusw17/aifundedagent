@@ -70,7 +70,7 @@ return {
 	WetSoakSeconds = 20,
 	WetDrySeconds = 150,
 	WetWeightFactor = 1.5,
-	WetPriceFactor = 0.6,
+	WetPriceFactor = Prices.WetHayShare,
 	-- Pouring the hay in your arms (shovel click on a truck bed, hopper, belt or sell pad).
 	PourStrands = 40, -- strands per click; click again for more
 	PourFlightSeconds = 0.55,
