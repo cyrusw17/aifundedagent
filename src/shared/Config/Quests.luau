@@ -501,7 +501,7 @@ Quests.Rewards = {
 	captains_barge = {
 		kind = "unlock",
 		name = "Captain's Barge",
-		blurb = "A private ferry. It docks when the boats arrive.",
+		blurb = "The captain's pass: every ferry carries your trucks free, for good.",
 	},
 	-- Mystery items. Lucky Thimble has a perk; the rest are for the collection and the Spindle.
 	lucky_thimble = {

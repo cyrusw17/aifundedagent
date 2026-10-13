@@ -368,17 +368,29 @@ end
 
 -- Every truck on the deck pays its fare once per crossing (trailers ride free with their truck). A truck whose
 -- owner can't pay is rolled back onto the pier with the reason.
+-- The Captain's Barge (the Captain's Log quest reward) is a lifetime pass: its holder's trucks sail free.
+local Quests = nil
+local function sailsFree(owner)
+	if Quests == nil then
+		local ok, module = pcall(require, script.Parent.Quests)
+		Quests = ok and module or false
+	end
+	return Quests and Quests.has and Quests.has(owner, "captains_barge") == true
+end
+
 local function collectFares(shuttle, stop)
-	local fare = shuttle.def.fare or 0
 	for model, owner in Vehicles.all() do
 		if shuttle.paid[model] or not model:GetAttribute("TruckId") or model:GetAttribute("OnFerry") or not onDeck(shuttle, model) then
 			continue
 		end
+		local fare = sailsFree(owner) and 0 or (shuttle.def.fare or 0)
 		local ok, message = Bank.charge(owner, fare, shuttle.def.name .. " fare")
 		if ok then
 			shuttle.paid[model] = true
 			if fare > 0 then
 				tell(owner, ("%s: fare $%d paid. Stay on board, the gates close at departure."):format(shuttle.def.name, fare))
+			elseif (shuttle.def.fare or 0) > 0 then
+				tell(owner, ("%s: the Captain's Barge pass, you sail free. Stay on board."):format(shuttle.def.name))
 			end
 		else
 			tell(owner, ("The %s fare is $%d. %s"):format(shuttle.def.name, fare, message or ""))

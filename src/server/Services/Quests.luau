@@ -857,7 +857,10 @@ local function entranceLanterns(m, cf, cell, half)
 	local parts = {}
 	for _, side in { -1, 1 } do
 		local base = cf * CFrame.new(side * (cell / 2 + 1.5), 0, half + 2)
-		table.insert(parts, part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood))
+		table.insert(
+			parts,
+			part(m, "Post", Vector3.new(0.4, 6, 0.4), base * CFrame.new(0, 3, 0), Rustic.WoodDark, Enum.Material.Wood)
+		)
 		local lantern =
 			part(m, "Lantern", Vector3.new(1, 1.3, 1), base * CFrame.new(0, 6.4, 0), Rustic.Metal, Enum.Material.Metal)
 		local glow = Instance.new("PointLight")
@@ -1774,7 +1777,7 @@ function Quests.usePrompt(player, spotId)
 		end
 		if not stepWhenOk(step) then
 			Data.toast(player, ("Not now. Come back %s."):format(QuestConfig.WhenText[step.when] or "later"))
-			return
+			return true
 		end
 		if step.kind == "talk" then
 			if step.distinct then
@@ -1782,12 +1785,12 @@ function Quests.usePrompt(player, spotId)
 				local here = tostring(spot.model and spot.model:GetAttribute("Location") or 0)
 				if entry.last == here then
 					Data.toast(player, "You already found him here. He moves every few minutes.")
-					return
+					return true
 				end
 				entry.last = here
 			elseif entry.seen[spotId] then
 				Data.toast(player, "Nothing new here.")
-				return
+				return true
 			else
 				entry.seen[spotId] = true
 			end
@@ -1800,7 +1803,7 @@ function Quests.usePrompt(player, spotId)
 			bump(player, id, 1)
 		elseif step.kind == "collect" then
 			if entry.seen[spotId] then
-				return
+				return true
 			end
 			entry.seen[spotId] = true
 			Data.toast(player, ("Took the %s."):format(spot.def.name:lower()))
@@ -1839,10 +1842,10 @@ function Quests.usePrompt(player, spotId)
 						table.concat(missing, ", ")
 					)
 				)
-				return
+				return true
 			end
 			if step.cash and not box and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
-				return
+				return true
 			end
 			for needleId, count in want do
 				if box then
@@ -1854,7 +1857,7 @@ function Quests.usePrompt(player, spotId)
 			Data.toast(player, ("%s accepts your offering."):format(spot.def.name))
 			advance(player, id)
 		end
-		return
+		return true
 	end
 	-- Nobody's quest needs this spot right now.
 	if spot.def.item then
@@ -2264,9 +2267,11 @@ function Quests.sandbox(player, fn)
 	end
 	local box = { quests = {}, pocket = {} }
 	sandboxes[player] = box
+	Events.isolate(player, onEvent)
 	local q = questsOf(player)
 	unlockQuests(q)
 	local results = table.pack(pcall(fn, q, box.pocket))
+	Events.isolate(player, nil)
 	sandboxes[player] = nil
 	publish(player)
 	return table.unpack(results, 1, results.n)
@@ -2307,10 +2312,19 @@ local function hookGiver(model)
 			local x, z = torso.Position.X, torso.Position.Z
 			buildSpot(spotId, Vector3.new(x, 0, z))
 			reachable[def.region] = true
+			-- Take the prompt over (Regions stops speaking for them) and say their own lines when no quest needs them.
+			model:SetAttribute("QuestHandled", true)
+			local lines = string.split(model:GetAttribute("Lines") or "", "\n")
+			local turn = setmetatable({}, { __mode = "k" })
 			local prompt = torso:FindFirstChildWhichIsA("ProximityPrompt")
 			if prompt then
 				prompt.Triggered:Connect(function(player)
-					Quests.usePrompt(player, spotId)
+					if Quests.usePrompt(player, spotId) or lines[1] == "" or not Data.get(player) then
+						return
+					end
+					local i = (turn[player] or 0) % #lines + 1
+					turn[player] = i
+					Data.toast(player, ("%s: %s"):format(model.Name, lines[i]))
 				end)
 			end
 		end
@@ -2513,7 +2527,11 @@ function Quests.build(worldFolder)
 						toggled = true
 						for _, p in spot.model:GetDescendants() do
 							if p:IsA("BasePart") then
-								p.Transparency = show and 0 or 1
+								-- Back to its built look, so an invisible base stays invisible.
+								if p:GetAttribute("ShownTransparency") == nil then
+									p:SetAttribute("ShownTransparency", p.Transparency)
+								end
+								p.Transparency = show and p:GetAttribute("ShownTransparency") or 1
 							elseif p:IsA("PointLight") then
 								p.Enabled = show
 							end

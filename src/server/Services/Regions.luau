@@ -295,8 +295,9 @@ local function townsperson(parent, id, name, cframe, shirt, lines)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = torso
 	model:SetAttribute("QuestGiver", id)
+	model:SetAttribute("Lines", table.concat(lines, "\n")) -- Quests says them once it takes the prompt over
 	CollectionService:AddTag(model, "QuestGiver")
-	local turn = {}
+	local turn = setmetatable({}, { __mode = "k" }) -- players who left drop out on their own
 	prompt.Triggered:Connect(function(player)
 		if model:GetAttribute("QuestHandled") then
 			return
