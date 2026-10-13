@@ -29,20 +29,35 @@ local folder = Instance.new("Folder")
 folder.Name = "Needles"
 folder.Parent = Workspace
 
-local held = {} -- player -> { [needleId] = count }
+local held = {} -- player -> { [needleId] = count }, only until a save slot is loaded
 
 function Needle.info(id)
 	return types[id] or Needle.default
 end
 
+-- The pocket lives in the player's save slot (Data state.pocket) so it saves and loads with the slot.
+local function pocketOf(player)
+	local state = Data.get(player)
+	if state then
+		state.pocket = state.pocket or {}
+		return state.pocket
+	end
+	held[player] = held[player] or {}
+	return held[player]
+end
+
 -- Needles in this player's pocket, as { [needleId] = count }.
 function Needle.held(player)
-	return held[player] or {}
+	return pocketOf(player)
 end
 
 -- Empties the player's pocket and returns what was in it.
 function Needle.takeHeld(player)
-	local pocket = held[player] or {}
+	local pocket = table.clone(pocketOf(player))
+	local state = Data.get(player)
+	if state then
+		state.pocket = {}
+	end
 	held[player] = nil
 	player:SetAttribute("NeedlesHeld", 0)
 	return pocket
@@ -55,9 +70,8 @@ local function pickUp(player, n)
 		return
 	end
 	local id = n:GetAttribute("NeedleId") or Needle.default.id
-	local pocket = held[player] or {}
+	local pocket = pocketOf(player)
 	pocket[id] = (pocket[id] or 0) + 1
-	held[player] = pocket
 	player:SetAttribute("NeedlesHeld", (player:GetAttribute("NeedlesHeld") or 0) + 1)
 	n:Destroy()
 	Data.toast(player, ("Picked up a %s needle. Sell it at a SELL NEEDLES pad."):format(Needle.info(id).name:lower()))

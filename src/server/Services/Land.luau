@@ -292,6 +292,7 @@ local function saveItems(player, plot)
 	end
 	s.land.items = items
 	s.land.plot = plot.index
+	s.land.needles = plot.bin.contents(player.UserId)
 	plot.dirty = false
 end
 
@@ -342,6 +343,7 @@ local function release(plot)
 		plot.owner:SetAttribute("LandPlot", 0)
 	end
 	clearPlot(plot)
+	plot.bin.clear() -- the owner's needles are in their save; nobody else's should sit on a free plot
 	plot.leftOut = nil
 	plot.owner, plot.ownerId, plot.ownerName = nil, nil, nil
 	publish(plot)
@@ -637,6 +639,33 @@ end
 
 -- A save was picked (with the plot the player chose in the picker, if any): set up its farm, or buy the chosen plot
 -- for a save with no land yet.
+-- Puts the needles saved in the bin back in this plot's bin. Past BinRestoreCap physical needles the rest go in the
+-- pocket, so a big hoard doesn't bury the bin.
+local BinRestoreCap = 300
+local function restoreNeedles(player, plot, land)
+	local saved = Data.countMap(land.needles)
+	local inBin, toPocket, room = {}, {}, BinRestoreCap
+	for id, count in saved do
+		local here = math.min(count, room)
+		room -= here
+		if here > 0 then
+			inBin[id] = here
+		end
+		if count > here then
+			toPocket[id] = count - here
+		end
+	end
+	plot.bin.fill(player.UserId, inBin)
+	local s = Data.get(player)
+	if s and next(toPocket) then
+		for id, count in toPocket do
+			s.pocket[id] = (s.pocket[id] or 0) + count
+		end
+		Data.sync(player)
+	end
+	land.needles = inBin
+end
+
 local function onLoaded(player)
 	local s = Data.get(player)
 	if not s then
@@ -661,6 +690,7 @@ local function onLoaded(player)
 		return
 	end
 	claim(plot, player, s.land)
+	restoreNeedles(player, plot, s.land)
 	parkVehicles(player, plot)
 	task.spawn(sendHome, player, plot)
 	local message = ("Your farm is on %s."):format(plot.def.name)
