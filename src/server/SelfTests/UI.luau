@@ -46,6 +46,28 @@ return function(SelfTest)
 		end
 
 		local Prices = require(Shared.Config.Prices)
+
+		-- The Rebirth card (Rebirth.client) calls this and prints "+<Bonus>%" from Prices.Rebirth (Economy's Rebirth.luau).
+		if Services:FindFirstChild("Rebirth") then
+			local rebirth = ReplicatedStorage:FindFirstChild("Rebirth")
+			t.check(
+				"remote ReplicatedStorage.Rebirth is a RemoteFunction",
+				rebirth ~= nil and rebirth:IsA("RemoteFunction")
+			)
+			local terms = Prices.Rebirth
+			t.check(
+				"Rebirth: Prices.Rebirth has a Bonus, Max and Unlock the card can show",
+				typeof(terms) == "table"
+					and typeof(terms.Bonus) == "number"
+					and terms.Bonus > 0
+					and typeof(terms.Max) == "number"
+					and terms.Max >= 1
+					and typeof(terms.Unlock) == "string"
+			)
+		else
+			t.skip("remote ReplicatedStorage.Rebirth is a RemoteFunction", "Rebirth.luau is not in this build")
+		end
+
 		local Catalog = require(Shared.UI.Catalog)
 		local saved = Catalog.who
 

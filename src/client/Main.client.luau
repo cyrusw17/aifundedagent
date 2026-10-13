@@ -166,6 +166,11 @@ local function showToast()
 	end
 	toastToken += 1
 	local mine = toastToken
+	-- Sale lines are written before the rebirth bonus (Bank.earn adds it), so say it here.
+	local bonus = player:GetAttribute("RebirthBonus") or 1
+	if bonus > 1 and string.find(text, "^Sold") then
+		text ..= ("  (+%d%% rebirth bonus)"):format(math.floor((bonus - 1) * 100 + 0.5))
+	end
 	toast.Text = text
 	toast.Visible = true
 	task.delay(3.5, function()

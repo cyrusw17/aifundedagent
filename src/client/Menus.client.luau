@@ -177,6 +177,13 @@ local function pop(amount)
 	label.Position = UDim2.fromOffset(252, 18 + slot * 10)
 	label.TextStrokeColor3 = C.Ink
 	label.TextStrokeTransparency = 0.1
+	-- The server reports the sale before the rebirth bonus (Bank.earn adds it), so tag it: "+$63  +20%".
+	local bonus = player:GetAttribute("RebirthBonus") or 1
+	if bonus > 1 then
+		label.Text ..= ('  <font size="16" color="#FFCE60">+%d%%</font>'):format(math.floor((bonus - 1) * 100 + 0.5))
+		label.RichText = true
+		label.Size = UDim2.fromOffset(220, 30)
+	end
 	local info = TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	TweenService:Create(label, info, {
 		Position = label.Position - UDim2.fromOffset(0, 28),
