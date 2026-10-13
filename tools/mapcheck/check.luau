@@ -191,6 +191,28 @@ end
 print("spindle door", #SpindleDoor.shards, "shards known", spindleOk and "ok" or "WRONG")
 if not spindleOk then print("WARN spindle door") end
 
+-- Road polish: bridges found, and no rail, trestle or board stands inside a 16-stud lane (a truck and trailer fit).
+local RoadPolish = require({ __path = "Services.RoadPolish" })
+local polishOk = #RoadPolish.bridges > 0
+local inLane = 0
+local function walk(o)
+	for _, c in o:GetChildren() do
+		if c.ClassName == "Part" then
+			local d = WorldShapeE.nearestRoad(c.Position.X, c.Position.Z)
+			local reach = math.max(c.Size.X, c.Size.Z) / 2
+			if c.Name ~= "Rail" and d and d - math.min(reach, 0.5) < Map.RoadWidth / 2 then
+				inLane += 1
+				if inLane <= 5 then print("WARN road polish part in a lane", c.Name, c.Position, d) end
+			end
+		end
+		walk(c)
+	end
+end
+for _, d in workspace:GetDescendants() do
+	if d.Name == "RoadPolish" then walk(d) end
+end
+print("road polish", #RoadPolish.bridges, "bridge sides", inLane == 0 and polishOk and "ok" or "WRONG")
+
 -- Part budget: the whole map's share of the 40,000-part Workspace budget (Main.server.luau) is 12,000.
 local mapParts = 0
 for _, d in workspace:GetDescendants() do

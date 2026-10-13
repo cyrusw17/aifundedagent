@@ -240,6 +240,21 @@ return function(SelfTest)
 		t.check("every landmark is discovered by standing on it", #unfound == 0, #unfound > 0 and table.concat(unfound, ", ") or nil)
 		t.equal("Meadow Farm is home, not a discovery", #Discoveries.at(Vector3.new(0, 5, 0)), 0)
 
+		-- Bridges -------------------------------------------------------------------------------------------------
+		-- The rails stand outside the lane (the lane check above covers parts in it); here: each bridge's causeway
+		-- rises no steeper than a loaded truck and trailer can take.
+		local RoadPolish = require(Services.RoadPolish)
+		t.check("the water crossings have bridges", #RoadPolish.bridges > 0, ("%d bridge sides"):format(#RoadPolish.bridges))
+		local steep = {}
+		for _, bridge in RoadPolish.bridges do
+			local rise = math.abs(bridge.to.Y - bridge.from.Y)
+			local run = (Vector2.new(bridge.to.X, bridge.to.Z) - Vector2.new(bridge.from.X, bridge.from.Z)).Magnitude
+			if run > 0 and rise / run > 0.15 then
+				table.insert(steep, ("%s %.2f"):format(bridge.road, rise / run))
+			end
+		end
+		t.check("bridges are gentle enough for a trailer", #steep == 0, #steep > 0 and table.concat(steep, ", ") or nil)
+
 		-- The Spindle door ---------------------------------------------------------------------------------------
 		local SpindleDoor = require(Services.SpindleDoor)
 		local CollectionService = game:GetService("CollectionService")
