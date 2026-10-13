@@ -23,6 +23,7 @@ local Data = require(script.Parent.Data)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
 local Needle = require(script.Parent.Needle)
+local Events = require(script.Parent.Events)
 
 local Machines = {}
 
@@ -210,6 +211,7 @@ function Machines.needleBin(parent, frame)
 			return
 		end
 		Machines.pay(player.UserId, value, ("Sold %d sorted needles for $%d."):format(count, value))
+		Events.fire(player, "needles_sold", count, { byType = byType })
 	end
 
 	bin.model = model
@@ -351,6 +353,9 @@ function Machines.hayBuyer(parent, frame, title)
 					local hay, ownerId = 0, nil
 					if b and p == b.body and not b.gone and not b.carriedBy then
 						hay, ownerId = Config.PiecesPerBale * Config.HayPerPiece, b.ownerId
+						if ownerId then
+							Events.fire(ownerId, "bale_sold", 1, { hayType = b.body:GetAttribute("HayType") })
+						end
 						Bales.consume(b)
 					elseif Hay.isPiece(p) then
 						hay, ownerId = Config.HayPerPiece, p:GetAttribute("OwnerId")

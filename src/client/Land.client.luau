@@ -306,7 +306,7 @@ for i, def in LandConfig.Pieces do
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK
-	b.Text = ("%s\n$%d"):format(def.name, def.price)
+	b.Text = def.quest and ("%s\nQuest reward"):format(def.name) or ("%s\n$%d"):format(def.name, def.price)
 	b.Parent = pieceRow
 	corner(b, 6)
 	pieceButtons[def.id] = b

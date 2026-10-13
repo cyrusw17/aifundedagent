@@ -35,6 +35,8 @@ return {
 		{ id = "conveyor_sorter", kind = "separator", name = "Conveyor sorter", price = 5000, size = { 1, 2 }, blurb = "Finds 55% of the needles." },
 		{ id = "magnet_drum", kind = "separator", name = "Magnet drum", price = 15000, size = { 1, 2 }, blurb = "Finds 75% of the needles." },
 		{ id = "optical_sorter", kind = "separator", name = "Optical sorter", price = 50000, size = { 1, 2 }, blurb = "Finds 92% of the needles. The fastest." },
+		-- Quest-only: free to build once the alien ritual is done (Config/Quests.luau), never sold.
+		{ id = "alien_collector", kind = "separator", name = "Starbeam Collector", price = 0, quest = true, size = { 1, 2 }, blurb = "Finds every needle at once. Earned from the alien ritual." },
 	},
 
 	SiloCapacity = 60, -- bales

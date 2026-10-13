@@ -12,6 +12,7 @@ local MeadowTerrain = require(script.Parent.MeadowTerrain)
 local MeadowDecor = require(script.Parent.MeadowDecor)
 local Dealer = require(script.Parent.Dealer)
 local Land = require(script.Parent.Land)
+local Quests = require(script.Parent.Quests)
 
 local World = {}
 
@@ -147,6 +148,9 @@ function World.build()
 
 	-- The land office and the buildable plots south of the main road.
 	Land.build(folder)
+
+	-- Quests, rituals and the places they send you, plus the day and night cycle.
+	Quests.build(folder)
 end
 
 return World

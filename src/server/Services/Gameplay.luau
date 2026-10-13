@@ -11,6 +11,7 @@ local Economy = require(Shared.Economy)
 local Data = require(script.Parent.Data)
 local Bales = require(script.Parent.Bales)
 local Hay = require(script.Parent.Hay)
+local Events = require(script.Parent.Events)
 
 local Gameplay = {}
 
@@ -33,6 +34,7 @@ local function sellHay(player)
 	state.loadHay = 0
 	state.loadNeedles = 0
 	Data.sync(player)
+	Events.fire(player, "hay_sold", hay)
 	Data.toast(
 		player,
 		("Sold %d hay for $%d. The shop found %d needles in it and paid $1 each."):format(hay, value, needles)
@@ -47,7 +49,11 @@ local function sellBale(b)
 	local needles = Economy.rollNeedles(rng, hay, Config.NeedleChancePerHay)
 	local value = Economy.rawLoadValue(hay, needles)
 	local owner = b.ownerId and Players:GetPlayerByUserId(b.ownerId)
+	local hayType = b.body:GetAttribute("HayType")
 	Bales.consume(b)
+	if owner then
+		Events.fire(owner, "bale_sold", 1, { hayType = hayType })
+	end
 
 	local state = owner and Data.get(owner)
 	if state then
@@ -84,6 +90,7 @@ local function sellPieces(pieces)
 			state.cash += value
 			Data.sync(owner)
 			Data.toast(owner, ("Sold %d loose hay for $%d. The shop found %d needles."):format(hay, value, needles))
+			Events.fire(owner, "hay_sold", hay)
 		end
 	end
 end

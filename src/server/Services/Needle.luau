@@ -12,6 +12,7 @@ local Factory = require(ReplicatedStorage.Shared.Config.Factory)
 local Needles = require(ReplicatedStorage.Shared.Config.Needles)
 local Data = require(script.Parent.Data)
 local Groups = require(script.Parent.Groups)
+local Events = require(script.Parent.Events)
 
 local Needle = {}
 
@@ -48,11 +49,25 @@ function Needle.takeHeld(player)
 	return pocket
 end
 
-local function pickUp(player, n)
+-- Takes count needles of one type out of the pocket (quest offerings). Returns false and takes none if short.
+function Needle.take(player, id, count)
+	local pocket = held[player]
+	if not pocket or (pocket[id] or 0) < count then
+		return false
+	end
+	pocket[id] -= count
+	if pocket[id] <= 0 then
+		pocket[id] = nil
+	end
+	player:SetAttribute("NeedlesHeld", math.max(0, (player:GetAttribute("NeedlesHeld") or 0) - count))
+	return true
+end
+
+local function pickUp(player, n, anyReach, quiet)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root or not n.Parent or (n.Position - root.Position).Magnitude > PICKUP_REACH + 2 then
-		return
+	if not root or not n.Parent or (not anyReach and (n.Position - root.Position).Magnitude > PICKUP_REACH + 2) then
+		return false
 	end
 	local id = n:GetAttribute("NeedleId") or Needle.default.id
 	local pocket = held[player] or {}
@@ -60,7 +75,17 @@ local function pickUp(player, n)
 	held[player] = pocket
 	player:SetAttribute("NeedlesHeld", (player:GetAttribute("NeedlesHeld") or 0) + 1)
 	n:Destroy()
-	Data.toast(player, ("Picked up a %s needle. Sell it at a SELL NEEDLES pad."):format(Needle.info(id).name:lower()))
+	if not quiet then
+		Data.toast(player, ("Picked up a %s needle. Sell it at a SELL NEEDLES pad."):format(Needle.info(id).name:lower()))
+	end
+	Events.fire(player, "needle_found", 1, { needleId = id })
+	return true
+end
+
+-- Puts a needle straight into a player's pocket from wherever it lies (the Thread Rake pulls them in). Quiet: the
+-- caller tells the player. Returns true if it was picked up.
+function Needle.collect(player, n)
+	return pickUp(player, n, true, true)
 end
 
 -- Makes a needle at position. ownerId is who it belongs to while it sits in a bin.

@@ -14,6 +14,9 @@ local byId = {}
 for _, def in GloveConfig.Tiers do
 	byId[def.id] = def
 end
+for _, def in GloveConfig.QuestTiers do
+	byId[def.id] = def
+end
 
 -- The glove is modeled as a right glove, fingers +Y and back of hand -Z. On a hand part the fingers point down
 -- (-Y) and the back of the hand faces out: +X on the right hand, -X on the left. Meshes cannot be mirrored, so the

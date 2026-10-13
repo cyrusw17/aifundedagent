@@ -17,6 +17,9 @@ local byId = {}
 for _, def in GloveConfig.Tiers do
 	byId[def.id] = def
 end
+for _, def in GloveConfig.QuestTiers do
+	byId[def.id] = def
+end
 
 local owned = {} -- player -> { [gloveId] = true }
 local worn = {} -- player -> gloveId
@@ -68,6 +71,9 @@ end
 -- Strands per shovel scoop for hay of the given tier.
 function Gloves.scoopSize(player, hayTier)
 	local base = Config.ShovelPieces + Gloves.get(player).scoopBonus
+	if player:GetAttribute("GoldenShovel") then
+		base *= 2 -- the Golden Shovel, a quest reward (Quests.luau)
+	end
 	local short = Gloves.shortBy(player, hayTier)
 	return math.max(2, math.floor(base * (1 - GloveConfig.UnderGearedScoop * short) + 0.5))
 end
@@ -142,6 +148,9 @@ function Gloves.buyOrWear(player, id)
 		return
 	end
 	if not owned[player][id] then
+		if def.quest then
+			return -- quest gloves are earned (Gloves.grant), never bought
+		end
 		if state.cash < def.price then
 			Data.toast(player, ("%s cost $%d. You have $%d."):format(def.name, def.price, state.cash))
 			return
@@ -156,6 +165,23 @@ function Gloves.buyOrWear(player, id)
 		Data.toast(player, ("Put on your %s."):format(def.name))
 	end
 	worn[player] = id
+	publish(player)
+	save(player)
+end
+
+-- Gives a player a pair for free (quest rewards). Waits for their gloves to load. Safe to call again.
+function Gloves.grant(player, id)
+	if not byId[id] then
+		return
+	end
+	local started = os.clock()
+	while not owned[player] and player.Parent and os.clock() - started < 30 do
+		task.wait(0.2)
+	end
+	if not owned[player] or owned[player][id] then
+		return
+	end
+	owned[player][id] = true
 	publish(player)
 	save(player)
 end

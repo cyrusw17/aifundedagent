@@ -14,6 +14,7 @@ local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
 local Props = require(script.Parent.Props)
+local Events = require(script.Parent.Events)
 
 local Bales = {}
 
@@ -240,6 +241,7 @@ function Bales.breakOpen(player, b)
 		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0))
+		Events.fire(player, "bale_broken", 1, { position = center, hayType = hayType })
 
 		local baleOwner = player.UserId
 		-- The twine snaps and flies off, and the bale's packed hay bursts into flakes.

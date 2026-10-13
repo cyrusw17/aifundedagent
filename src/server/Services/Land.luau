@@ -435,6 +435,9 @@ local function onPlace(player, id, gx, gz, dir)
 		return false, "That spot is taken or off your land."
 	end
 	local s = Data.get(player)
+	if def.quest and not (s and typeof(s.quests) == "table" and typeof(s.quests.earned) == "table" and s.quests.earned[def.id]) then
+		return false, ("The %s is a quest reward. See the quest log (Q)."):format(def.name)
+	end
 	if not s or s.cash < def.price then
 		return false, ("You need $%d more."):format(def.price - (s and s.cash or 0))
 	end

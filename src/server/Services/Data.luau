@@ -4,7 +4,8 @@
 --
 -- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
 -- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
--- once it is ready. A slot keeps cash, owned trucks and trailers, and the land plot with everything built on it.
+-- once it is ready. A slot keeps cash, owned trucks and trailers, the land plot with everything built on it, and quest
+-- progress.
 -- Players listed in Config/Land.luau Presets start an empty slot as their preset farm instead of from nothing.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -127,6 +128,8 @@ local function stateFrom(saved)
 		trailers = stringList(saved.trailers),
 		-- land: { owned = true, plot = index, items = { { id, gx, gz, dir, stored }, ... } } once a plot is bought.
 		land = nil,
+		-- quests: steps, finished quests, earned quest rewards and today's bounties (Quests.luau owns the shape).
+		quests = typeof(saved.quests) == "table" and saved.quests or nil,
 	}
 	state.savedCash = state.cash
 	if typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
@@ -253,7 +256,7 @@ function Data.save(player)
 	end
 	-- With infinite money on, the save keeps the balance the player had before, not the test cash.
 	local cash = if Config.InfiniteMoney then state.savedCash or 0 else state.cash
-	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land }
+	local saved = { cash = cash, trucks = state.trucks, trailers = state.trailers, land = state.land, quests = state.quests }
 	if write(slotKey(player, state.slot), saved) then
 		local list = summaries[player] or {}
 		list[state.slot] = summarize(saved)
