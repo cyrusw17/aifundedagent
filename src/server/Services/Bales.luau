@@ -13,6 +13,8 @@ local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
+local Gloves = require(script.Parent.Gloves)
+local Feedback = require(script.Parent.Feedback)
 
 local Bales = {}
 
@@ -30,6 +32,7 @@ local TWINE_X = { -1.2, 1.2 } -- two bands of twine around the bale
 local function buildBale(position)
 	local body = Instance.new("Part")
 	body.Name = "HayBale"
+	body:SetAttribute("HayType", "meadow") -- Config/Gloves hay type; set another for rarer bales
 	body.Size = SIZE
 	body.CFrame = CFrame.new(position + Vector3.new(0, SIZE.Y / 2, 0)) * CFrame.Angles(0, rng:NextNumber(-0.1, 0.1), 0)
 	body.Color = HAY
@@ -227,8 +230,13 @@ function Bales.breakOpen(player, b)
 		end
 
 		local center = rest.Position
+		-- Which hay this bale holds (set by whoever placed it; meadow by default). Its strands carry it on.
+		local hayType = b.body:GetAttribute("HayType") or "meadow"
 		Bales.consume(b)
 		burstEffects(center + Vector3.new(0, 1.5, 0))
+		Feedback.play("BaleBurst", center)
+		-- The first bale a player ever breaks always shows them a glinting needle: that is the hook.
+		local promiseNeedle = Gloves.firstBaleBreak(player)
 
 		local baleOwner = player.UserId
 		-- The twine snaps and flies off, and the bale's packed hay bursts into flakes.
@@ -263,12 +271,20 @@ function Bales.breakOpen(player, b)
 			for _ = 1, perWave do
 				local offset = Vector3.new(rng:NextNumber(-1.2, 1.2), 2 + wave * 0.5, rng:NextNumber(-1.2, 1.2))
 				local velocity = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(3, 8), rng:NextNumber(-4, 4))
-				Hay.spawnPiece(center + offset, velocity, baleOwner)
+				local piece = Hay.spawnPiece(center + offset, velocity, baleOwner)
+				piece:SetAttribute("HayType", hayType)
 			end
 			-- Now and then a needle tumbles out with the hay.
-			if rng:NextNumber() < Config.VisibleNeedleChance then
+			if rng:NextNumber() < Config.VisibleNeedleChance or (promiseNeedle and wave == waves) then
+				promiseNeedle = false
 				local offset = Vector3.new(rng:NextNumber(-1, 1), 2 + wave * 0.5, rng:NextNumber(-1, 1))
-				Hay.spawnPiece(center + offset, Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)), baleOwner, "Needle")
+				local needle = Hay.spawnPiece(
+					center + offset,
+					Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)),
+					baleOwner,
+					"Needle"
+				)
+				Feedback.needle(needle, Hay.needleValue(needle))
 			end
 			task.wait(0.22)
 		end
@@ -308,6 +324,7 @@ function Bales.pickup(player, b)
 	b.prompt.ActionText = "Put down"
 
 	scheduleRegrow(b)
+	Feedback.play("BaleLift", b.body)
 	Avatar.setCarry(player)
 	Data.sync(player)
 end
@@ -359,6 +376,7 @@ function Bales.drop(player)
 		b.body:SetNetworkOwnershipAuto()
 	end)
 
+	Feedback.play("BaleSetDown", b.body)
 	Avatar.clearCarry(player)
 	startDespawnTimer(b)
 end
