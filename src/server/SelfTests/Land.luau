@@ -118,6 +118,7 @@ local function randomSave(rng, big)
 		thatch = rng:NextInteger(0, 500),
 		materials = { bronze = rng:NextInteger(1, 50) },
 		finds = { horseshoe = 2 },
+		secrets = { ["secret_" .. rng:NextInteger(1, 9)] = 1, meadow_well = 1 },
 		gloves = { owned = { "work", "leather" }, worn = "leather", brokeFirstBale = true },
 		land = farm(big and 120 or rng:NextInteger(0, 30)),
 		land2 = rng:NextNumber() < 0.5 and farm(big and 120 or rng:NextInteger(0, 30)) or nil,
@@ -191,6 +192,11 @@ local function registerSaves(SelfTest)
 				end
 				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
 					error("second farm lost")
+				end
+				for k, n in original.secrets do
+					if not first.secrets or first.secrets[k] ~= n then
+						error("region secret " .. k .. " lost")
+					end
 				end
 				if first.land.name ~= original.land.name then
 					error("farm name lost")
