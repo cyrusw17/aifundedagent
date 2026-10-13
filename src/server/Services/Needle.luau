@@ -42,6 +42,8 @@ local LOOKS = {
 	sand = { Color3.fromRGB(214, 186, 120), false },
 	ice = { Color3.fromRGB(170, 220, 240), true },
 	bog = { Color3.fromRGB(110, 128, 70), false },
+	coral = { Color3.fromRGB(214, 120, 104), false },
+	brass = { Color3.fromRGB(181, 148, 72), false },
 	obsidian = { Color3.fromRGB(60, 40, 70), true },
 	geode = { Color3.fromRGB(170, 110, 220), true },
 	cloud = { Color3.fromRGB(240, 244, 255), true },
@@ -85,9 +87,44 @@ end
 -- Dollars one needle of this type and multiplier sells for at a SELL NEEDLES pad.
 -- Follows this server's needle market (Market.luau), so it can drift 20% either side of the list price. A polished
 -- needle (needle polisher) is worth Prices.PolishBonus more.
-function Needle.priceOf(id, mult, polished)
-	local polish = polished and 1 + Prices.PolishBonus or 1
-	return math.floor(Needle.info(id).sortedValue * (mult or 1) * polish * Market.multiplier(id) + 0.5)
+function Needle.priceOf(id, mult, polished, grade)
+	return LineMath.price(Needle.info(id).sortedValue, mult, polished, Prices.PolishBonus, Market.multiplier(id), Prices.NeedleGrades[grade or "B"])
+end
+
+-- Rarity by a type's list value: Legendary (Cosmic) and Epic (Cloud, Phantom) twinkle; everything else is nil.
+local RARITIES = {
+	{ name = "Legendary", atLeast = 2000, color = Color3.fromRGB(255, 196, 92), rate = 6 },
+	{ name = "Epic", atLeast = 600, color = Color3.fromRGB(190, 120, 255), rate = 3 },
+}
+function Needle.rarity(id)
+	local value = Needle.info(id).sortedValue
+	for _, r in RARITIES do
+		if value >= r.atLeast then
+			return r
+		end
+	end
+	return nil
+end
+
+-- The grade a sorter tier gives the needles it finds (Prices.SorterGrade): "B", "A" or "S".
+function Needle.gradeFor(tierId)
+	return Prices.SorterGrade[tierId] or "B"
+end
+
+-- Marks a needle part (or bundle) with a grade above B. A shines a little, S a lot, so a good find looks it.
+function Needle.setGrade(n, grade)
+	if not grade or grade == "B" then
+		return n
+	end
+	n:SetAttribute("Grade", grade)
+	n.Reflectance = math.max(n.Reflectance, grade == "S" and 0.5 or 0.25)
+	n.Name ..= " (" .. grade .. ")"
+	return n
+end
+
+-- The pocket key for a needle part, grade and all.
+function Needle.keyOfPart(n)
+	return Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"), n:GetAttribute("Grade"))
 end
 
 -- The pocket lives in the player's save slot (Data state.pocket) so it saves and loads with the slot. It counts
@@ -128,7 +165,7 @@ end
 
 -- Dollars a needle part sells for (a bundle counts all its needles).
 function Needle.value(part)
-	return Needle.priceOf(part:GetAttribute("NeedleId"), part:GetAttribute("Mutation"), part:GetAttribute("Polished"))
+	return Needle.priceOf(part:GetAttribute("NeedleId"), part:GetAttribute("Mutation"), part:GetAttribute("Polished"), part:GetAttribute("Grade"))
 		* Needle.count(part)
 end
 
@@ -153,13 +190,14 @@ function Needle.heldCount(player)
 	return total
 end
 
--- Empties the player's pocket and returns what was in it, as a list of { id = needleId, mult = multiplier, polished }.
+-- Empties the player's pocket and returns what was in it, as a list of { id = needleId, mult = multiplier, polished,
+-- grade }.
 function Needle.takeHeld(player)
 	local list = {}
 	for key, count in pocketOf(player) do
-		local id, mult, polished = Needle.parseKey(key)
+		local id, mult, polished, grade = Needle.parseKey(key)
 		for _ = 1, count do
-			table.insert(list, { id = id, mult = mult, polished = polished })
+			table.insert(list, { id = id, mult = mult, polished = polished, grade = grade })
 		end
 	end
 	local state = Data.get(player)
@@ -176,9 +214,9 @@ function Needle.sellHeld(player)
 	local count, value = 0, 0
 	local pocket = pocketOf(player)
 	for key, n in pocket do
-		local id, mult, polished = Needle.parseKey(key)
+		local id, mult, polished, grade = Needle.parseKey(key)
 		count += n
-		value += Needle.priceOf(id, mult, polished) * n -- priced before Market.sold lowers it, like one sale
+		value += Needle.priceOf(id, mult, polished, grade) * n -- priced before Market.sold lowers it, like one sale
 	end
 	for key, n in pocket do
 		Market.sold((Needle.parseKey(key)), n)
@@ -192,9 +230,9 @@ function Needle.takeBest(player)
 	local pocket = pocketOf(player)
 	local bestKey, bestValue = nil, -1
 	for key, count in pocket do
-		local id, mult, polished = Needle.parseKey(key)
-		if count > 0 and Needle.priceOf(id, mult, polished) > bestValue then
-			bestKey, bestValue = key, Needle.priceOf(id, mult, polished)
+		local id, mult, polished, grade = Needle.parseKey(key)
+		if count > 0 and Needle.priceOf(id, mult, polished, grade) > bestValue then
+			bestKey, bestValue = key, Needle.priceOf(id, mult, polished, grade)
 		end
 	end
 	if not bestKey then
@@ -205,27 +243,20 @@ function Needle.takeBest(player)
 		pocket[bestKey] = nil
 	end
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
-	local id, mult, polished = Needle.parseKey(bestKey)
-	return { id = id, mult = mult, polished = polished }
+	local id, mult, polished, grade = Needle.parseKey(bestKey)
+	return { id = id, mult = mult, polished = polished, grade = grade }
 end
 
 -- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
 -- false and takes none when they have too few.
 function Needle.takeFromPocket(player, needleId, count)
-	local pocket = pocketOf(player)
-	local have = pocket[needleId] or 0
-	if have < count then
-		return false
-	end
-	pocket[needleId] = have - count > 0 and have - count or nil
-	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
-	return true
+	return Needle.take(player, needleId, count)
 end
 
 -- Puts a needle ({ id, mult }) into the player's pocket.
 function Needle.give(player, n)
 	local pocket = pocketOf(player)
-	local key = Needle.keyOf(n.id, n.mult, n.polished)
+	local key = Needle.keyOf(n.id, n.mult, n.polished, n.grade)
 	pocket[key] = (pocket[key] or 0) + 1
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 end
@@ -284,11 +315,12 @@ local function pickUp(player, n, anyReach, quiet)
 	local value = Needle.value(n)
 	local pocket = pocketOf(player)
 	local polished = n:GetAttribute("Polished") == true
-	local key = Needle.keyOf(id, mult, polished)
+	local key = Needle.keyOfPart(n)
 	pocket[key] = (pocket[key] or 0) + count
 	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
 	n:Destroy()
-	local name = (polished and "polished " or "") .. Needle.info(id).name:lower()
+	local grade = n:GetAttribute("Grade")
+	local name = (grade and grade .. " grade " or "") .. (polished and "polished " or "") .. Needle.info(id).name:lower()
 	local what = count > 1 and ("a bundle of %d %s needles"):format(count, name)
 		or ("a %s%s needle"):format(mult > 1 and ("x%d MUTATED "):format(mult) or "", name)
 	if not quiet then
@@ -303,10 +335,14 @@ function Needle.collect(player, n)
 	return pickUp(player, n, true, true)
 end
 
--- How many unmutated needles of one type are in the pocket, polished or not (what quest offerings take).
+-- How many unmutated needles of one type are in the pocket, polished or not, any grade (what offerings take).
 function Needle.plainCount(player, id)
 	local pocket = pocketOf(player)
-	return (pocket[id] or 0) + (pocket[Needle.keyOf(id, 1, true)] or 0)
+	local n = 0
+	for _, key in LineMath.plainKeys(id) do
+		n += pocket[key] or 0
+	end
+	return n
 end
 
 -- Takes count unmutated needles of one type out of the pocket for a quest offering, plain ones before polished.
@@ -316,7 +352,7 @@ function Needle.take(player, id, count)
 		return false
 	end
 	local pocket = pocketOf(player)
-	for _, key in { id, Needle.keyOf(id, 1, true) } do
+	for _, key in LineMath.plainKeys(id) do -- cheapest first
 		local used = math.min(pocket[key] or 0, count)
 		count -= used
 		pocket[key] = (pocket[key] or 0) - used
@@ -362,6 +398,22 @@ function Needle.spawn(position, ownerId, needleId, mult, polished)
 		light.Brightness = 2
 		light.Parent = n
 	end
+	-- Epic and Legendary types (by list value) twinkle in their rarity's color, so a 1.2 stud needle reads from across
+	-- a bin. One slow emitter, no light, to stay cheap when a bin holds hundreds.
+	local rarity = Needle.rarity(needleId)
+	if rarity then
+		local twinkle = Instance.new("ParticleEmitter")
+		twinkle.Name = "Rarity"
+		twinkle.Color = ColorSequence.new(rarity.color)
+		twinkle.LightEmission = 1
+		twinkle.Rate = rarity.rate
+		twinkle.Lifetime = NumberRange.new(0.5, 0.9)
+		twinkle.Speed = NumberRange.new(0.5, 1.5)
+		twinkle.SpreadAngle = Vector2.new(180, 180)
+		twinkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.4, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		twinkle.Parent = n
+		n:SetAttribute("Rarity", rarity.name)
+	end
 	CollectionService:AddTag(n, "Needle")
 
 	local click = Instance.new("ClickDetector")
@@ -401,10 +453,10 @@ end
 
 -- The reveal: a freshly found needle pops up at `from` with a flash and hangs there for a moment, spinning, then
 -- arcs to land at `to`, where it glints and dings and settles with physics. Rolls the mutation chance.
-function Needle.throw(from, to, ownerId, needleId)
+function Needle.throw(from, to, ownerId, needleId, grade)
 	needleId = needleId or Needle.default.id
 	local mult = Needle.rollMutation()
-	local n = Needle.spawn(from, ownerId, needleId, mult)
+	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult), grade)
 	n.Anchored = true
 	n.CanCollide = false
 	local light = Instance.new("PointLight")
@@ -498,10 +550,11 @@ function Needle.bundleIn(cframe, size)
 	local groups = {}
 	for _, n in Needle.inBox(cframe, size) do
 		if not n.Anchored and Needle.count(n) == 1 and not n:GetAttribute("Mutation") then
-			local k = ("%s|%s|%s"):format(
+			local k = ("%s|%s|%s|%s"):format(
 				tostring(n:GetAttribute("OwnerId")),
 				n:GetAttribute("NeedleId") or Needle.default.id,
-				tostring(n:GetAttribute("Polished") == true)
+				tostring(n:GetAttribute("Polished") == true),
+				n:GetAttribute("Grade") or "B"
 			)
 			groups[k] = groups[k] or {}
 			table.insert(groups[k], n)
@@ -517,10 +570,11 @@ function Needle.bundleIn(cframe, size)
 			end
 			local ownerId, needleId = first:GetAttribute("OwnerId"), first:GetAttribute("NeedleId")
 			local polished = first:GetAttribute("Polished") == true
+			local grade = first:GetAttribute("Grade")
 			for _ = 1, BUNDLE do
 				(table.remove(list, 1) :: BasePart):Destroy()
 			end
-			local b = Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId, needleId, polished)
+			local b = Needle.setGrade(Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId, needleId, polished), grade)
 			glint(b, 10)
 			tied += 1
 		end

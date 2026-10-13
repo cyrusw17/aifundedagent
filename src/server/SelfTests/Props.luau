@@ -138,6 +138,71 @@ return function(SelfTest)
 			t.skip("rigged vehicles", "no imported prop has Wheel_, Coupler or Tailgate child meshes (import with the hierarchy kept)")
 		end
 
+		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover.
+		for _, want in {
+			{ "wheelbarrow_loaded", "Wheel_L1" },
+			{ "wheelbarrow_loaded", "HayFill" },
+			{ "needle_bin", "NeedleFill" },
+			{ "prairie_schooner", "Cover" },
+		} do
+			if Props.has(want[1]) then
+				local model = Props.make(want[1], t.place())
+				t.cleanup(model)
+				t.check(("%s has its %s piece"):format(want[1], want[2]), model and #Props.find(model, want[2]) > 0)
+			else
+				t.skip(("%s has its %s piece"):format(want[1], want[2]), "not imported")
+			end
+		end
+
+		-- 2c. Names that end in their own number resolve to themselves, not to a sibling.
+		local numbered = { "beacon_part_1", "beacon_part_2", "beacon_part_3", "corn_maze_key_1", "corn_maze_key_2", "corn_maze_key_3" }
+		local sizes = {}
+		local imported = 0
+		for _, name in numbered do
+			if Props.has(name) then
+				imported += 1
+				local model = Props.make(name, t.place())
+				t.cleanup(model)
+				sizes[name] = model and measure(partsOf(model))
+			end
+		end
+		if imported == 0 then
+			t.skip("numbered props resolve to themselves", "none imported")
+		else
+			local wrong = {}
+			for name, length in sizes do
+				if math.abs(length - Config.Sizes[name]) > Config.Sizes[name] * 0.03 + 0.02 then
+					table.insert(wrong, ("%s %.2f (want %.2f)"):format(name, length, Config.Sizes[name]))
+				end
+			end
+			t.check("numbered props resolve to themselves", #wrong == 0, #wrong > 0 and table.concat(wrong, ", ") or ("%d props"):format(imported))
+		end
+
+		-- 2d. Every region bale fits the canonical 4.6 x 2.6 x 3.2 bale box, long side along X.
+		for _, hay in { "pine", "desert", "snow", "swamp", "volcano", "cave", "sky", "haunted", "star", "keys", "bobbin" } do
+			local name = Config.BaleForHay[hay] or ("bale_" .. hay)
+			if Props.has(name) then
+				local spot = t.place()
+				local model = Props.make(name, spot, Vector3.new(4.6, 2.6, 3.2))
+				t.cleanup(model)
+				local parts = partsOf(model)
+				local low, high = Vector3.one * math.huge, -Vector3.one * math.huge
+				for _, part in parts do
+					local half = part.Size / 2
+					for _, x in { -1, 1 } do
+						for _, y in { -1, 1 } do
+							for _, z in { -1, 1 } do
+								local w = spot:PointToObjectSpace(part.CFrame * (half * Vector3.new(x, y, z)))
+								low, high = low:Min(w), high:Max(w)
+							end
+						end
+					end
+				end
+				local box = high - low
+				t.check(name .. " fits the bale box", (box - Vector3.new(4.6, 2.6, 3.2)).Magnitude < 0.15, ("%.2f x %.2f x %.2f"):format(box.X, box.Y, box.Z))
+			end
+		end
+
 		-- 3. The held tools: each mesh is welded to its handle where the server put it, at the prop's true size.
 		local player = t.player(10)
 		if not player then

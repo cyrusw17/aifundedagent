@@ -1,5 +1,5 @@
 --!nonstrict
--- The Trading Post window. Press E at the stall to see who is standing at the post and ask one of them to trade. Once
+-- The Trading Post window (needles, foreign objects, thatch, materials and cash). Press E at the stall to see who is standing at the post and ask one of them to trade. Once
 -- they say yes, both of you get a two-column window: your offer on the left (with your pocket underneath to add from),
 -- theirs on the right. Both press ACCEPT and a 5 second countdown runs; any change to either offer stops it. The
 -- server (Trade.luau) checks every number and does the swap; this only shows it and sends requests.
@@ -183,7 +183,7 @@ end
 
 -- Left: your offer, the cash and thatch boxes, and your pocket to add from.
 local mineCol, mineHeading = column(0, "YOUR OFFER")
-local mineList = listIn(mineCol, 24, 120)
+local mineList = listIn(mineCol, 24, 100)
 
 local function numberBox(parent, y, caption)
 	local label = Kit.label(parent, caption, { size = T.Small + 1, font = F.Bold, height = 28 })
@@ -204,24 +204,24 @@ local function numberBox(parent, y, caption)
 	Kit.stroke(box, C.Ink, 1).Transparency = 0.5
 	return box, label
 end
-local cashBox, cashLabel = numberBox(mineCol, 150, "Cash ($)")
-local thatchBox, thatchLabel = numberBox(mineCol, 182, "Thatch")
+local cashBox, cashLabel = numberBox(mineCol, 130, "Cash ($)")
+local thatchBox, thatchLabel = numberBox(mineCol, 162, "Thatch")
 
 local pocketHeading = Kit.label(mineCol, "ADD FROM YOUR POCKET", { size = T.Small + 1, font = F.Bold, height = 20 })
-pocketHeading.Position = UDim2.fromOffset(0, 216)
-local pocketList = listIn(mineCol, 238, 180)
+pocketHeading.Position = UDim2.fromOffset(0, 196)
+local pocketList = listIn(mineCol, 218, 150)
 
 -- Right: their offer and whether they have accepted.
 local theirsCol, theirsHeading = column(COL + 16, "THEIR OFFER")
-local theirsList = listIn(theirsCol, 24, 330)
+local theirsList = listIn(theirsCol, 24, 262)
 local theirStatus = Kit.label(theirsCol, "", { size = T.Body, font = F.Bold, height = 24 })
-theirStatus.Position = UDim2.fromOffset(0, 362)
+theirStatus.Position = UDim2.fromOffset(0, 290)
 local lockNote = Kit.label(
 	theirsCol,
-	"Mythic needles (the rarest type, and mutated ones) you get in a trade are locked for 24 hours before you can trade them on.",
-	{ size = T.Small, color = C.InkSoft, height = 48 }
+	"Mythic items (the rarest needle type, mutated needles, the rarest find) you get in a trade are locked for 24 hours before you can trade them on.",
+	{ size = T.Small, color = C.InkSoft, height = 56 }
 )
-lockNote.Position = UDim2.fromOffset(0, 388)
+lockNote.Position = UDim2.fromOffset(0, 316)
 
 -- Bottom: countdown and status, ACCEPT and CANCEL.
 local status = Kit.label(body, "", { size = T.Heading, font = F.Bold, align = "center", height = 26 })
@@ -236,13 +236,16 @@ cancelButton.Position = UDim2.new(0.5, 6, 1, -36)
 -- Trade state from the server -------------------------------------------------------------------------------------------
 
 local current = nil -- the last "state" payload
-local desired = nil -- the offer as this player wants it: { needles = { [key] = n }, cash, thatch, materials = { [id] = n } }
+local desired = nil -- the offer as this player wants it: { needles = { [key] = n }, finds = { [id] = n }, cash, thatch, materials }
 local sending = false
 
 local function offerFromView(view)
-	local offer = { needles = {}, cash = view.cash or 0, thatch = view.thatch or 0, materials = {} }
+	local offer = { needles = {}, finds = {}, cash = view.cash or 0, thatch = view.thatch or 0, materials = {} }
 	for _, line in view.needles do
 		offer.needles[line.key] = line.count
+	end
+	for _, line in view.finds or {} do
+		offer.finds[line.id] = line.count
 	end
 	for _, line in view.materials do
 		offer.materials[line.id] = line.count
@@ -327,6 +330,26 @@ local function offerLines(list, view, editable)
 			add(text, color)
 		end
 	end
+	for _, line in view.finds or {} do
+		local text = ("%dx %s"):format(line.count, line.label)
+		local color = line.mythic and C.Red or C.WoodLight
+		if editable then
+			add(text, color, {
+				{
+					text = "X",
+					style = "stop",
+					width = 28,
+					onClick = function()
+						change(function(o)
+							o.finds[line.id] = nil
+						end)
+					end,
+				},
+			})
+		else
+			add(text, color)
+		end
+	end
 	for _, line in view.materials do
 		local text = ("%d %s"):format(line.count, line.label)
 		if editable then
@@ -391,6 +414,26 @@ local function pocketLines(inventory)
 			},
 		} or nil)
 	end
+	for _, line in inventory.finds or {} do
+		order += 1
+		local inOffer = desired and desired.finds[line.id] or 0
+		local left = line.count - inOffer
+		local text = ("%s  (%d)"):format(line.label, left)
+		if line.locked > 0 then
+			text ..= ("  +%d locked"):format(line.locked)
+		end
+		row(pocketList, order, text, line.mythic and C.Red or C.WoodLight, left > 0 and {
+			{
+				text = "+1",
+				style = "go",
+				onClick = function()
+					change(function(o)
+						o.finds[line.id] = math.min(line.count, (o.finds[line.id] or 0) + 1)
+					end)
+				end,
+			},
+		} or nil)
+	end
 	for _, line in inventory.materials do
 		order += 1
 		local inOffer = desired and desired.materials[line.id] or 0
@@ -418,7 +461,7 @@ local function pocketLines(inventory)
 	end
 	if order == 0 then
 		order += 1
-		row(pocketList, order, "No needles or materials on you.", C.InkSoft)
+		row(pocketList, order, "No needles, finds or materials on you.", C.InkSoft)
 	end
 end
 
@@ -428,8 +471,9 @@ render = function()
 	end
 	local inventory = current.inventory
 	windowTitle.Text = "TRADE WITH " .. string.upper(current.partner or "?")
-	mineHeading.Text = current.myAccept and "YOUR OFFER  (accepted)" or "YOUR OFFER"
-	theirsHeading.Text = ("%s'S OFFER"):format(string.upper(current.partner or "THEIR"))
+	-- Each side pays the trading post fee on what it gives; the server works it out (Bank.tradeFee).
+	mineHeading.Text = ("YOUR OFFER  fee %s%s"):format(Kit.money(current.myFee or 0), current.myAccept and "  (accepted)" or "")
+	theirsHeading.Text = ("%s'S OFFER  fee %s"):format(string.upper(current.partner or "THEIR"), Kit.money(current.theirFee or 0))
 	offerLines(mineList, {
 		needles = (function()
 			local list = {}
@@ -451,6 +495,16 @@ render = function()
 			end
 			return list
 		end)(),
+		finds = (function()
+			local list = {}
+			for _, line in inventory.finds or {} do
+				local n = desired.finds[line.id]
+				if n then
+					table.insert(list, { id = line.id, count = n, label = line.label, mythic = line.mythic })
+				end
+			end
+			return list
+		end)(),
 		materials = (function()
 			local list = {}
 			for _, line in inventory.materials do
@@ -466,7 +520,7 @@ render = function()
 	pocketLines(inventory)
 
 	cashBox.Visible = inventory.cashAllowed
-	cashLabel.Text = inventory.cashAllowed and ("Cash (wallet %s)"):format(Kit.money(inventory.cash)) or "Cash: off while test money is on"
+	cashLabel.Text = inventory.cashAllowed and ("Cash (have %s)"):format(Kit.money(inventory.cash)) or "Cash: not tradable"
 	cashLabel.Size = inventory.cashAllowed and UDim2.fromOffset(120, 28) or UDim2.new(1, 0, 0, 28)
 	if not cashBox:IsFocused() then
 		cashBox.Text = desired.cash > 0 and tostring(desired.cash) or ""

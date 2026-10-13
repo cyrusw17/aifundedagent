@@ -54,6 +54,7 @@ local function stop()
 		return
 	end
 	active.connection:Disconnect()
+	active.recovered:Disconnect()
 	local chassis = active.chassis
 	if chassis.Parent then
 		active.drive.PlaneVelocity = Vector2.zero
@@ -146,6 +147,13 @@ local function start(seat)
 	active = state
 	hint.Text = DRIVE_HINT
 	hint.Visible = true
+
+	-- Flipped or towed (Vehicles.recover): start again from where the truck now stands, not the old heading.
+	state.recovered = model:GetAttributeChangedSignal("RecoveredAt"):Connect(function()
+		state.yaw = yawOf(chassis.CFrame)
+		state.speed = 0
+		state.up = Vector3.yAxis
+	end)
 
 	state.connection = RunService.Heartbeat:Connect(function(dt)
 		if not seat.Parent or seat.Occupant == nil then

@@ -28,7 +28,9 @@ Prices.NeedlesPerBale = {
 	desert = 4,
 	snow = 5,
 	swamp = 6,
+	keys = 6, -- Thimble Keys, by ferry from Swamp Port: Swamp's count with a better needle, paid for by the fare
 	volcano = 8,
+	bobbin = 9, -- Bobbin Rock, by ferry from Ash Dock: between Volcano and Cave
 	cave = 10,
 	sky = 12,
 	haunted = 14,
@@ -42,7 +44,9 @@ Prices.Needles = {
 	sand = 140,
 	ice = 160,
 	bog = 170,
+	coral = 220, -- Thimble Keys
 	obsidian = 300,
+	brass = 320, -- Bobbin Rock
 	geode = 340,
 	cloud = 700,
 	phantom = 800,
@@ -198,6 +202,18 @@ Prices.Starbeam = {
 -- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
 -- PolishPerMinute needles a minute; the rest stay plain.
 Prices.PolishBonus = 0.25
+
+-- Needle grades: the sorter that finds a needle grades it, and a better grade sells for more. It keeps upgrading
+-- worth it once a sorter's recovery is "good enough". B adds nothing.
+Prices.NeedleGrades = { B = 0, A = 0.10, S = 0.25 }
+Prices.SorterGrade = {
+	hand_sieve = "B",
+	shaker_table = "B",
+	conveyor_sorter = "B",
+	magnet_drum = "A",
+	optical_sorter = "S",
+	alien_collector = "S",
+}
 Prices.PolishPerMinute = 30
 
 -- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
@@ -218,11 +234,12 @@ Prices.SorterBalesPerMinute = {
 	optical_sorter = 30,
 }
 
--- The trading post (Land) settles every trade through Bank.settleTrade. Each side pays a small flat fee, plus a share
--- of any cash it hands over, so trading is a light cash sink and cash-for-needles deals don't dodge the market. The
--- flat fee is under a minute of hand earnings, so it never stops a fair swap. Set both to 0 to make trading free.
+-- The trading post (Land) settles every trade through Bank.settleTrade. A side that hands over cash pays a small flat
+-- fee plus a share of that cash, so cash-for-needles deals don't dodge the market and moving money between accounts
+-- costs something. A side that only gives items pays nothing, so swaps and gifts are always free. Set both to 0 to
+-- make cash trades free too.
 Prices.Trade = {
-	Fee = 25, -- per side, per trade
+	Fee = 25, -- per side that gives cash, per trade
 	CashShare = 0.05, -- of the cash a side gives
 }
 
@@ -260,12 +277,14 @@ Prices.RegionEvents = {
 	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
 }
 
--- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward.
+-- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward. Each is
+-- worth a trip on its own: for a player who arrives early (walking, before they haul there) it's about the price of
+-- the next mid-game buy, and for one who arrives on schedule it's a few minutes of income. Gated secrets pay more.
 Prices.Secrets = {
-	ember_cache = 3000, -- in the volcano's crater, past the heat (tier 4 gloves)
-	captains_lantern = 2500, -- on Ghost Isle, at the end of the night-only Ghost Road
-	geode_heart = 2000, -- behind the crystals on the Crystal Cave's far wall
-	lost_kite = 3000, -- on a ledge under Sky Island's west rim (a zeppelin fare away)
+	ember_cache = 40000, -- in the volcano's crater, past the heat: needs $75,000 Iron Gauntlets, so it pays the most
+	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
+	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
+	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
 }
 
 -- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until

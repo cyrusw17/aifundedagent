@@ -195,7 +195,7 @@ return function(SelfTest)
 
 			-- Trading post fees (a real two-player trade needs a second player, so only the rules are checked here).
 			local trade = Prices.Trade
-			t.equal("trade fee with no cash", Bank.tradeFee(0), math.floor(trade.Fee + 0.5))
+			t.equal("an items-only side pays no trade fee", Bank.tradeFee(0), 0)
 			t.equal("trade fee on $1,000 cash", Bank.tradeFee(1000), math.floor(trade.Fee + 1000 * trade.CashShare + 0.5))
 			reset(500)
 			t.check("a player can't trade with themselves", not Bank.settleTrade(player, player, { aCash = 10 }))

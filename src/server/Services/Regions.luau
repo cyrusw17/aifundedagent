@@ -168,6 +168,19 @@ Regions.signpost = signpost
 
 -- A simple plank building: four walls with a door gap in front, a gable roof. Used as the collision shell and as the
 -- look until a Blender building of that name is imported (then the mesh rides on it, PropMeshes.client.luau).
+-- Blender batch 2 props (hub, regions, scatter) that face -Z already; every other building prop faces +Z.
+local FORWARD_PROPS = {
+	trading_post = true,
+	homestead_bank = true,
+	pine_lodge = true,
+	snow_cabin = true,
+	haunted_barn = true,
+	volcano_forge = true,
+	swamp_stilt_house = true,
+	bobbin_captain_shack = true,
+	land_office = true,
+}
+
 local function building(parent, name, cframe, w, d, h, opts)
 	opts = opts or {}
 	local model = Instance.new("Model")
@@ -208,10 +221,25 @@ local function building(parent, name, cframe, w, d, h, opts)
 		boardText(board, opts.sign, { Enum.NormalId.Front })
 	end
 	model.PrimaryPart = floor
-	-- The Blender building of this kind, when imported, takes over the look. Its front (Blender -Y) faces cframe's
-	-- LookVector; every Rustic export has its front at +Z, hence the half turn.
+	-- With StreamingEnabled: a building streams in whole (never a roof without walls), and from far away it still
+	-- shows as a low-detail mesh, so the skyline never pops.
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	model.LevelOfDetail = Enum.ModelLevelOfDetail.StreamingMesh
+	-- The Blender building of this kind, when imported, takes over the look. Its front faces cframe's LookVector.
+	-- The older buildings (mill, warehouse, museum...) were exported front at +Z, hence their half turn, stretched to
+	-- the box. The hub and region props (Blender batch 2) already face -Z: no turn, scaled evenly to the footprint
+	-- and stood on the floor.
 	if opts.prop and Props.has(opts.prop) then
-		local mesh = Props.make(opts.prop, cframe * CFrame.new(0, (h + rise) / 2 + 1, 0), Vector3.new(w + 1, h + rise + 1, d + 1), CFrame.Angles(0, math.pi, 0))
+		local mesh
+		if FORWARD_PROPS[opts.prop] then
+			mesh = Props.make(opts.prop, cframe * CFrame.new(0, h / 2 + 1, 0), math.max(w, d) + 1)
+			if mesh then
+				local box, size = mesh:GetBoundingBox()
+				mesh:PivotTo(mesh:GetPivot() + Vector3.new(0, (cframe.Y + 1) - (box.Y - size.Y / 2), 0))
+			end
+		else
+			mesh = Props.make(opts.prop, cframe * CFrame.new(0, (h + rise) / 2 + 1, 0), Vector3.new(w + 1, h + rise + 1, d + 1), CFrame.Angles(0, math.pi, 0))
+		end
 		if mesh then
 			Props.weldTo(mesh, floor, model)
 		end
@@ -773,7 +801,7 @@ function LANDMARKS.homestead(folder)
 	end
 	billboard(part(stalls, "MarketSign", Vector3.new(1, 1, 1), CFrame.new(-100, y + 12, -1480), Rustic.Wood, nil, nil, false), "NEEDLE MARKET", Vector3.zero, 220)
 
-	building(folder, "TradingPost", CFrame.new(0, y, -1590) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "warehouse" })
+	building(folder, "TradingPost", CFrame.new(0, y, -1590) * CFrame.Angles(0, math.pi, 0), 40, 26, 14, { sign = "TRADING POST", prop = "trading_post" })
 	building(folder, "Museum", CFrame.new(90, y, -1580) * CFrame.Angles(0, math.pi, 0), 34, 24, 16, { sign = "MUSEUM", prop = "museum", wall = Rustic.PaintCream, roof = Rustic.PaintBlue })
 	for i, z in { -1405, -1490, -1530 } do
 		building(folder, "Sawmill", CFrame.new(165, y, z) * CFrame.Angles(0, math.pi / 2, 0), 26, 20, 12, { sign = i == 1 and "SAWMILL ROW" or nil, prop = "mill" })
@@ -804,7 +832,7 @@ function LANDMARKS.homestead(folder)
 	boardText(beam, "HOMESTEAD VALLEY")
 
 	-- The Homestead branch of the bank (the Economy thread's counter can hook the BankCounter tag), facing the well.
-	local bank = building(folder, "HomesteadBank", CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0), 30, 22, 13, { sign = "SAVINGS & LOAN", wall = Rustic.PaintCream, roof = Rustic.PaintGreen, material = Enum.Material.Brick })
+	local bank = building(folder, "HomesteadBank", CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0), 30, 22, 13, { sign = "SAVINGS & LOAN", wall = Rustic.PaintCream, roof = Rustic.PaintGreen, material = Enum.Material.Brick, prop = "homestead_bank" })
 	local counter = part(bank, "Counter", Vector3.new(10, 3.5, 2), CFrame.new(95, y, -1490) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 2.75, 3), Rustic.WoodDark, Enum.Material.WoodPlanks)
 	CollectionService:AddTag(counter, "BankCounter")
 

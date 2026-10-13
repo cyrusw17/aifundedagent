@@ -31,11 +31,12 @@ local function plaque(parent, text)
 end
 
 local function describe(n)
-	local name = (n.polished and "Polished " or "") .. Needle.info(n.id).name
+	local grade = (n.grade and n.grade ~= "B") and (n.grade .. " grade ") or ""
+	local name = grade .. (n.polished and "Polished " or "") .. Needle.info(n.id).name
 	if (n.mult or 1) > 1 then
-		return ("x%d MUTATED %s\n$%d"):format(n.mult, name:upper(), Needle.priceOf(n.id, n.mult, n.polished))
+		return ("x%d MUTATED %s\n$%d"):format(n.mult, name:upper(), Needle.priceOf(n.id, n.mult, n.polished, n.grade))
 	end
-	return ("%s needle\n$%d"):format(name, Needle.priceOf(n.id, n.mult, n.polished))
+	return ("%s needle\n$%d"):format(name, Needle.priceOf(n.id, n.mult, n.polished, n.grade))
 end
 
 function Display.wall(parent, frame, getOwnerId, saved)
@@ -100,7 +101,7 @@ function Display.wall(parent, frame, getOwnerId, saved)
 	for _, s in saved or {} do
 		local slot = typeof(s) == "table" and slots[s.slot]
 		if slot and typeof(s.id) == "string" then
-			show(slot, { id = s.id, mult = typeof(s.mult) == "number" and math.clamp(math.floor(s.mult), 1, 25) or 1, polished = s.polished == true })
+			show(slot, { id = s.id, mult = typeof(s.mult) == "number" and math.clamp(math.floor(s.mult), 1, 25) or 1, polished = s.polished == true, grade = (s.grade == "A" or s.grade == "S") and s.grade or nil })
 		end
 	end
 
@@ -132,7 +133,7 @@ function Display.wall(parent, frame, getOwnerId, saved)
 		local list = {}
 		for i, slot in slots do
 			if slot.needle then
-				table.insert(list, { slot = i, id = slot.needle.id, mult = slot.needle.mult, polished = slot.needle.polished })
+				table.insert(list, { slot = i, id = slot.needle.id, mult = slot.needle.mult, polished = slot.needle.polished, grade = slot.needle.grade })
 			end
 		end
 		return list
