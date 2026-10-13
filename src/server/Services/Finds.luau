@@ -1,7 +1,9 @@
 --!nonstrict
 -- Foreign objects that tumble out of a burst bale now and then (Config/Finds). A find is a real part on the ground;
 -- click it to keep it. Kept finds are counted per save slot (state.finds) and published as the player attribute
--- "Finds" ("boot:2,ring:1") for the collection book. The first of each kind pays its finder's reward.
+-- "Finds" ("boot:2,ring:1") for the collection book. The first of each kind a slot ever finds pays its finder's
+-- reward, once: state.findsPaid remembers it, so trading the find away and finding another never pays again (and a
+-- find received in a trade pays nothing; the receiver is paid only when they find one themselves).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
@@ -49,7 +51,11 @@ local function keep(player, part, def)
 	end
 	part:Destroy()
 	state.finds = state.finds or {}
-	local first = (state.finds[def.id] or 0) == 0
+	state.findsPaid = state.findsPaid or {}
+	local first = not state.findsPaid[def.id]
+	if first then
+		state.findsPaid[def.id] = 1
+	end
 	state.finds[def.id] = (state.finds[def.id] or 0) + 1
 	publish(player)
 	Feedback.needle(root, def.reward * 2)
@@ -114,8 +120,38 @@ function Finds.info(id)
 	return byId[id]
 end
 
+-- Saves from before findsPaid: every kind already on the shelf has been paid for.
+local function onLoaded(player)
+	local state = Data.get(player)
+	if state then
+		state.findsPaid = state.findsPaid or {}
+		for id, count in state.finds or {} do
+			if count > 0 then
+				state.findsPaid[id] = 1
+			end
+		end
+	end
+	publish(player)
+end
+
+-- Test hook (SelfTests/HayTools): keeps a find as if the player clicked it, with no reach check or part.
+function Finds.keepForTest(player, id)
+	local def = byId[id]
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not def or not root then
+		return
+	end
+	local part = Instance.new("Part")
+	part.Anchored = true
+	part.Transparency = 1
+	part.CanCollide = false
+	part.Position = root.Position
+	part.Parent = workspace
+	keep(player, part, def)
+end
+
 function Finds.init()
-	Data.loaded.Event:Connect(publish)
+	Data.loaded.Event:Connect(onLoaded)
 	for _, player in Players:GetPlayers() do
 		if Data.get(player) then
 			publish(player)

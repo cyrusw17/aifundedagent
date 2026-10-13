@@ -128,7 +128,7 @@ end
 
 local HINTS = {
 	Shovel = "Shovel: %s hay or a bale; a truck bed or belt pours",
-	Rake = "Rake: %s loose hay",
+	Rake = "Rake: %s loose hay; toward a belt feeds it",
 	Wheelbarrow = "Barrow: %s a bale, a truck bed, or the ground",
 }
 

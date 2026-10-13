@@ -71,7 +71,15 @@ local function onSave(player, name, list)
 	if typeof(name) ~= "string" then
 		return false, "Give the layout a name."
 	end
-	name = string.sub(string.gsub(name, "[%c]", ""), 1, MAX_NAME)
+	name = string.gsub(name, "[%c]", "")
+	if utf8.len(name) == nil then
+		return false, "That name has characters the game can't save."
+	end
+	-- Cut by characters, not bytes, so a multi-byte letter is never split (a save with broken text fails to write).
+	local cut = utf8.offset(name, MAX_NAME + 1)
+	if cut then
+		name = string.sub(name, 1, cut - 1)
+	end
 	name = string.match(name, "^%s*(.-)%s*$")
 	if name == "" then
 		return false, "Give the layout a name."

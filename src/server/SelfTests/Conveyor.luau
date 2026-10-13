@@ -38,6 +38,12 @@ return function(SelfTest)
 		local Blueprints = require(Services.Blueprints)
 		t.check("a copied line is a valid preset", Blueprints._clean({ { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "hand_sieve", dx = 1, dz = 0, dir = "E" } }) ~= nil)
 		t.check("a preset with an unknown piece is refused", Blueprints._clean({ { id = "gold_throne", dx = 0, dz = 0, dir = "E" } }) == nil)
+		-- Every sorter tier has its own band color and star count (#27), so a line reads at a glance.
+		local bands, stars = {}, {}
+		for tierId, look in Machines.TierLooks do
+			t.check(tierId .. " has a look of its own", not bands[look.band:ToHex()] and not stars[look.stars])
+			bands[look.band:ToHex()], stars[look.stars] = true, true
+		end
 
 		-- The line, flowing east: belt cells 0..7, sorter A over 1-2, sorter B over 4-5, buyer at 8, bin beside A.
 		local box = t.center * CFrame.new(0, 20, 0)
@@ -117,9 +123,22 @@ return function(SelfTest)
 		t.equal("4 thrown needles landed in the bin", total(GHOST - 1), 4)
 		local player = t.player(2)
 		if player and require(Services.Data).get(player) then
+			local state = require(Services.Data).get(player)
+			local hadHold = state.needleHold
+			-- A price hold above what the market can pay (1.2 of list) keeps the needles in the bin.
+			state.needleHold = 4
 			bin.add(Conveyors.cellCenter(grid, 1, 0) + Vector3.new(0, 8, 0), player.UserId, 2, "steel")
 			t.wait(3)
+			local Market = require(Services.Market)
+			if Market.multiplier("steel") < 1.15 then
+				bin.sell(player)
+				t.equal("a price hold keeps needles under the target", total(player.UserId), 2)
+			else
+				t.skip("a price hold keeps needles", "steel is above the top hold on this server right now")
+			end
+			state.needleHold = nil
 			bin.sell(player)
+			state.needleHold = hadHold
 			t.equal("SELL NEEDLES takes the seller's needles", total(player.UserId), 0)
 			t.equal("and leaves everyone else's", total(GHOST - 1), 4)
 		else

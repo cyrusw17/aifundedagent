@@ -14,6 +14,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local Config = require(ReplicatedStorage.Shared.Config.Game)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local HayMath = require(ReplicatedStorage.Shared.HayMath)
 local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Bales = require(script.Parent.Bales)
@@ -23,6 +24,8 @@ local Events = require(script.Parent.Events)
 local Feedback = require(script.Parent.Feedback)
 local Finds = require(script.Parent.Finds)
 local Wheelbarrow = require(script.Parent.Wheelbarrow)
+local Vehicles = require(script.Parent.Vehicles)
+local ToolSkins = require(script.Parent.ToolSkins)
 
 local Tools = {}
 
@@ -98,24 +101,46 @@ local function comboBonus(player, root)
 		return 0
 	end
 	comboPop(root, combo.count)
-	return math.min((combo.count - Config.ComboStart + 1) * Config.ComboBonusPieces, Config.ComboMaxBonus)
+	Feedback.juice(player, "combo", combo.count - Config.ComboStart + 1)
+	return HayMath.comboExtra(combo.count, Config)
 end
 
 -- Machines that take loose hay in (the sorter's hopper, the hay buyer, the baler, the docks' funnels).
 local POUR_INTO = { NeedleSorter = true, HayBuyer = true, HayBaler = true, DockFunnel = true, PlotDock = true }
 
+-- How far point is from the nearest point of a box (CFrame at its middle, and its size); 0 inside it.
+local function distanceToBox(point, box, size)
+	local p = box:PointToObjectSpace(point)
+	local half = size / 2
+	local outside = Vector3.new(
+		math.max(math.abs(p.X) - half.X, 0),
+		math.max(math.abs(p.Y) - half.Y, 0),
+		math.max(math.abs(p.Z) - half.Z, 0)
+	)
+	return outside.Magnitude
+end
+
 -- Where a pour can go: the cargo box of the truck or trailer clicked (returns its box CFrame and size), or the clicked
 -- spot on a conveyor belt, a machine's hopper, the dock or the sell pad. Anything else (the ground, a wall) is not a
--- pour target, so a stray click never dumps your hay.
-function Tools.pourTarget(aim)
-	if not aim or not aim.part then
+-- pour target, so a stray click never dumps your hay. Everything is checked on the server against where the player
+-- stands: the click names a part, and the client could name any part on the map, so the bed (or the belt or hopper
+-- under the click) must be within Config.ToolReach of the player.
+function Tools.pourTarget(aim, root)
+	if not aim or not aim.part or not root then
 		return nil
 	end
-	local box, size = Wheelbarrow.cargoOf(aim.part)
+	local part = aim.part
+	local box, size = Wheelbarrow.cargoOf(part)
 	if box then
+		if distanceToBox(root.Position, box, size) > Config.ToolReach then
+			return nil
+		end
 		return { box = box, size = size }
 	end
-	local part = aim.part
+	-- The clicked spot must really be on the clicked part, and in reach.
+	if (aim.position - root.Position).Magnitude > Config.ToolReach or distanceToBox(aim.position, part.CFrame, part.Size) > 1.5 then
+		return nil
+	end
 	if CollectionService:HasTag(part, "ConveyorBelt") or part.Name == "Hopper" or part.Name == "SellPad" then
 		return { at = aim.position }
 	end
@@ -139,14 +164,14 @@ function Tools.pour(player, root, target)
 		return 0
 	end
 	local held = math.floor(state.loadHay / Config.HayPerPiece)
-	local n = math.min(held, Config.PourStrands)
-	local sortedHeld = math.min(math.floor((state.loadSortedHay or 0) / Config.HayPerPiece), held)
-	local sortedOut = math.min(n, sortedHeld)
-	local unsortedHeld = held - sortedHeld
-	local unsortedOut = n - sortedOut
-	local needlesOut = unsortedHeld > 0 and math.floor((state.loadNeedles or 0) * unsortedOut / unsortedHeld + 0.5) or 0
+	local split = HayMath.pourSplit({
+		hay = state.loadHay,
+		sorted = state.loadSortedHay,
+		needles = state.loadNeedles,
+		wet = state.loadWetHay,
+	}, Config.PourStrands, Config.HayPerPiece)
+	local n, sortedOut, needlesOut, wetOut = split.n, split.sortedOut, split.needlesOut, split.wetOut
 	local fraction = n / held
-	local wetOut = math.min(n, math.floor((state.loadWetHay or 0) / Config.HayPerPiece * fraction + 0.5))
 
 	state.loadHay -= n * Config.HayPerPiece
 	state.loadSortedHay = math.max(0, (state.loadSortedHay or 0) - sortedOut * Config.HayPerPiece)
@@ -222,7 +247,7 @@ local function useShovel(player, root, aim)
 		return
 	end
 	-- Hay in your arms and a truck bed, hopper, belt or sell pad clicked: pour it there.
-	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim)
+	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim, root)
 	if target then
 		Avatar.swing(player, "Shovel", function()
 			Tools.pour(player, root, target)
@@ -341,7 +366,24 @@ local function useRake(player, root, aim)
 		local flat = Vector3.new(center.X - root.Position.X, 0, center.Z - root.Position.Z)
 		local dir = flat.Magnitude > 0.1 and flat.Unit or Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
 		local gatherAt = root.Position + dir * Config.RakeGatherDistance
-		Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		-- A stroke that ends at a conveyor belt (or a click on the belt itself) flicks the hay up onto it, so raking
+		-- feeds the line. Otherwise the hay is pulled into a row in front of you.
+		local belt, landAt
+		if aim and aim.part and CollectionService:HasTag(aim.part, "ConveyorBelt") then
+			belt, landAt = Hay.beltNear(aim.position, 1)
+		end
+		if not belt then
+			belt, landAt = Hay.beltNear(gatherAt - Vector3.new(0, 1, 0), Config.RakeBeltReach)
+		end
+		-- Dust kicks up where the tines drag, and along the way back toward you.
+		Feedback.dust(center, nil, 8)
+		Feedback.dust(center:Lerp(gatherAt, 0.5) - Vector3.new(0, 1.5, 0), nil, 5)
+		if belt then
+			Hay.rakeOntoBelt(center, belt, landAt, Config.RakeRadius, player.UserId)
+			Events.fire(player, "raked_onto_belt", 1, { center = center })
+		else
+			Hay.rake(center, gatherAt, Config.RakeRadius, player.UserId)
+		end
 		Events.fire(player, "raked", 1, { center = center })
 		Feedback.play("Rake", center)
 	end)
@@ -352,6 +394,15 @@ function Tools.init()
 	Gloves.init()
 	Finds.init()
 	Wheelbarrow.init(currentAim)
+	ToolSkins.init()
+	-- Crew hand-offs (Bales): until Land says exactly who shares a farm, a teammate is anyone allowed to drive the
+	-- other's truck, either way round (a farm's owner and its crew).
+	if not Bales.isTeammate then
+		Bales.isTeammate = function(a, b)
+			local canDrive = Vehicles.canDrive
+			return canDrive ~= nil and (canDrive(a, b) == true or canDrive(b, a) == true)
+		end
+	end
 	-- The glove and wheelbarrow stands go beside the sell pad once the world has built it.
 	task.defer(function()
 		local world = workspace:FindFirstChild("Needlewood")

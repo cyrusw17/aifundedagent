@@ -275,7 +275,11 @@ when the orders change.
 
 A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
 the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
-since they are capped per player.
+since they are capped per player. A sorted bale pays for the hay it actually holds (rate × strands ÷ 90), because a sorter can wrap a few
+loose strands into a full-size sorted bale; Conveyor's audit found that paid up to $1,800 a rotation for nearly empty
+bales.
+
+Savings interest is paid on the bank balance only. Loan money is held apart (see Loans), so it never earns interest.
 
 ## The bank: Meadow Savings & Loan
 
@@ -297,8 +301,12 @@ a real boost and stays small next to a big farm's income.
 | Truck loan | Trucks and trailers you don't own | 10% | 25% of each sale |
 | Land loan | A plot, while you own none | 8% | 20% of each sale |
 
-You need 20% of the price yourself. The bank deposits the other 80%, adds its fee once, and takes its share out of each
-sale until the loan is paid. There are no due dates, no missed payments and no penalties, and you can pay the rest off
+You pay 20% of the price yourself when you take the loan. The bank then sets the whole price aside for you (your down
+payment plus its 80%), adds its fee once, and takes its share out of each sale until the loan is paid. The money it
+sets aside is for purchases only: shops spend it first, but it can't be withdrawn, traded at the trading post or used
+for anything but buying. If you sell back something the loan paid for, the refund repays the loan before any of it
+reaches you, and paying off early returns any loan money you haven't spent first. Without these rules a player could
+borrow, cash the loan out to a second account and never sell anything again (the health check found this). There are no due dates, no missed payments and no penalties, and you can pay the rest off
 at the window any time. You can have one of each kind at a time. Worked example: the $6,000 Rusty Pickup with $1,200
 down means borrowing $4,800 and paying back $5,280, a quarter of every sale until it's done (about two hours at pickup
 earnings).
@@ -312,7 +320,10 @@ the pickup once it has earned its down payment, and big loans come once you have
 
 **Test money.** With `InfiniteMoney` on, shops are free and the HUD shows the test balance as before. The wallet, bank,
 loans and history underneath stay real and are saved, so the bank can be tested with real numbers. (Before this change,
-anything earned while test money was on was thrown away.)
+anything earned while test money was on was thrown away.) Test money is on in Roblox Studio only
+(`InfiniteMoney = RunService:IsStudio()` in Config/Game), so a live server never hands out free money: a free purchase
+followed by a remove-and-refund would mint real cash there. That is a safe default while Cyrus decides how test money
+should work, and easy to reverse: set it back to `true` (everyone, everywhere) or `false` (nobody) in Config/Game.
 
 ## Travel fares (for the rest of the map)
 
@@ -371,6 +382,23 @@ loan takes its share of sales after that.
 
 Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
 which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
+
+### Checked against the pacing simulator
+
+Conveyor's `tools/pacing_sim.py` plays a new save second by second on the real Meadow layout and configs (20 seeded
+maps). Its medians land 13 to 23% ahead of the table above: Work Gloves at 2 minutes, Wheelbarrow 9, Pickup on a loan
+15, Wagon 23, Plot with a sieve and first line 50, Shaker 71, Leather Gloves 92, Flatbed 104, Small trailer 127, and
+the conveyor sorter after 3 hours. Ahead is the safe side, so no prices changed. Two gaps were looked at on purpose:
+
+- **Work Gloves at 2 minutes (target was 6).** Kept. The "6 minutes" came from rounding the table to 0.1 h. The first
+  purchase should land almost at once: it teaches the shop loop and makes the next bale feel lighter right away.
+  Raising it to $500 to reach 6 minutes would push every later step back for no gain.
+- **The plot at 50 minutes (CEO target 35 to 45).** Kept at $2,500. The simulator buys the plot with cash and doesn't
+  model bale toss or field chutes, both of which speed up truck loading, so the real game lands nearer 43 minutes. A
+  player who takes the land loan ($500 down, allowed alongside the truck loan) gets there in about 35. Cutting the plot
+  to $2,000 would gain about 3 minutes and make the first land feel cheap next to a $1,500 wagon.
+
+Re-run `python3 tools/pacing_sim.py` after any change to an early price.
 
 ## Open choices for Cyrus
 
@@ -477,6 +505,15 @@ Cash-for-needles deals pay something like the market's spread, and big cash tran
 cost. Cash moves wallet to wallet (taking from
 the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
 side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
+
+**Alt accounts and one-time rewards.** Secrets, discoveries, mazes, quest cash and finder's rewards pay once per save
+slot, so a fresh slot (or a second account) could collect them and trade the cash to a main farm. The rewards keep
+their amounts: they are what make exploring worth it, and cutting them to stop alts would punish everyone. Instead,
+a slot can hand over cash at the trading post only after it has made $25,000 from selling
+(`Prices.Trade.MinSoldToGiveCash`, about 2 hours of a new player's farming). One-time rewards still count toward loans
+and credit, but not toward that $25,000, which Bank tracks separately as `sold`. Items can always be traded, and saves
+from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
+a clock nobody can game; sales already are one.
 
 ## Where each number lives
 

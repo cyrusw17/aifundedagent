@@ -37,6 +37,14 @@ return function(SelfTest)
 			)
 		end
 
+		-- The book's SKINS page fires this one (Hay's ToolSkins.luau makes it).
+		if Services:FindFirstChild("ToolSkins") then
+			local wear = ReplicatedStorage:FindFirstChild("WearToolSkin")
+			t.check("remote ReplicatedStorage.WearToolSkin exists", wear ~= nil and wear:IsA("RemoteEvent"))
+		else
+			t.skip("remote ReplicatedStorage.WearToolSkin exists", "ToolSkins.luau is not in this build")
+		end
+
 		local Prices = require(Shared.Config.Prices)
 		local Catalog = require(Shared.UI.Catalog)
 		local saved = Catalog.who
@@ -188,6 +196,19 @@ return function(SelfTest)
 				#wrong == 0 and rows > 0,
 				table.concat(wrong, "; ")
 			)
+			local PieceGuide = require(Shared.PieceGuide)
+			local LandConfig = require(Shared.Config.Land)
+			local blurbs = {}
+			for _, def in LandConfig.Pieces do
+				blurbs[def.id] = PieceGuide.line(def)
+			end
+			local drift = {}
+			for _, row in Catalog.items("Build") do
+				if row.blurb ~= blurbs[row.id] then
+					table.insert(drift, row.id)
+				end
+			end
+			t.check("Build tab lines come from PieceGuide", #drift == 0, table.concat(drift, ", "))
 			for _, row in Catalog.items("Robux") do
 				t.check(("Robux item %s is not for sale yet"):format(row.id), row.state == "soon")
 			end
@@ -234,6 +255,11 @@ return function(SelfTest)
 				found.old_well == true and found.pine == true and not found.snow
 			)
 		end
+
+		-- Truck spots for the map: the server publishes where each owned truck is (streaming-safe).
+		local TruckSpots = require(Services.TruckSpots)
+		local okT, errT = pcall(TruckSpots.publish)
+		t.check("TruckSpots publishes without error", okT, if okT then nil else tostring(errT))
 
 		-- With a player in a loaded slot: settings and tutorial flags.
 		local player = t.player(10)

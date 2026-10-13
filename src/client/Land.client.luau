@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local LandConfig = require(Shared:WaitForChild("Config"):WaitForChild("Land"))
+local PieceGuide = require(Shared:WaitForChild("PieceGuide")) -- piece lines with live numbers (Conveyor thread)
 local Factory = require(Shared.Config:WaitForChild("Factory"))
 local state = ReplicatedStorage:WaitForChild("Land")
 local buyRemote = state:WaitForChild("Buy")
@@ -504,7 +505,7 @@ local function describeSelection()
 	elseif removing then
 		setInfo("Remove: click a piece on your land to take it back for half its price.")
 	elseif selected then
-		setInfo(("%s  ($%d): %s"):format(selected.name, selected.price, selected.blurb))
+		setInfo(("%s  ($%d): %s"):format(selected.name, selected.price, PieceGuide.line(selected)))
 	else
 		setInfo("Pick a piece, then click your land to place it. Belts carry bales the way the arrow points.")
 	end

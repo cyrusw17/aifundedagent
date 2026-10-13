@@ -433,7 +433,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		Menus.toggle("Quests")
 	end
 end)
-changedRemote.OnClientEvent:Connect(function()
+changedRemote.OnClientEvent:Connect(function(kind, tabName)
+	-- A bounty board (or anything else) can open the log at a tab.
+	if kind == "open" then
+		selectTab(table.find(TABS, tabName) or 1)
+		Menus.open("Quests")
+		return
+	end
 	if panel.Visible then
 		render(true)
 	else

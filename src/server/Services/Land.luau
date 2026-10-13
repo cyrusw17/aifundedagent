@@ -698,6 +698,12 @@ end
 
 -- Pieces ------------------------------------------------------------------------------------------------------------
 
+-- What a build really took from the player: nothing while test money (InfiniteMoney) is on. Pieces remember it as
+-- item.paid, and refunds and undo pay back from that, so test money can never be turned into saved cash.
+local function chargedFor(price)
+	return if GameConfig.InfiniteMoney then 0 else price
+end
+
 -- Builds one piece on a plot. No checks and no charge: callers do that.
 -- stored, fill and display come back from a save: a silo's bales, a blueprint's fill, a display's needles.
 local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
@@ -833,7 +839,7 @@ local function writeLand(land, plot, ownerId)
 	local items = {}
 	for _, item in plot.list do
 		local gx, gz, dir = turnFor(plot, item.gx, item.gz, item.dir)
-		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill, display = item.wall and item.wall.contents() or nil })
+		table.insert(items, { id = item.id, gx = gx, gz = gz, dir = dir, stored = item.stored, fill = item.fill, display = item.wall and item.wall.contents() or nil, paid = item.paid })
 	end
 	-- Pieces that didn't fit this plot stay in the save, so moving back to a bigger plot brings them back.
 	for _, saved in plot.leftOut or {} do
@@ -1140,7 +1146,9 @@ local function claim(plot, player, saved, landKey)
 		if def and isCell(s.gx) and isCell(s.gz) and typeof(s.dir) == "string" and Conveyors.Dirs[s.dir] then
 			local gx, gz, dir = turnFor(plot, s.gx, s.gz, s.dir)
 			if fits(plot, def, gx, gz, dir) then
-				spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil, s.display)
+				local item = spawnItem(plot, def, gx, gz, dir, typeof(s.stored) == "number" and s.stored or nil, typeof(s.fill) == "string" and s.fill or nil, s.display)
+				-- Saves from before item.paid assume the full price was paid.
+				item.paid = if typeof(s.paid) == "number" then math.clamp(math.floor(s.paid), 0, def.price) else nil
 			else
 				table.insert(plot.leftOut, s)
 			end
@@ -1263,13 +1271,14 @@ local function onPlace(player, id, gx, gz, dir)
 	if not paid then
 		return false, short
 	end
-	spawnItem(plot, def, gx, gz, dir)
+	local item = spawnItem(plot, def, gx, gz, dir)
+	item.paid = chargedFor(def.price)
 	refreshRails(plot)
 	publish(plot)
 	saveItems(player, plot)
 	Data.sync(player)
 	Tutorial.placed(player, def.id)
-	remember(player, { kind = "place", anchors = { { id = def.id, gx = gx, gz = gz, price = def.price } } })
+	remember(player, { kind = "place", anchors = { { id = def.id, gx = gx, gz = gz, price = item.paid } } })
 	return true, ("Built a %s for $%d."):format(def.name:lower(), def.price)
 end
 
@@ -1286,12 +1295,12 @@ local function onRemove(player, gx, gz)
 		return false, "Nothing built there."
 	end
 	local def = pieces[item.id]
-	local was = { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored, fill = item.fill }
+	local was = { id = item.id, gx = item.gx, gz = item.gz, dir = item.dir, stored = item.stored, fill = item.fill, paid = item.paid }
 	destroyItem(plot, item)
 	refreshRails(plot)
 	publish(plot)
 	saveItems(player, plot)
-	local refund = math.floor(def.price * LandConfig.RefundShare)
+	local refund = math.floor((item.paid or def.price) * LandConfig.RefundShare)
 	Bank.give(player, refund, "Removed a " .. def.name:lower())
 	remember(player, { kind = "remove", was = was, refund = refund })
 	return true, ("Removed the %s. Got $%d back."):format(def.name:lower(), refund)
@@ -1340,8 +1349,9 @@ local function onMove(player, fromX, fromZ, gx, gz, dir)
 	if item.wall then
 		item.wall.clear() -- the needles move with it instead of going back to the pocket
 	end
+	local paid = item.paid
 	destroyItem(plot, item)
-	spawnItem(plot, def, gx, gz, dir, stored, fill, display)
+	spawnItem(plot, def, gx, gz, dir, stored, fill, display).paid = paid
 	afterEdit(player, plot)
 	remember(player, { kind = "move", id = def.id, from = { gx = fromX, gz = fromZ, dir = oldDir }, to = { gx = gx, gz = gz, dir = dir } })
 	return true, ("Moved the %s."):format(def.name:lower())
@@ -1408,8 +1418,9 @@ local function onPaste(player, list, gx, gz)
 	end
 	local anchors = {}
 	for _, t in todo do
-		spawnItem(plot, t.def, t.gx, t.gz, t.dir)
-		table.insert(anchors, { id = t.def.id, gx = t.gx, gz = t.gz, price = t.def.price })
+		local item = spawnItem(plot, t.def, t.gx, t.gz, t.dir)
+		item.paid = chargedFor(t.def.price)
+		table.insert(anchors, { id = t.def.id, gx = t.gx, gz = t.gz, price = item.paid })
 	end
 	afterEdit(player, plot)
 	remember(player, { kind = "place", anchors = anchors })
@@ -1455,7 +1466,7 @@ local function onUndo(player)
 			table.insert(list, entry)
 			return false, short
 		end
-		spawnItem(plot, def, was.gx, was.gz, was.dir, was.stored, was.fill)
+		spawnItem(plot, def, was.gx, was.gz, was.dir, was.stored, was.fill).paid = was.paid
 		afterEdit(player, plot)
 		return true, ("Put the %s back."):format(def.name:lower())
 	elseif entry.kind == "move" then
@@ -1470,8 +1481,9 @@ local function onUndo(player)
 		if item.wall then
 			item.wall.clear()
 		end
+		local paid = item.paid
 		destroyItem(plot, item)
-		spawnItem(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, stored, fill, display)
+		spawnItem(plot, def, entry.from.gx, entry.from.gz, entry.from.dir, stored, fill, display).paid = paid
 		afterEdit(player, plot)
 		return true, ("Moved the %s back."):format(def.name:lower())
 	end
@@ -1887,6 +1899,10 @@ local function sendHome(player, plot)
 	end
 	local inward = plot.def.open == "S" and -1 or 1
 	local at = Vector3.new(plot.corner.X + plot.size.X / 2 + 8, 4, plot.stripZ)
+	pcall(player.RequestStreamAroundAsync, player, at) -- so the plot is there when the player lands on it
+	if not character.Parent then
+		return
+	end
 	character:PivotTo(CFrame.lookAt(at, at + Vector3.new(0, 0, inward)))
 end
 
@@ -2141,6 +2157,23 @@ function Land.build(worldFolder)
 		for _, plot in farms[owner] or {} do
 			if plot.crew[driver.UserId] then
 				return true
+			end
+		end
+		return false
+	end
+	-- Crew hand-offs (Tools): a thrown bale can be caught by anyone working the same farm, owner or crew.
+	(Bales :: any).isTeammate = function(thrower, catcher)
+		if thrower == catcher then
+			return false
+		end
+		for _, plot in plots do
+			if plot.ownerId then
+				local function onFarm(player)
+					return plot.ownerId == player.UserId or plot.crew[player.UserId] == true
+				end
+				if onFarm(thrower) and onFarm(catcher) then
+					return true
+				end
 			end
 		end
 		return false

@@ -14,6 +14,9 @@ local MapConfig = require(Shared.Config.WorldMap)
 local Quests = require(Services.Quests)
 local Events = require(Services.Events)
 local Data = require(Services.Data)
+local Regions = require(Services.Regions)
+local WorldShape = require(Services.WorldShape)
+local CollectionService = game:GetService("CollectionService")
 
 local function spotIdsOf(step)
 	return step.spots or (step.spot and { step.spot }) or {}
@@ -95,7 +98,8 @@ return function(SelfTest)
 		for id, def in QuestConfig.Spots do
 			local spot = Quests.spot(id)
 			local built = spot and spot.model and spot.model.Parent and spot.base
-			if not built and (def.pos or def.fallback or def.world or def.wander or def.inMaze) then
+			local expected = def.pos or def.fallback or def.world or def.wander or def.inMaze
+			if not built and (expected or (def.sea and #Regions.fields > 0)) then
 				table.insert(missing, id)
 			elseif built and spot.base.Position.Y < MapConfig.SeaLevel then
 				table.insert(wet, ("%s (y %.0f)"):format(id, spot.base.Position.Y))
@@ -123,6 +127,98 @@ return function(SelfTest)
 			table.insert(keyDetail, offset and ("(%.0f, %.0f)"):format(offset.X, offset.Z) or "missing")
 		end
 		t.check("three corn keys sit inside the maze", keysOk, table.concat(keyDetail, " "))
+
+		-- The Straw Labyrinth: straw walls, a start line and a bell. Every run spot has a start line.
+		local function countParts(spot, name)
+			local n = 0
+			for _, p in (spot and spot.model and spot.model:GetChildren()) or {} do
+				if p.Name == name then
+					n += 1
+				end
+			end
+			return n
+		end
+		local lab = Quests.spot("straw_labyrinth")
+		t.check(
+			"the straw labyrinth has its walls",
+			countParts(lab, "StrawWall") >= 20,
+			("%d walls"):format(countParts(lab, "StrawWall"))
+		)
+		for id in QuestConfig.Runs do
+			local spot = Quests.spot(id)
+			if spot or id ~= "drowned_rows" or #Regions.fields > 0 then
+				t.check(id .. " has a start line", spot ~= nil and spot.startAt ~= nil)
+			end
+		end
+		-- The Drowned Rows: pilings standing in real water (only once the world map and its sea exist).
+		local rows = Quests.spot("drowned_rows")
+		if rows and rows.position then
+			local _, floor, water = pcall(WorldShape.column, rows.position.X, rows.position.Z)
+			t.check(
+				"the drowned rows stand in the sea",
+				water ~= nil and floor < water - 6,
+				("floor %s, water %s"):format(tostring(floor), tostring(water))
+			)
+			t.check("the drowned rows' entrance faces the beach (north)", rows.startAt.Z < rows.position.Z)
+			t.check(
+				"the drowned rows have their pilings",
+				countParts(rows, "Piling") >= 15,
+				("%d pilings"):format(countParts(rows, "Piling"))
+			)
+		else
+			t.skip("the drowned rows stand in the sea", "the world map is not built")
+		end
+
+		-- The Master Needle: twelve different shards in the collection, each a real relic, in the Spindle door's order.
+		local shardIds, seenShard, shardBad = {}, {}, {}
+		for _, entry in QuestConfig.Collection do
+			if string.sub(entry.id, 1, 6) == "shard_" then
+				table.insert(shardIds, entry.id)
+				if seenShard[entry.id] or not QuestConfig.Rewards[entry.id] then
+					table.insert(shardBad, entry.id)
+				end
+				seenShard[entry.id] = true
+			end
+		end
+		t.equal("the collection holds twelve Master Needle shards", #shardIds, 12)
+		t.check("every shard is a distinct relic", #shardBad == 0, table.concat(shardBad, ", "))
+		local okDoor, SpindleDoor = pcall(require, Services.SpindleDoor)
+		if okDoor then
+			local sameOrder = #SpindleDoor.shards == #shardIds
+			for i, id in shardIds do
+				sameOrder = sameOrder and SpindleDoor.shards[i] == id
+			end
+			t.check("the Spindle door's sockets follow the collection's shards", sameOrder)
+			local slots = {}
+			for _, socket in CollectionService:GetTagged("ShardSocket") do
+				slots[socket:GetAttribute("Slot") or 0] = true
+			end
+			local socketCount = 0
+			for slot = 1, 12 do
+				if slots[slot] then
+					socketCount += 1
+				end
+			end
+			if #CollectionService:GetTagged("ShardSocket") > 0 then
+				t.equal("the Spindle door has a socket for each shard", socketCount, 12)
+			else
+				t.skip("the Spindle door has a socket for each shard", "the world map is not built")
+			end
+		else
+			t.skip("the Spindle door's sockets follow the collection's shards", "no SpindleDoor service")
+		end
+
+		-- Every bounty board opens the quest log (it gets a prompt the quest system listens to).
+		local boardsBad = {}
+		for _, board in CollectionService:GetTagged("BountyBoard") do
+			if
+				board:IsA("BasePart")
+				and not (board:GetAttribute("QuestHooked") and board:FindFirstChildWhichIsA("ProximityPrompt", true))
+			then
+				table.insert(boardsBad, board:GetFullName())
+			end
+		end
+		t.check("every bounty board has a working prompt", #boardsBad == 0, table.concat(boardsBad, ", "))
 
 		local remotes = ReplicatedStorage:FindFirstChild("Quests")
 		t.check(
@@ -187,6 +283,56 @@ return function(SelfTest)
 			end
 			Quests.press(player, "corn_maze")
 			t.check("the corn maze completes at night", q.done.corn_maze == true and q.earned.corn_moon_charm == true)
+
+			-- The Weaver, chapter 1: read the words, the spool only at midnight, wind it home for the Spindle shard.
+			q.active.weaver_1 = { step = 1, n = 0, seen = {} }
+			Quests.press(player, "weaver_words")
+			t.equal("reading the words moves the Weaver on", q.active.weaver_1 and q.active.weaver_1.step, 2)
+			Lighting.ClockTime = 12
+			Quests.press(player, "weaver_spool")
+			t.equal("the spool can't be taken at noon", q.active.weaver_1 and q.active.weaver_1.step, 2)
+			Lighting.ClockTime = 23.8
+			Quests.press(player, "weaver_spool")
+			Quests.press(player, "weaver_words")
+			t.check("chapter 1 gives the Spindle shard", q.done.weaver_1 == true and q.earned.shard_spindle == true)
+			if okDoor then
+				SpindleDoor.refresh()
+				t.check("the door counts the new shard", SpindleDoor.count(player) >= 1)
+				local slot = table.find(SpindleDoor.shards, "shard_spindle")
+				for _, socket in CollectionService:GetTagged("ShardSocket") do
+					if socket:GetAttribute("Slot") == slot then
+						t.check("the Spindle shard's socket lights up", socket:GetAttribute("Lit") == true)
+					end
+				end
+			end
+
+			-- Timed mazes: a run moves the labyrinth quest on, a slow one doesn't pass the 45 second step, and the
+			-- first finish of the day is recorded (paid outside a sandbox) once.
+			q.active.straw_labyrinth = { step = 1, n = 0, seen = {} }
+			Quests.run(player, "straw_labyrinth", 70)
+			t.equal(
+				"a labyrinth run moves the quest to the timed step",
+				q.active.straw_labyrinth and q.active.straw_labyrinth.step,
+				2
+			)
+			t.check(
+				"the first run today is recorded",
+				q.runs and q.runs.straw_labyrinth and q.runs.straw_labyrinth.day == os.time() // 86400
+			)
+			Quests.run(player, "straw_labyrinth", 60)
+			t.check("a 60 second run doesn't pass the 45 second step", q.active.straw_labyrinth ~= nil)
+			Quests.run(player, "straw_labyrinth", 30)
+			t.check(
+				"a 30 second run completes the labyrinth",
+				q.done.straw_labyrinth == true and q.earned.straw_crown == true
+			)
+			t.near("the best time is kept", q.runs.straw_labyrinth.best, 30, 0.01)
+			q.active.drowned_rows = { step = 1, n = 0, seen = {} }
+			Quests.run(player, "drowned_rows", 80)
+			t.check(
+				"swimming the rows completes them",
+				q.done.drowned_rows == true and q.earned.drowned_compass == true
+			)
 
 			-- The daily streak: a finished bounty counts the day once; a gap pauses it; 3 days earns the first rosette.
 			local bounty = QuestConfig.Bounties

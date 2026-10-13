@@ -12,6 +12,7 @@ local Trailers = require(Config:WaitForChild("Trailers"))
 local Gloves = require(Config:WaitForChild("Gloves"))
 local LandConfig = require(Config:WaitForChild("Land"))
 local Prices = require(Config:WaitForChild("Prices"))
+local PieceGuide = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PieceGuide"))
 
 local Catalog = {}
 
@@ -122,7 +123,7 @@ function Catalog.items(tab)
 				table.insert(rows, {
 					id = def.id,
 					name = def.name,
-					blurb = def.blurb,
+					blurb = PieceGuide.line(def), -- built from the configs, so stats and prices can't drift
 					price = Prices.Pieces[def.id] or def.price,
 					state = hasLand and "buy" or "needland",
 					place = hasLand and "plot" or "landoffice",

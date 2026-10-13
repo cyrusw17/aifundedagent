@@ -138,12 +138,20 @@ return function(SelfTest)
 			t.skip("rigged vehicles", "no imported prop has Wheel_, Coupler or Tailgate child meshes (import with the hierarchy kept)")
 		end
 
-		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover.
+		-- 2b. Named pieces the game drives: wheelbarrow wheel and hay, the bin's needle pile, the schooner's cover, and
+		-- the treat machines' belts and moving parts.
 		for _, want in {
 			{ "wheelbarrow_loaded", "Wheel_L1" },
 			{ "wheelbarrow_loaded", "HayFill" },
 			{ "needle_bin", "NeedleFill" },
 			{ "prairie_schooner", "Cover" },
+			{ "thawing_shed", "Belt" },
+			{ "thawing_shed", "Vent" },
+			{ "drying_rack", "Belt" },
+			{ "drying_rack", "Fan" },
+			{ "ash_sifter", "Belt" },
+			{ "ash_sifter", "Drum" },
+			{ "ash_sifter", "Shaker" },
 		} do
 			if Props.has(want[1]) then
 				local model = Props.make(want[1], t.place())
