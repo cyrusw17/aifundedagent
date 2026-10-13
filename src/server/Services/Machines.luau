@@ -34,6 +34,7 @@ local Needle = require(script.Parent.Needle)
 local Skins = require(script.Parent.Skins)
 local Conveyors = require(script.Parent.Conveyors)
 local Feedback = require(script.Parent.Feedback)
+local Market = require(script.Parent.Market)
 
 local Machines = {}
 
@@ -259,6 +260,7 @@ function Machines.needleBin(parent, frame)
 			if n:GetAttribute("OwnerId") == player.UserId then
 				count += Needle.count(n)
 				value += Needle.value(n)
+				Market.sold(n:GetAttribute("NeedleId"), Needle.count(n))
 				n:Destroy()
 			end
 		end

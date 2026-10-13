@@ -176,6 +176,19 @@ buffer, a crew, or richer hay, the payback gets much faster: an optical sorter o
 | Sorted needles (SELL NEEDLES pad) | $100 steel up to $5,000 cosmic | Unchanged from the needle table. |
 | A needle you spot and pick up yourself | Full sorted value | It's rare (about 1 per 2 bales broken) and it is the first hook that shows what sorting is worth. |
 
+### The needle market
+
+Each server keeps its own needle prices (`Services/Market.luau`, numbers in `Prices.Market`). Selling a needle type
+pushes its price down, and the push fades by half every 10 minutes. A type nobody has sold lately pays up to 20% over
+its list price, and a flooded one drops as far as 20% under, never further. The point is the V8 one: flooding steel
+nudges players toward regions nobody else is farming, without ever making a needle worthless.
+
+List price is set where a solo shaker-table farm sells steel (about 40 recent sales). Rarer needles sell in smaller
+numbers, so they reach list price with fewer sales (a cosmic needle with 5). A board beside the hay shop's sell pad
+shows today's price for every type, with an arrow. Every needle sale goes through `Needle.priceOf`, so pads, the
+display wall and the ding pitch all follow the market. The earning tables above use list prices, since the swing
+averages out.
+
 ## The bank: Meadow Savings & Loan
 
 A stone-and-plank bank on the main road, east of the plot road, with a teller window. Press E at the window to open it.
@@ -266,4 +279,5 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Plot, expansion rows, pieces, refund | `Plot`, `PlotExpansion`, `Pieces`, `RefundShare` | `Config/Land` |
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
+| Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |

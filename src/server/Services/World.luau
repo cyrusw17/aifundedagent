@@ -14,6 +14,7 @@ local Dealer = require(script.Parent.Dealer)
 local Land = require(script.Parent.Land)
 local WorldLabel = require(game:GetService("ReplicatedStorage").Shared.WorldLabel)
 local Bank = require(script.Parent.Bank)
+local Market = require(script.Parent.Market)
 local WorldMap = require(script.Parent.WorldMap)
 
 local World = {}
@@ -112,6 +113,9 @@ function World.build()
 	pad.Transparency = 0.35
 	addSign(pad, "SELL HERE", Vector3.new(0, 5, 0))
 	Gameplay.wireSellPad(pad)
+
+	-- Today's needle prices on this server (Market.luau), on a board beside the sell pad.
+	Market.build(folder, Vector3.new(34, 0, -8))
 
 	-- Bale drop-off between the bales and the shop. Bales set down here stay until you smash or sell them.
 	local dropOff = newPart(

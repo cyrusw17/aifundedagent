@@ -49,6 +49,17 @@ Prices.Needles = {
 	cosmic = 5000,
 }
 
+-- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
+-- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
+-- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
+-- MinNormalSales. A quiet type pays up to 20% more, which nudges players toward regions nobody is farming.
+Prices.Market = {
+	Swing = 0.2,
+	HalfLifeSeconds = 600,
+	NormalSales = 40,
+	MinNormalSales = 5,
+}
+
 -- Buying ------------------------------------------------------------------------------------------------------------
 
 -- Trucks, at Homestead Motors. Each costs one to two hours of what you earn at the stage before it, so it is a real
