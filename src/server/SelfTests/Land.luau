@@ -337,6 +337,42 @@ return function(SelfTest)
 			t.check("NameTags.test and Trade.test exist", false)
 		end
 
+		-- Play-together bonus and JOIN FARM.
+		if L.helperOn then
+			local function fakePlayer(userId, at)
+				local root = { Position = at }
+				local character = {
+					FindFirstChild = function(_, name)
+						return name == "HumanoidRootPart" and root or nil
+					end,
+				}
+				return { UserId = userId, Character = character, DisplayName = "P" .. userId }
+			end
+			local owner = fakePlayer(-901, Vector3.new(0, 0, 0))
+			local plot = { owner = owner, ownerId = -901, corner = Vector3.new(100, 0, 100), size = Vector3.new(72, 0, 72), crew = { [-902] = true } }
+			local mate = fakePlayer(-902, Vector3.new(130, 3, 130))
+			local yes = function()
+				return true
+			end
+			t.check("a fresh slot (no sales) can't switch the bonus on, crew or friend", L.helperOn(plot, { owner, mate }, yes) == nil)
+			t.check("an empty farm has no bonus", L.helperOn({ corner = plot.corner, size = plot.size }, { mate }, yes) == nil)
+			local LandCfg = require(game:GetService("ReplicatedStorage").Shared.Config.Land)
+			t.check("the bonus is +10%", LandCfg.TogetherBonus == 1.1)
+		end
+		local okLb, Lb = pcall(require, Services.Leaderboards)
+		if okLb and Lb.test and Lb.test.joinTarget then
+			local list = { { userId = 1, score = 9 }, { userId = 2, score = 5 }, { userId = 3, score = 1 } }
+			local farms = { [2] = true, [3] = true }
+			local hasFarm = function(id)
+				return farms[id] == true
+			end
+			t.check("JOIN FARM skips players without a farm here", Lb.test.joinTarget(list, { UserId = 9 }, hasFarm).userId == 2)
+			t.check("JOIN FARM never sends you to your own farm", Lb.test.joinTarget(list, { UserId = 2 }, hasFarm).userId == 3)
+			t.check("JOIN FARM finds nobody on an empty server", Lb.test.joinTarget(list, { UserId = 9 }, function()
+				return false
+			end) == nil)
+		end
+
 		-- Plots: six, all the same size and price, all with a bin and a mailbox.
 		local count, sizes, prices = 0, {}, {}
 		for _, plot in L.plots do

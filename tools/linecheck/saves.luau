@@ -225,6 +225,7 @@ local state = Data.test.stateFrom({
 	cash = 123456,
 	pocket = { ["cosmic*3!#S"] = 2, steel = 40 },
 	needleHold = 3,
+	needleIndex = { found = { steel = true, ["steel:wet"] = true, ["cosmic:mutated"] = true }, paid = { ["25"] = true } },
 	lineBlueprints = { { name = "Two sorters ✦", list = { { id = "belt", dx = 0, dz = 0, dir = "E" }, { id = "magnet_drum", dx = 1, dz = 0, dir = "E" } } } },
 	land = land,
 	land2 = land,
@@ -242,6 +243,8 @@ if ok then
 	check("everything comes back exactly", #diffs == 0, table.concat(diffs, "; ", 1, math.min(#diffs, 8)))
 	check("every piece comes back", second.land and #second.land.items == #items)
 	check("the price hold comes back", second.needleHold == 3)
+	local idx = second.needleIndex
+	check("the needle index comes back", idx and idx.found.steel and idx.found["steel:wet"] and idx.found["cosmic:mutated"] and idx.paid["25"] == true and not idx.paid["50"])
 	check("the bin keeps every needle key", second.land and LineMath.total(second.land.needles) == LineMath.total(binNeedles))
 	check("the second farm comes back too", second.land2 and #second.land2.items == #items)
 end

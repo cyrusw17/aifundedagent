@@ -16,6 +16,7 @@ run.MODULES.update({
     "Shared.Config.Game": "shared/Config/Game.luau",
     "Shared.Config.Land": "shared/Config/Land.luau",
     "Shared.Config.Alloys": "shared/Config/Alloys.luau",
+    "Shared.NeedleIndex": "shared/NeedleIndex.luau",
 })
 
 
