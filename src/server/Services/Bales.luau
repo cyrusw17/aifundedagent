@@ -13,6 +13,7 @@ local Data = require(script.Parent.Data)
 local Avatar = require(script.Parent.Avatar)
 local Hay = require(script.Parent.Hay)
 local Groups = require(script.Parent.Groups)
+local Props = require(script.Parent.Props)
 
 local Bales = {}
 
@@ -40,8 +41,16 @@ local function buildBale(position)
 	-- Heavy and grippy with no bounce, so a stack settles instead of sliding apart.
 	body.CustomPhysicalProperties = PhysicalProperties.new(1.2, 1.2, 0, 1, 1)
 
-	-- The twine bands wrap the bale. They are visual only and ride along with it.
-	for _, x in TWINE_X do
+	-- The Rustic bale mesh, stretched over the hitbox so stacking and carrying work exactly as before. The body
+	-- stays the real physics block and click target, just invisible.
+	local mesh = Props.make("hay_bale", body.CFrame, SIZE)
+	if mesh then
+		body.Transparency = 1
+		Props.weldTo(mesh, body)
+	end
+
+	-- Without the mesh, twine bands wrap the part bale. They are visual only and ride along with it.
+	for _, x in (mesh and {} or TWINE_X) do
 		local band = Instance.new("Part")
 		band.Name = "Twine"
 		band.Size = Vector3.new(0.12, SIZE.Y + 0.06, SIZE.Z + 0.06)
@@ -375,10 +384,11 @@ function Bales.spawn(position, home, fadeIn)
 
 	if fadeIn then
 		local info = TweenInfo.new(0.7)
-		for _, part in { body, unpack(body:GetChildren()) } do
-			if part:IsA("BasePart") then
+		for _, part in { body, unpack(body:GetDescendants()) } do
+			if part:IsA("BasePart") and part.Transparency < 1 then
+				local shown = part.Transparency
 				part.Transparency = 1
-				TweenService:Create(part, info, { Transparency = 0 }):Play()
+				TweenService:Create(part, info, { Transparency = shown }):Play()
 			end
 		end
 	end
