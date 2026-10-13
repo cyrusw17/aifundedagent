@@ -337,6 +337,11 @@ return function(SelfTest)
 		t.check("every region hides one spot with an Old Sign clue", #noHidden == 0, #noHidden > 0 and table.concat(noHidden, ", ") or nil)
 		local ember = Wilds.Secrets.ember_cache
 		t.check("the Ember Cache lies in the crater's heat", ember ~= nil and Wilds.inHeat(ember.part.Position))
+		local searcher = t.player and t.player()
+		if searcher and ember and not Wilds.heatProof(searcher) and not Wilds.found(searcher, "ember_cache") then
+			t.equal("the Ember Cache refuses a search without heat gloves", Wilds.claimSecret(searcher, "ember_cache", "Ember Cache"), false)
+			t.equal("...and nothing is recorded", Wilds.found(searcher, "ember_cache"), false)
+		end
 		local clockWas = Lighting.ClockTime
 		Lighting.ClockTime = 0
 		Wilds.refreshGhost()
