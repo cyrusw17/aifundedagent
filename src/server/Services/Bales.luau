@@ -482,6 +482,31 @@ function Bales.stow(player, b, anchor, offset)
 	return true
 end
 
+-- Takes a stowed bale out and drops it loose at cframe (into a truck bed, say), with real physics from there.
+function Bales.releaseAt(b, cframe)
+	if b.gone then
+		return
+	end
+	if b.carryWeld then
+		b.carryWeld:Destroy()
+		b.carryWeld = nil
+	end
+	b.carriedBy = nil
+	b.prompt.Enabled = true
+	b.body.CFrame = cframe
+	b.body.Massless = false
+	b.body.CanCollide = true
+	b.body.CanQuery = true
+	b.body.Anchored = false
+	b.body.AssemblyLinearVelocity = Vector3.zero
+	b.body.AssemblyAngularVelocity = Vector3.zero
+	pcall(function()
+		b.body:SetNetworkOwnershipAuto()
+	end)
+	Feedback.play("BaleSetDown", b.body)
+	startDespawnTimer(b)
+end
+
 -- Takes a stowed bale out and sets it down in front of the player (or gets rid of it if the player is gone).
 function Bales.release(b, root)
 	if b.gone then
