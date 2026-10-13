@@ -152,7 +152,8 @@ local function buildSilo(plot, item, def)
 	end
 	refresh()
 
-	-- Intake: the footprint grown 2.5 studs to the back and sides (not the front, where bales come out).
+	-- Intake: the footprint grown 2.5 studs to the back and sides (not the front, where bales come out). Sorted bales
+	-- are left alone, or a silo could hand them back to a sorter to find their needles twice.
 	local intake = frame * CFrame.new(0, 4, 1.25)
 	local intakeSize = Vector3.new(w + 5, 8, l + 2.5)
 	local outSpot = frame * CFrame.new(laneX, 0, -l / 2 - T / 2 - 1)
@@ -163,7 +164,7 @@ local function buildSilo(plot, item, def)
 			local changed = false
 			for _, p in Workspace:GetPartBoundsInBox(intake, intakeSize) do
 				local b = Bales.fromPart(p)
-				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and item.stored < LandConfig.SiloCapacity then
+				if b and p == b.body and not b.gone and not b.carriedBy and not b.breaking and not b.sorted and item.stored < LandConfig.SiloCapacity then
 					Bales.consume(b)
 					item.stored += 1
 					changed = true
