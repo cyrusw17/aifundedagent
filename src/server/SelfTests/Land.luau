@@ -1,10 +1,13 @@
 --!nonstrict
--- Land's suite: claiming a plot, building every piece, saving and loading a farm onto a different plot (the turned
+-- Land's suites. "Land": claiming a plot, building every piece, saving and loading a farm onto a different plot (the turned
 -- north row included), restoring bin needles, the mailbox, and a second farm. It works on free plots with a stand-in
 -- owner, so it needs no player; place and undo run on a real player's own farm when one is loaded.
+local HttpService = game:GetService("HttpService")
+
 local Services = script.Parent.Parent.Services
 
 local Land = require(Services.Land)
+local Data = require(Services.Data)
 local Needle = require(Services.Needle)
 
 -- A stand-in owner: just enough of a Player for claim and release.
@@ -48,7 +51,150 @@ local function itemSet(items)
 	return set, n
 end
 
+
+-- One JSON string per value with keys sorted, so two tables compare equal exactly when their saves would.
+local function canon(value)
+	if typeof(value) ~= "table" then
+		return HttpService:JSONEncode(value)
+	end
+	local keys = {}
+	for k in value do
+		table.insert(keys, k)
+	end
+	table.sort(keys, function(a, b)
+		return tostring(a) < tostring(b)
+	end)
+	local parts = {}
+	for _, k in keys do
+		table.insert(parts, tostring(k) .. "=" .. canon(value[k]))
+	end
+	return "{" .. table.concat(parts, ",") .. "}"
+end
+
+-- A save with something in every field, sized by rng. big fills both farms and the bin to their limits.
+local function randomSave(rng, big)
+	local pieceIds = {}
+	for _, def in require(game:GetService("ReplicatedStorage").Shared.Config.Land).Pieces do
+		table.insert(pieceIds, def.id)
+	end
+	local dirs = { "N", "E", "S", "W" }
+	local function farm(n)
+		local items = {}
+		for i = 1, n do
+			table.insert(items, {
+				id = pieceIds[rng:NextInteger(1, #pieceIds)],
+				gx = rng:NextInteger(0, 11),
+				gz = rng:NextInteger(0, 9),
+				dir = dirs[rng:NextInteger(1, 4)],
+				stored = rng:NextNumber() < 0.3 and rng:NextInteger(1, 40) or nil,
+				fill = rng:NextNumber() < 0.1 and "thatch" or nil,
+				display = rng:NextNumber() < 0.1 and { { slot = 1, id = Needle.default.id, mult = 3 } } or nil,
+			})
+		end
+		local needles = {}
+		for i = 1, big and 40 or rng:NextInteger(0, 8) do
+			needles[Needle.keyOf(Needle.default.id, i % 5 == 0 and i or nil, i % 3 == 0)] = rng:NextInteger(1, 300)
+		end
+		return {
+			owned = true, plot = rng:NextInteger(1, 6), items = items, needles = needles, crew = { rng:NextInteger(1, 1e9) },
+			expansions = rng:NextInteger(0, 2), binSorted = rng:NextNumber() < 0.5 or nil, binPolisher = rng:NextNumber() < 0.5 or nil,
+			theme = "fieldstone", savedAt = os.time() - rng:NextInteger(0, 1e5),
+		}
+	end
+	local pocket = {}
+	for i = 1, big and 60 or rng:NextInteger(0, 10) do
+		pocket[Needle.keyOf(Needle.default.id, i, i % 2 == 0)] = rng:NextInteger(1, 99)
+	end
+	local history = {}
+	for i = 1, big and 50 or 5 do
+		table.insert(history, { t = os.time() - i, kind = "earn", amount = rng:NextInteger(1, 5000), note = "Hay shop" })
+	end
+	return {
+		cash = rng:NextInteger(0, 1e7),
+		trucks = { "rusty_pickup" },
+		trailers = { "flatbed" },
+		gear = { "wheelbarrow" },
+		pocket = pocket,
+		thatch = rng:NextInteger(0, 500),
+		materials = { bronze = rng:NextInteger(1, 50) },
+		finds = { horseshoe = 2 },
+		gloves = { owned = { "work", "leather" }, worn = "leather", brokeFirstBale = true },
+		land = farm(big and 120 or rng:NextInteger(0, 30)),
+		land2 = rng:NextNumber() < 0.5 and farm(big and 120 or rng:NextInteger(0, 30)) or nil,
+		bank = { balance = rng:NextInteger(0, 1e6), earned = 5, loans = { truck = { owed = 300, principal = 1000, item = "rusty_pickup", takenAt = 1 } }, history = history },
+		tutorial = { done = true, flags = { sold = true } },
+		settings = { effects = true },
+		quests = { earned = { alien_collector = true }, done = {}, active = {} },
+	}
+end
+
+local function registerSaves(SelfTest)
+	SelfTest.register("Saves", function(t)
+		local D = Data.test
+		if not D then
+			t.check("Data.test hooks exist", false, "Data.luau has no Data.test table")
+			return
+		end
+		-- Versions and locks.
+		t.equal("a save from before versions migrates to the current version", Data.migrate({ cash = 5 })._v, Data.SAVE_VERSION)
+		t.check("a save from a newer version is refused", Data.migrate({ _v = Data.SAVE_VERSION + 1 }) == nil)
+		t.check("a fresh lock from another server holds the slot", Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() } }))
+		t.check("a lock nobody refreshed for an hour is stale", not Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() - 3600 } }))
+		t.check("this server's own lock never blocks it", not Data.heldElsewhere({ _lock = { job = game.JobId, at = os.time() } }))
+		t.check("an unlocked save is free", not Data.heldElsewhere({ cash = 1 }))
+
+		-- Round trips: save, JSON (what the DataStore keeps), load, save again. The second save must equal the first,
+		-- and what the player had must survive.
+		local rng = Random.new(1337)
+		local bad, biggest = {}, 0
+		for i = 1, 200 do
+			local original = randomSave(rng, i == 1)
+			local okRun, err = pcall(function()
+				local json = HttpService:JSONEncode(original)
+				biggest = math.max(biggest, #json)
+				local first = D.toSave(D.stateFrom(Data.migrate(HttpService:JSONDecode(json))))
+				local second = D.toSave(D.stateFrom(Data.migrate(HttpService:JSONDecode(HttpService:JSONEncode(first)))))
+				if canon(first) ~= canon(second) then
+					error("a second round trip changed the save")
+				end
+				for k, n in original.pocket do
+					if first.pocket[k] ~= n then
+						error("pocket needle " .. k .. " lost")
+					end
+				end
+				for k, n in original.land.needles do
+					if first.land.needles[k] ~= n then
+						error("bin needle " .. k .. " lost")
+					end
+				end
+				if #first.land.items ~= #original.land.items then
+					error("farm pieces lost")
+				end
+				if (original.land2 ~= nil) ~= (first.land2 ~= nil) then
+					error("second farm lost")
+				end
+				if first.land.binPolisher ~= original.land.binPolisher or first.land.binSorted ~= original.land.binSorted then
+					error("bin upgrades lost")
+				end
+				if first.thatch ~= original.thatch or first.gloves.worn ~= original.gloves.worn or first.bank.balance ~= original.bank.balance then
+					error("thatch, gloves or bank lost")
+				end
+			end)
+			if not okRun then
+				table.insert(bad, ("#%d: %s"):format(i, tostring(err)))
+				if #bad >= 5 then
+					break
+				end
+			end
+		end
+		t.check("200 random saves survive two round trips", #bad == 0, #bad > 0 and table.concat(bad, "; ") or nil)
+		-- DataStore values are capped at 4 MB; the fullest save should be far below that.
+		t.check(("the fullest save is %d KB, under 1 MB"):format(math.ceil(biggest / 1024)), biggest < 1024 * 1024)
+	end)
+end
+
 return function(SelfTest)
+	registerSaves(SelfTest)
 	SelfTest.register("Land", function(t)
 		local L = Land.test
 		if not L then
