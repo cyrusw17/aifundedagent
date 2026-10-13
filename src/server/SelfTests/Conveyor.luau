@@ -13,6 +13,9 @@ local LineMath = require(Shared.LineMath)
 
 local T2 = Factory.TileSize
 local GHOST = -7357 -- an owner who is never in the game
+-- The headless boot (tools/headless) has no physics: belts move bales by AssemblyLinearVelocity, so a bale never
+-- rides from one machine to the next there. Checks that need a bale to travel skip under it.
+local HEADLESS = Workspace:GetAttribute("Headless") == true
 
 return function(SelfTest)
 	SelfTest.register("Conveyor", function(t)
@@ -103,7 +106,11 @@ return function(SelfTest)
 				atBuyer += 1
 			end
 		end
-		t.equal("sorted bales wait in the buyer while the owner is away", atBuyer, 3)
+		if HEADLESS then
+			t.skip("sorted bales wait in the buyer while the owner is away", "needs physics: the belt carries them to the buyer")
+		else
+			t.equal("sorted bales wait in the buyer while the owner is away", atBuyer, 3)
+		end
 
 		local inBin = 0
 		for _, n in bin.contents(GHOST) do
@@ -211,7 +218,11 @@ return function(SelfTest)
 		while os.clock() < thawDeadline and (thawSorter:GetAttribute("Sorted") or 0) < 1 do
 			t.wait(0.25)
 		end
-		t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
+		if HEADLESS then
+			t.skip("thawed Frozen hay gets sorted", "needs physics: the belt carries the bale through the shed to the sorter")
+		else
+			t.equal("thawed Frozen hay gets sorted", thawSorter:GetAttribute("Sorted") or 0, 1)
+		end
 		t.equal("Frozen hay that skipped the shed rides through unsorted", frozenSorter:GetAttribute("Sorted") or 0, 0)
 
 		-- A plot loading dock leaves the belt in front of it open at the back and slides a load onto it.
@@ -320,8 +331,14 @@ return function(SelfTest)
 		end
 		beat:Disconnect()
 		local avgHz = totalFrames / (os.clock() - started)
-		t.check("optical line keeps up with 30 bales a minute", (sorter:GetAttribute("Sorted") or 0) >= fed - 3, ("fed %d, sorted %d"):format(fed, sorter:GetAttribute("Sorted") or 0))
-		t.check("server heartbeat stays at 45 Hz or more", worstHz >= 45, ("worst second %.1f Hz, average %.1f Hz"):format(worstHz, avgHz))
+		if HEADLESS then
+			-- The headless boot ticks at a fixed 30 Hz and has no belts moving bales, so neither number means anything.
+			t.skip("optical line keeps up with 30 bales a minute", ("needs physics (fed %d, sorted %d headless)"):format(fed, sorter:GetAttribute("Sorted") or 0))
+			t.skip("server heartbeat stays at 45 Hz or more", "the headless boot ticks at a fixed 30 Hz")
+		else
+			t.check("optical line keeps up with 30 bales a minute", (sorter:GetAttribute("Sorted") or 0) >= fed - 3, ("fed %d, sorted %d"):format(fed, sorter:GetAttribute("Sorted") or 0))
+			t.check("server heartbeat stays at 45 Hz or more", worstHz >= 45, ("worst second %.1f Hz, average %.1f Hz"):format(worstHz, avgHz))
+		end
 		t.check("parts during the run", true, ("start %d, peak %d (+%d)"):format(startParts, peakParts, peakParts - startParts))
 
 		for _, p in Workspace:GetPartBoundsInBox(t.center * CFrame.new(0, 20, 0), Vector3.new(190, 40, 190)) do

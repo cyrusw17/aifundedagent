@@ -35,6 +35,8 @@ workspace.Terrain.GrassLength = 0.1
 if OPTIONS.selfTests then
 	workspace:SetAttribute("RunSelfTests", true)
 end
+-- Self-tests that need physics (belts carry bales by AssemblyLinearVelocity, parts fall) read this and skip.
+workspace:SetAttribute("Headless", true)
 
 H.deferredSignals = OPTIONS.deferred
 if OPTIONS.deferred then
