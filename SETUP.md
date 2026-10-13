@@ -27,6 +27,8 @@ part-built look, so nothing breaks if you skip this. The ten .glb files are in `
    Keep the file's hierarchy and leave mesh merging off: vehicles, trailers, conveyors and machines carry their
    wheels, tailgate, coupler, belt and rollers as separate child meshes so they can move.
    When re-importing newer files, first delete the old `RusticProps` folder in ServerStorage and any `Scene` in Workspace.
+   The latest full set (204 models) is always in `blender/exports/rustic/` after `git pull`; import from there if
+   `rustic-import/` is out of date.
 3. Each one shows up in the **Explorer** under **Workspace** with its file name (hay_bale, basic_shovel, ...).
    Select all ten, right-click **Group as a Folder**, name the folder `RusticProps`, and drag it into **ServerStorage**.
    (Leaving them in Workspace also works: the game moves them out of sight when it starts.)
