@@ -31,6 +31,7 @@ step "junctions";     python3 tools/linecheck/junctions.py "$LUAU" | tail -1; [ 
 step "templates";     python3 tools/linecheck/templates.py | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "linecheck/templates.py"
 step "rate limit";    "$LUAU" tests/rate_limit.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/rate_limit.luau"
 step "line math";     "$LUAU" tests/line_math.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/line_math.luau"
+step "away";          "$LUAU" tests/away.luau | tail -1; [ "${PIPESTATUS[0]}" = 0 ] || bad "tests/away.luau"
 step "haycheck";      python3 tools/haycheck/run.py "$LUAU" --fuzz | grep -E "passed|FAIL" | tail -3; [ "${PIPESTATUS[0]}" = 0 ] || bad "haycheck"
 step "line_sim";      python3 tools/line_sim.py --check >/dev/null || { python3 tools/line_sim.py --check | tail -6; bad "line_sim --check"; }
 
