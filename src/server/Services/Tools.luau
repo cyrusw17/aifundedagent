@@ -146,14 +146,17 @@ function Tools.pour(player, root, target)
 	local unsortedOut = n - sortedOut
 	local needlesOut = unsortedHeld > 0 and math.floor((state.loadNeedles or 0) * unsortedOut / unsortedHeld + 0.5) or 0
 	local fraction = n / held
+	local wetOut = math.min(n, math.floor((state.loadWetHay or 0) / Config.HayPerPiece * fraction + 0.5))
 
 	state.loadHay -= n * Config.HayPerPiece
 	state.loadSortedHay = math.max(0, (state.loadSortedHay or 0) - sortedOut * Config.HayPerPiece)
+	state.loadWetHay = math.max(0, (state.loadWetHay or 0) - wetOut * Config.HayPerPiece)
 	state.loadNeedles = math.max(0, (state.loadNeedles or 0) - needlesOut)
 	state.loadWeight = (state.loadWeight or 0) * (1 - fraction)
 	local hayType = state.loadType or "meadow"
 	if state.loadHay <= 0 then
 		state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadWeight, state.loadTier = 0, 0, 0, 0, 0
+		state.loadWetHay = 0
 		state.loadType = nil
 	end
 	Data.sync(player)
@@ -185,6 +188,9 @@ function Tools.pour(player, root, target)
 			local piece = Hay.spawnPiece(from, velocity, player.UserId, nil, hayType)
 			if i <= sortedOut then
 				piece:SetAttribute("Sorted", true)
+			end
+			if i > n - wetOut then
+				Bales.wetPiece(piece)
 			end
 		end)
 	end
@@ -264,7 +270,7 @@ local function useShovel(player, root, aim)
 		if #list == 0 then
 			return
 		end
-		local strands, found, unsorted = 0, 0, 0
+		local strands, found, unsorted, wet = 0, 0, 0, 0
 		local roomLeft = room
 		for i = #list, 1, -1 do
 			local piece = list[i]
@@ -279,6 +285,9 @@ local function useShovel(player, root, aim)
 				strands += take
 				if not piece:GetAttribute("Sorted") then
 					unsorted += take
+				end
+				if piece:GetAttribute("Wet") then
+					wet += take
 				end
 				local weight, tier = Gloves.pieceWeight(piece)
 				state.loadWeight = (state.loadWeight or 0) + weight * take
@@ -299,6 +308,9 @@ local function useShovel(player, root, aim)
 				if not piece:GetAttribute("Sorted") then
 					unsorted += 1 -- hay from a sorted bale has had its needles taken out already
 				end
+				if piece:GetAttribute("Wet") then
+					wet += 1
+				end
 				local weight, tier = Gloves.pieceWeight(piece)
 				state.loadWeight = (state.loadWeight or 0) + weight
 				state.loadTier = math.max(state.loadTier or 0, tier)
@@ -308,6 +320,7 @@ local function useShovel(player, root, aim)
 		state.loadHay += hay
 		-- What kind of hay is in your arms, so it pours back out as the same (Tools.pour).
 		state.loadSortedHay = (state.loadSortedHay or 0) + (strands - unsorted) * Config.HayPerPiece
+		state.loadWetHay = (state.loadWetHay or 0) + wet * Config.HayPerPiece
 		state.loadType = state.loadType or first:GetAttribute("HayType") or "meadow"
 		state.loadNeedles += found
 			+ Economy.rollNeedles(rng, unsorted * Config.HayPerPiece, Config.NeedleChancePerHay)
