@@ -493,8 +493,20 @@ local function edgeCases(t, player, state, root, stand)
 	-- for it come back out of your load with it. The ground is never a pour target.
 	local pourBed = truckBed(t, t.place())
 	stand(pourBed.model.PrimaryPart.CFrame * CFrame.new(0, -3, 9))
-	t.check("a truck bed is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }) ~= nil)
-	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }) == nil)
+	t.check("a truck bed in reach is a pour target", Tools.pourTarget({ part = pourBed.floor, position = pourBed.floor.Position }, root) ~= nil)
+	t.check("the plain ground is not", Tools.pourTarget({ part = workspace.Terrain, position = root.Position }, root) == nil)
+	-- A bed across the map is never a target, even if the click claims a spot right beside you.
+	local farBed = truckBed(t, t.place())
+	farBed.model:PivotTo(farBed.model:GetPivot() + Vector3.new(0, 0, 150))
+	t.check("a truck bed out of reach is not a pour target", Tools.pourTarget({ part = farBed.floor, position = root.Position }, root) == nil)
+	local farBelt = Instance.new("Part")
+	farBelt.Anchored = true
+	farBelt.Size = Vector3.new(6, 1, 3)
+	farBelt.CFrame = root.CFrame + Vector3.new(0, 0, 150)
+	CollectionService:AddTag(farBelt, "ConveyorBelt")
+	farBelt.Parent = workspace
+	t.cleanup(farBelt)
+	t.check("a far belt named with a spot beside you is refused", Tools.pourTarget({ part = farBelt, position = root.Position + Vector3.new(0, 0, -3) }, root) == nil)
 	local before = #Hay.near(pourBed.floor.Position, 12, nil)
 	state.loadHay, state.loadSortedHay, state.loadNeedles, state.loadType = 30, 10, 4, "meadow"
 	state.loadWeight, state.loadTier = 30, 0

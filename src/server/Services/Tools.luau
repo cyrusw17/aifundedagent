@@ -108,18 +108,39 @@ end
 -- Machines that take loose hay in (the sorter's hopper, the hay buyer, the baler, the docks' funnels).
 local POUR_INTO = { NeedleSorter = true, HayBuyer = true, HayBaler = true, DockFunnel = true, PlotDock = true }
 
+-- How far point is from the nearest point of a box (CFrame at its middle, and its size); 0 inside it.
+local function distanceToBox(point, box, size)
+	local p = box:PointToObjectSpace(point)
+	local half = size / 2
+	local outside = Vector3.new(
+		math.max(math.abs(p.X) - half.X, 0),
+		math.max(math.abs(p.Y) - half.Y, 0),
+		math.max(math.abs(p.Z) - half.Z, 0)
+	)
+	return outside.Magnitude
+end
+
 -- Where a pour can go: the cargo box of the truck or trailer clicked (returns its box CFrame and size), or the clicked
 -- spot on a conveyor belt, a machine's hopper, the dock or the sell pad. Anything else (the ground, a wall) is not a
--- pour target, so a stray click never dumps your hay.
-function Tools.pourTarget(aim)
-	if not aim or not aim.part then
+-- pour target, so a stray click never dumps your hay. Everything is checked on the server against where the player
+-- stands: the click names a part, and the client could name any part on the map, so the bed (or the belt or hopper
+-- under the click) must be within Config.ToolReach of the player.
+function Tools.pourTarget(aim, root)
+	if not aim or not aim.part or not root then
 		return nil
 	end
-	local box, size = Wheelbarrow.cargoOf(aim.part)
+	local part = aim.part
+	local box, size = Wheelbarrow.cargoOf(part)
 	if box then
+		if distanceToBox(root.Position, box, size) > Config.ToolReach then
+			return nil
+		end
 		return { box = box, size = size }
 	end
-	local part = aim.part
+	-- The clicked spot must really be on the clicked part, and in reach.
+	if (aim.position - root.Position).Magnitude > Config.ToolReach or distanceToBox(aim.position, part.CFrame, part.Size) > 1.5 then
+		return nil
+	end
 	if CollectionService:HasTag(part, "ConveyorBelt") or part.Name == "Hopper" or part.Name == "SellPad" then
 		return { at = aim.position }
 	end
@@ -226,7 +247,7 @@ local function useShovel(player, root, aim)
 		return
 	end
 	-- Hay in your arms and a truck bed, hopper, belt or sell pad clicked: pour it there.
-	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim)
+	local target = state.loadHay >= Config.HayPerPiece and Tools.pourTarget(aim, root)
 	if target then
 		Avatar.swing(player, "Shovel", function()
 			Tools.pour(player, root, target)
