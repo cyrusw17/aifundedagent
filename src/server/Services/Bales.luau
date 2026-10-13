@@ -706,7 +706,7 @@ end
 -- home, onRegrow), so a region can tint it, boost it and hear about the regrow; b.field marks it as a pile, and
 -- b.noRegrow = true stops it growing back.
 local function spawnFieldPile(position, fadeIn, hayType)
-	local b = { hayType = hayType, home = true, field = true, spawnPosition = position }
+	local b: any = { hayType = hayType, home = true, field = true, spawnPosition = position }
 	b.body = Hay.spawnFieldPile(position, hayType, function()
 		if b.noRegrow then
 			return -- set by whoever takes the field away for good (a self-test)
