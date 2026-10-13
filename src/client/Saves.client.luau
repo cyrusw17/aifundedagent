@@ -244,7 +244,7 @@ end
 local ok, slots, online = pcall(function()
 	return listRemote:InvokeServer()
 end)
-if ok and typeof(slots) == "table" then
+if ok and typeof(slots) == "table" and slots[1] ~= nil then
 	savedSlots, savedOnline = slots, online
 else
 	message.Text = "Couldn't read your saves. Starting a new game."
