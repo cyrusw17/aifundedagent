@@ -20,6 +20,8 @@
 -- ground there once the world map is built. A spot whose region is not built yet stands at its `fallback` in Meadow,
 -- or waits (its quest says "Opens when ... is built"). A part tagged "QuestAnchor" with attribute SpotId = a spot id
 -- (and Region = the region name) moves that spot onto the part, for hand-placed spots in Studio.
+-- showWhen = a time window: the spot is only visible then (its prompt still answers, with "come back at ...").
+-- inMaze = placed by the corn maze it stands in, not by a position here.
 local Quests = {}
 
 -- The day and night cycle (src/server/Services/DayNight.luau). Hours are game hours, 0-24.
@@ -79,10 +81,44 @@ Quests.Spots = {
 		pos = Vector3.new(250, 0, -300),
 		radius = 16,
 	},
+	-- The Corn Night Maze, east of the plots. Its corn walls are built from a fixed seed (Quests.luau LOOKS.maze); the
+	-- three keys sit in its deepest dead ends and only show after dark.
+	corn_maze = {
+		region = "Meadow",
+		name = "Heart of the maze",
+		look = "maze",
+		pos = Vector3.new(262, 0, 150),
+		radius = 6,
+	},
+	maze_key_1 = {
+		region = "Meadow",
+		name = "Corn key",
+		look = "cornkey",
+		inMaze = true,
+		item = true,
+		showWhen = "night",
+	},
+	maze_key_2 = {
+		region = "Meadow",
+		name = "Corn key",
+		look = "cornkey",
+		inMaze = true,
+		item = true,
+		showWhen = "night",
+	},
+	maze_key_3 = {
+		region = "Meadow",
+		name = "Corn key",
+		look = "cornkey",
+		inMaze = true,
+		item = true,
+		showWhen = "night",
+	},
 	golden_bale = {
 		region = "Meadow",
 		name = "Golden Hay Bale",
 		look = "golden",
+		showWhen = "midnight",
 		pos = Vector3.new(250, 0, -300),
 		item = true,
 	},
@@ -334,6 +370,11 @@ Quests.Rewards = {
 		blurb = "Warm to the touch. Something in the sky wants it.",
 	},
 	star_beacon = { kind = "relic", name = "Star Beacon", blurb = "Three parts that hum when put together." },
+	corn_moon_charm = {
+		kind = "relic",
+		name = "Corn Moon Charm",
+		blurb = "Three corn keys tied with twine. The crop circle answers to it.",
+	},
 	shard_meadow = {
 		kind = "relic",
 		name = "Master Needle shard: Meadow",
@@ -352,6 +393,7 @@ Quests.Collection = {
 	{ id = "shard_meadow", hint = "The Old Scarecrow keeps what he is given." },
 	{ id = "golden_hay_bale", hint = "Follow the signal." },
 	{ id = "star_beacon", hint = "Deep in a bale, something hums." },
+	{ id = "corn_moon_charm", hint = "The corn has paths only the night can show." },
 	{ id = "shard_snow", hint = "Behind a door in the snow." },
 	{ id = "shard_volcano", hint = "Where the mountain breathes." },
 	{ id = "shard_desert", hint = "Under the dunes." },
@@ -603,13 +645,32 @@ Quests.List = {
 		reward = { cash = 15000 },
 	},
 	{
+		id = "corn_maze",
+		name = "The Corn Night Maze",
+		giver = "The crop circle",
+		region = "Meadow",
+		ritual = true,
+		requires = { "alien_signal" },
+		blurb = "East of the plots, a corn maze grows taller than a truck. After dark, three keys glow in its dead ends.",
+		steps = {
+			{
+				kind = "collect",
+				spots = { "maze_key_1", "maze_key_2", "maze_key_3" },
+				when = "night",
+				text = "Find the 3 corn keys in the maze",
+			},
+			{ kind = "talk", spot = "corn_maze", when = "night", text = "Bring them to the heart of the maze" },
+		},
+		reward = { relic = "corn_moon_charm" },
+	},
+	{
 		id = "alien_offering",
 		name = "The Offering",
 		giver = "The crop circle",
 		region = "Meadow",
 		ritual = true,
-		requires = { "alien_pattern" },
-		blurb = "The collector wants a hundred of every needle you can reach.",
+		requires = { "alien_pattern", "corn_maze" },
+		blurb = "The collector wants fifty of every needle that grows in the world.",
 		steps = {
 			{
 				kind = "offer",
