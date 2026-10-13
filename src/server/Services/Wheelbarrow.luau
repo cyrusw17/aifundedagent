@@ -139,6 +139,9 @@ local function unloadAll(player)
 	return #load
 end
 
+-- The cargo box (CFrame at its middle, and its size) of the truck or trailer part belongs to, or nil.
+Wheelbarrow.cargoOf = cargoOf
+
 -- Tips the barrow's load into the cargo box of the truck or trailer that part belongs to. Returns how many went in.
 function Wheelbarrow.tipInto(player, part)
 	local box, size = cargoOf(part)
