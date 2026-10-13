@@ -49,7 +49,8 @@ function Data.toast(player, text)
 end
 
 function Data.load(player)
-	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil, trucks = {} }
+	-- land: { owned = true, items = { { id, gx, gz, dir }, ... } } once a plot is bought (Land.luau).
+	local state = { cash = 0, loadHay = 0, loadNeedles = 0, carryBale = nil, trucks = {}, land = nil }
 	if store then
 		local ok, saved = pcall(function()
 			return store:GetAsync(keyFor(player))
@@ -65,6 +66,9 @@ function Data.load(player)
 					end
 				end
 			end
+			if typeof(saved) == "table" and typeof(saved.land) == "table" and typeof(saved.land.items) == "table" then
+				state.land = { owned = saved.land.owned == true, items = saved.land.items }
+			end
 		else
 			warn("[Needlewood] load failed for " .. player.Name .. ": " .. tostring(saved))
 		end
@@ -79,7 +83,7 @@ function Data.save(player)
 		return
 	end
 	local ok, err = pcall(function()
-		store:SetAsync(keyFor(player), { cash = state.cash, trucks = state.trucks })
+		store:SetAsync(keyFor(player), { cash = state.cash, trucks = state.trucks, land = state.land })
 	end)
 	if not ok then
 		warn("[Needlewood] save failed for " .. player.Name .. ": " .. tostring(err))
