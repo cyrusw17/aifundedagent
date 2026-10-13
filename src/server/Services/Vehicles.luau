@@ -294,6 +294,39 @@ local function yawOf(cframe)
 	return math.atan2(-look.X, -look.Z)
 end
 
+-- Optional function(player, owner) -> true when someone besides the owner may drive the owner's truck (Land.luau sets
+-- it for a plot's farm crew).
+Vehicles.canDrive = nil
+
+local function mayDrive(player, owner)
+	return player == owner or (Vehicles.canDrive ~= nil and player ~= nil and Vehicles.canDrive(player, owner) == true)
+end
+
+local function giveTrailerTo(trailer, player)
+	for _, p in trailer:GetDescendants() do
+		if p:IsA("BasePart") and not p.Anchored then
+			pcall(function()
+				p:SetNetworkOwner(player)
+			end)
+		end
+	end
+end
+
+-- Gives the truck's physics (and its hitched trailer's) to whoever drives it, and back to the owner after.
+local function handPhysicsTo(model, owner, player)
+	local chassis = model.PrimaryPart
+	if not chassis or chassis.Anchored then
+		return
+	end
+	pcall(function()
+		chassis:SetNetworkOwner(player)
+	end)
+	local trailer = ownedTrailers[owner]
+	if trailer and trailer:GetAttribute("HitchedTo") == model:GetAttribute("TruckId") then
+		giveTrailerTo(trailer, player)
+	end
+end
+
 -- Welds the truck into one assembly with a driver's seat and the drive constraints. It stays anchored (by its
 -- chassis) until release, so a scripted drive can move it.
 function Vehicles.makeDrivable(model, owner)
@@ -333,7 +366,7 @@ function Vehicles.makeDrivable(model, owner)
 	prompt.Enabled = false -- the drive-out scene puts the owner in the seat; it turns on once they get out
 	prompt.Parent = seat
 	prompt.Triggered:Connect(function(player)
-		if player ~= owner or seat.Occupant or seat.Disabled then
+		if not mayDrive(player, owner) or seat.Occupant or seat.Disabled then
 			return
 		end
 		local character = player.Character
@@ -390,19 +423,29 @@ function Vehicles.makeDrivable(model, owner)
 	model:SetAttribute("OwnerId", owner.UserId)
 	model:SetAttribute("MaxSpeed", def.maxSpeed)
 
-	-- Only the owner drives. Anyone else who sits down is put straight back on their feet.
+	-- Only the owner (and their farm crew) drives. Anyone else who sits down is put straight back on their feet.
+	local crewDriver = nil
 	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
 		local humanoid = seat.Occupant
 		if humanoid then
 			local player = Players:GetPlayerFromCharacter(humanoid.Parent)
-			if player ~= owner then
+			if not mayDrive(player, owner) then
 				local weld = seat:FindFirstChild("SeatWeld")
 				if weld then
 					weld:Destroy()
 				end
+			elseif player ~= owner then
+				crewDriver = player
+				handPhysicsTo(model, owner, player)
 			end
 			prompt.Enabled = false
 		else
+			if crewDriver then
+				crewDriver = nil
+				if owner.Parent then
+					handPhysicsTo(model, owner, owner)
+				end
+			end
 			-- The driver got out: park where it stands. The seat rests a moment so the character, now standing
 			-- beside the door (Truck.client.luau), is not pulled straight back in.
 			steer.CFrame = CFrame.Angles(0, yawOf(chassis.CFrame), 0)
@@ -562,16 +605,6 @@ function Vehicles.buildTrailer(def, pivot, parent)
 
 	model.Parent = parent
 	return model
-end
-
-local function giveTrailerTo(trailer, player)
-	for _, p in trailer:GetDescendants() do
-		if p:IsA("BasePart") and not p.Anchored then
-			pcall(function()
-				p:SetNetworkOwner(player)
-			end)
-		end
-	end
 end
 
 -- Welds the bed into one body, puts the wheels on free hinges, adds the Hitch / Unhitch button and lets it go.

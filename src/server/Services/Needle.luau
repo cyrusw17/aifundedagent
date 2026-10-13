@@ -93,6 +93,9 @@ local function parseKey(key)
 	end
 	return key, 1
 end
+-- Pocket and saved-bin counts are keyed "id", or "id*mult" for a mutated needle.
+Needle.keyOf = keyOf
+Needle.parseKey = parseKey
 
 -- Needles in this player's pocket, as { [key] = count } (see keyOf).
 function Needle.held(player)
