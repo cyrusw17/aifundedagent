@@ -61,6 +61,21 @@ Prices.FinderRewards = {
 	fossil = 4000, -- 1 in 2,000, doubled
 }
 
+-- NPC buyer orders (Services/Orders.luau). Three local buyers post an order each, new ones every RotateSeconds. Every
+-- unit delivered pays at once: its normal price times mult, up to the order's amount per player. Plain bales pay 1.5x
+-- the public shop ($71 a bale), sorted bales 2x their hay ($90, double what a hay buyer pays, since the sorting is
+-- done), and steel needles 1.25x list ($125). A full order is worth a few hundred to a thousand dollars over selling
+-- normally: a 5 to 10 minute bonus at the pickup stage, and a reason to haul somewhere other than your own line.
+Prices.Orders = {
+	RotateSeconds = 1200,
+	Buyers = { "Miller Joe", "Widow Hale", "Old Tobias", "Mabel at the feed store", "The Thatcher twins", "Pastor Reed" },
+	Kinds = {
+		bales = { amount = { 8, 16 }, mult = 1.5 },
+		sorted = { amount = { 10, 20 }, mult = 2 },
+		needles = { amount = { 6, 15 }, mult = 1.25 },
+	},
+}
+
 -- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
 -- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
 -- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under

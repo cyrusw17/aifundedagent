@@ -197,6 +197,23 @@ shows today's price for every type, with an arrow. Every needle sale goes throug
 display wall and the ding pitch all follow the market. The earning tables above use list prices, since the swing
 averages out.
 
+### NPC buyer orders
+
+A board on the west side of base camp shows three orders from local buyers, with new ones every 20 minutes
+(`Services/Orders.luau`, numbers in `Prices.Orders`). Deliver on the pad beside it: set bales on it, or step on it with
+needles in your pocket. Each unit pays straight away, up to the order's amount for each player, so nothing is lost
+when the orders change.
+
+| Order | Amount | Pays | Why |
+|---|---|---|---|
+| Hay bales | 8 to 16 | $71 each (1.5x the public shop) | Gives a no-plot player a better buyer than the shop |
+| Sorted bales | 10 to 20 | $90 each (2x a hay buyer) | The sorting is already done, so the buyer pays for clean hay |
+| Steel needles | 6 to 15 | $125 each (1.25x list) | A small premium; mutated needles stay in your pocket |
+
+A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
+the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
+since they are capped per player.
+
 ## The bank: Meadow Savings & Loan
 
 A stone-and-plank bank on the main road, east of the plot road, with a teller window. Press E at the window to open it.
@@ -288,5 +305,6 @@ which are the big "save up for it" goals. Quests, bounties and the collection bo
 | Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
 | Bank terms | `Bank` | `Services/Bank.luau` |
 | Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
+| NPC orders | `Orders` | `Services/Orders.luau` |
 | Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
 | Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |
