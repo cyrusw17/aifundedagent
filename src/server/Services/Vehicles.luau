@@ -184,7 +184,17 @@ function Vehicles.build(def, pivot, parent)
 	box("Hood", Vector3.new(hoodW, hoodH, HOOD), 0, DECK + hoodH / 2, front + HOOD / 2, paint, Enum.Material.Metal)
 	box("Grille", Vector3.new(hoodW - 1.8, hoodH - 0.5, 0.2), 0, DECK + hoodH / 2, front - 0.05, Rustic.Metal, Enum.Material.DiamondPlate)
 	for _, side in { -1, 1 } do
-		box("Headlight", Vector3.new(1.1, 0.9, 0.2), side * (hoodW / 2 - 0.7), DECK + hoodH * 0.65, front - 0.08, Rustic.PaintCream, Enum.Material.Neon, false)
+		local headlight = box("Headlight", Vector3.new(1.1, 0.9, 0.2), side * (hoodW / 2 - 0.7), DECK + hoodH * 0.65, front - 0.08, Rustic.PaintCream, Enum.Material.Neon, false)
+		-- Beams for driving at night. WorldClock (Map thread) switches every "NightLamp" on at dusk and off at dawn.
+		local beam = Instance.new("SpotLight")
+		beam.Face = Enum.NormalId.Front
+		beam.Range = 48
+		beam.Angle = 55
+		beam.Brightness = 2.5
+		beam.Color = Color3.fromRGB(255, 236, 200)
+		beam.Shadows = side < 0 -- one shadow-casting beam per truck is enough
+		beam.Parent = headlight
+		CollectionService:AddTag(headlight, "NightLamp")
 	end
 	box("FrontBumper", Vector3.new(CAB_W + 0.4, 0.7, 0.5), 0, DECK - 0.3, front - 0.2, Rustic.Metal, Enum.Material.Metal)
 
@@ -273,7 +283,13 @@ function Vehicles.build(def, pivot, parent)
 	end
 	box("RearBumper", Vector3.new(BED_W - 0.4, 0.6, 0.4), 0, DECK - 0.2, L / 2 + 0.1, Rustic.Metal, Enum.Material.Metal)
 	for _, side in { -1, 1 } do
-		box("Taillight", Vector3.new(0.8, 0.5, 0.1), side * (BED_W / 2 - 0.7), DECK + 0.8, L / 2 + 0.02, Color3.fromRGB(120, 40, 30), Enum.Material.Neon, false)
+		local taillight = box("Taillight", Vector3.new(0.8, 0.5, 0.1), side * (BED_W / 2 - 0.7), DECK + 0.8, L / 2 + 0.02, Color3.fromRGB(120, 40, 30), Enum.Material.Neon, false)
+		local glow = Instance.new("PointLight")
+		glow.Range = 6
+		glow.Brightness = 1
+		glow.Color = Color3.fromRGB(255, 60, 40)
+		glow.Parent = taillight
+		CollectionService:AddTag(taillight, "NightLamp")
 	end
 
 	-- The Blender mesh, when imported, takes over the look. The parts stay for collisions.
