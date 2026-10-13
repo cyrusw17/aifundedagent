@@ -46,25 +46,91 @@ Quests.Spots = {
 	-- Meadow Farm
 	hank_board = { region = "Meadow", name = "Quest board", look = "board", pos = Vector3.new(-12, 0, -2) },
 	wander_scarecrow = { region = "Meadow", name = "Wandering scarecrow", look = "scarecrow", wander = true },
-	old_scarecrow = { region = "Meadow", name = "The Old Scarecrow", look = "ring", pos = Vector3.new(-205, 0, -150), radius = 14 },
+	old_scarecrow = {
+		region = "Meadow",
+		name = "The Old Scarecrow",
+		look = "ring",
+		pos = Vector3.new(-205, 0, -150),
+		radius = 14,
+	},
 	old_well = { region = "Meadow", name = "The old well", look = "well", pos = Vector3.new(205, 0, -175), radius = 10 },
 	old_barn = { region = "Meadow", name = "The Old Barn", look = "barn", pos = Vector3.new(290, 0, -60), radius = 18 },
 	barn_key = { region = "Meadow", name = "Rusty barn key", look = "key", pos = Vector3.new(282, 0, -52), item = true },
-	journal_1 = { region = "Meadow", name = "Journal page", look = "page", pos = Vector3.new(-190, 0, 140), item = true },
-	journal_2 = { region = "Meadow", name = "Journal page", look = "page", pos = Vector3.new(-140, 0, -330), item = true },
+	journal_1 = {
+		region = "Meadow",
+		name = "Journal page",
+		look = "page",
+		pos = Vector3.new(-190, 0, 140),
+		item = true,
+	},
+	journal_2 = {
+		region = "Meadow",
+		name = "Journal page",
+		look = "page",
+		pos = Vector3.new(-140, 0, -330),
+		item = true,
+	},
 	journal_3 = { region = "Meadow", name = "Journal page", look = "page", pos = Vector3.new(-235, 0, 30), item = true },
-	crop_circle = { region = "Meadow", name = "Crop circle", look = "circle", pos = Vector3.new(250, 0, -300), radius = 16 },
-	golden_bale = { region = "Meadow", name = "Golden Hay Bale", look = "golden", pos = Vector3.new(250, 0, -300), item = true },
+	crop_circle = {
+		region = "Meadow",
+		name = "Crop circle",
+		look = "circle",
+		pos = Vector3.new(250, 0, -300),
+		radius = 16,
+	},
+	golden_bale = {
+		region = "Meadow",
+		name = "Golden Hay Bale",
+		look = "golden",
+		pos = Vector3.new(250, 0, -300),
+		item = true,
+	},
 
 	-- The alien signal stones. Each stands in its own region; until the map has it, by the road out of Meadow toward it.
-	signal_pine = { region = "Pine Forest", name = "Signal stone", look = "stone", fallback = Vector3.new(163, 0, 392), radius = 10 },
-	signal_valley = { region = "Homestead Valley", name = "Signal stone", look = "stone", fallback = Vector3.new(-17, 0, -392), radius = 10 },
-	signal_grove = { region = "Haunted Grove", name = "Signal stone", look = "stone", fallback = Vector3.new(-330, 0, -250), radius = 10 },
+	signal_pine = {
+		region = "Pine Forest",
+		name = "Signal stone",
+		look = "stone",
+		fallback = Vector3.new(163, 0, 392),
+		radius = 10,
+	},
+	signal_valley = {
+		region = "Homestead Valley",
+		name = "Signal stone",
+		look = "stone",
+		fallback = Vector3.new(-17, 0, -392),
+		radius = 10,
+	},
+	signal_grove = {
+		region = "Haunted Grove",
+		name = "Signal stone",
+		look = "stone",
+		fallback = Vector3.new(-330, 0, -250),
+		radius = 10,
+	},
 
 	-- Old Bessie's parts, one from each of three regions. Traders leave them by the roads out of Meadow until the regions open.
-	bessie_carb = { region = "Pine Forest", name = "Carburetor", look = "crate", fallback = Vector3.new(137, 0, 380), item = true },
-	bessie_radiator = { region = "Desert Dunes", name = "Radiator", look = "crate", fallback = Vector3.new(-43, 0, -385), item = true },
-	bessie_spring = { region = "Snow Peak", name = "Seat spring", look = "crate", fallback = Vector3.new(-43, 0, -360), item = true },
+	bessie_carb = {
+		region = "Pine Forest",
+		name = "Carburetor",
+		look = "crate",
+		fallback = Vector3.new(137, 0, 380),
+		item = true,
+	},
+	bessie_radiator = {
+		region = "Desert Dunes",
+		name = "Radiator",
+		look = "crate",
+		fallback = Vector3.new(-43, 0, -385),
+		item = true,
+	},
+	bessie_spring = {
+		region = "Snow Peak",
+		name = "Seat spring",
+		look = "crate",
+		fallback = Vector3.new(-43, 0, -360),
+		item = true,
+	},
 
 	-- Spots that only exist once their region is built (no fallback).
 	snow_door = { region = "Snow Peak", name = "Hidden door", look = "door" },
@@ -95,33 +161,107 @@ Quests.WanderMinutes = 4
 -- Quest trucks: built on a cash truck's body (base, from Config/Trucks) with their own name and paint. They are not
 -- in the dealer's list and never go in the save's trucks list; the quest log calls them out.
 Quests.Trucks = {
-	old_bessie = { base = "rusty_pickup", name = "Old Bessie", paint = "PaintCream", maxSpeed = 52, blurb = "Hank's old pickup, rebuilt. A touch faster than a Rusty Pickup." },
-	sandrunner = { base = "rusty_pickup", name = "Sandrunner", paint = "PaintYellow", maxSpeed = 58, blurb = "The fastest pickup on sand." },
-	ghost_hauler = { base = "rusty_pickup", name = "Ghost Hauler", paint = "PaintBlue", maxSpeed = 54, glow = true, when = "night", blurb = "Glows in the dark and only comes out at night." },
-	starlight_hauler = { base = "rusty_pickup", name = "Starlight Hauler", paint = "PaintBlue", maxSpeed = 60, glow = true, blurb = "The alien collector's own truck. Glows, and outruns everything." },
+	old_bessie = {
+		base = "rusty_pickup",
+		name = "Old Bessie",
+		paint = "PaintCream",
+		maxSpeed = 52,
+		blurb = "Hank's old pickup, rebuilt. A touch faster than a Rusty Pickup.",
+	},
+	sandrunner = {
+		base = "rusty_pickup",
+		name = "Sandrunner",
+		paint = "PaintYellow",
+		maxSpeed = 58,
+		blurb = "The fastest pickup on sand.",
+	},
+	ghost_hauler = {
+		base = "rusty_pickup",
+		name = "Ghost Hauler",
+		paint = "PaintBlue",
+		maxSpeed = 54,
+		glow = true,
+		when = "night",
+		blurb = "Glows in the dark and only comes out at night.",
+	},
+	starlight_hauler = {
+		base = "rusty_pickup",
+		name = "Starlight Hauler",
+		paint = "PaintBlue",
+		maxSpeed = 60,
+		glow = true,
+		blurb = "The alien collector's own truck. Glows, and outruns everything.",
+	},
 }
 
 -- Everything a quest can give. kind: gear (a perk on a tool), gloves (an id in Config/Gloves QuestTiers), truck (an id
 -- in Trucks above), relic (a mystery item for the collection), unlock (a quest-only build piece in Config/Land).
 Quests.Rewards = {
-	golden_shovel = { kind = "gear", name = "Golden Shovel", perk = "GoldenShovel", blurb = "Your shovel scoops twice as much hay." },
-	thread_rake = { kind = "gear", name = "Thread Rake", perk = "ThreadRake", blurb = "Every rake stroke pulls loose needles nearby into your pocket." },
-	scarecrow_gloves = { kind = "gloves", name = "Scarecrow Gloves", blurb = "Tier 2 gloves stuffed with straw. Wear them from the quest log." },
-	frostbite_mitts = { kind = "gloves", name = "Frostbite Mitts", blurb = "Tier 3 gloves. Frozen hay feels like meadow hay." },
+	golden_shovel = {
+		kind = "gear",
+		name = "Golden Shovel",
+		perk = "GoldenShovel",
+		blurb = "Your shovel scoops twice as much hay.",
+	},
+	thread_rake = {
+		kind = "gear",
+		name = "Thread Rake",
+		perk = "ThreadRake",
+		blurb = "Every rake stroke pulls loose needles nearby into your pocket.",
+	},
+	scarecrow_gloves = {
+		kind = "gloves",
+		name = "Scarecrow Gloves",
+		blurb = "Tier 2 gloves stuffed with straw. Wear them from the quest log.",
+	},
+	frostbite_mitts = {
+		kind = "gloves",
+		name = "Frostbite Mitts",
+		blurb = "Tier 3 gloves. Frozen hay feels like meadow hay.",
+	},
 	magma_grips = { kind = "gloves", name = "Magma Grips", blurb = "Tier 4 gloves that shrug off the heat." },
-	kraken_gauntlets = { kind = "gloves", name = "Kraken Gauntlets", blurb = "Tier 5 gauntlets from the bottom of the sea." },
-	starweave_gloves = { kind = "gloves", name = "Starweave Gloves", blurb = "Tier 6. Star hay is no heavier than meadow hay." },
+	kraken_gauntlets = {
+		kind = "gloves",
+		name = "Kraken Gauntlets",
+		blurb = "Tier 5 gauntlets from the bottom of the sea.",
+	},
+	starweave_gloves = {
+		kind = "gloves",
+		name = "Starweave Gloves",
+		blurb = "Tier 6. Star hay is no heavier than meadow hay.",
+	},
 	old_bessie = { kind = "truck", name = "Old Bessie", blurb = "Call her from the quest log." },
 	sandrunner = { kind = "truck", name = "Sandrunner", blurb = "Call it from the quest log." },
 	ghost_hauler = { kind = "truck", name = "Ghost Hauler", blurb = "Call it from the quest log, at night." },
 	starlight_hauler = { kind = "truck", name = "Starlight Hauler", blurb = "Call it from the quest log." },
-	alien_collector = { kind = "unlock", name = "Starbeam Collector", blurb = "A sorter that finds every needle at once. Build it on your land." },
-	captains_barge = { kind = "unlock", name = "Captain's Barge", blurb = "A private ferry. It docks when the boats arrive." },
+	alien_collector = {
+		kind = "unlock",
+		name = "Starbeam Collector",
+		blurb = "A sorter that finds every needle at once. Build it on your land.",
+	},
+	captains_barge = {
+		kind = "unlock",
+		name = "Captain's Barge",
+		blurb = "A private ferry. It docks when the boats arrive.",
+	},
 	-- Mystery items. Lucky Thimble has a perk; the rest are for the collection and the Spindle.
-	lucky_thimble = { kind = "relic", name = "Lucky Thimble", perk = "LuckyThimble", blurb = "Broken bales spill an extra needle now and then." },
-	golden_hay_bale = { kind = "relic", name = "Golden Hay Bale", blurb = "Warm to the touch. Something in the sky wants it." },
+	lucky_thimble = {
+		kind = "relic",
+		name = "Lucky Thimble",
+		perk = "LuckyThimble",
+		blurb = "Broken bales spill an extra needle now and then.",
+	},
+	golden_hay_bale = {
+		kind = "relic",
+		name = "Golden Hay Bale",
+		blurb = "Warm to the touch. Something in the sky wants it.",
+	},
 	star_beacon = { kind = "relic", name = "Star Beacon", blurb = "Three parts that hum when put together." },
-	shard_meadow = { kind = "relic", name = "Master Needle shard: Meadow", blurb = "One of twelve. The Spindle has a slot that fits it." },
+	shard_meadow = {
+		kind = "relic",
+		name = "Master Needle shard: Meadow",
+		blurb = "One of twelve. The Spindle has a slot that fits it.",
+	},
 	shard_snow = { kind = "relic", name = "Master Needle shard: Snow", blurb = "One of twelve." },
 	shard_volcano = { kind = "relic", name = "Master Needle shard: Volcano", blurb = "One of twelve." },
 	shard_desert = { kind = "relic", name = "Master Needle shard: Desert", blurb = "One of twelve." },
@@ -150,6 +290,9 @@ Quests.Finds = {
 Quests.FindSeconds = 60 -- a find that is not picked up fades after this long
 
 -- The story quests and rituals, in log order. requires: quests that must be done first. ritual = shown as a ritual.
+-- Cash rewards follow Config/Prices.luau: a Meadow bale is about $47 and hand hauling earns about $6,500 an hour, so
+-- an early reward pays back part of the purchase the quest asked for (never all of it), and the alien rituals pay
+-- what a mid-game farm makes in under an hour. Cash goes through Bank.earn like any other income.
 Quests.List = {
 	{
 		id = "first_haul",
@@ -163,7 +306,7 @@ Quests.List = {
 			{ kind = "event", event = "bale_broken", count = 1, text = "Break a bale open with the shovel" },
 			{ kind = "event", event = "needle_found", count = 1, text = "Pick up a needle that spills out" },
 		},
-		reward = { cash = 150 },
+		reward = { cash = 150 }, -- about three bales: a thank-you, not a shortcut
 	},
 	{
 		id = "get_a_grip",
@@ -173,10 +316,15 @@ Quests.List = {
 		requires = { "first_haul" },
 		blurb = "Bare hands get tired fast. Gloves let you scoop more and carry heavier hay.",
 		steps = {
-			{ kind = "own", what = "gloves_tier", value = 1, text = "Wear Work Gloves or better (glove stand by the shop)" },
+			{
+				kind = "own",
+				what = "gloves_tier",
+				value = 1,
+				text = "Wear Work Gloves or better (glove stand by the shop)",
+			},
 			{ kind = "event", event = "bale_broken", count = 5, text = "Break open 5 bales" },
 		},
-		reward = { cash = 200 },
+		reward = { cash = 250 }, -- pays back the Work Gloves (Prices.Gloves.work)
 	},
 	{
 		id = "wheels",
@@ -189,7 +337,7 @@ Quests.List = {
 			{ kind = "own", what = "truck", text = "Buy a truck at Homestead Motors" },
 			{ kind = "event", event = "bale_sold", count = 9, text = "Sell a truckload: 9 bales" },
 		},
-		reward = { cash = 500 },
+		reward = { cash = 600 }, -- a tenth of the Rusty Pickup
 	},
 	{
 		id = "put_down_roots",
@@ -203,7 +351,7 @@ Quests.List = {
 			{ kind = "own", what = "piece_kind", value = "separator", text = "Build a needle sorter on your land" },
 			{ kind = "event", event = "needles_sold", count = 10, text = "Sell 10 sorted needles" },
 		},
-		reward = { cash = 1000 },
+		reward = { cash = 1250 }, -- half the plot (Prices.Plot)
 	},
 	{
 		id = "wandering_scarecrow",
@@ -211,9 +359,15 @@ Quests.List = {
 		giver = "A note pinned to a fence post",
 		region = "Meadow",
 		requires = { "first_haul" },
-		blurb = "\"He never stands in the same field twice. Find him five times and he'll give you something shiny.\"",
+		blurb = '"He never stands in the same field twice. Find him five times and he\'ll give you something shiny."',
 		steps = {
-			{ kind = "talk", spot = "wander_scarecrow", count = 5, distinct = true, text = "Find the wandering scarecrow 5 times (he moves every few minutes)" },
+			{
+				kind = "talk",
+				spot = "wander_scarecrow",
+				count = 5,
+				distinct = true,
+				text = "Find the wandering scarecrow 5 times (he moves every few minutes)",
+			},
 		},
 		reward = { gear = "golden_shovel" },
 	},
@@ -224,11 +378,26 @@ Quests.List = {
 		region = "Meadow",
 		ritual = true,
 		requires = { "wandering_scarecrow" },
-		blurb = "\"My old friend stands in a ring of stones in the west. Feed him hay at dusk, then a little steel.\"",
+		blurb = '"My old friend stands in a ring of stones in the west. Feed him hay at dusk, then a little steel."',
 		steps = {
-			{ kind = "visit", spot = "old_scarecrow", text = "Find the Old Scarecrow's stone ring, north-west past the dealer" },
-			{ kind = "pattern", spot = "old_scarecrow", pads = "stones", when = "dusk", text = "Set a hay bale on each of the four stones" },
-			{ kind = "offer", spot = "old_scarecrow", needles = { steel = 5 }, text = "Give the Old Scarecrow 5 steel needles" },
+			{
+				kind = "visit",
+				spot = "old_scarecrow",
+				text = "Find the Old Scarecrow's stone ring, north-west past the dealer",
+			},
+			{
+				kind = "pattern",
+				spot = "old_scarecrow",
+				pads = "stones",
+				when = "dusk",
+				text = "Set a hay bale on each of the four stones",
+			},
+			{
+				kind = "offer",
+				spot = "old_scarecrow",
+				needles = { steel = 5 },
+				text = "Give the Old Scarecrow 5 steel needles",
+			},
 		},
 		reward = { gloves = "scarecrow_gloves", relic = "shard_meadow" },
 	},
@@ -238,7 +407,7 @@ Quests.List = {
 		giver = "A torn page in the hay shop",
 		region = "Meadow",
 		requires = { "first_haul" },
-		blurb = "\"The Tailor lost his journal in the wind. Three pages, three corners of the meadow.\"",
+		blurb = '"The Tailor lost his journal in the wind. Three pages, three corners of the meadow."',
 		steps = {
 			{ kind = "collect", spots = { "journal_1", "journal_2", "journal_3" }, text = "Find the 3 journal pages" },
 			{ kind = "visit", spot = "old_barn", text = "Read them at the Old Barn, east of camp" },
@@ -252,9 +421,15 @@ Quests.List = {
 		region = "Meadow",
 		ritual = true,
 		requires = { "tailors_journal" },
-		blurb = "\"Drop ten needles down the old well when the night is deepest. The well gives back what it likes.\"",
+		blurb = '"Drop ten needles down the old well when the night is deepest. The well gives back what it likes."',
 		steps = {
-			{ kind = "offer", spot = "old_well", needles = { steel = 10 }, when = "midnight", text = "Drop 10 steel needles down the old well" },
+			{
+				kind = "offer",
+				spot = "old_well",
+				needles = { steel = 10 },
+				when = "midnight",
+				text = "Drop 10 steel needles down the old well",
+			},
 		},
 		reward = { relic = "lucky_thimble" },
 	},
@@ -264,11 +439,15 @@ Quests.List = {
 		giver = "Hank",
 		region = "Meadow",
 		requires = { "wheels" },
-		blurb = "\"My first truck is rusting in the Old Barn. Fix her up and she's yours.\"",
+		blurb = '"My first truck is rusting in the Old Barn. Fix her up and she\'s yours."',
 		steps = {
 			{ kind = "collect", spot = "barn_key", text = "Find the barn key in the Old Barn" },
 			{ kind = "talk", spot = "old_barn", text = "Open the barn and look at Old Bessie" },
-			{ kind = "collect", spots = { "bessie_carb", "bessie_radiator", "bessie_spring" }, text = "Bring back a carburetor, a radiator and a seat spring" },
+			{
+				kind = "collect",
+				spots = { "bessie_carb", "bessie_radiator", "bessie_spring" },
+				text = "Bring back a carburetor, a radiator and a seat spring",
+			},
 			{ kind = "offer", spot = "old_barn", cash = 2500, text = "Pay $2,500 for the rebuild" },
 		},
 		reward = { truck = "old_bessie" },
@@ -285,9 +464,14 @@ Quests.List = {
 		blurb = "Something flattened the hay in a perfect ring, and the radio hums at night.",
 		steps = {
 			{ kind = "visit", spot = "crop_circle", when = "night", text = "Find the crop circle, far north-east" },
-			{ kind = "visit", spots = { "signal_pine", "signal_valley", "signal_grove" }, when = "night", text = "Touch the three signal stones" },
+			{
+				kind = "visit",
+				spots = { "signal_pine", "signal_valley", "signal_grove" },
+				when = "night",
+				text = "Touch the three signal stones",
+			},
 		},
-		reward = { cash = 2000 },
+		reward = { cash = 5000 },
 	},
 	{
 		id = "alien_golden_bale",
@@ -311,7 +495,14 @@ Quests.List = {
 		requires = { "alien_golden_bale" },
 		blurb = "The golden bale hums near ordinary hay. Three parts of a beacon are hidden in bales somewhere.",
 		steps = {
-			{ kind = "find", item = "beacon_part", count = 3, chance = 1 / 120, pity = 250, text = "Find 3 beacon parts by breaking bales" },
+			{
+				kind = "find",
+				item = "beacon_part",
+				count = 3,
+				chance = 1 / 120,
+				pity = 250,
+				text = "Find 3 beacon parts by breaking bales",
+			},
 		},
 		reward = { relic = "star_beacon" },
 	},
@@ -324,9 +515,15 @@ Quests.List = {
 		requires = { "alien_beacon" },
 		blurb = "The beacon shows a new sign every day. Lay it out in hay at midnight.",
 		steps = {
-			{ kind = "pattern", spot = "crop_circle", pads = "daily", when = "midnight", text = "Lay bales on tonight's sign in the crop circle" },
+			{
+				kind = "pattern",
+				spot = "crop_circle",
+				pads = "daily",
+				when = "midnight",
+				text = "Lay bales on tonight's sign in the crop circle",
+			},
 		},
-		reward = { cash = 5000 },
+		reward = { cash = 15000 },
 	},
 	{
 		id = "alien_offering",
@@ -337,7 +534,12 @@ Quests.List = {
 		requires = { "alien_pattern" },
 		blurb = "The collector wants a hundred of every needle you can reach.",
 		steps = {
-			{ kind = "offer", spot = "crop_circle", needlesEach = 100, text = "Offer 100 sorted needles of every kind you can reach" },
+			{
+				kind = "offer",
+				spot = "crop_circle",
+				needlesEach = 100,
+				text = "Offer 100 sorted needles of every kind you can reach",
+			},
 		},
 		reward = { unlock = "alien_collector", gloves = "starweave_gloves", truck = "starlight_hauler" },
 	},
@@ -351,7 +553,15 @@ Quests.List = {
 		requires = { "first_haul" },
 		blurb = "There is a door in the ice on Snow Peak. It only opens for a Frozen Bobbin.",
 		steps = {
-			{ kind = "find", item = "frozen_bobbin", count = 1, chance = 1 / 60, pity = 120, filter = { hayType = "snow" }, text = "Find a Frozen Bobbin in frozen hay" },
+			{
+				kind = "find",
+				item = "frozen_bobbin",
+				count = 1,
+				chance = 1 / 60,
+				pity = 120,
+				filter = { hayType = "snow" },
+				text = "Find a Frozen Bobbin in frozen hay",
+			},
 			{ kind = "talk", spot = "snow_door", text = "Open the hidden door on Snow Peak" },
 		},
 		reward = { gloves = "frostbite_mitts", relic = "shard_snow" },
@@ -365,7 +575,13 @@ Quests.List = {
 		blurb = "When the volcano rumbles at night, the crater gives up its treasure.",
 		steps = {
 			{ kind = "visit", spot = "volcano_crater", when = "night", text = "Climb to the crater rim at night" },
-			{ kind = "event", event = "bale_broken", count = 20, filter = { hayType = "volcano" }, text = "Break 20 bales of ashen hay" },
+			{
+				kind = "event",
+				event = "bale_broken",
+				count = 20,
+				filter = { hayType = "volcano" },
+				text = "Break 20 bales of ashen hay",
+			},
 		},
 		reward = { gloves = "magma_grips", relic = "shard_volcano" },
 	},
@@ -387,9 +603,13 @@ Quests.List = {
 		giver = "The captain's ghost",
 		region = "Bobbin Rock",
 		requires = { "graveyard_of_ships" },
-		blurb = "\"Find my log and my barge is yours.\"",
+		blurb = '"Find my log and my barge is yours."',
 		steps = {
-			{ kind = "collect", spots = { "captains_log_1", "captains_log_2", "captains_log_3" }, text = "Find the 3 log pages" },
+			{
+				kind = "collect",
+				spots = { "captains_log_1", "captains_log_2", "captains_log_3" },
+				text = "Find the 3 log pages",
+			},
 		},
 		reward = { unlock = "captains_barge" },
 	},
@@ -402,7 +622,13 @@ Quests.List = {
 		blurb = "A truck garage is buried under the dunes, with something fast inside.",
 		steps = {
 			{ kind = "visit", spot = "pyramid_garage", text = "Find the buried garage" },
-			{ kind = "event", event = "bale_broken", count = 15, filter = { hayType = "desert" }, text = "Dig it out: break 15 bales of desert grass" },
+			{
+				kind = "event",
+				event = "bale_broken",
+				count = 15,
+				filter = { hayType = "desert" },
+				text = "Dig it out: break 15 bales of desert grass",
+			},
 			{ kind = "talk", spot = "pyramid_mechanic", text = "Talk to the old mechanic" },
 		},
 		reward = { truck = "sandrunner", relic = "shard_desert" },
@@ -415,7 +641,12 @@ Quests.List = {
 		requires = { "wheels" },
 		blurb = "Light the three lanterns, then wait at the crossroads when the night is deepest.",
 		steps = {
-			{ kind = "visit", spots = { "lantern_1", "lantern_2", "lantern_3" }, when = "night", text = "Light the 3 lanterns" },
+			{
+				kind = "visit",
+				spots = { "lantern_1", "lantern_2", "lantern_3" },
+				when = "night",
+				text = "Light the 3 lanterns",
+			},
 			{ kind = "visit", spot = "haunted_crossroads", when = "midnight", text = "Wait at the crossroads" },
 		},
 		reward = { truck = "ghost_hauler", relic = "shard_haunted" },

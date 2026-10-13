@@ -5,7 +5,7 @@
 return {
 	-- Change Version whenever the layout or noise changes. A place that was baked in Studio with an older version
 	-- gets regenerated when you press Play.
-	Version = 3,
+	Version = 4,
 	Seed = 7, -- shifts the noise; same seed always gives the same hills
 
 	HalfSize = 512, -- the biome is 1024 x 1024 studs, centered on base camp
@@ -31,6 +31,7 @@ return {
 		{ name = "Dealer", min = Vector2.new(-190, -70), max = Vector2.new(-55, 50), blend = 40 },
 		{ name = "LandOffice", min = Vector2.new(-45, 30), max = Vector2.new(5, 66), blend = 30 },
 		{ name = "Plots", min = Vector2.new(-155, 70), max = Vector2.new(103, 240), blend = 30 },
+		{ name = "Bank", min = Vector2.new(30, 36), max = Vector2.new(64, 66), blend = 24 }, -- Meadow Savings & Loan (Bank.luau)
 		-- Quest places (Config/Quests.luau Spots)
 		{ name = "OldBarn", min = Vector2.new(268, -84), max = Vector2.new(312, -36), blend = 30 },
 		{ name = "StoneRing", min = Vector2.new(-222, -167), max = Vector2.new(-188, -133), blend = 25 },
@@ -64,6 +65,7 @@ return {
 		{ min = Vector2.new(-185, -66), max = Vector2.new(-58, 44) }, -- truck dealer and its lot
 		{ min = Vector2.new(-40, 36), max = Vector2.new(0, 62) }, -- land office
 		{ min = Vector2.new(-150, 76), max = Vector2.new(98, 236) }, -- land plots and their lanes
+		{ min = Vector2.new(32, 38), max = Vector2.new(62, 64) }, -- the bank
 		-- Quest places (Config/Quests.luau Spots): the Old Barn, the stone ring, the old well and the crop circle.
 		{ min = Vector2.new(270, -82), max = Vector2.new(310, -38) },
 		{ min = Vector2.new(-220, -165), max = Vector2.new(-190, -135) },

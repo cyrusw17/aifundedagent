@@ -2,6 +2,7 @@
 -- Gloves and hay weight. The only tools are the shovel and the rake; gloves are the upgrade. Carried hay slows
 -- you down, rarer hay is heavier, and hay rarer than your gloves are rated for slows you much more and scoops
 -- slower. Better gloves take the edge off. Every number here is a placeholder to tune from playtests.
+local Prices = require(script.Parent.Prices)
 return {
 	-- Walk speed lost per unit of carried weight, before gloves. One meadow strand weighs 1.
 	SlowPerWeight = 0.12,
@@ -32,12 +33,12 @@ return {
 	-- scoop, carryBonus adds to how much hay you can hold. prop names the Rustic Blender glove (one right glove,
 	-- fingers +Y, back of hand -Z; mirror it for the left). color is for the placeholder until the mesh is in.
 	Tiers = {
-		{ id = "bare", name = "Bare hands", tier = 0, price = 0, relief = 0, scoopBonus = 0, carryBonus = 0, color = { 214, 178, 150 } },
-		{ id = "work", prop = "work_gloves", name = "Work Gloves", tier = 1, price = 250, relief = 0.2, scoopBonus = 2, carryBonus = 15, color = { 189, 168, 112 } },
-		{ id = "leather", prop = "leather_gloves", name = "Leather Gloves", tier = 2, price = 1500, relief = 0.35, scoopBonus = 4, carryBonus = 30, color = { 128, 92, 62 } },
-		{ id = "reinforced", prop = "reinforced_gloves", name = "Reinforced Gloves", tier = 3, price = 6000, relief = 0.5, scoopBonus = 6, carryBonus = 50, color = { 92, 74, 54 } },
-		{ id = "iron", prop = "iron_gauntlets", name = "Iron Gauntlets", tier = 4, price = 25000, relief = 0.62, scoopBonus = 9, carryBonus = 80, color = { 107, 94, 84 } },
-		{ id = "starlight", prop = "starlight_gloves", name = "Starlight Gloves", tier = 5, price = 150000, relief = 0.78, scoopBonus = 14, carryBonus = 140, color = { 70, 72, 96 } },
+		{ id = "bare", name = "Bare hands", tier = 0, price = Prices.Gloves.bare, relief = 0, scoopBonus = 0, carryBonus = 0, color = { 214, 178, 150 } },
+		{ id = "work", prop = "work_gloves", name = "Work Gloves", tier = 1, price = Prices.Gloves.work, relief = 0.2, scoopBonus = 2, carryBonus = 15, color = { 189, 168, 112 } },
+		{ id = "leather", prop = "leather_gloves", name = "Leather Gloves", tier = 2, price = Prices.Gloves.leather, relief = 0.35, scoopBonus = 4, carryBonus = 30, color = { 128, 92, 62 } },
+		{ id = "reinforced", prop = "reinforced_gloves", name = "Reinforced Gloves", tier = 3, price = Prices.Gloves.reinforced, relief = 0.5, scoopBonus = 6, carryBonus = 50, color = { 92, 74, 54 } },
+		{ id = "iron", prop = "iron_gauntlets", name = "Iron Gauntlets", tier = 4, price = Prices.Gloves.iron, relief = 0.62, scoopBonus = 9, carryBonus = 80, color = { 107, 94, 84 } },
+		{ id = "starlight", prop = "starlight_gloves", name = "Starlight Gloves", tier = 5, price = Prices.Gloves.starlight, relief = 0.78, scoopBonus = 14, carryBonus = 140, color = { 70, 72, 96 } },
 	},
 
 	-- Quest gloves: earned from quests and rituals (Config/Quests.luau Rewards), never sold, so they are not on the

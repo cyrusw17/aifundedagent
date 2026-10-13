@@ -17,11 +17,11 @@ local NeedleTypes = require(Shared.Config.Needles)
 local LandConfig = require(Shared.Config.Land)
 local Rustic = require(Shared.Config.Rustic)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Events = require(script.Parent.Events)
 local DayNight = require(script.Parent.DayNight)
 local Bales = require(script.Parent.Bales)
 local Needle = require(script.Parent.Needle)
-local Hay = require(script.Parent.Hay)
 local Gloves = require(script.Parent.Gloves)
 local Vehicles = require(script.Parent.Vehicles)
 
@@ -208,10 +208,9 @@ local function rewardText(reward)
 	return table.concat(parts, ", ")
 end
 
-local function giveReward(player, q, s, reward)
+local function giveReward(player, q, reward, name)
 	if reward.cash then
-		s.cash += reward.cash
-		Data.sync(player)
+		Bank.earn(player, reward.cash, "Quest: " .. name)
 	end
 	for _, key in { "gear", "gloves", "truck", "relic", "unlock" } do
 		local id = reward[key]
@@ -224,10 +223,10 @@ end
 
 local publish -- forward declaration
 
-local function complete(player, q, s, def)
+local function complete(player, q, def)
 	q.active[def.id] = nil
 	q.done[def.id] = true
-	giveReward(player, q, s, def.reward or {})
+	giveReward(player, q, def.reward or {}, def.name)
 	local got = rewardText(def.reward or {})
 	Data.toast(
 		player,
@@ -249,7 +248,7 @@ local function complete(player, q, s, def)
 end
 
 local function advance(player, id)
-	local q, s = questsOf(player)
+	local q = questsOf(player)
 	if not q then
 		return
 	end
@@ -263,7 +262,7 @@ local function advance(player, id)
 	entry.pity = nil
 	entry.last = nil
 	if entry.step > #def.steps then
-		complete(player, q, s, def)
+		complete(player, q, def)
 	else
 		Data.toast(player, ("%s: %s"):format(def.name, def.steps[entry.step].text))
 	end
@@ -993,21 +992,6 @@ local function onEvent(player, kind, amount, info)
 	if not q then
 		return
 	end
-	-- The first bale a new player breaks always spills a needle, so the next step can't stall (GAME_PLAN_V8 C1).
-	if kind == "bale_broken" and info.position then
-		local step = currentStep(q, "first_haul")
-		if step and step.event == "bale_broken" then
-			task.delay(0.9, function()
-				local spill = info.position + Vector3.new(rng:NextNumber(-1, 1), 2.5, rng:NextNumber(-1, 1))
-				Hay.spawnPiece(
-					spill,
-					Vector3.new(rng:NextNumber(-3, 3), 5, rng:NextNumber(-3, 3)),
-					player.UserId,
-					"Needle"
-				)
-			end)
-		end
-	end
 	for _, id in activeIds(q) do
 		local step, entry = currentStep(q, id)
 		if not step or not stepWhenOk(step) then
@@ -1030,11 +1014,7 @@ local function onEvent(player, kind, amount, info)
 			bounty.n[def.id] = (bounty.n[def.id] or 0) + amount
 			if bounty.n[def.id] >= def.count then
 				bounty.done[def.id] = true
-				local s = Data.get(player)
-				if s then
-					s.cash += def.cash
-					Data.sync(player)
-				end
+				Bank.earn(player, def.cash, "Bounty: " .. def.text)
 				Data.toast(player, ("Bounty done: %s. +$%d"):format(def.text, def.cash))
 			end
 			publish(player)
@@ -1133,8 +1113,8 @@ function Quests.usePrompt(player, spotId)
 					table.insert(missing, ("%d more %s"):format(count - have, needleName(needleId):lower()))
 				end
 			end
-			if step.cash and s.cash < step.cash then
-				table.insert(missing, ("$%d more"):format(step.cash - s.cash))
+			if step.cash and not Bank.canAfford(player, step.cash) then
+				table.insert(missing, ("%s more"):format(Bank.money(step.cash - Bank.spendable(s))))
 			end
 			if #missing > 0 then
 				Data.toast(
@@ -1145,12 +1125,11 @@ function Quests.usePrompt(player, spotId)
 				)
 				return
 			end
+			if step.cash and not Bank.charge(player, step.cash, spot.def.name .. ": " .. step.text) then
+				return
+			end
 			for needleId, count in want do
 				Needle.take(player, needleId, count)
-			end
-			if step.cash then
-				s.cash -= step.cash
-				Data.sync(player)
 			end
 			Data.toast(player, ("%s accepts your offering."):format(spot.def.name))
 			advance(player, id)
@@ -1259,6 +1238,21 @@ local function stepProgress(step, entry)
 	return nil, nil
 end
 
+-- Where a quest's current step sends you: { { name, position } } for each place still to visit.
+local function targetsOf(q, id)
+	local step, entry = currentStep(q, id)
+	local list = {}
+	if step and step.kind ~= "own" and step.kind ~= "event" and step.kind ~= "find" then
+		for _, spotId in spotIds(step) do
+			local spot = spots[spotId]
+			if not entry.seen[spotId] and spot and spot.position then
+				table.insert(list, { name = spot.def.name, position = spot.position })
+			end
+		end
+	end
+	return list
+end
+
 local function snapshot(player)
 	local q, s = questsOf(player)
 	if not q then
@@ -1301,23 +1295,21 @@ local function snapshot(player)
 			needs = needs,
 			steps = steps,
 			reward = rewardText(def.reward or {}),
+			targets = entry and targetsOf(q, def.id) or {},
 		})
 	end
 
 	local bounty = bountyState(q)
 	local bounties = {}
 	for _, def in (todaysBounties()) do
-		table.insert(
-			bounties,
-			{
-				id = def.id,
-				text = def.text,
-				n = math.min(bounty.n[def.id] or 0, def.count),
-				count = def.count,
-				cash = def.cash,
-				done = bounty.done[def.id] == true,
-			}
-		)
+		table.insert(bounties, {
+			id = def.id,
+			text = def.text,
+			n = math.min(bounty.n[def.id] or 0, def.count),
+			count = def.count,
+			cash = def.cash,
+			done = bounty.done[def.id] == true,
+		})
 	end
 
 	local relics = {}
@@ -1401,6 +1393,10 @@ publish = function(player)
 		player:SetAttribute("QuestTrackName", nil)
 		player:SetAttribute("QuestTrackStep", nil)
 	end
+	-- Where the tracked step sends you, for the tracker's GO button (a waypoint).
+	local target = best and targetsOf(q, best)[1]
+	player:SetAttribute("QuestTrackTarget", target and target.position or nil)
+	player:SetAttribute("QuestTrackTargetName", target and target.name or nil)
 	if changedRemote then
 		changedRemote:FireClient(player)
 	end

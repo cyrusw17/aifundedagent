@@ -1,7 +1,9 @@
 --!nonstrict
 -- The land office panel and build mode. Stand on the rug at the land office counter to see every plot and buy one.
 -- Once you own land, the BUILD button opens a bar of pieces: pick one, aim at your plot and click (or tap the spot
--- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. The server checks everything.
+-- and press PLACE). R turns the piece; REMOVE takes pieces back for half their price. CREW lets other players on the
+-- server drive your truck and run hay through your line for you. At the office, VISIT takes you to someone else's
+-- farm, where you can like it at its sign. The server checks everything.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,36 +18,38 @@ local state = ReplicatedStorage:WaitForChild("Land")
 local buyRemote = state:WaitForChild("Buy")
 local placeRemote = state:WaitForChild("Place")
 local removeRemote = state:WaitForChild("Remove")
+local crewRemote = state:WaitForChild("Crew")
+local visitRemote = state:WaitForChild("Visit")
 
 local player = Players.LocalPlayer
 local T = Factory.TileSize
 local DIRS = { "N", "E", "S", "W" }
 local DIR_VECTORS = { N = Vector3.new(0, 0, -1), E = Vector3.new(1, 0, 0), S = Vector3.new(0, 0, 1), W = Vector3.new(-1, 0, 0) }
 
-local INK = Color3.fromRGB(40, 34, 28)
-local PANEL = Color3.fromRGB(199, 186, 153)
-local CARD = Color3.fromRGB(222, 212, 184)
-local RED = Color3.fromRGB(133, 61, 48)
-local GREEN = Color3.fromRGB(87, 107, 71)
-local MUTED = Color3.fromRGB(150, 140, 120)
-local PICKED = Color3.fromRGB(176, 146, 82)
+local Kit = require(Shared:WaitForChild("UI"):WaitForChild("Kit"))
+local Theme = Kit.Theme
+local F = Theme.Fonts
+local INK = Theme.Colors.Ink
+local PANEL = Theme.Colors.Paper
+local CARD = Theme.Colors.Card
+local RED = Theme.Colors.Red
+local GREEN = Theme.Colors.Green
+local MUTED = Theme.Colors.Muted
+local PICKED = Theme.Colors.Picked
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "LandGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = Kit.screen("LandGui", 10, true)
 
-local function corner(instance, radius)
-	Instance.new("UICorner", instance).CornerRadius = UDim.new(0, radius or 8)
-end
+local corner = Kit.corner
+
+local panelBody -- the land office panel's body, set below
 
 local function text(parent, value, size, y, height, color, font)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromOffset(14, y)
-	label.Size = UDim2.new(1, -28, 0, height)
-	label.Font = font or Enum.Font.GothamBold
+	local inset = parent == panelBody and 0 or 14
+	label.Position = UDim2.fromOffset(inset, y)
+	label.Size = UDim2.new(1, -inset * 2, 0, height)
+	label.Font = font or F.Bold
 	label.TextSize = size
 	label.TextWrapped = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -57,10 +61,10 @@ end
 
 local function button(parent, label, color)
 	local b = Instance.new("TextButton")
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 14
 	b.Text = label
-	b.TextColor3 = Color3.new(1, 1, 1)
+	b.TextColor3 = Theme.Colors.Cream
 	b.BackgroundColor3 = color or GREEN
 	b.Parent = parent
 	corner(b, 6)
@@ -79,25 +83,22 @@ end
 
 -- Land office panel ---------------------------------------------------------------------------------------------------
 
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(1, 0.5)
-panel.Position = UDim2.new(1, -16, 0.5, 0)
-panel.Size = UDim2.fromOffset(340, 440)
-panel.BackgroundColor3 = PANEL
+local panel
+panel, panelBody = Kit.panel(gui, {
+	title = "MEADOW LAND OFFICE",
+	width = 340,
+	height = 490,
+	anchor = Vector2.new(1, 0.5),
+	position = UDim2.new(1, -16, 0.5, 0),
+})
 panel.Visible = false
-panel.Parent = gui
-corner(panel, 12)
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = INK
-stroke.Thickness = 2
 
-text(panel, "MEADOW LAND OFFICE", 22, 10, 28)
-local ownedLabel = text(panel, "", 14, 38, 20, GREEN)
-local panelMessage = text(panel, "", 14, 404, 30, RED, Enum.Font.Gotham)
+local ownedLabel = text(panelBody, "", 14, 0, 20, GREEN)
+local panelMessage = text(panelBody, "", 14, 400, 30, RED, F.Body)
 
 local list = Instance.new("ScrollingFrame")
-list.Position = UDim2.fromOffset(10, 62)
-list.Size = UDim2.new(1, -20, 0, 338)
+list.Position = UDim2.fromOffset(0, 26)
+list.Size = UDim2.new(1, 0, 0, 368)
 list.BackgroundTransparency = 1
 list.BorderSizePixel = 0
 list.ScrollBarThickness = 6
@@ -125,8 +126,8 @@ local function refreshPanel()
 			b.Text = "YOURS"
 			b.BackgroundColor3 = GREEN
 		elseif ownerId ~= 0 then
-			b.Text = "OWNED BY " .. string.upper(info:GetAttribute("OwnerName") or "?")
-			b.BackgroundColor3 = MUTED
+			b.Text = ("VISIT %s  ♥%d"):format(string.upper(info:GetAttribute("OwnerName") or "?"), info:GetAttribute("Likes") or 0)
+			b.BackgroundColor3 = PICKED
 		elseif mine > 0 then
 			b.Text = ("$%d"):format(price)
 			b.BackgroundColor3 = MUTED
@@ -148,7 +149,7 @@ for index, def in LandConfig.Plots do
 	card.Parent = list
 	corner(card)
 	text(card, def.name, 17, 6, 22)
-	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, Enum.Font.Gotham)
+	text(card, ("%d x %d tiles (%d x %d studs)"):format(def.tiles.X, def.tiles.Y, def.tiles.X * T, def.tiles.Y * T), 13, 28, 18, INK, F.Body)
 	local b = button(card, "", GREEN)
 	b.AnchorPoint = Vector2.new(1, 1)
 	b.Position = UDim2.new(1, -8, 1, -8)
@@ -160,8 +161,11 @@ for index, def in LandConfig.Plots do
 		end
 		busy = true
 		panelMessage.Text = "..."
+		local info = plotInfos()[index]
+		local ownerId = info and info:GetAttribute("OwnerId") or 0
+		local remote = (ownerId ~= 0 and ownerId ~= player.UserId) and visitRemote or buyRemote
 		local ok, bought, message = pcall(function()
-			return buyRemote:InvokeServer(index)
+			return remote:InvokeServer(index)
 		end)
 		busy = false
 		panelMessage.TextColor3 = ok and bought and GREEN or RED
@@ -226,7 +230,7 @@ local barStroke = Instance.new("UIStroke", bar)
 barStroke.Color = INK
 barStroke.Thickness = 2
 
-local infoLabel = text(bar, "", 13, 6, 34, INK, Enum.Font.Gotham)
+local infoLabel = text(bar, "", 13, 6, 34, INK, F.Body)
 infoLabel.Size = UDim2.new(1, -28, 0, 34)
 
 local pieceRow = Instance.new("ScrollingFrame")
@@ -260,8 +264,106 @@ local rotateButton = button(actions, "TURN (R)", INK)
 rotateButton.Size = UDim2.fromOffset(96, 34)
 local removeButton = button(actions, "REMOVE (X)", RED)
 removeButton.Size = UDim2.fromOffset(110, 34)
+local crewButton = button(actions, "CREW", PICKED)
+crewButton.Size = UDim2.fromOffset(80, 34)
 local doneButton = button(actions, "DONE", MUTED)
 doneButton.Size = UDim2.fromOffset(80, 34)
+
+-- Crew panel: everyone else on the server, each with ADD or REMOVE.
+local crewPanel = Instance.new("Frame")
+crewPanel.AnchorPoint = Vector2.new(0.5, 1)
+crewPanel.Position = UDim2.new(0.5, 0, 1, -172)
+crewPanel.Size = UDim2.fromOffset(320, 260)
+crewPanel.BackgroundColor3 = PANEL
+crewPanel.Visible = false
+crewPanel.Parent = gui
+corner(crewPanel, 12)
+local crewStroke = Instance.new("UIStroke", crewPanel)
+crewStroke.Color = INK
+crewStroke.Thickness = 2
+text(crewPanel, "FARM CREW", 16, 8, 20)
+local crewMessage = text(crewPanel, "Crew can drive your truck. Hay they run through your line pays you.", 12, 28, 30, INK, Enum.Font.Gotham)
+local crewList = Instance.new("ScrollingFrame")
+crewList.Position = UDim2.fromOffset(10, 62)
+crewList.Size = UDim2.new(1, -20, 1, -72)
+crewList.BackgroundTransparency = 1
+crewList.BorderSizePixel = 0
+crewList.ScrollBarThickness = 4
+crewList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+crewList.CanvasSize = UDim2.new()
+crewList.Parent = crewPanel
+local crewLayout = Instance.new("UIListLayout", crewList)
+crewLayout.Padding = UDim.new(0, 4)
+
+local function myCrew()
+	local index = player:GetAttribute("LandPlot") or 0
+	local info = state:FindFirstChild("Plot" .. index)
+	local set = {}
+	for id in string.gmatch(info and info:GetAttribute("Crew") or "", "%d+") do
+		set[tonumber(id)] = true
+	end
+	return set
+end
+
+local crewBusy = false
+local function refreshCrew()
+	for _, child in crewList:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local crew = myCrew()
+	local others = 0
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			others += 1
+			local row = Instance.new("Frame")
+			row.Size = UDim2.new(1, -6, 0, 36)
+			row.BackgroundColor3 = CARD
+			row.Parent = crewList
+			corner(row, 6)
+			local name = text(row, other.DisplayName, 14, 8, 20)
+			name.Size = UDim2.new(1, -110, 0, 20)
+			local on = crew[other.UserId] == true
+			local b = button(row, on and "REMOVE" or "ADD", on and RED or GREEN)
+			b.AnchorPoint = Vector2.new(1, 0.5)
+			b.Position = UDim2.new(1, -6, 0.5, 0)
+			b.Size = UDim2.fromOffset(84, 28)
+			b.Activated:Connect(function()
+				if crewBusy then
+					return
+				end
+				crewBusy = true
+				local ok, _, message = pcall(function()
+					return crewRemote:InvokeServer(other.UserId, not on)
+				end)
+				crewBusy = false
+				crewMessage.Text = ok and (message or "") or "Couldn't reach the server."
+				task.defer(refreshCrew)
+			end)
+		end
+	end
+	if others == 0 then
+		crewMessage.Text = "Nobody else is on this server yet."
+	end
+end
+
+crewButton.Activated:Connect(function()
+	crewPanel.Visible = not crewPanel.Visible
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerAdded:Connect(function()
+	if crewPanel.Visible then
+		refreshCrew()
+	end
+end)
+Players.PlayerRemoving:Connect(function()
+	if crewPanel.Visible then
+		task.defer(refreshCrew)
+	end
+end)
 
 local building = false
 local selected = nil -- piece def, or nil while removing
@@ -302,7 +404,7 @@ for i, def in LandConfig.Pieces do
 	b.LayoutOrder = i
 	b.Size = UDim2.fromOffset(118, 52)
 	b.BackgroundColor3 = CARD
-	b.Font = Enum.Font.GothamBold
+	b.Font = F.Bold
 	b.TextSize = 13
 	b.TextWrapped = true
 	b.TextColor3 = INK
@@ -475,6 +577,9 @@ end
 local function setBuilding(on)
 	building = on
 	bar.Visible = on
+	if not on then
+		crewPanel.Visible = false
+	end
 	buildButton.Visible = not on and (player:GetAttribute("LandPlot") or 0) > 0
 	if on then
 		aim = nil

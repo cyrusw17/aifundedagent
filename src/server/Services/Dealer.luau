@@ -14,7 +14,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
 local Trucks = require(Shared.Config.Trucks)
+local WorldLabel = require(Shared.WorldLabel)
 local Data = require(script.Parent.Data)
+local Bank = require(script.Parent.Bank)
 local Avatar = require(script.Parent.Avatar)
 local Vehicles = require(script.Parent.Vehicles)
 
@@ -77,21 +79,7 @@ end
 
 local function board(parent, name, size, cframe, text, faces)
 	local p = part(parent, name, size, cframe, Rustic.Wood, Enum.Material.WoodPlanks)
-	for _, face in faces or { Enum.NormalId.Front } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(size.X * 40, size.Y * 40)
-		gui.LightInfluence = 1
-		gui.Parent = p
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(40, 34, 28)
-		label.Text = text
-		label.Parent = gui
-	end
+	WorldLabel.surface(p, text, faces)
 	return p
 end
 
@@ -120,20 +108,7 @@ local function clerk(parent, position)
 	local head = part(model, "Head", Vector3.new(1.2, 1.2, 1.2), base * CFrame.new(0, 4.6, 0), skin)
 	part(model, "Cap", Vector3.new(1.3, 0.4, 1.3), base * CFrame.new(0, 5.3, 0), Rustic.PaintRed, Enum.Material.Fabric)
 	part(model, "Brim", Vector3.new(1.2, 0.15, 0.7), base * CFrame.new(0, 5.15, -0.9), Rustic.PaintRed, Enum.Material.Fabric)
-	local tag = Instance.new("BillboardGui")
-	tag.Size = UDim2.fromOffset(200, 40)
-	tag.StudsOffset = Vector3.new(0, 2.2, 0)
-	tag.MaxDistance = 40
-	tag.Parent = head
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.4
-	label.Text = "Hank, truck sales"
-	label.Parent = tag
+	WorldLabel.billboard(head, "Hank, truck sales", { offset = Vector3.new(0, 2, 0), kind = "tag" })
 	model.Parent = parent
 end
 
@@ -358,10 +333,13 @@ local function onBuy(player, id)
 
 	local owns = table.find(state.trucks, def.id) ~= nil
 	if not owns then
-		if state.cash < def.price then
-			return false, ("You need $%d more for the %s."):format(def.price - state.cash, def.name)
+		if not Bank.canAfford(player, def.price) then
+			return false, ("You need $%d more for the %s. The bank on the main road can finance it."):format(def.price - Bank.spendable(state), def.name)
 		end
-		state.cash -= def.price
+		local paid, why = Bank.charge(player, def.price, def.name)
+		if not paid then
+			return false, why
+		end
 		table.insert(state.trucks, def.id)
 		Data.sync(player)
 		task.spawn(Data.save, player)
@@ -410,8 +388,7 @@ function Dealer.build(worldFolder)
 		end
 		local state = Data.get(player)
 		if state then
-			state.cash += STUDIO_CASH
-			Data.sync(player)
+			Bank.give(player, STUDIO_CASH, "Studio test cash")
 			Data.toast(player, ("Studio test cash: +$%d"):format(STUDIO_CASH))
 		end
 	end)
