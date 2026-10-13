@@ -399,41 +399,25 @@ Waypoint.changed.Event:Connect(function(position)
 	end
 end)
 
--- Truck models, found once and then as they arrive (scanning the whole world every second stutters on phones).
-local trucks = {}
-local function noteTruck(d)
-	if d:IsA("Model") and d:GetAttribute("TruckId") then
-		trucks[d] = true
-	end
-end
-for _, d in Workspace:GetDescendants() do
-	noteTruck(d)
-end
-Workspace.DescendantAdded:Connect(noteTruck)
-Workspace.DescendantRemoving:Connect(function(d)
-	trucks[d] = nil
-end)
-
+-- Your trucks, from the server (TruckSpots.luau publishes "TruckSpots" = "x,z;x,z"), so a truck parked out of
+-- streaming range still shows.
 local truckDots = {}
 local function refreshTrucks()
 	for _, d in truckDots do
 		d:Destroy()
 	end
 	table.clear(truckDots)
-	for model in trucks do
-		if model.Parent and model:GetAttribute("OwnerId") == player.UserId then
-			local p = model:GetPivot().Position
-			local d =
-				Kit.label(canvas, "TRUCK", { size = 10, font = F.Bold, color = C.Ink, align = "center", wrap = false })
-			d.AnchorPoint = Vector2.new(0.5, 0.5)
-			d.Size = UDim2.fromOffset(40, 14)
-			d.Position = toMap(p.X, p.Z)
-			d.BackgroundTransparency = 0
-			d.BackgroundColor3 = C.Cream
-			d.ZIndex = 8
-			Kit.corner(d, 4)
-			table.insert(truckDots, d)
-		end
+	for x, z in string.gmatch(player:GetAttribute("TruckSpots") or "", "(-?%d+),(-?%d+)") do
+		local d =
+			Kit.label(canvas, "TRUCK", { size = 10, font = F.Bold, color = C.Ink, align = "center", wrap = false })
+		d.AnchorPoint = Vector2.new(0.5, 0.5)
+		d.Size = UDim2.fromOffset(40, 14)
+		d.Position = toMap(tonumber(x), tonumber(z))
+		d.BackgroundTransparency = 0
+		d.BackgroundColor3 = C.Cream
+		d.ZIndex = 8
+		Kit.corner(d, 4)
+		table.insert(truckDots, d)
 	end
 end
 
