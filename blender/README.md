@@ -10,34 +10,58 @@ bevels) with the **Rustic** finish: muted, weathered straw / bark / plank
 textures, rusty metal, dull twine, and slightly uneven surfaces. It lives in
 `lib/style.py`; build new props with `style.rustic()` so they match.
 
-![catalog](exports/rustic/catalog.png)
-
 ```
 blender/
   lib/common.py            scene reset, materials, textures, join, export, preview render
   lib/style.py             the house style (palettes, textures, Finish) and shape helpers
-  props/rustic_props.py    every game prop, one .glb each + a catalog render
-  props/hay_bale.py        square bale shape (4.6 long x 2.6 high x 3.2 deep studs, matches the game)
+  props/rustic_props.py    hay and starter tools; also runs every category and renders catalogs
+  props/tools.py           shop hand tools
+  props/vehicles.py        carriers, trucks, boats, trailers (beds sized for loose bales)
+  props/storage.py         bins, silos, bale rack, needle tray and vault, fence, road tile
+  props/buildings.py       mill, sheds, barn, garage, shops, forge, museum, observatory, dock...
+  props/machines.py        conveyor pieces (6x6-stud tiles, belt top 3.5) and every machine
+  props/hay_bale.py        bale shape, 4.6 long x 2.6 high x 3.2 deep studs (the game's bale)
   styles/lt2_mockups.py    the six finishes that were compared when picking the style
   tools/render_preview.py  renders a PNG preview of any exported .glb
-  exports/rustic/          the game-ready props (.glb) and catalog.png
+  exports/rustic/          one .glb per prop, plus catalog_<category>.png
   exports/styles/          the style comparison renders
 ```
 
 ## Props
 
-| file | size (studs) | notes |
+One `.glb` per item in `exports/rustic/`, named by its snake_case key (for
+example `rusty_pickup.glb`). Catalogs:
+
+| category | catalog | items |
 |---|---|---|
-| `hay_bale.glb` | 4.6 x 3.2 x 2.6 (L x D x H) | same size as the game bale; flat top and bottom so bales stack |
-| `round_bale.glb` | 3.6 x 3.4 x 3.6 | rolled hay with twine |
-| `basic_shovel.glb` | ~2.7 tall | small spade (starter tool) |
-| `wide_scoop.glb` | ~3 tall | broad grain scoop |
-| `garden_rake.glb` | ~5 tall | iron-tooth rake |
-| `pitchfork.glb` | ~5 tall | four tines |
-| `hay_hook.glb` | ~1.4 tall | T handle with hook, for dragging bales |
-| `wheelbarrow.glb` | ~5 x 2.5 x 2.5 | wooden tray, one wheel |
-| `hay_crate.glb` | 3 x 3 x 2 | slatted crate holding hay |
-| `log.glb` | 5 long | bark with end-grain rings |
+| hay and starter tools | `catalog_hay_and_tools.png` | hay bale, round bale, basic shovel, wide scoop, garden rake, pitchfork, hay hook, wheelbarrow, hay crate, log |
+| shop tools | `catalog_tools.png` | steel fork, needle tweezers, silver sieve net, magnet wand, barrel auger, hay vacuum hose |
+| vehicles | `catalog_vehicles.png` | handcart, pull wagon, 6 trucks, rowboat, sailboat, cargo barge, 6 trailers |
+| storage | `catalog_storage.png` | 3 mill bins, 3 silos, bale rack, needle tray, needle vault, fence post set, road tile |
+| buildings | `catalog_buildings.png` | mill, sorter shed, barn, garage, sell depot, needle forge, workshop, museum, observatory, greenhouse, harbor dock, warehouse |
+| machines | `catalog_machines.png` | conveyor straight/corner/ramp, splitter, merger, hopper feeder, 6 sorter tiers, needle type splitter, bundler, polisher, hay baler, hay press, alloy mixer, boost oil, alien collector |
+
+### Truck and trailer beds
+
+Hay rides loose in the beds with real physics, so no bales are part of any
+vehicle model. Every bed floor top is 3.5 studs above the ground (the
+conveyor dock height). Floors, sidewalls and tailgates are plain unbeveled
+boxes so their collision is clean. Interiors are sized in whole bales lying
+lengthwise, two across: length n x 4.6 + 0.8, width 7 (wide tier 10.2).
+`vehicles.BEDS` lists each bed's interior size and capacity.
+
+| vehicle | bed inside (L x W x wall) | bales |
+|---|---|---|
+| rusty pickup | 10.0 x 7.0 x 2.6 | 4 |
+| farm flatbed | 14.6 x 7.0 x 2.8 | 6 |
+| box truck | 19.2 x 7.0 x 6.4 (roofed) | 16 |
+| heavy hauler | 23.8 x 7.0 x 5.4 | 20 |
+| wagon trailer | 5.4 x 7.0 x 2.6 | 2 |
+| small trailer | 10.0 x 7.0 x 2.6 | 4 |
+| medium trailer | 24.0 x 7.0 x 2.6 | 10 |
+| large trailer | 28.4 x 10.2 x 5.4 | 36 |
+| double trailer | 2 x (14.6 x 7.0 x 2.8) | 12 |
+| bale rack trailer | 23.8 x 7.0 x 8.0 | 30 |
 
 ## Build
 
@@ -76,7 +100,11 @@ blender --background --python blender/tools/render_preview.py -- blender/exports
 
 ## Adding a new prop
 
-Write a builder in `props/rustic_props.py` that makes parts with
-`cyl()` / `box()`, passes each through `f.shape(part)` and
-`f.apply(part, kind)` (kind is hay, bark, wood, handle, metal or twine), and
-add it to `PROPS`. Keep each prop under a few thousand triangles.
+Add a builder to the category module it belongs in (`props/<category>.py`)
+and list it in that module's `PROPS`. A builder makes parts with `cyl()` /
+`box()`, passes each through `f.shape(part)` (bevel and weathering) and
+`f.apply(part, kind, along=...)`. Kinds: hay, bark, wood (end grain), handle
+(planks), metal (grey iron with rust), steel (unrusted), twine, paint_red,
+paint_green, paint_blue, paint_cream, paint_yellow, stone, cloth, dirt, tire,
+glass, glow (alien and mythic items only). Size things in studs
+(`STUD = 0.28`) and keep each prop under about 8,000 triangles.

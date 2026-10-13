@@ -47,6 +47,9 @@ def join(objs, name):
     """Join objects into one mesh with the given name and apply transforms."""
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
+        # Every part needs the same UV layer, or joining drops UVs and textures go blank.
+        if o.type == "MESH" and "UVMap" not in o.data.uv_layers:
+            o.data.uv_layers.new(name="UVMap")
         o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]
     if len(objs) > 1:

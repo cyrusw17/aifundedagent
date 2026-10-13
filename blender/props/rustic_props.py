@@ -1,6 +1,6 @@
 """Every game prop in the house style (LT2 shapes, Rustic finish).
 
-Hay and hand tools are built here; vehicles.py, storage.py, buildings.py and
+Hay and starter tools are built here; tools.py, vehicles.py, storage.py, buildings.py and
 machines.py each add a category. Each prop is exported on its own to
 <out>/<name>.glb, and each category gets a catalog render <out>/catalog_<category>.png.
 
@@ -220,7 +220,7 @@ HAY_AND_TOOLS = {
 }
 
 
-CATEGORIES = ("hay_and_tools", "vehicles", "storage", "buildings", "machines")
+CATEGORIES = ("hay_and_tools", "tools", "vehicles", "storage", "buildings", "machines")
 
 
 def categories(wanted=CATEGORIES):
