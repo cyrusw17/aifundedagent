@@ -34,6 +34,7 @@ local Needle = require(script.Parent.Needle)
 local Starbeam = require(script.Parent.Starbeam)
 local Press = require(script.Parent.Press)
 local Baler = require(script.Parent.Baler)
+local Vault = require(script.Parent.Vault)
 local Display = require(script.Parent.Display)
 local Mixer = require(script.Parent.Mixer)
 local LineStats = require(script.Parent.LineStats)
@@ -512,6 +513,12 @@ local function spawnItem(plot, def, gx, gz, dir, stored, fill, display)
 		table.insert(item.instances, Machines.splitter(plot.grid, gx, gz, dir, def.rule))
 	elseif def.kind == "display" then
 		item.wall = Display.wall(plot.items, frame, function()
+			return plot.ownerId
+		end, typeof(display) == "table" and display or nil)
+		table.insert(item.instances, item.wall.model)
+	elseif def.kind == "vault" then
+		-- Saved and cleared like the display (item.wall): contents() goes in the save, clear() before freeing a plot.
+		item.wall = Vault.build(plot.items, frame, function()
 			return plot.ownerId
 		end, typeof(display) == "table" and display or nil)
 		table.insert(item.instances, item.wall.model)
