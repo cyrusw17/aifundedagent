@@ -33,6 +33,7 @@ local Props = require(script.Parent.Props)
 local Needle = require(script.Parent.Needle)
 local Avatar = require(script.Parent.Avatar)
 local Events = require(script.Parent.Events)
+local Announce = require(script.Parent.Announce)
 local Machines = require(script.Parent.Machines)
 local MeadowTerrain = require(script.Parent.MeadowTerrain)
 
@@ -676,6 +677,36 @@ local function onRespond(player, fromUserId, yes)
 	return true, nil
 end
 
+-- Mutated needles put up for trade are announced to the whole server (CEO H8), so other players come to look. Each
+-- needle kind is announced once per trade, and one player at most once a minute, so toggling an offer can't spam.
+local ANNOUNCE_GAP = 60
+local lastAnnounce = {} -- player -> os.clock() of their last announcement
+
+local function mutatedNew(before, after)
+	local best, bestValue = nil, -1
+	for key in after.needles do
+		local id, mult, polished, grade = Needle.parseKey(key)
+		if mult > 1 and not (before and before.needles[key]) then
+			local value = Needle.priceOf(id, mult, polished, grade)
+			if value > bestValue then
+				best, bestValue = key, value
+			end
+		end
+	end
+	return best
+end
+
+local function announceListing(player, session, before, offer)
+	local key = mutatedNew(before, offer)
+	session.announced = session.announced or {}
+	if not key or session.announced[key] or os.clock() - (lastAnnounce[player] or -math.huge) < ANNOUNCE_GAP then
+		return
+	end
+	session.announced[key] = true
+	lastAnnounce[player] = os.clock()
+	Announce.say(("%s is trading a %s needle at the Trading Post!"):format(player.DisplayName, needleLabel(key)), "event")
+end
+
 local function onOffer(player, raw)
 	local session = sessions[player]
 	if not session then
@@ -691,7 +722,9 @@ local function onOffer(player, raw)
 		push(session) -- puts the client's window back to the offer the server has
 		return false, why
 	end
+	local before = session.offers[player]
 	session.offers[player] = offer
+	announceListing(player, session, before, offer)
 	resetAccepts(session)
 	push(session)
 	return true, nil
@@ -890,6 +923,7 @@ function Trade.build(worldFolder)
 	remotes.Parent = ReplicatedStorage
 
 	Players.PlayerRemoving:Connect(function(player)
+		lastAnnounce[player] = nil
 		lastInvite[player] = nil
 		local session = sessions[player]
 		if session then
@@ -922,5 +956,8 @@ function Trade.build(worldFolder)
 		end
 	end)
 end
+
+-- For SelfTests only.
+Trade.test = { mutatedNew = mutatedNew }
 
 return Trade
