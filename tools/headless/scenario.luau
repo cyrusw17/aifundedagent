@@ -83,8 +83,18 @@ local function join()
 		H.reportError("scenario: the player's profile didn't load within 30 s", "", "scenario")
 		return p
 	end
-	local done = p:GetAttribute("LandPlot") ~= nil
+	-- An owner picks where the farm goes (src/client/PlotPick.client.luau): take the suggested plot.
+	H.advance(1)
 	local land = ReplicatedStorage:FindFirstChild("Land")
+	local choice = p:GetAttribute("PlotChoice")
+	local settle = land and land:FindFirstChild("Settle")
+	if choice and settle then
+		H.run(function()
+			print("Land.Settle plot", choice, "->", H.invokeServer(settle, p, choice))
+		end, "Land.Settle")
+		H.advance(1)
+	end
+	local done = p:GetAttribute("LandPlot") ~= nil
 	local buy = land and land:FindFirstChild("Buy")
 	if not done and buy then
 		H.run(function()
