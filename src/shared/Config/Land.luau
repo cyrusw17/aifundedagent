@@ -7,6 +7,14 @@ local Rustic = require(script.Parent.Rustic)
 local PRICE = Prices.Plot -- every plot costs the same (Config/Prices explains why)
 local TILES = Vector2.new(12, 10) -- and has the same grid
 
+local function expansionPrice(bought: number): number
+	local list: any = Prices.PlotExpansion
+	if typeof(list) == "table" then
+		return list[math.clamp(math.floor(bought) + 1, 1, #list)]
+	end
+	return list
+end
+
 return {
 	RefundShare = Prices.RefundShare, -- removing a piece gives back this share of its price
 
@@ -24,9 +32,13 @@ return {
 		{ zone = "plot_6", name = "Plot 6", price = PRICE, tiles = TILES, open = "N" },
 	},
 	StripDepth = 8,
-	-- The back ExpansionRows rows of every plot start locked; owners buy them one at a time at PlotExpansion each.
-	ExpansionRows = 2,
-	ExpansionPrice = Prices.PlotExpansion,
+	-- The back ExpansionRows rows of every plot start locked, so a first plot is 12 x 6 tiles; owners buy the rows one at
+	-- a time and each costs more than the last (expansionPrice).
+	ExpansionRows = 4,
+	ExpansionPrice = expansionPrice(0), -- the first row
+	-- The price of the next row for a plot with bought rows already bought. Prices.PlotExpansion is a list (one price
+	-- per row, the last one repeating) or one number for every row.
+	expansionPrice = expansionPrice,
 	SecondPlotPrice = Prices.SecondPlot, -- a save can own a second plot at this price
 	PolisherPrice = Prices.Pieces.needle_polisher, -- the needle bin's polishing wheel (Machines bin.fitPolisher)
 	BinDividersPrice = Prices.BinDividers, -- the needle bin's type dividers (Machines bin.splitByType)

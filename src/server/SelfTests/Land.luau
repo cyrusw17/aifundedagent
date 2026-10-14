@@ -9,6 +9,7 @@ local Services = script.Parent.Parent.Services
 local Land = require(Services.Land)
 local Data = require(Services.Data)
 local Needle = require(Services.Needle)
+local LandConfig = require(game:GetService("ReplicatedStorage").Shared.Config.Land)
 
 -- A stand-in owner: just enough of a Player for claim and release.
 local function fakeOwner(userId)
@@ -404,6 +405,13 @@ local function registerAudit(SelfTest)
 		local L = Land.test
 		local Bales = require(Services.Bales)
 		local SB = L.SiloBales
+		-- Expansion rows cost more each time (or the same, while Prices.PlotExpansion is one number).
+		local rising = true
+		for bought = 1, LandConfig.ExpansionRows - 1 do
+			rising = rising and LandConfig.expansionPrice(bought) >= LandConfig.expansionPrice(bought - 1)
+		end
+		t.check("each expansion row costs at least as much as the last", rising)
+		t.equal("the first row's price is ExpansionPrice", LandConfig.expansionPrice(0), LandConfig.ExpansionPrice)
 		local plot = { ownerId = -941, crew = { [-942] = true } }
 		t.check("silo takes ownerless bales", SB.mayTake(plot, nil))
 		t.check("silo takes the owner's and crew's bales", SB.mayTake(plot, -941) and SB.mayTake(plot, -942))
@@ -702,6 +710,18 @@ return function(SelfTest)
 			L.release(a)
 			t.check("releasing the second farm keeps the first", L.plotOf[owner] == b)
 			t.equal("FarmCount is 1", owner:GetAttribute("FarmCount"), 1)
+
+			-- Expansion rows: a save from the 2-row days keeps every row it had open; a new save starts fully locked.
+			L.claim(a, owner, { owned = true, items = {}, expansions = 0 }, "land2")
+			t.equal("an old 2-row save with no rows bought keeps its 8 open rows", a.locked, LandConfig.ExpansionRows - 2)
+			L.release(a)
+			L.claim(a, owner, { owned = true, items = {}, expansions = 0, rows = LandConfig.ExpansionRows }, "land2")
+			t.equal("a new plot starts with every expansion row locked", a.locked, LandConfig.ExpansionRows)
+			L.release(a)
+			L.claim(a, owner, { owned = true, items = {}, expansions = 1, rows = LandConfig.ExpansionRows }, "land2")
+			t.equal("bought rows stay open", a.locked, LandConfig.ExpansionRows - 1)
+			L.release(a)
+			t.check("the owner settles nothing when no picker is open", not (L.onSettle(owner, a.index)))
 
 			-- Remote guards (Conveyor audit 24/25).
 			local before = #b.list
