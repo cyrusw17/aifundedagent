@@ -14,6 +14,7 @@ local Hud = require(UI:WaitForChild("Hud"))
 local Menus = require(UI:WaitForChild("Menus"))
 local Waypoint = require(UI:WaitForChild("Waypoint"))
 local Places = require(UI:WaitForChild("Places"))
+local LandConfig = require(ReplicatedStorage.Shared:WaitForChild("Config"):WaitForChild("Land"))
 
 local Theme = Kit.Theme
 local C, F, T = Theme.Colors, Theme.Fonts, Theme.Text
@@ -92,6 +93,17 @@ local STEPS = {
 		label = "Sell pad",
 	},
 	{
+		title = "Buy your first plot",
+		text = "Sell a couple of shovel loads until you have $50, then stand on the rug at the Land Office counter and buy a plot. Plots are the brown squares edged in dark timber.",
+		done = function()
+			return (player:GetAttribute("LandPlot") or 0) > 0
+		end,
+		target = function()
+			return Places.get("landoffice")
+		end,
+		label = "Land Office",
+	},
+	{
 		title = "Break one open",
 		text = "Take out the shovel (press 1) and click a bale. It bursts into loose hay.",
 		done = function()
@@ -125,21 +137,25 @@ local STEPS = {
 		label = "Homestead Motors",
 	},
 	{
-		title = "Buy land",
-		text = "Stand on the rug at the Meadow Land Office counter and pick a plot.",
-		done = function()
-			return (player:GetAttribute("LandPlot") or 0) > 0
-		end,
-		target = function()
-			return Places.get("landoffice")
-		end,
-		label = "Land Office",
-	},
-	{
 		title = "Build a sorter",
 		text = "On your plot press BUILD, then place belts and a Hand sieve. Sorted needles pay far more.",
 		done = function()
 			return flag("sorter")
+		end,
+		target = function()
+			return Places.myPlot()
+		end,
+		label = "Your plot",
+	},
+	{
+		title = "Grow your plot",
+		text = "The pale rows at the back of your plot are locked. In build mode press EXPAND to buy the next row. Each one costs a little more.",
+		done = function()
+			local plot = player:GetAttribute("LandPlot") or 0
+			local land = ReplicatedStorage:FindFirstChild("Land")
+			local info = plot > 0 and land and land:FindFirstChild("Plot" .. plot)
+			local locked = info and info:GetAttribute("LockedRows")
+			return typeof(locked) == "number" and locked < LandConfig.ExpansionRows
 		end,
 		target = function()
 			return Places.myPlot()
