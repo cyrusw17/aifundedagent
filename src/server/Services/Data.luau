@@ -1,16 +1,18 @@
 --!nonstrict
 -- Player state. The server owns it. Attributes mirror what the HUD needs to show.
--- Saves are session-locked: a slot records which server has it open (_lock), every write goes through UpdateAsync and
--- refuses to land if another live server holds the lock, and each save carries a version (_v) that migrations bring
--- up to date on load. The copy loaded at the start of each session is kept under a backup key, and a slot whose main
--- copy has gone missing loads from it.
+-- Saves are session-locked: a profile records which server has it open (_lock), every write goes through UpdateAsync
+-- and refuses to land if another live server holds the lock, and each save carries a version (_v) that migrations
+-- bring up to date on load. The copy loaded at the start of each session is kept under a backup key, and a profile
+-- whose main copy has gone missing loads from it.
 --
--- Every player has three save slots. On joining, the client shows the slot picker (Save 1-3 for empty slots, Load 1-3
--- for used ones) and nothing is loaded until one is picked: Data.get(player) is nil until then, and Data.loaded fires
--- once it is ready. A slot keeps cash, owned trucks and trailers, gloves, the needles in your pocket, the land plot
--- with everything built on it (and the needles in its bin), the bank account (balance, loans and history, see
--- Bank.luau), and quest progress (Quests.luau).
--- Players listed in Config/Land.luau Presets start an empty slot as their preset farm instead of from nothing.
+-- Every player has one profile, loaded on joining and saved every Config.AutosaveSeconds and on leaving. There is no
+-- picker: Data.get(player) is nil until the profile has loaded, then Data.loaded fires and the player attribute
+-- "SaveSlot" is set to 1 (clients read it as "your game is loaded"). A profile keeps cash, owned trucks and trailers,
+-- gloves, the needles in your pocket, the land plot with everything built on it (and the needles in its bin), the
+-- bank account (balance, loans and history, see Bank.luau), and quest progress (Quests.luau). The farm goes back on
+-- its old plot when that is free on this server, else on another free one (Land.luau).
+-- Profiles started before this replaced the three save slots: the first load copies over the slot played last.
+-- Players listed in Config/Land.luau Presets start a new profile as their preset farm instead of from nothing.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,13 +24,11 @@ local NeedleIndex = require(ReplicatedStorage.Shared.NeedleIndex)
 
 local Data = {}
 
-Data.SLOTS = 3
-Data.loaded = Instance.new("BindableEvent") -- (player) once a save slot is loaded
+Data.loaded = Instance.new("BindableEvent") -- (player) once the profile is loaded
 Data.beforeSave = nil -- optional function(player), called just before a save is written (Land keeps its plot current)
 
 local states = {}
-local summaries = {} -- player -> { [slot] = summary }, read once on join
-local choosing = {} -- player -> true while a slot is loading
+local loading = {} -- player -> true while the profile is loading
 -- player -> true when their saves couldn't be read on join. They still play (Studio with API access off lands here),
 -- but nothing is written for them, so an unreadable save is never overwritten by a fresh one.
 local offline = {}
@@ -50,12 +50,17 @@ local function legacyKey(player)
 	return "Player_" .. player.UserId
 end
 
-local function slotKey(player, slot)
-	return ("Player_%d_Slot%d"):format(player.UserId, slot)
+local function profileKey(player)
+	return ("Player_%d_Profile"):format(player.UserId)
 end
 
-local function backupKey(player, slot)
-	return slotKey(player, slot) .. "_Backup"
+local function backupKey(player)
+	return profileKey(player) .. "_Backup"
+end
+
+-- The old three-slot saves, read only to move a player onto a profile.
+local function slotKey(player, slot)
+	return ("Player_%d_Slot%d"):format(player.UserId, slot)
 end
 
 local function indexKey(player)
@@ -106,10 +111,10 @@ end
 -- Session locks. In Studio every session has the same empty JobId, so a Studio test never locks itself out.
 local JOB = game.JobId
 local LOCK_TTL = math.max(Config.AutosaveSeconds * 3, 180) -- a lock no server refreshed for this long is stale
--- Lets go of a slot this server locked but never loaded (the player left mid-load, or the copy couldn't be used),
+-- Lets go of a profile this server locked but never loaded (the player left mid-load, or the copy couldn't be used),
 -- so a rejoin isn't refused until the lock goes stale. Only our own lock is cleared.
-local function releaseLock(player, slot)
-	task.spawn(update, slotKey(player, slot), function(current)
+local function releaseLock(player)
+	task.spawn(update, profileKey(player), function(current)
 		if typeof(current) == "table" and typeof(current._lock) == "table" and current._lock.job == JOB then
 			current._lock = nil
 			return current
@@ -223,16 +228,6 @@ local function bankFrom(saved)
 	return bank
 end
 
-local function summarize(saved)
-	local bank = bankFrom(saved.bank)
-	return {
-		cash = (typeof(saved.cash) == "number" and saved.cash or 0) + (bank and bank.balance or 0),
-		plot = typeof(saved.land) == "table" and saved.land.owned and saved.land.plot or nil,
-		trucks = #stringList(saved.trucks),
-		savedAt = os.time(),
-	}
-end
-
 -- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, name, savedAt }.
 local function landFrom(land)
 	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
@@ -298,7 +293,7 @@ local function stateFrom(saved)
 		-- the needle index (NeedleIndex.luau): { found = { [entry] = true }, paid = { [milestone] = true } }
 		needleIndex = NeedleIndex.clean(saved.needleIndex),
 		finds = countMap(saved.finds), -- foreign objects kept, { [findId] = count } (Finds.luau)
-		-- finder's rewards already paid in this slot, { [findId] = 1 }: paid once per kind, ever, even if the find is
+		-- finder's rewards already paid in this profile, { [findId] = 1 }: paid once per kind, ever, even if the find is
 		-- later traded away (Finds.luau)
 		findsPaid = countMap(saved.findsPaid),
 		-- earned tool skins (ToolSkins.luau): { owned = { id, ... }, worn = { Shovel = id?, Rake = id? } }
@@ -381,8 +376,8 @@ end
 -- For SelfTests: the save shape without a DataStore.
 Data.test = { stateFrom = stateFrom, toSave = toSave }
 
--- True when this player's slot is being written: loaded, the store reachable, and the save not set aside (read
--- failed on join, or another server took the slot's lock). Trades need it, so nothing traded can be lost.
+-- True when this player's profile is being written: loaded, the store reachable, and the save not set aside (read
+-- failed on join, or another server took the profile's lock). Trades need it, so nothing traded can be lost.
 function Data.isSaving(player)
 	return states[player] ~= nil and store ~= nil and not offline[player]
 end
@@ -425,7 +420,7 @@ function Data.sync(player)
 	end
 	player:SetAttribute("NeedlesHeld", inPocket)
 	player:SetAttribute("Thatch", state.thatch or 0)
-	-- Every alloy, so a slot switch never leaves the last slot's numbers showing.
+	-- Every alloy, so none is left unset.
 	for _, alloy in Alloys do
 		player:SetAttribute("Material_" .. alloy.id, (state.materials or {})[alloy.id] or 0)
 	end
@@ -436,120 +431,148 @@ function Data.toast(player, text)
 	player:SetAttribute("ToastId", (player:GetAttribute("ToastId") or 0) + 1)
 end
 
--- Reads the slot summaries for the picker. A save from before slots existed becomes slot 1.
-local function loadSummaries(player)
-	local ok, index = read(indexKey(player))
-	local list = {}
-	if ok and typeof(index) == "table" then
-		for slot = 1, Data.SLOTS do
-			if typeof(index[tostring(slot)]) == "table" then
-				list[slot] = index[tostring(slot)]
-			end
-		end
-	elseif ok then
-		local okOld, old = read(legacyKey(player))
-		if not okOld then
-			ok = false
-		elseif typeof(old) == "table" then
-			if write(slotKey(player, 1), old) and write(indexKey(player), { ["1"] = summarize(old) }) then
-				list[1] = summarize(old)
-			else
-				ok = false -- keep the old save untouched until it can be moved
-			end
+-- The used slots in an old slot index ({ ["1"] = { savedAt, ... }, ... }), the one saved last first.
+local function newestSlots(index)
+	local order = {}
+	for slot = 1, 3 do
+		local entry = index[tostring(slot)]
+		if typeof(entry) == "table" then
+			table.insert(order, { slot = slot, at = typeof(entry.savedAt) == "number" and entry.savedAt or 0 })
 		end
 	end
-	offline[player] = not ok or nil
-	summaries[player] = list
-	return ok
-end
-
--- What the picker shows: one entry per slot.
-function Data.listSlots(player)
-	while summaries[player] == nil and player.Parent do
-		task.wait(0.1)
-	end
-	local list = summaries[player] or {}
-	local preset = presetFor(player)
+	table.sort(order, function(a, b)
+		return a.at > b.at
+	end)
 	local out = {}
-	for slot = 1, Data.SLOTS do
-		local s = list[slot]
-		out[slot] = s and { used = true, cash = s.cash, plot = s.plot, trucks = s.trucks, savedAt = s.savedAt }
-			or { used = false, preset = preset ~= nil, plot = preset and preset.land and preset.land.plot or nil }
+	for _, entry in order do
+		table.insert(out, entry.slot)
 	end
-	return out, store ~= nil and player:GetAttribute("SavesOnline") == true
+	return out
+end
+Data.test.newestSlots = newestSlots
+
+-- The old slot save to move onto a new profile: the slot saved last by the slot index, or the save from before slots
+-- (which the index never listed). ok is false when the store couldn't be read, so nothing is started over it.
+local function oldSave(player)
+	local ok, index = read(indexKey(player))
+	if not ok then
+		return false, nil
+	end
+	if typeof(index) ~= "table" then
+		local okOld, old = read(legacyKey(player))
+		return okOld, typeof(old) == "table" and old or nil
+	end
+	-- Newest first; a slot whose main copy is gone falls back to its backup, then to the next slot.
+	for _, slot in newestSlots(index) do
+		for _, key in { slotKey(player, slot), slotKey(player, slot) .. "_Backup" } do
+			local okSlot, saved = read(key)
+			if not okSlot then
+				return false, nil
+			end
+			if typeof(saved) == "table" then
+				saved._lock = nil
+				return true, saved
+			end
+		end
+	end
+	return true, nil
 end
 
--- Loads a slot and starts the game for this player. plot is the plot they picked in the picker (or nil): Land.luau
--- puts the save's farm there, or buys it for a save with no land yet. Returns ok and a message.
-function Data.choose(player, slot, plot)
-	if states[player] or choosing[player] then
-		return false, "Already playing."
-	end
-	if typeof(slot) ~= "number" or slot < 1 or slot > Data.SLOTS or math.floor(slot) ~= slot then
-		return false, "No such save."
-	end
-	choosing[player] = true
-	-- Wait for the slot list, so offline is known before anything can be written.
-	while summaries[player] == nil and player.Parent do
-		task.wait(0.1)
-	end
-	-- Always read the slot itself: the index can miss a slot whose index write failed, and a slot that looks empty
-	-- must never be started fresh over real progress. Reading takes the slot's session lock; when another server still
-	-- holds it (the player just left it and its last save is landing), wait a little and try again.
-	local saved, restored = nil, false
-	if not offline[player] then
-		local locked = false
-		for try = 1, 4 do
-			locked = false
-			local seen = nil
-			local ok = update(slotKey(player, slot), function(current)
-				seen, locked = nil, false
-				if typeof(current) ~= "table" then
-					return nil
-				end
-				if heldElsewhere(current) then
-					locked = true
-					return nil
-				end
-				current._lock = { job = JOB, at = os.time() }
-				seen = current
-				return current
-			end)
-			if not ok then
-				choosing[player] = nil
-				return false, "Couldn't read that save. Try again."
+-- Reads the profile, taking its session lock. Returns ok, saved (nil for a new player), restored (loaded from the
+-- backup), and why it failed. When another server still holds the lock (the player just left it and its last save
+-- is landing) it waits and tries again.
+local function readProfile(player)
+	local saved, locked = nil, false
+	for try = 1, 10 do
+		local seen = nil
+		local ok = update(profileKey(player), function(current)
+			seen, locked = nil, false
+			if typeof(current) ~= "table" then
+				return nil
 			end
-			saved = seen
-			if not locked or try == 4 or not player.Parent then
-				break
+			if heldElsewhere(current) then
+				locked = true
+				return nil
 			end
+			current._lock = { job = JOB, at = os.time() }
+			seen = current
+			return current
+		end)
+		if not ok then
+			return false, nil, false, "read"
+		end
+		saved = seen
+		if not locked or not player.Parent then
+			break
+		end
+		if try < 10 then
 			task.wait(3)
 		end
-		if locked then
-			choosing[player] = nil
-			return false, "That save is still open on another server. Try again in a minute."
+	end
+	if locked then
+		return false, nil, false, "locked"
+	end
+	if saved then
+		return true, saved, false
+	end
+	-- No profile: its backup (the main copy went missing), else the old slot save it replaces.
+	local okBackup, backup = read(backupKey(player))
+	if not okBackup then
+		return false, nil, false, "read"
+	end
+	if typeof(backup) == "table" then
+		backup._lock = nil
+		return true, backup, true
+	end
+	local okOld, old = oldSave(player)
+	if not okOld then
+		return false, nil, false, "read"
+	end
+	return true, old, false
+end
+
+-- Loads the player's profile and starts the game for them. Runs once, on joining.
+function Data.load(player)
+	if states[player] or loading[player] then
+		return false
+	end
+	loading[player] = true
+	local saved, restored, why = nil, false, nil
+	if store then
+		local ok
+		ok, saved, restored, why = readProfile(player)
+		if not ok then
+			offline[player] = true -- still plays, but nothing is written over the save it couldn't read
+			saved, restored = nil, false
 		end
-		-- The slot is listed but its main copy is gone: load the backup.
-		if saved == nil and summaries[player] and summaries[player][slot] ~= nil then
-			local okBackup, backup = read(backupKey(player, slot))
-			if okBackup and typeof(backup) == "table" then
-				saved, restored = backup, true
-			end
-		end
-		if saved then
-			saved = migrate(saved)
-			if not saved then
-				choosing[player] = nil
-				releaseLock(player, slot)
-				return false, "That save is from a newer version of the game. Rejoin to get the update."
-			end
+	else
+		offline[player] = true
+	end
+	if saved then
+		saved = migrate(saved)
+		if not saved then
+			offline[player] = true
+			why = "newer"
+		else
 			-- The copy that loaded is a known good one: keep it as the backup.
 			local good = copy(saved)
 			good._lock = nil
-			task.spawn(write, backupKey(player, slot), good)
+			task.spawn(write, backupKey(player), good)
 		end
 	end
-	local used = saved ~= nil
+	-- Services hand out tools and move the player when the profile loads, so wait for the first character (the old
+	-- slot picker only loaded once the player was standing in the world).
+	local waited = 0
+	while player.Parent and not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) and waited < 30 do
+		waited += task.wait(0.1)
+	end
+	if not player.Parent then
+		loading[player] = nil
+		if not offline[player] then
+			releaseLock(player)
+		end
+		return false
+	end
 	local fresh = saved == nil
 	if fresh then
 		local preset = presetFor(player)
@@ -559,40 +582,42 @@ function Data.choose(player, slot, plot)
 			item.paid = 0
 		end
 	end
-	if not player.Parent then
-		choosing[player] = nil
-		if not offline[player] then
-			releaseLock(player, slot)
-		end
-		return false, nil
-	end
 	local state = stateFrom(saved)
-	state.slot = slot
 	state.fresh = fresh
-	state.pickedPlot = typeof(plot) == "number" and plot or nil
 	states[player] = state
-	choosing[player] = nil
-	player:SetAttribute("SaveSlot", slot)
+	loading[player] = nil
+	player:SetAttribute("SavesOnline", not offline[player])
+	player:SetAttribute("SaveSlot", 1)
 	Data.sync(player)
 	Data.loaded:Fire(player)
-	if fresh or restored then
-		task.spawn(Data.save, player) -- so the slot shows as used next time, or the restored copy is the main one again
+	-- Write the profile straight away, so a new, restored or moved-over save is the main copy from now on.
+	task.spawn(Data.save, player)
+	local note = nil
+	if why == "locked" then
+		note = "Your save is still open on another server, so this game won't be saved. Rejoin in a minute."
+	elseif why == "newer" then
+		note = "Your save is from a newer version of the game, so this one won't save. Rejoin to get the update."
+	elseif offline[player] then
+		note = "Your save couldn't be loaded, so this game won't be saved. Rejoin to try again."
+			.. (game:GetService("RunService"):IsStudio() and " In Studio, turn on Game Settings > Security > Enable Studio Access to API Services." or "")
+	elseif restored then
+		note = "Your save's main copy couldn't be found, so it was loaded from its backup."
 	end
-	if restored then
+	if note then
 		task.delay(3, function()
 			if player.Parent then
-				Data.toast(player, "Your save's main copy couldn't be found, so it was loaded from its backup.")
+				Data.toast(player, note)
 			end
 		end)
 	end
-	return true, used and ("Loaded save %d."):format(slot) or ("Started save %d."):format(slot)
+	return true
 end
 
 -- One write per player at a time, so an older snapshot can never land after a newer one. A save asked for while one
 -- is writing waits for it, and the writer then saves once more with the newest state.
 local saving, saveAgain, saveFinal = {}, {}, {}
 local saveOnce
--- final (on leaving) also gives up the slot's session lock.
+-- final (on leaving) also gives up the profile's session lock.
 function Data.save(player, final)
 	if final then
 		saveFinal[player] = true
@@ -618,10 +643,10 @@ end
 
 saveOnce = function(player, final)
 	local state = states[player]
-	if not state or not store or not state.slot or offline[player] then
+	if not state or not store or offline[player] then
 		return
 	end
-	-- state.skipBeforeSave: a rebirth (Rebirth.luau) saves a reset slot, and Land must not copy the old farm back in.
+	-- state.skipBeforeSave: a rebirth (Rebirth.luau) saves a reset profile, and Land must not copy the old farm back in.
 	if Data.beforeSave and not state.skipBeforeSave then
 		pcall(Data.beforeSave, player)
 	end
@@ -629,7 +654,7 @@ saveOnce = function(player, final)
 	saved._v = SAVE_VERSION
 	saved._lock = if final then nil else { job = JOB, at = os.time() }
 	local lost = false
-	local ok = update(slotKey(player, state.slot), function(current)
+	update(profileKey(player), function(current)
 		lost = heldElsewhere(current)
 		if lost then
 			return nil
@@ -637,22 +662,11 @@ saveOnce = function(player, final)
 		return saved
 	end)
 	if lost then
-		-- Another server opened this slot (this one stopped refreshing its lock): its copy wins, and this server stops
-		-- writing so the two never overwrite each other.
+		-- Another server opened this profile (this one stopped refreshing its lock): its copy wins, and this server
+		-- stops writing so the two never overwrite each other.
 		offline[player] = true
-		warn(("[Needlewood] save %d for %d is open on another server; this server stopped saving it"):format(state.slot, player.UserId))
+		warn(("[Needlewood] the save for %d is open on another server; this server stopped saving it"):format(player.UserId))
 		Data.toast(player, "This save was opened on another server, so this server has stopped saving it.")
-		return
-	end
-	if ok then
-		local list = summaries[player] or {}
-		list[state.slot] = summarize(saved)
-		summaries[player] = list
-		local index = {}
-		for slot, s in list do
-			index[tostring(slot)] = s
-		end
-		write(indexKey(player), index)
 	end
 end
 
@@ -684,46 +698,21 @@ end
 function Data.release(player)
 	Data.save(player, true)
 	states[player] = nil
-	summaries[player] = nil
-	choosing[player] = nil
 	offline[player] = nil
 end
 
 local function onPlayerAdded(player)
-	local online = loadSummaries(player)
-	player:SetAttribute("SavesOnline", online)
+	local ok, err = pcall(Data.load, player)
+	if not ok then
+		loading[player] = nil
+		warn("[Needlewood] profile load failed: " .. tostring(err))
+	end
 end
 
 function Data.start()
-	-- The slot picker's remotes (src/client/Saves.client.luau).
-	local remotes = Instance.new("Folder")
-	remotes.Name = "SaveSlots"
-	local list = Instance.new("RemoteFunction")
-	list.Name = "List"
-	list.Parent = remotes
-	local choose = Instance.new("RemoteFunction")
-	choose.Name = "Choose"
-	choose.Parent = remotes
-	remotes.Parent = ReplicatedStorage
-	list.OnServerInvoke = function(player)
-		local ok, slots, online = pcall(Data.listSlots, player)
-		if not ok then
-			warn("[Needlewood] slot list failed: " .. tostring(slots))
-			return {}, false
-		end
-		return slots, online
-	end
-	choose.OnServerInvoke = function(player, slot, plot)
-		local ok, result, message = pcall(Data.choose, player, slot, plot)
-		if not ok then
-			choosing[player] = nil
-			warn("[Needlewood] slot load failed: " .. tostring(result))
-			return false, "Something went wrong loading that save."
-		end
-		return result, message
-	end
-
-	Players.PlayerAdded:Connect(onPlayerAdded)
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(onPlayerAdded, player)
+	end)
 	Players.PlayerRemoving:Connect(Data.release)
 	for _, player in Players:GetPlayers() do
 		task.spawn(onPlayerAdded, player)

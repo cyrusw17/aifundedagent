@@ -1,4 +1,4 @@
--- Headless boot scenario: run Main.server.luau, let the world settle, have a player join and pick save slot 1, play
+-- Headless boot scenario: run Main.server.luau, let the world settle, have a player join (their profile loads by itself), play
 -- for a minute of simulated time, leave, shut down. Then print a summary. run.py appends this after the mock and
 -- the bundled sources; MOUNTS (the Rojo tree) and OPTIONS are defined by run.py.
 local t0 = os.clock -- simulated clock; use the real one for timing
@@ -52,8 +52,9 @@ if coroutine.status(mainThread) ~= "dead" then
 	print(("NOTE Main.server.luau is still running after %.0f s (parked: %s)"):format(H.now, tostring(H.parked[mainThread] or "task.wait")))
 end
 
--- 3. A player joins and picks save slot 1 ---------------------------------------------------------------------------
+-- 3. A player joins and their profile loads ---------------------------------------------------------------------------
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LandConfig = require(ReplicatedStorage.Shared.Config.Land)
 local toasts = {}
 local function join()
 	local p
@@ -70,39 +71,46 @@ local function join()
 	end, "CharacterAdded")
 	H.advance(2)
 
-	local slots = ReplicatedStorage:FindFirstChild("SaveSlots")
-	local list = slots and slots:FindFirstChild("List")
-	local choose = slots and slots:FindFirstChild("Choose")
-	if not (list and choose) then
-		H.reportError("scenario: ReplicatedStorage.SaveSlots.List/Choose not found, so the player can't pick a slot", "", "scenario")
+	-- The profile loads by itself on joining (Data.luau). A new profile has no land, so buy the first plot nobody owns
+	-- at the Land Office, like a new player would.
+	local waited = 0
+	while not p:GetAttribute("SaveSlot") and waited < 30 do
+		H.advance(0.5)
+		waited += 0.5
+	end
+	print("profile loaded:", p:GetAttribute("SaveSlot") == 1, "online:", p:GetAttribute("SavesOnline"), "plot:", p:GetAttribute("LandPlot"))
+	if not p:GetAttribute("SaveSlot") then
+		H.reportError("scenario: the player's profile didn't load within 30 s", "", "scenario")
 		return p
 	end
-	local done = false
-	H.run(function()
-		local slotList, online = H.invokeServer(list, p)
-		local first = typeof(slotList) == "table" and slotList[1]
-		print("SaveSlots.List ->", typeof(slotList) == "table" and #slotList or slotList, "slots, online:", online, "slot 1 used:", first and first.used)
-		-- the first plot nobody owns, like the client's picker (Saves.client.luau)
-		local land = ReplicatedStorage:FindFirstChild("Land")
-		local best
-		for _, info in land and land:GetChildren() or {} do
-			if info:IsA("Configuration") then
-				local owner = info:GetAttribute("OwnerId") or 0
-				local index = info:GetAttribute("Index")
-				if (owner == 0 or owner == p.UserId) and index and (not best or index < best) then
-					best = index
+	local done = p:GetAttribute("LandPlot") ~= nil
+	local land = ReplicatedStorage:FindFirstChild("Land")
+	local buy = land and land:FindFirstChild("Buy")
+	if not done and buy then
+		H.run(function()
+			local best
+			for _, info in land:GetChildren() do
+				if info:IsA("Configuration") then
+					local owner = info:GetAttribute("OwnerId") or 0
+					local index = info:GetAttribute("Index")
+					if owner == 0 and index and (not best or index < best) then
+						best = index
+					end
 				end
 			end
-		end
-		print("picking slot 1, plot", best)
-		local ok, message = H.invokeServer(choose, p, 1, best)
-		print("SaveSlots.Choose ->", ok, message)
-		if ok ~= true then
-			H.reportError("scenario: choosing save slot 1 failed: " .. tostring(message), "", "scenario")
-		end
-		done = true
-	end, "SaveSlots.Choose")
-	local waited = 0
+			local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				root.CFrame = CFrame.new(LandConfig.OfficeCenter + Vector3.new(0, 3, 0))
+			end
+			local ok, message = H.invokeServer(buy, p, best)
+			print("Land.Buy plot", best, "->", ok, message)
+			if ok ~= true then
+				H.reportError("scenario: buying plot " .. tostring(best) .. " failed: " .. tostring(message), "", "scenario")
+			end
+			done = true
+		end, "Land.Buy")
+	end
+	waited = 0
 	while not done and waited < 30 do
 		H.advance(0.5)
 		waited += 0.5
@@ -463,7 +471,7 @@ H.run(function()
 end, "PlayerRemoving")
 H.advance(5)
 -- 5b. Rejoin and load the save just written (rebuilds the farm from the DataStore).
-phase("player rejoins and loads slot 1")
+phase("player rejoins and loads their profile")
 player = join()
 H.advance(20)
 print("after reload: Cash", player:GetAttribute("Cash"), "SaveSlot", player:GetAttribute("SaveSlot"))

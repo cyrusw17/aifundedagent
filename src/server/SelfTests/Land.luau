@@ -142,10 +142,27 @@ local function registerSaves(SelfTest)
 		-- Versions and locks.
 		t.equal("a save from before versions migrates to the current version", Data.migrate({ cash = 5 })._v, Data.SAVE_VERSION)
 		t.check("a save from a newer version is refused", Data.migrate({ _v = Data.SAVE_VERSION + 1 }) == nil)
-		t.check("a fresh lock from another server holds the slot", Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() } }))
+		t.check("a fresh lock from another server holds the profile", Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() } }))
 		t.check("a lock nobody refreshed for an hour is stale", not Data.heldElsewhere({ _lock = { job = "elsewhere", at = os.time() - 3600 } }))
 		t.check("this server's own lock never blocks it", not Data.heldElsewhere({ _lock = { job = game.JobId, at = os.time() } }))
 		t.check("an unlocked save is free", not Data.heldElsewhere({ cash = 1 }))
+
+		-- One profile per player, loaded on joining (no slot picker).
+		local ReplicatedStorage = game:GetService("ReplicatedStorage")
+		t.check("there is no slot picker remote", ReplicatedStorage:FindFirstChild("SaveSlots") == nil)
+		if D.newestSlots then
+			local order = D.newestSlots({ ["1"] = { savedAt = 100 }, ["3"] = { savedAt = 300 }, ["2"] = { savedAt = 200 } })
+			t.equal("the slot played last moves onto the profile first", table.concat(order, ","), "3,2,1")
+			t.equal("an empty slot index moves nothing", #D.newestSlots({}), 0)
+		else
+			t.check("Data.test.newestSlots exists", false)
+		end
+		for _, player in game:GetService("Players"):GetPlayers() do
+			if Data.get(player) then
+				t.equal(player.Name .. "'s profile is marked loaded", player:GetAttribute("SaveSlot"), 1)
+				t.check(player.Name .. "'s profile can't load twice", Data.load(player) == false)
+			end
+		end
 
 		-- Shutdown saves run side by side: 12 two-second saves finish in about 2 seconds, and a stuck one can't hold
 		-- shutdown past the deadline.
@@ -166,7 +183,7 @@ local function registerSaves(SelfTest)
 		took = os.clock() - started
 		t.check(("a stuck save stops at the deadline (%.1f s, %d of 2 done)"):format(took, finished), finished == 1 and took < 2)
 
-		-- Which per-slot sets this build saves at all.
+		-- Which per-profile sets this build saves at all.
 		COUNT_FIELDS = { "secrets", "discovered" }
 		savesField = {}
 		for _, field in COUNT_FIELDS do
