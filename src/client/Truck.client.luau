@@ -146,6 +146,8 @@ local function start(seat)
 		speed = 0,
 		yaw = yawOf(chassis.CFrame),
 		up = Vector3.yAxis,
+		stuck = 0,
+		warned = false,
 	}
 	active = state
 	hint.Text = DRIVE_HINT
