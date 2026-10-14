@@ -157,6 +157,11 @@ local function registerSaves(SelfTest)
 		else
 			t.check("Data.test.newestSlots exists", false)
 		end
+		if D.justReborn then
+			t.check("a rebirth's save from a minute ago comes back for a fresh-start developer", D.justReborn({ rebirth = { count = 1, at = os.time() - 60 } }))
+			t.check("an old rebirth doesn't keep a fresh-start developer's save", not D.justReborn({ rebirth = { count = 1, at = os.time() - 3600 } }))
+			t.check("a save with no rebirth doesn't either", not D.justReborn({ cash = 5 }) and not D.justReborn(nil))
+		end
 		for _, player in game:GetService("Players"):GetPlayers() do
 			if Data.get(player) then
 				t.equal(player.Name .. "'s profile is marked loaded", player:GetAttribute("SaveSlot"), 1)
