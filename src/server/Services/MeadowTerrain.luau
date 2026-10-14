@@ -24,10 +24,11 @@ local SEED = Meadow.Seed * 17.31
 local AIR = Enum.Material.Air
 local GROUND = Enum.Material.Ground
 local WATER = Enum.Material.Water
--- Never Enum.Material.Grass: only Grass grows the tall decoration blades, and Terrain.Decoration cannot be turned
--- off from a script or Rojo (it is not scriptable). The meadow is LeafyGrass instead (Roblox has no Moss terrain material).
-local GRASS = Enum.Material.LeafyGrass
-local LEAFY = Enum.Material.LeafyGrass
+-- No grass at all (Cyrus, 2026-10-14: "get rid of all grass in the terrain"): Grass grows tall decoration blades that
+-- hide bales and needles, and Terrain.Decoration cannot be turned off from a script or Rojo (it is not scriptable).
+-- The meadow is bare earth: Ground, with patches of darker Mud.
+local GRASS = Enum.Material.Ground
+local LEAFY = Enum.Material.Mud
 local ROCK = Enum.Material.Rock
 local SAND = Enum.Material.Sand
 local MUD = Enum.Material.Mud
@@ -275,9 +276,9 @@ function MeadowTerrain.groundAt(x, z)
 	return MeadowTerrain.heightAt(x, z), Vector3.yAxis, nil
 end
 
--- Turns any Grass voxel left anywhere in the world into LeafyGrass, once the world map's terrain has finished writing.
--- Grass is the one material Roblox grows tall blades on, and a place baked or hand-painted before the switch can still
--- hold some. Runs in the background in 512-stud blocks; ReplaceMaterial is quick over air.
+-- Turns any Grass or LeafyGrass voxel left anywhere in the world into Ground, once the world map's terrain has
+-- finished writing: no terrain grass anywhere (Cyrus, 2026-10-14), even in a place baked or hand-painted before the
+-- switch or a region still painted with it. Runs in the background in 512-stud blocks; ReplaceMaterial is quick over air.
 function MeadowTerrain.sweepGrass(bounds)
 	task.spawn(function()
 		local terrain = Workspace.Terrain
@@ -291,7 +292,8 @@ function MeadowTerrain.sweepGrass(bounds)
 			for z = bounds.min.Y, bounds.max.Y - 1, STEP do
 				for y = LOW, HIGH - 1, 576 do
 					local region = Region3.new(Vector3.new(x, y, z), Vector3.new(x + STEP, y + 576, z + STEP)):ExpandToGrid(RES)
-					pcall(terrain.ReplaceMaterial, terrain, region, RES, Enum.Material.Grass, Enum.Material.LeafyGrass)
+					pcall(terrain.ReplaceMaterial, terrain, region, RES, Enum.Material.Grass, Enum.Material.Ground)
+					pcall(terrain.ReplaceMaterial, terrain, region, RES, Enum.Material.LeafyGrass, Enum.Material.Ground)
 				end
 				task.wait()
 			end
