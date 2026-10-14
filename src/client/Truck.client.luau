@@ -129,6 +129,9 @@ local function start(seat)
 	local drive = chassis and chassis:FindFirstChild("Drive")
 	local steer = chassis and chassis:FindFirstChild("Steer")
 	if not drive or not steer then
+		-- Shows in Studio's Output when a playtest truck will not drive, with what is missing.
+		warn(("[Needlewood] can't drive %s: chassis %s, Drive %s, Steer %s"):format(
+			model and model.Name or "?", tostring(chassis ~= nil), tostring(drive ~= nil), tostring(steer ~= nil)))
 		return
 	end
 
@@ -207,6 +210,17 @@ local function start(seat)
 		local right = forward:Cross(state.up)
 		steer.CFrame = CFrame.fromMatrix(Vector3.zero, right, state.up, -forward)
 		drive.PlaneVelocity = Vector2.new(0, -state.speed)
+		-- Throttle held for a while but the truck stands still: say why once, so a playtest log shows it.
+		if throttle ~= 0 and math.abs(actual) < 0.5 then
+			state.stuck = (state.stuck or 0) + dt
+			if state.stuck > 2 and not state.warned then
+				state.warned = true
+				warn(("[Needlewood] %s isn't moving: anchored %s, Drive enabled %s, MaxForce %.0f, mass %.0f, grounded %s"):format(
+					model.Name, tostring(chassis.Anchored), tostring(drive.Enabled), drive.MaxForce, mass, tostring(up ~= nil)))
+			end
+		else
+			state.stuck = 0
+		end
 	end)
 end
 
