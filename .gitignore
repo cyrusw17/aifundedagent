@@ -1,0 +1,15 @@
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+Packages/
+.DS_Store
+sourcemap.json
+node_modules/
+exports/
+
+# Rustic .glb props copied here for Studio Import 3D (the source lives in blender/exports/rustic)
+rustic-import/
+__pycache__/
+*.pyc
+blender/launch/renders/raw/

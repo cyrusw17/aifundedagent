@@ -1,0 +1,836 @@
+# Needlewood economy: what everything costs, and why
+
+Every price lives in one file, `src/shared/Config/Prices.luau`. The shops, sorters, land office, dealer, shovel stand
+and bank all read from it. `tools/economy_model.py` re-derives every table in this doc, so when a number changes you
+re-run it rather than redo the maths by hand.
+
+The earning rates below are estimates from the code (walk speeds, bale size, sorter speeds) and from guessed travel
+distances. They are not playtest data. Each one is written down in the model so it can be checked and changed.
+
+## The short version
+
+- **A Meadow bale is worth $47 raw.** It holds 90 strands of hay at $0.50 ($45), plus 2 hidden needles that the public
+  shop pays $1 each for.
+- **Sorting is where the money is.** Those 2 needles are worth $100 each once sorted. A hand sieve makes a bale worth
+  $75, and an optical sorter makes it $229. Richer regions hide more needles, and pricier ones.
+- **Every price is "time at the stage you'd buy it".** Small upgrades cost minutes of work, big ones an hour or two,
+  and machines pay themselves back on the V8 schedule.
+- **The bank makes the big prices fair.** A used pickup costs $6,000, like a real one. You can't pay cash for it in your
+  first 15 minutes, but you can put $1,200 down and let the bank lend the rest.
+- **A first playthrough reaches the Semi in about 15 hours** of play (model, one player, buying in a sensible order).
+
+## How prices are set
+
+1. **Earning rate first.** For each stage of the game, the model works out how many bales a player moves per minute
+   and what each bale is worth with the sorter they own. That gives dollars per hour at each stage.
+2. **Then time to afford.** Shovels cost about 30 minutes of what you earn just before you need them. Trucks cost one to
+   two hours, so they are real goals. Build pieces cost a few minutes, so building never stalls.
+3. **Then payback.** A machine's price is how long you're willing to wait for it to pay for itself, times the extra
+   money it makes. The targets are V8 Part C: hand sieve instant, shaker about 15 minutes, conveyor sorter about 30,
+   magnet drum about 75, optical sorter about 3.5 hours.
+4. **Then a sense check against real life**, where real life makes sense: a pickup costs about what a used pickup
+   costs, a trailer about a quarter to a third of the truck that pulls it, and bigger land costs more per tile.
+
+## The big fix: 2 needles a bale, not 18
+
+Before this change a bale hid about 18 needles (90 strands, each with a 20% chance). A raw bale paid $63, a
+hand-sieved one $315, and an optically sorted one about $1,700. The $50,000 optical sorter paid for itself in about 3
+minutes and a player could climb the whole ladder in a couple of hours.
+
+Now each hay type has one number, **needles per bale**, from the V8 table (`Prices.NeedlesPerBale`):
+
+| Hay | Meadow | Pine | Desert | Snow | Swamp | Volcano | Cave | Sky | Haunted | Star |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Needles per bale | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 14 | 20 |
+
+Richer hay pays twice: more needles, and needles worth more. When you break a bale with the shovel, a quarter of its
+needles tumble out where you can see them (about 1 in every 2 bales), and you can pick those up for full price.
+
+The sorters also lost their 20-second cap. Before, the hand sieve, shaker and conveyor sorter all took the same 20
+seconds per bale, so upgrading didn't feel faster. Now each tier is twice as fast as the last: 2, 4, 8, 16 and 30 bales
+a minute (30, 15, 7.5, 3.75 and 2 seconds a bale).
+
+## What a bale is worth
+
+| Region | Public shop | Hand sieve | Shaker table | Conveyor sorter | Magnet drum | Optical sorter |
+|---|---|---|---|---|---|---|
+| Meadow | $47 | $75 | $115 | $155 | $195 | $229 |
+| Pine Forest | $48 | $94 | $160 | $227 | $292 | $349 |
+| Desert | $49 | $129 | $241 | $353 | $465 | $560 |
+| Snow Peak | $50 | $165 | $325 | $485 | $645 | $781 |
+| Swamp | $51 | $198 | $402 | $606 | $810 | $983 |
+| Volcano | $53 | $405 | $885 | $1,365 | $1,845 | $2,253 |
+| Cave | $55 | $555 | $1,235 | $1,915 | $2,595 | $3,173 |
+| Sky Island | $57 | $1,305 | $2,985 | $4,665 | $6,345 | $7,773 |
+| Haunted Grove | $59 | $1,725 | $3,965 | $6,205 | $8,445 | $10,349 |
+
+## What a player earns at each stage
+
+Hand hauling assumes a bale is about 110 studs from the sell pad, carried at the loaded walk speed (7.4 bare, 9.1 with
+Garden Shovel) and walked back at 16. Trucks assume 9 seconds to load each bale by hand, 50 seconds of other work per trip,
+and a round-trip drive from your plot (half a minute in Meadow, 3 to 8 minutes to the other regions).
+
+| Stage | Bales/min hauled | Bales/min sorted | $/hour |
+|---|---|---|---|
+| 1. Hands, bare | 2.3 | 2.3 | $6,573 |
+| 2. Hands, Garden Shovel | 2.6 | 2.6 | $7,368 |
+| 2b. Wheelbarrow, public shop | 4.7 | 4.7 | $13,257 |
+| 3. Pickup, public shop | 3.7 | 3.7 | $10,398 |
+| 4. Pickup, plot + Hand sieve | 3.7 | 2.0 | $13,758 |
+| 5. Pickup, Shaker table | 3.7 | 3.7 | $25,441 |
+| 6. Flatbed, Shaker, Pine | 2.2 | 2.2 | $21,647 |
+| 7. Flatbed, Conveyor sorter, Desert | 1.9 | 1.9 | $40,591 |
+| 8. Box truck, Conveyor sorter, Snow | 3.1 | 3.1 | $90,494 |
+| 9. Box truck, Magnet drum, Swamp | 3.1 | 3.1 | $151,134 |
+| 10. Hauler, Magnet drum, Volcano | 3.9 | 3.9 | $436,625 |
+| 11. Hauler, Optical, Cave | 3.9 | 3.9 | $750,901 |
+| 12. Semi, Optical, Sky | 3.0 | 3.0 | $1,396,231 |
+
+One thing this table shows: **loading by hand is the bottleneck.** A pickup only moves about 1.6 times as many bales as
+walking, and the bigger trucks barely beat it in Meadow. Trucks earn their price on distance (the far regions), not on
+size. V8's field bale chutes (park under one, pull a lever, a bed's worth drops in) would fix this, and are worth
+building before the bigger trucks go on sale.
+
+## The price list
+
+### Wheelbarrow
+
+**$1,000** (`Prices.Wheelbarrow`; the hay tools thread set $400). It carries 3 bales a push, so by the model it hauls
+about 4.7 bales a minute to the sell pad, double what you carry by hand. Doubling your income is a big step, so it
+should cost about 10 minutes of hand hauling, not 3. At $1,000 it lands about 12 minutes in, between Garden Shovel and
+the pickup.
+
+One thing to fix in play, not in price: near camp the wheelbarrow outhauls the Rusty Pickup (4.7 bales a minute against
+3.7), because the truck is loaded one bale at a time by hand. The pickup still wins on longer hauls (at 250 studs the
+barrow drops to 2.8 a minute), which is every trip to your own plot and every other region. Letting the barrow tip its
+3 bales into a truck bed, or V8's field bale chutes, would make the truck the clear upgrade again.
+
+### Trucks (Homestead Motors)
+
+| Truck | Price | Why |
+|---|---|---|
+| Rusty Pickup | $6,000 | About what a real used pickup costs. 50 minutes of hand hauling in cash, or $1,200 down (about 10 minutes) with a truck loan. |
+| Farm Flatbed | $25,000 | About an hour at the shaker-table stage, when Pine Forest opens up. |
+| Box Truck | $90,000 | About two hours at the conveyor-sorter stage, before Snow Peak. |
+| Heavy Hauler | $350,000 | About two hours at the magnet-drum stage, before Volcano. |
+| Semi Rig | $1,500,000 | About two hours at the optical stage. The last truck. |
+
+These were already the prices in code, and the model says they sit in the right places, so they stay.
+
+### Trailers
+
+| Trailer | Price | Why |
+|---|---|---|
+| Wagon Trailer | $1,500 | A quarter of the pickup. Two more bales a trip. |
+| Small Trailer | $8,000 | About a third of the flatbed. |
+| Medium Trailer | $30,000 | About a third of the box truck. |
+| Large Trailer | $120,000 | About a third of the hauler. |
+| Bale Rack | $200,000 | Taller walls, so it carries more layers. |
+
+### Shovels (shovel stand)
+
+The tool tiers were gloves until Cyrus's hay change; they are now shovels, with the same keys (`Prices.Gloves`) and prices.
+
+| Shovel | Was | Now | Why |
+|---|---|---|---|
+| Garden Shovel | $250 | $250 | The first thing you buy, about 3 minutes in. |
+| Steel Shovel | $1,500 | $8,000 | About 20 minutes at the shaker stage, just before the tier-2 hay of Desert and Snow. |
+| Reinforced Shovel | $6,000 | $45,000 | About 30 minutes before Swamp's tier-3 hay. |
+| Iron Spade | $25,000 | $75,000 | About 30 minutes before Volcano and Cave. |
+| Starlight Shovel | $150,000 | $400,000 | About 30 minutes before Sky Island and Haunted Grove. |
+
+The old shovel (then glove) prices were far below the trucks of the same stage, so shovels would have been bought long before the
+hay that needs them.
+
+### Land (Land Office)
+
+Every plot is the same 12 x 10 tiles, so there is one price: **$50** (`Prices.Plot`; was $2,500, and $1,500 before
+that). Cyrus's playtest ask is that within the first minute a player sells hay, buys a plot and starts expanding it. A
+shovel scoop is 12 strands at $0.50 ($6) and a full carry is about $30, so two trips to the hay shop buy the plot. The
+plot is no longer the land goal; the rows are. A hand sieve and a short line still cost about $1,150 on top, and lift
+a bale from $47 to $75. The land loan is now pointless for a first plot, but it is harmless.
+
+**Plot expansion: $1,000, $2,500, $4,000, $6,000** (`Prices.PlotExpansion`, one price per row in buying order; was
+$5,000 a row for two rows). A new plot opens with its back four rows locked (12 x 6 tiles), and each row adds 12 tiles.
+The first row is a few minutes in, the last lands around the pickup and wagon stage. All land comes to $13,550, close
+to the old $12,500 (plot plus two $5,000 rows), so the money the climb asks for is unchanged; only its order is.
+
+**Second farm: $60,000** (`Prices.SecondPlot`, Land's placeholder was $25,000). A save can own one more plot. Three
+things set the price. First, hauling is the limit at almost every stage (the stage table sorts exactly what it hauls),
+so a second line mostly buys room and a second region's sorter, not double income. Second, it should come after the
+first plot is fully built out: plot, all four rows and a conveyor sorter cost about $43,550, so a second farm has to cost
+more or players would skip the rows. Third, each server has only six plots, so a second farm takes one from a player
+who might join later; it should be a real commitment. $60,000 is about 90 minutes at the conveyor-sorter stage and
+40 minutes at the box truck, a mid-game goal. $25,000 would arrive before the conveyor sorter and fill servers early.
+There is no loan for it: the land loan only covers a first plot.
+
+### Building on your land
+
+| Piece | Was | Now | Why |
+|---|---|---|---|
+| Conveyor belt | $20 | $25 | A few minutes of work buys a whole line. |
+| Hay buyer | $150 | $400 | Every line ends in one, and it is where all your farm money comes from. |
+| Parking pad | $100 | $250 | |
+| Hay silo | $3,000 | $5,000 | Keeps a sorter fed while you are out hauling. About 12 minutes of work at the shaker stage. |
+
+Removing a piece still refunds half its price.
+
+### Pieces and upgrades added by other threads (reviewed)
+
+These were priced by the threads that built them. I checked each against the stage table and kept them; the reasons
+are below so the whole list lives in one place.
+
+| Piece | Price | Why it fits |
+|---|---|---|
+| Raised belt, ramps | $60, $150 each | Belts that cross a line. A few of them cost a few minutes; they are layout, not income. |
+| Splitter, sort splitter | $300, $600 | Layout pieces. The sorting one costs more because it routes sorted bales away from plain ones. |
+| Display wall | $1,000 | Shows off needles; no income. A small early sink. |
+| Hay baler | $3,000 | Packs loose strands back into bales. A convenience you want early, about 25 minutes by hand. |
+| Hay barn | $15,000 | Holds 150 bales to the silo's 60 ($100 a bale of storage against the silo's $83), so a long line can run while you are away. About 20 minutes at the conveyor-sorter stage, the point where lines get long enough to need it. |
+| Needle vault | $6,000 | Stores needles with no parts. It also lets you hold a flooded needle type until the market recovers (prices fade back in about 10 minutes), worth at most 20% on what you hold. About 15 minutes at the shaker stage. |
+| Hay press | $8,000 | Makes thatch for building, not money, so it is priced like a mid-game toy. |
+| Needle polisher (bin upgrade) | $12,000 | +25% on up to 30 needles a minute. At the shaker stage it pays back in about 3 hours, and at the conveyor sorter in about 1.5, so it is a mid-game upgrade like the sorters. |
+| Bin dividers (bin upgrade) | $1,500 | Sorts the bin by needle type. Tidiness, so it is cheap. |
+| Alloy mixer | $20,000 | Turns needles into building alloy. Its cost is mostly the needles it eats, so the machine itself sits beside the conveyor sorter. |
+| Decor: flowers, bench, lantern, scarecrow | $200, $350, $500, $900 | Looks only. Each is a few minutes of early income, so a new farm can look lived in. Later decor should cost more (a fountain or a windmill at $10,000 to $50,000) so rich players still have something to spend on. |
+| Sorter oil | $250 a can | 10% faster for 25 bales. It only pays when the sorter holds the line back, so it is a small treat. |
+
+Quest rewards (the five quest shovels, the Alien Collector, the Starbeam Collector) cost $0 because you earn them; they
+can't be bought.
+
+### Needle sorters
+
+Priced from the V8 payback targets, for Meadow hay with the sorter kept full. "Now" includes `Prices.PacingScale` 1.2
+(H18, below), so each payback is 1.2x the V8 target:
+
+| Sorter | Finds | Bales/min | Value/bale | Extra $/hour over the public shop | Was | Now | Payback |
+|---|---|---|---|---|---|---|---|
+| Hand sieve | 15% | 2 | $75 | $3,360 | $250 | $500 | 9 min |
+| Shaker table | 35% | 4 | $115 | $16,320 | $1,500 | $4,800 | 18 min |
+| Conveyor sorter | 55% | 8 | $155 | $51,840 | $5,000 | $30,000 | 35 min |
+| Magnet drum | 75% | 16 | $210 | $156,480 | $15,000 | $230,000 | 88 min |
+| Optical sorter | 92% | 30 | $275 | $410,400 | $50,000 | $1,600,000 | 234 min |
+
+The magnet drum grades its needles A (+10%) and the optical sorter grades them S (+25%) (`Prices.NeedleGrades`,
+Conveyor's line simulator `tools/line_sim.py`). Grades made both machines pay back about 20% faster than the V8 targets
+(67 and 161 minutes), so their prices went up to hold the targets: the magnet drum from $175,000 to $190,000 and the
+optical sorter from $1.1M to $1.35M. Repricing beats rewriting the targets because the targets are what keep each
+sorter a goal of similar weight at its stage; the grades still make the upgrade feel better per needle.
+
+**Region machines.** Snow and Swamp hay can't be sorted until it goes through a thawing shed or a drying rack, and
+Volcano hay sorts at a penalty without an ash sifter (Conveyor's `Services/Treat.luau`). Each is priced to pay back in
+about 20 to 25 minutes of a solo haul (3 to 4 bales a minute) at the stage where you reach that region, not with a
+full magnet drum, which a solo player can't feed. At the first prices ($10,000, $20,000 and $60,000) they paid back in
+4 to 16 minutes at a realistic haul.
+
+| Machine | Region | Your line when you get there | Extra $/hour at ~3.5 bales/min | Was | Now | Payback |
+|---|---|---|---|---|---|---|
+| Thawing shed | Snow Peak | Box truck, conveyor sorter | about $81,000 | $10,000 | $30,000 | 22 min |
+| Drying rack | Swamp | Box truck, magnet drum | about $155,000 | $20,000 | $50,000 | 19 min |
+| Ash sifter | Volcano | Heavy hauler, magnet drum | about $232,000 (lifts the penalty only) | $60,000 | $100,000 | 26 min |
+
+A solo player hauling about 4 bales a minute can't keep a magnet drum or optical sorter full on their own. With a silo
+buffer, a crew, or richer hay, the payback gets much faster: an optical sorter on Cave hay pays back in about 12 minutes.
+
+### Selling
+
+| What | Pays | Why |
+|---|---|---|
+| Hay, any shop | $0.50 a strand | Cyrus's number. It makes a raw bale worth $45 of hay. |
+| Needles found by the public shop | $1 each | Cyrus's number. Low on purpose, so owning a sorter is worth it. |
+| Sorted needles (SELL NEEDLES pad) | $100 steel up to $5,000 cosmic | Unchanged from the needle table. |
+| A needle you spot and pick up yourself | Full sorted value | It's rare (about 1 per 2 bales broken) and it is the first hook that shows what sorting is worth. |
+
+### Finder's rewards (foreign objects in hay)
+
+The first boot, horseshoe, key, radio, ring and fossil you find in a broken bale each pay a one-time reward
+(`Prices.FinderRewards`). The rule is about $1 for every bale it takes on average to turn one up, with the two
+rarest doubled because they are the finds players talk about: boot $50 (1 in 50 bales), horseshoe $150, key $300,
+radio $600, ring $1,500 (1 in 1,000) and fossil $4,000 (1 in 2,000). They are a moment, not an income. All six
+together come to $6,600, under an hour of pickup earnings, so they never change what a player can afford.
+
+### The needle market
+
+Each server keeps its own needle prices (`Services/Market.luau`, numbers in `Prices.Market`). Selling a needle type
+pushes its price down, and the push fades by half every 10 minutes. A type nobody has sold lately pays up to 20% over
+its list price, and a flooded one drops as far as 20% under, never further. The point is the V8 one: flooding steel
+nudges players toward regions nobody else is farming, without ever making a needle worthless.
+
+List price is set where a solo shaker-table farm sells steel (about 40 recent sales). Rarer needles sell in smaller
+numbers, so they reach list price with fewer sales (a cosmic needle with 5). A board beside the hay shop's sell pad
+shows today's price for every type, with an arrow. Every needle sale goes through `Needle.priceOf`, so pads, the
+display wall and the ding pitch all follow the market. The earning tables above use list prices, since the swing
+averages out.
+
+### NPC buyer orders
+
+A board on the west side of base camp shows three orders from local buyers, with new ones every 20 minutes
+(`Services/Orders.luau`, numbers in `Prices.Orders`). Deliver on the pad beside it: set bales on it, or step on it with
+needles in your pocket. Each unit pays straight away, up to the order's amount for each player, so nothing is lost
+when the orders change.
+
+| Order | Amount | Pays | Why |
+|---|---|---|---|
+| Hay bales | 8 to 16 | $71 each (1.5x the public shop) | Gives a no-plot player a better buyer than the shop |
+| Sorted bales | 10 to 20 | $90 each (2x a hay buyer) | The sorting is already done, so the buyer pays for clean hay |
+| Steel needles | 6 to 15 | $125 each (1.25x list) | A small premium; mutated needles stay in your pocket |
+
+A full order is worth a few hundred to a thousand dollars more than selling normally. That is a 5 to 10 minute bonus at
+the pickup stage, and a reason to haul somewhere other than your own line. Orders don't change the earning tables,
+since they are capped per player. A sorted bale pays for the hay it actually holds (rate × strands ÷ 90), because a sorter can wrap a few
+loose strands into a full-size sorted bale; Conveyor's audit found that paid up to $1,800 a rotation for nearly empty
+bales.
+
+Savings interest is paid on the bank balance only. Loan money is held apart (see Loans), so it never earns interest.
+
+## The bank: Meadow Savings & Loan
+
+A stone-and-plank bank on the main road, east of the plot road, with a teller window. Press E at the window to open it.
+
+**Wallet and bank.** Every sale pays into your wallet. Buying anything takes from your wallet first, then from your
+bank balance, like paying with a debit card, so money in the bank is always spendable. The HUD shows both under your
+cash.
+
+**Savings interest.** Every 10 minutes, the bank pays interest on your balance: 1% on the first $10,000 and 0.5% on the
+next $90,000, up to $550 a payment. It is only paid if you sold something in those 10 minutes, so it rewards saving
+while you work and never pays an idle player. It is tiered upside down from a real bank on purpose: it gives a new farm
+a real boost and stays small next to a big farm's income.
+
+**Loans.** Two kinds, each for something you name:
+
+| Loan | Covers | Fee | Repaid from |
+|---|---|---|---|
+| Truck loan | Trucks and trailers you don't own | 10% | 25% of each sale |
+| Land loan | A plot, while you own none | 8% | 20% of each sale |
+
+You pay 20% of the price yourself when you take the loan. The bank then sets the whole price aside for you (your down
+payment plus its 80%), adds its fee once, and takes its share out of each sale until the loan is paid. The money it
+sets aside is for purchases only: shops spend it first, but it can't be withdrawn, traded at the trading post or used
+for anything but buying. If you sell back something the loan paid for, the refund repays the loan before any of it
+reaches you, and paying off early returns any loan money you haven't spent first. Without these rules a player could
+borrow, cash the loan out to a second account and never sell anything again (the health check found this). There are no due dates, no missed payments and no penalties, and you can pay the rest off
+at the window any time. You can have one of each kind at a time. Worked example: the $6,000 Rusty Pickup with $1,200
+down means borrowing $4,800 and paying back $5,280, a quarter of every sale until it's done (about two hours at pickup
+earnings).
+
+**Credit limit.** You can owe up to $5,000 plus twice everything this save has ever earned. A brand new farm can finance
+the pickup once it has earned its down payment, and big loans come once you have a record of earning.
+
+**History.** The last 40 transactions, with sales from the same place in the same half minute merged into one line.
+
+**Saved per slot.** The wallet, bank balance, loans, lifetime earnings and history are all saved with the save slot.
+
+**Test money.** With `InfiniteMoney` on, shops are free and the HUD shows the test balance as before. The wallet, bank,
+loans and history underneath stay real and are saved, so the bank can be tested with real numbers. (Before this change,
+anything earned while test money was on was thrown away.) Test money is on in Roblox Studio only
+(`InfiniteMoney = RunService:IsStudio()` in Config/Game), so a live server never hands out free money: a free purchase
+followed by a remove-and-refund would mint real cash there. That is a safe default while Cyrus decides how test money
+should work, and easy to reverse: set it back to `true` (everyone, everywhere) or `false` (nobody) in Config/Game.
+
+## Travel fares (for the rest of the map)
+
+The world map thread charges these at boarding (PR #25), per truck (trailers ride free). A fare should be felt but should never
+decide whether a trip is worth making, so each is under 5% of what the trip carries.
+
+| Trip | Fare | Why |
+|---|---|---|
+| Public ferry (to Thimble Keys or Bobbin Rock) | $250 a truck with trailer, each way | Under 5% of a box-truck load of Snow hay |
+| Captain's Barge | Free | Earned by quest |
+| Zeppelin to Sky Island | $1,000 a trip | Under 5% of a pickup load of Sky hay ($1,300 to $7,800 a bale) |
+| Roads, including the Longstitch Highway | Free | Driving is already the cost |
+
+## Robux prices
+
+Recorded in `Prices.Robux` so every price lives in one file. The store waits until the cash economy has been
+playtested (backlog rule). These are V8's prices, kept because they sit in the usual range for Roblox tycoons (a
+99 R$ impulse buy, 149 to 299 R$ passes, and trucks rising with tier). That range is design judgement, not data.
+
+- **Trucks:** Homestead Classic 399, Timber Wolf 4x4 799, Midnight Express 1,199, Prairie Schooner 1,799 and Founders'
+  Semi 2,499 R$. Each one matches the stats of its cash tier exactly. One fix to V8: V8 gives the Timber Wolf "better
+  grip on dirt", which would make it stronger than the cash Flatbed. It should look lifted but drive the same.
+- **Passes:** VIP 249, Auto-Dock 299, Big Silo 199, Paint Studio 149, Plot Themes 199 and Truck Radio 99 R$. Auto-Dock
+  and Big Silo are convenience with a cash match: you can step on UNLOAD yourself, and build a second $5,000 silo.
+- **Other:** Harvest Pass premium track 499 R$, a server boost 99 R$, and a private server 100 R$ a month.
+- No item gives cash, needles, sorter tiers or quest skips, and nothing is random.
+
+## A first playthrough
+
+One player, buying in this order and spending everything as it comes in. Financed buys pay the down payment, and the
+loan takes its share of sales after that.
+
+| Buy | Price | Time to afford | Total play time | How |
+|---|---|---|---|---|
+| Garden Shovel | $250 | 3 min | 0.1 h |  |
+| Wheelbarrow | $1,000 | 9 min | 0.2 h |  |
+| Rusty Pickup | $6,000 | 6 min | 0.3 h | financed: $1,200 down |
+| Wagon Trailer | $1,500 | 12 min | 0.5 h |  |
+| Plot + Hand sieve + first line | $3,600 | 28 min | 1.0 h |  |
+| Shaker table | $4,000 | 24 min | 1.4 h |  |
+| Steel Shovel | $8,000 | 24 min | 1.8 h |  |
+| Farm Flatbed | $25,000 | 12 min | 2.0 h | financed: $5,000 down |
+| Small Trailer | $8,000 | 30 min | 2.5 h |  |
+| Conveyor sorter | $25,000 | 93 min | 4.0 h |  |
+| Hay silo | $5,000 | 10 min | 4.2 h |  |
+| Box Truck | $90,000 | 41 min | 4.9 h | financed: $18,000 down |
+| Reinforced Shovel | $45,000 | 40 min | 5.5 h |  |
+| Medium Trailer | $30,000 | 27 min | 6.0 h |  |
+| Magnet drum | $190,000 | 162 min | 8.7 h |  |
+| Iron Spade | $75,000 | 30 min | 9.2 h |  |
+| Heavy Hauler | $350,000 | 28 min | 9.6 h | financed: $70,000 down |
+| Large Trailer | $120,000 | 22 min | 10.0 h |  |
+| Optical sorter | $1,350,000 | 223 min | 13.7 h |  |
+| Starlight Shovel | $400,000 | 32 min | 14.3 h |  |
+| Semi Rig | $1,500,000 | 24 min | 14.7 h | financed: $300,000 down |
+
+Most steps land 10 to 40 minutes apart. The three long gaps are the conveyor sorter, magnet drum and optical sorter,
+which are the big "save up for it" goals. Quests, bounties and the collection book should fill those gaps.
+
+### Checked against the pacing simulator
+
+Conveyor's `tools/pacing_sim.py` plays a new save second by second on the real Meadow layout and configs (20 seeded
+maps). Medians, in minutes:
+
+| Buy | Table above | Sim, hand loading | Sim, bale toss + field chutes | + land loan | 2-player crew |
+|---|---|---|---|---|---|
+| Garden Shovel | 6 | 2 | 2 | 2 | 1 |
+| Wheelbarrow | 12 | 9 | 9 | 9 | 5 |
+| Rusty Pickup (loan) | 18 | 15 | 15 | 15 | 8 |
+| Plot + Hand sieve + first line | 60 | 50 | 34 | 28 | 16 |
+| Shaker table | 84 | 71 | 44 | 39 | 24 |
+| Farm Flatbed (loan) | 120 | 103 | 64 | 62 | 41 |
+| Conveyor sorter | 240 | over 180 | 124 | 120 | 86 |
+
+With bale toss and the field chutes, everything from the plot on lands about 40% ahead of the table, because loading
+a truck stops being the slow part. The needle market barely slows a solo player.
+
+**Decision: keep the prices for the morning playtest and accept the faster mid-game for now.** Three reasons:
+
+1. The speed-up rests on two numbers nobody has measured: about 3 seconds to toss a bale into a bed, and about 50
+   seconds of overhead per truck trip (parking, the chute lever, unloading). If either is twice as long in the real
+   game, most of the gap closes. Cyrus's playtest stopwatch (MORNING_PLAYTEST section 6) measures both.
+2. A faster first two hours is the safer mistake. The first session decides whether a player comes back, and the plot
+   at 34 minutes is right in the CEO's 35 to 45 minute target. The long climb comes later, from the sorter ladder
+   ($190k magnet drum, $1.35M optical sorter), which bale toss and chutes don't touch because a solo player can't
+   keep those sorters full anyway.
+3. Whether the whole climb should be longer is already an open choice for Cyrus (14 hours against V8's 40, below).
+   Retuning the mid-game now would answer half of that question before he has.
+
+**If the stopwatch confirms the sim** (toss under 4 s and trip overhead under 60 s), the retune is ready: raise the
+shaker table, Steel Shovel, flatbed and conveyor sorter by about 1.6x ($6,500, $13,000, $40,000 and $40,000),
+which puts them back on the table's times without touching the early game or Cyrus's hay price. Re-run
+`python3 tools/pacing_sim.py` and `python3 tools/line_sim.py --check` after any change.
+
+Two early gaps were also looked at on purpose. **Garden Shovel at 2 minutes** (target 6) stay: the 6 came from rounding
+the table to 0.1 h, and a near-instant first purchase teaches the shop loop. **The plot** stays at $2,500: with toss
+and chutes it lands at 34 minutes, inside the target, and at 28 with a land loan.
+
+#### Simulator v2: what the game adds beyond the table (CEO #30)
+
+The second table from `tools/pacing_sim.py` turns on, one at a time, what v1 left out. It shows minutes to each buy, as the median of 20 maps.
+
+| Buy | Target | v1 (solo, hand loading) | + toss + chute | + needle market | + land loan | + 2-player crew |
+|---|---|---|---|---|---|---|
+| Garden Shovel | 6 | 2 | 2 | 2 | 2 | 1 |
+| Wheelbarrow | 12 | 9 | 9 | 9 | 9 | 5 |
+| Rusty Pickup | 18 | 15 | 15 | 15 | 15 | 8 |
+| Wagon Trailer | 30 | 23 | 23 | 23 | 23 | 13 |
+| Plot + Hand sieve + first line | 60 | 50 | 34 | 34 | 28 | 16 |
+| Shaker table | 84 | 71 | 44 | 43 | 39 | 24 |
+| Steel Shovel | 108 | 92 | 58 | 57 | 55 | 36 |
+| Farm Flatbed | 120 | 103 | 64 | 63 | 62 | 41 |
+| Small Trailer | 150 | 127 | 79 | 77 | 76 | 52 |
+| Conveyor sorter | 240 | over 180 | 124 | 123 | 120 | 86 |
+
+- **Bale toss and the field chute** confirm the "nearer 43 minutes" call above. The plot lands at 34 minutes, inside the CEO's 35 to 45 minute window. From the plot onward, though, every buy lands about 40% ahead of the table: the shaker at 44 minutes against 84, the flatbed at 64 against 120. A truck stops being limited by loading, and the chute alone supplies 10 bales a minute.
+- **The needle market** does not slow a solo player. One line sells far fewer than `NormalSales`, so Steel stays above list price.
+- **A 2-player crew** roughly halves every time. The second player hauls by barrow while the first drives the shared truck.
+- **Assumed, not measured:** tossing a bale takes 3 seconds against 9 to carry one in, and each truck trip has 50 seconds of overhead. A playtest stopwatch on both would settle the toss and chute column.
+
+## Open choices for Cyrus
+
+1. **Pickup price.** V8 proposed $600. With 90-strand bales a player earns about $110 a minute by hand, so $600 would be
+   5 minutes. This doc keeps $6,000 and uses the bank so the pickup still arrives at about 15 minutes. One line in
+   `Prices.Trucks` changes it.
+2. **Length of the climb.** The model reaches the Semi in about 15 hours; V8 aimed for 40 or more. The lever is the late
+   regions' needles per bale and needle values. Halving them roughly doubles the back half of the game.
+3. **Needles per bale.** These are V8's numbers, which Cyrus hasn't approved yet. Each is one value in
+   `Prices.NeedlesPerBale`.
+
+## Region events
+
+Map's region events (`Prices.RegionEvents`) run one at a time, every 30 minutes, for 5 minutes. They drop extra bales
+of the region's hay with more needles in them (`boost`), and never pay cash directly. An event should be worth a detour
+for whoever reaches it first, about 5 to 10 minutes of income at the stage where that region opens, and it shouldn't
+beat a steady haul over an hour. A raw event bale is worth hay plus needles × boost × sorted value:
+
+| Event | Hay | Bales | Boost | Worth sorted | Extra over normal bales | Stage income | Minutes of income |
+|---|---|---|---|---|---|---|---|
+| Hay Fever (Shore) | Meadow | 10 | 1.5x | $3,450 | $1,000 | $25k/h (shaker) | 8 |
+| Low Tide (Swamp) | Swamp | 10 | 1.5x | $15,750 | $5,100 | $151k/h | 6 |
+| Meteor Shower (Valley, nights) | Meadow | 8 | 3x | $5,160 | $3,200 | $25k/h | 12 |
+| Windfall (Pine) | Pine | 12 | 1.5x | $6,480 | $1,980 | $22k/h | 18 |
+| Sandstorm (Desert) | Desert | 10 | 2x | $11,650 | $5,600 | $41k/h | 17 |
+| Avalanche (Snow) | Snow | 10 | 2x | $16,450 | $8,000 | $90k/h | 11 |
+| Eruption (Volcano) | Volcano | 10 | 2.5x | $60,450 | $36,000 | $437k/h | 8 |
+
+Two changes from Map's first numbers. The Meteor Shower went from 6 bales at 2.5x to 8 at 3x, because it only happens
+at night and was the weakest event in the game. The Eruption went from 8 bales to 10, because the Volcano is the
+hardest region to reach and 8 bales was under 7 minutes of income there. The rest stay as Map set them.
+
+## Thimble Keys and Bobbin Rock
+
+Map's two ferry islands get their own hay and needles, so a ferry trip is worth its fare:
+
+| Hay | Region | Shovel tier | Weight | Needles/bale | Needle | Sorted value | Bale sorted |
+|---|---|---|---|---|---|---|---|
+| Bog reed | Swamp | 3 | 2.4 | 6 | Bog | $170 | $1,065 |
+| **Sea grass** | **Thimble Keys** | 3 | 2.2 | 6 | **Coral** | **$220** | **$1,365** |
+| Ashen hay | Volcano | 4 | 3.0 | 8 | Obsidian | $300 | $2,445 |
+| **Thread grass** | **Bobbin Rock** | 4 | 3.2 | 9 | **Brass** | **$320** | **$2,925** |
+| Crystal hay | Cave | 4 | 3.4 | 10 | Geode | $340 | $3,445 |
+
+Sea grass beats Swamp's bog reed by about 28% a bale and is lighter. That's the ferry's reward: the $250 fare each way
+is under 2% of a box-truck load, but the crossing takes time, so the island has to pay a little better than the
+mainland beside it. Bobbin Rock fits between Volcano and Cave on value and weight, as an island alternative to the
+crater.
+
+## Quest cash
+
+Quest rewards live in `Config/Quests` (Quests thread) and pay with a "Quest: " note, so they count for credit but not
+toward the trade-cash `sold` total. The ladder runs from $150 for the first errand to $15,000 for the last Weaver
+chapter before the finale, each sized against the next thing the player is saving for (the second quest pays back
+the Garden Shovel, the fourth half a plot). Daily bounties pay $150 to $1,200 and daily maze runs $300 to $400.
+
+The Weaver finale (all twelve Master Needle shards) pays **$100,000** with the Master Needle. Twelve shards take a
+player through Swamp, Thimble Keys and the late regions, where income is $150,000 to $440,000 an hour, so Quests'
+first $25,000 was 3 to 10 minutes of play: less than the Ember Cache. $100,000 is about 15 minutes at the Volcano
+stage, the biggest one-time payout in the game, and still short of any late machine, so the Master Needle stays the
+prize. (Asked of the Quests thread for PR #38.)
+
+## Region secrets
+
+Map's four one-time secrets (`Prices.Secrets`) pay once per save slot through `Bank.earn`. Map's first numbers were
+$2,000 to $3,000, which is under 30 seconds of income in those regions, so finding one felt like nothing. The rule now:
+a secret is worth the trip on its own. For a player who walks there early it's about the price of the next mid-game
+buy, and for one who arrives on schedule it's a few minutes of income. Secrets behind a gate pay more.
+
+| Secret | Where | What gates it | Reward |
+|---|---|---|---|
+| Ember Cache | Volcano crater | Tier 4 shovel ($75,000 Iron Spade) | $40,000 |
+| Lost Kite | Under Sky Island's rim | $1,000 zeppelin fare | $25,000 |
+| Geode Heart | Crystal Cave far wall | Reaching the cave | $20,000 |
+| Captain's Lantern | Ghost Isle | Night only; walkable early | $15,000 |
+
+Map's twelve hidden spots, one per region and each found from an Old Sign clue, also pay through `Prices.Secrets`
+(`hidden_<region>`). Map's placeholder was $4,000 each, which was a pickup's worth for the four Meadow spots a new player
+can walk to in the first ten minutes. They're scaled to the region instead, at about 5 minutes of income at the stage
+you reach it, and stay smaller than the four big secrets:
+
+| Region | Hidden spot | Reward |
+|---|---|---|
+| Meadow Shore, Mirror Lake Valley, Homestead, Spindle | Driftwood Oak, Willow, Founders' Cairn, Echo Cairn | $500 each |
+| Pine Forest | Hollow Pine | $1,500 |
+| Desert | Prospector's Shed | $2,500 |
+| Snow Peak | Buried Ski Shed | $4,000 |
+| Thimble Keys | Castaway's Chest | $5,000 |
+| Swamp | Sunken Bog Chest | $6,000 |
+| Volcano | Ash Cairn | $10,000 |
+| Bobbin Rock | Spool Shed | $12,000 |
+| Haunted Grove | Whispering Oak | $15,000 |
+
+All twelve together come to $58,000. Like every one-time reward, they count as earnings but not as `sold`.
+
+## Wet hay
+
+The Hay thread's rain soaks a bale left in the open for 20 seconds: it weighs 1.5x and its hay sells at 60%
+(`Prices.WetHayShare`) until it dries, 150 seconds after the rain stops or at once on a drying rack. Needles are
+untouched, so the loss is only on the hay:
+
+| Bale | Dry, sorted | Wet, sorted | Loss |
+|---|---|---|---|
+| Meadow | $245 | $227 | 7% |
+| Swamp | $1,065 | $1,047 | 2% |
+| Sold raw at the public shop (Meadow) | $47 | $29 | 38% |
+
+That's the right size. It hurts most at the very start, when hay is all you sell, which teaches parking under cover
+early; later it's a nudge, and waiting out the rain costs nothing. It doesn't change the drying rack's price: at the
+Swamp stage, rescuing $18 a bale is under 2% of the bale, while the rack's real value is letting Bog reed be sorted
+at all.
+
+## Mutated needles
+
+1 found needle in 500 is mutated (`Prices.Mutation`, read by Needle.luau) and sells for 3x to 25x its value, announced
+to the whole server. The average mutation is 14x, so mutations add about 2.6% to needle income. That's a jackpot
+moment, not an income source: a mutated Steel needle is worth $300 to $2,500, and a mutated Cosmic one up to $125,000.
+Mutated needles stay in your pocket at NPC orders and trade like any other item.
+
+**Wet mutation** (`Prices.WetMutation`, Conveyor 814a73f): in a region while it rains, a plain needle has a 1 in 100
+chance to come out Wet at 2x. That adds 1% to needle income, and only while it rains, so with the pity rule
+(under 4%) free rolls stay inside the 5% budget. tests/pity.luau holds storm + Wet + pity at 1.2x to 1.5x of the
+plain mutation value and fails above 2x.
+
+## Daily contracts
+
+Three contracts a day on the back of the order board (`Prices.DailyContracts`, `Services/Orders.luau`, CEO H9), the
+same for everyone, reset at midnight UTC. You fill them on the orders pad: a delivery also counts toward a matching
+NPC order, and when no order wants the goods the contract takes them at their normal price, so a contract never
+costs you a sale. Each finished contract pays a reward, and all three pay a bonus and count a streak day.
+
+The cash is the hard part, because income runs from $6,500 to $1.4 million an hour. A fixed reward is either a
+jackpot early or nothing late, so it scales with your lifetime sales (Bank `sold`), fixed for the day when your
+contracts start. Each tier begins just after the purchase that opens that stage in the model's first playthrough
+(the first H9 thresholds were a stage early; H13's sim caught it), and a full day (three
+rewards plus the bonus) is about 20% of one hour's income there:
+
+| Lifetime sales | Stage | Income/h | Reward each | Bonus | Full day | Needle asked for |
+|---|---|---|---|---|---|---|
+| $0 | Hands, wheelbarrow, pickup | $6,500 | $250 | $500 | $1,250 (19%) | Steel |
+| $10,000 | Plot and hand sieve | $13,700 | $550 | $1,100 | $2,750 (20%) | Steel |
+| $16,000 | Shaker, flatbed in Pine | $21,600 | $850 | $1,700 | $4,250 (20%) | Pine |
+| $75,000 | Conveyor sorter, Desert | $40,500 | $1,500 | $3,000 | $7,500 (19%) | Sand |
+| $110,000 | Box truck, Snow | $90,000 | $3,500 | $7,000 | $17,500 (19%) | Ice |
+| $455,000 | Magnet drum, Swamp | $150,000 | $6,000 | $12,000 | $30,000 (20%) | Bog |
+| $605,000 | Hauler, Volcano | $436,000 | $17,000 | $34,000 | $85,000 (19%) | Obsidian |
+| $2,400,000 | Optical, Cave | $750,000 | $30,000 | $60,000 | $150,000 (20%) | Geode |
+| $3,100,000 | Semi, Sky Island | $1,396,000 | $55,000 | $110,000 | $275,000 (20%) | Cloud |
+
+Income/h is the slowest stage before the next tier, so a player who is on track never gets more than about 20%. The
+budget is 25% of a day's line income, counting a day as one hour of play; anyone who plays longer gets a smaller
+share. `tests/contracts.luau` (in prepush) fails above 25% or under 10%. A player who hoards cash instead of upgrading
+reaches a tier with lower income than it assumes, so contracts are a bigger share for them; the 5% headroom covers
+that, and it nudges them back to buying. Contracts ask for 10 to 20 hay bales, 10 to 20 sorted bales and 8 to 16
+needles of the tier's type. Before a sorter they ask for a second load of hay instead of sorted bales. Rewards count
+toward `sold`, like orders and bounties, because each one needs real goods delivered.
+
+**Play-together bonus** (Land, `LandConfig.TogetherBonus` = 1.1 in Config/Land): +10% needles while a friend or crew
+member is on your plot, and only one with $25,000 sold counts, so alt accounts can't switch it on. It stays in
+Config/Land because it multiplies needles, not dollars. At the conveyor stage it's worth about $4,000 an hour, a reason
+to play together that doesn't double anyone's income.
+
+## Needle index milestones
+
+Conveyor's `Prices.NeedleIndex` (ea81985) pays once per slot as you fill the needle index: $5,000 at 25%, $40,000 at
+50%, $250,000 and the gilded skin at 75%, and $1,000,000 at 100%. The note "Discovered N% of the needle index" makes
+them one-time rewards, so they don't count toward `sold` and alt accounts can't use them to reach the trade gate.
+Checked against pacing: you reach each mark around Desert, Swamp, Cave and Star Hay, where income is about $40,000,
+$150,000, $750,000 and $1.4 million an hour. That makes each one 7 to 45 minutes of income, which is the same range as
+quest cash and the big secrets, so they are approved as they are.
+
+## Regional festival
+
+Map's H11 festival (b5f1453) gives every field bale in one region more needles for a week, moving to a new region of
+the 11 each week. It doesn't stack with a rich field's 2x, and the sorter honours it since Conveyor 814a73f. It was 2x;
+the stacked-boost week (below) put that over the 2x cap at every stage from the shaker on, because with a sorter
+needles are most of a bale's value, so it is now **1.5x** (`WorldMap.FestivalBoost`), and the signs say +50%. A
+festival in an easier region than yours still doesn't pay, so it only matters about one week in 11.
+
+## Stacked boosts (CEO H13)
+
+Every boost is fine alone; the risk is all of them at once. Two guards:
+
+- **In code, a cap on each bale** (`src/shared/Boosts.luau`, `Prices.Boosts.Cap` = 2, used by the sorter and by hand
+  breaking). A bale has its own boost (rich field, festival, chute, region event, golden field, Hay Market kind) and
+  can pick up extras: a friend on your farm (+10% needles) and a thunderstorm (5x mutation odds). The extras only
+  stack until the bale's needles, mutations included, are worth 2x a plain bale's, or the bale's own boost if that is
+  bigger. So a golden bale keeps its 3x and a Storm Hay bale keeps what it was sold with, but neither gets extras.
+  Storm odds are dropped first, then the friend bonus is trimmed. `tests/boosts.luau` checks it.
+- **A stacked week** (`tools/boost_sim.py`, in prepush). It plays the first playthrough with everything on, all week,
+  at every stage: the festival on your own region, a friend always on your farm, every thunderstorm, rain all week
+  (Wet), pity, every profitable Hay Market bale, all three contracts every day with only one hour of play (so they
+  are as big a share as they get), and the index milestone for that stage. It fails if any stage goes over 2x the
+  plain game, or any purchase lands in under half its target time.
+
+Result: 1.1x to 1.2x before a sorter, 1.4x to 1.96x after (the most is Swamp, where the 50% milestone lands). The
+Semi comes at 8.5 hours instead of 14.7, so 58% of the target. Away earnings aren't in it: they only sort hay you
+already hauled into your silos, and hauling is what limits income.
+
+## Pacing scale (CEO H18)
+
+The stacked-boost week showed boosts shorten the climb, so the prices now have one dial, `Prices.PacingScale`. Every
+truck, trailer, shovel and build piece at $4,000 or more (`PacingFrom`) is multiplied by it and rounded to two
+significant figures. The first hour never changes: Garden Shovel, the wheelbarrow, the Rusty Pickup (`PacingKeep`), the
+wagon, the plot, the hand sieve and a first line all stay as written. The daily contract tiers start at lifetime-sales
+marks, so they stretch by the same factor. The tables in this doc show the prices as written; the game charges them
+times the scale. `tools/line_sim.py`, `pacing_sim.py` and `economy_model.py` apply the same rule.
+
+The value comes from `tools/boost_sim.py`, which plays a **typical** player as well as the stacked worst case. The
+typical player gets the festival 1 week in 11, has a friend on the farm a quarter of the time, sees rain a third of the
+time, catches half the Hay Market restocks, and plays 2 hours a day and finishes all three contracts. That's a guess,
+written down so it can be argued with. Where that player's Semi lands:
+
+| PacingScale | Typical player | Plain game, no boosts |
+|---|---|---|
+| 1.00 | 12.3 h | 14.7 h |
+| 1.10 | 13.6 h | 16.2 h |
+| **1.20** | **14.6 h** | **17.4 h** |
+| 1.30 | 15.9 h | 18.9 h |
+| 1.50 | 18.1 h | 21.5 h |
+| 2.00 | 23.6 h | 28.2 h |
+
+**1.2** puts a typical player's Semi at 14.6 hours, the 14.7-hour climb this doc has planned for. Some example prices:
+shaker $4,800, conveyor sorter $30,000, flatbed $30,000, box truck $110,000, magnet drum $230,000, optical sorter
+$1.6M, Semi $1.8M. boost_sim fails if the current value lands the typical Semi more than 1.5 hours from the target,
+and the stacked week still stays under 2x. Cyrus's open question (about 15 hours or V8's 40) is separate: it moves
+the target, and then this value. For 40 hours the table above would need a scale of about 3.5, which is more than
+pricing alone should do (V8's 40 hours assumed slower hauling). The playtest stopwatch retune (the shaker and the
+rest about 1.6x) is now just a different value here.
+
+## Rebirth (CEO H5)
+
+`Prices.Rebirth = { Unlock = "semi_rig", Bonus = 0.1, Max = 5 }`, run by `Services/Rebirth.luau`. Once a slot owns
+the Semi and owes no loans, it can rebirth: cash, the bank balance, trucks, trailers, everything built on the farm,
+plot upgrades, the second farm, daily contract progress and plain needles reset. Kept: the plot itself, shovels and
+the wheelbarrow, the needle index, cosmetics, BestNeedle, finds, mutated needles (trade trophies), quests and
+settings. Every sale afterwards pays +10% per rebirth (max 5, so 1.5x) in `Bank.earn`; one-time rewards (secrets,
+quests, finds) get no bonus. This multiplier sits outside the 2x Boosts cap. Lifetime `sold` stays (trade gate);
+daily contract tiers count sales since the rebirth (`rebirth.soldAt`). The reset slot is saved, then the player
+rejoins through TeleportService (a kick with a message if that fails). Save version 2.
+
+Why plain needles reset: they are money in another form, so keeping them would carry cash through. Why loans must be
+paid first: the reset would otherwise wipe a debt.
+
+Time to the Semi per climb (`tools/boost_sim.py`, PacingScale 1.2):
+
+| Climb | Plain | Typical | Cumulative plain / typical |
+|---|---|---|---|
+| First | 17.4 h | 14.6 h | 17.4 / 14.6 h |
+| Rebirth 1 | 13.3 h (77%) | 11.4 h | 30.7 / 26.0 h |
+| Rebirth 2 | 12.2 h (70%) | 10.4 h | 42.9 / 36.4 h |
+| Rebirth 3 | 11.3 h (65%) | 9.6 h | 54.2 / 46.0 h |
+| Rebirth 4 | 10.5 h (60%) | 8.9 h | 64.7 / 55.0 h |
+| Rebirth 5 | 9.8 h (56%) | 8.4 h | 74.5 / 63.4 h |
+
+The 70% target is met against the first climb by the second rebirth; a flat +10% can't make each climb 70% of the one
+before (that would need a compounding bonus, which breaks the 1.5x cap). Each climb is still shorter than the last, and
+kept shovels plus the wheelbarrow make the first rebirth feel fast at once: early purchases in minutes
+(`tools/pacing_sim.py --rebirths`):
+
+| Buy | First climb | R1 | R2 | R3 | R4 | R5 |
+|---|---|---|---|---|---|---|
+| Rusty Pickup | 15 | 4 | 4 | 4 | 4 | 3 |
+| Plot + sieve + first line | 50 | 20 | 18 | 15 | 17 | 14 |
+| Shaker table | 74 | 43 | 40 | 36 | 33 | 30 |
+| Farm Flatbed | 114 | 60 | 55 | 52 | 48 | 43 |
+| Small Trailer | 140 | 86 | 78 | 71 | 67 | 62 |
+| Conveyor sorter | over 180 | 163 | 150 | 137 | 128 | 119 |
+
+## The Hay Market
+
+A stall at base camp (`Services/HayMarket.luau`, CEO backlog H6) restocks every 5 minutes with three rare bales, three
+of each for the whole server, and each player can buy two per restock. Each slot rolls a kind and a region's hay
+(`Prices.HayMarket`):
+
+| Kind | Needles | Mutation odds | How often |
+|---|---|---|---|
+| Golden Hay | 3x | normal (1 in 500) | 5 in 9 slots |
+| Storm Hay | 2x | 5x (1 in 100) | 3 in 9 |
+| Moon Hay | 1x | 25x (1 in 20) | 1 in 9 |
+
+Hay is Meadow, Pine, Desert, Thimble Keys, Volcano or Bobbin Rock, weighted toward the early ones. Snow and Swamp are
+left out because they need a region machine before they can be sorted.
+
+**Price rule.** No rare bale has a hand-set price. Each costs 85% of what it's worth sorted on a conveyor sorter (55%
+of needles found), with the mutation odds included at the average 14x mutation. That gives:
+
+| Hay | Golden | Storm | Moon |
+|---|---|---|---|
+| Meadow | $330 | $250 | $190 |
+| Pine | $510 | $390 | $290 |
+| Desert | $840 | $630 | $470 |
+| Thimble Keys | $1,940 | $1,430 | $1,060 |
+| Volcano | $3,490 | $2,570 | $1,890 |
+| Bobbin Rock | $4,180 | $3,080 | $2,260 |
+
+With a conveyor sorter or better you make about 15% on each rare bale, plus the lottery of a mutation. Selling one
+raw, hand-sieving it or using a shaker table loses money. So the stall rewards having a line and doesn't replace
+farming.
+
+**Pacing check.** A player who buys the full two bales at every restock, all hour, makes about $4,000 an hour of profit
+on top of farming. That's about 10% at the conveyor-sorter stage ($40,000 an hour) and under 3% from the magnet drum
+on. It needs a trip to the stall every 5 minutes, so most players will catch a few restocks, not all of them. The early
+game is untouched, because a player without a good sorter has no reason to buy. pacing_sim doesn't model the stall,
+and since none of the prices it uses changed, its times stand.
+
+**Mutation budget.** Conveyor's pity rule (`Prices.Pity`: 40 needle-finding bales without a mutation guarantee a x3
+on the next) adds under 4% to needle income, and its test fails at 5%. Rare bales add their own mutations: for a
+player buying every restock at the conveyor stage, about 3.7% of needle income, and under 1% from the magnet drum
+on. Together that's up to about 8% at the conveyor stage for the most dedicated buyer. Those extra mutations are
+paid for, though, since the price includes them; the net gain is the 15% margin above. So the 5% budget stays for
+free rolls like pity. Paid rolls are counted in the pacing check above instead.
+
+**Sorter.** Since Conveyor 814a73f the sorter reads `NeedleBoost` (and `GoldenField`, which Bales turns into 3x)
+for how many needles a bale hides, and `MutationBoost` for each found needle's mutation chance, so a bought bale pays
+what its price assumes. Hand-breaking one uses `NeedleBoost` for the needles that
+spill. ReplicatedStorage attribute `HayMarketRestockAt` is the server time of the next restock, for the HUD
+countdown (UI H2).
+
+## Golden bales
+
+The Hay thread's golden field bales (`Prices.GoldenBale`) are 1 field bale in 150, glinting, announced, with 3x the
+needles. On average that adds (3 − 1) / 150 = 1.3% to needle income, which is too small to change any stage's
+earnings or the timeline, so the odds and the multiplier stay as built. What matters is the moment:
+
+| Hay | Plain bale, sorted | Golden bale, sorted | Golden bale sold raw at the public shop |
+|---|---|---|---|
+| Meadow (2 needles) | $245 | $645 | $51 |
+| Desert (4) | $605 | $1,725 | $57 |
+| Volcano (8) | $2,445 | $7,245 | $69 |
+
+A golden bale only pays off if you sort it or break it by hand (hand-found needles pay full value), never if you sell
+it raw. That's the right lesson for a new player: the first golden bale shows them what sorting is worth. On a rich
+field the two boosts stack (2x × 3x = 6x), which is still a single bale.
+
+## The trading post
+
+Land's trading post settles every trade through `Bank.settleTrade(a, b, terms)`. It takes the cash each side offers,
+charges each side a fee, and writes a line to both histories ("Trade with Sam: gave 3 Cosmic needles, got $2,000").
+The fee (`Prices.Trade`) is $25 plus 5% of the cash, paid only by a side that hands over cash. A side that only
+gives items pays nothing, so swaps and gifts are free and a brand-new player can always hand a friend a needle.
+Cash-for-needles deals pay something like the market's spread, and big cash transfers between accounts carry a real
+cost. Cash moves wallet to wallet (taking from
+the bank if the wallet is short) and doesn't count as earnings, so it takes no loan share and adds no credit. If either
+side can't pay, nothing moves and the post cancels the trade. Trading is free while InfiniteMoney is on.
+
+**Alt accounts and one-time rewards.** Secrets, discoveries, mazes, quest cash and finder's rewards pay once per save
+slot, so a fresh slot (or a second account) could collect them and trade the cash to a main farm. The rewards keep
+their amounts: they are what make exploring worth it, and cutting them to stop alts would punish everyone. Instead,
+a slot can hand over cash at the trading post only after it has made $25,000 from selling
+(`Prices.Trade.MinSoldToGiveCash`, about 2 hours of a new player's farming). One-time rewards still count toward loans
+and credit, but not toward that $25,000, which Bank tracks separately as `sold`. Items can always be traded, and saves
+from before this rule count all their past earnings as sold. A gate on playtime would have done the same job but needs
+a clock nobody can game; sales already are one.
+
+Two kinds of repeatable pay count as selling on purpose. **Daily bounties** ("Bounty: ", $300 to $450 each, three a
+day) are paid for real farming (sell 15 bales, break 12, pick up 8 needles), so they're sales with a bonus; reaching
+$25,000 on bounties alone would take about three weeks of daily play, which is real progress, not an alt trick.
+**Offline pay** ("While you were away") is what your own sorter line made while you were gone, so it needs a built
+farm first. Daily maze runs ("Maze: ") stay out of `sold` because they pay for running, not farming. The health
+check's contract rule 6 reads the one-time list from Bank.luau, so any new reward note must either match a one-time
+prefix or be a known sale.
+
+## Where each number lives
+
+| Number | In `Config/Prices.luau` | Read by |
+|---|---|---|
+| Hay and raw needle price | `HayPrice`, `RawNeedlePrice` | `Economy.luau` |
+| Needles per bale, visible share | `NeedlesPerBale`, `VisibleNeedleShare` | `Config/Game` (`NeedleChancePerHay`, `VisibleNeedleChance`) |
+| Sorted needle values | `Needles` | `Config/Needles` |
+| Wheelbarrow | `Wheelbarrow` | `Services/Wheelbarrow.luau` (hay tools thread) |
+| Trucks, trailers | `Trucks`, `Trailers` | `Config/Trucks`, `Config/Trailers` |
+| Shovels | `Gloves` | `Config/Gloves` |
+| Trade fee | `Trade` | `Services/Bank` (settleTrade) |
+| Region events | `RegionEvents` | `Services/RegionEvents` |
+| Region secrets | `Secrets` | `Services/Wilds` |
+| Wet hay | `WetHayShare` | `Config/Game` (WetPriceFactor) |
+| Mutated needles | `Mutation` | `Services/Needle` |
+| Hay Market | `HayMarket` | `Services/HayMarket` |
+| Golden bales | `GoldenBale` | `Config/Game` → `Services/Bales` |
+| Plot, expansion rows, second farm, pieces, decor, refund | `Plot`, `PlotExpansion`, `SecondPlot`, `Pieces`, `RefundShare` | `Config/Land` |
+| Sorter speeds | `SorterBalesPerMinute` | `Config/Sorters` |
+| Bank terms | `Bank` | `Services/Bank.luau` |
+| Finder's rewards | `FinderRewards` | `Config/Finds` (hay tools thread) |
+| Travel fares | `Travel` | `Services/Ferry.luau` (world map thread, PR #25) |
+| Robux store | `Robux` | Not wired yet (store waits on playtests) |
+| NPC orders | `Orders` | `Services/Orders.luau` |
+| Needle market swing | `Market` | `Services/Market.luau` (through `Needle.priceOf`) |
+| Hand-found needle share | `HandFoundNeedleShare` | Not wired yet: for the hay tools thread's pocket-needle sale at the public pad |
