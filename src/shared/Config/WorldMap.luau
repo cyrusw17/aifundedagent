@@ -18,7 +18,7 @@ export type Discovery = { id: string, name: string, at: Vector2?, flat: string?,
 type FlatZone = { name: string, min: Vector2, max: Vector2, height: number, blend: number, material: string? }
 return {
 	-- Bump when the shape changes: a place baked in Studio with an older version is rewritten on Play.
-	Version = 3, -- 3: layout A3 at 2x
+	Version = 4, -- 3: layout A3 at 2x; 4: no grass anywhere in the terrain (Cyrus)
 	Seed = 23,
 
 	SeaLevel = -4, -- the open sea's surface
@@ -43,7 +43,7 @@ return {
 			radius = Vector2.new(1500, 400),
 			base = 4,
 			hills = { { 5, 90 } },
-			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
+			materials = { top = "Ground", alt = "Mud", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
 			-- STYLE.md Regions: the accent for signs and trim, and the sky / fog tint.
 			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
@@ -55,7 +55,7 @@ return {
 			radius = Vector2.new(1150, 900),
 			base = 10,
 			hills = { { 16, 160 }, { 4, 50 } },
-			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
+			materials = { top = "Ground", alt = "Mud", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
 			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
@@ -66,7 +66,7 @@ return {
 			radius = Vector2.new(900, 650),
 			base = 8,
 			hills = { { 12, 200 }, { 3, 60 } },
-			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
+			materials = { top = "Ground", alt = "Mud", cliff = "Rock", beach = "Sand" },
 			hayType = "meadow",
 			style = { accent = Color3.fromRGB(133, 61, 48), fog = Color3.fromRGB(189, 199, 194) },
 		},
@@ -92,7 +92,7 @@ return {
 			hills = { { 10, 120 }, { 4, 40 } },
 			spine = { from = Vector2.new(0, -1150), to = Vector2.new(0, -3650), width = 360, height = 170, power = 1.3 },
 			noFields = true, -- no hay up here
-			materials = { top = "Rock", alt = "LeafyGrass", cliff = "Slate", beach = "Sand" },
+			materials = { top = "Rock", alt = "Ground", cliff = "Slate", beach = "Sand" },
 			hayType = "meadow",
 			style = { accent = Color3.fromRGB(120, 112, 100), fog = Color3.fromRGB(180, 184, 182) },
 		},
@@ -103,7 +103,7 @@ return {
 			radius = Vector2.new(1250, 950),
 			base = 16,
 			hills = { { 26, 190 }, { 6, 60 } },
-			materials = { top = "LeafyGrass", alt = "Ground", cliff = "Rock", beach = "Sand" },
+			materials = { top = "Ground", alt = "Mud", cliff = "Rock", beach = "Sand" },
 			hayType = "pine",
 			style = { accent = Color3.fromRGB(61, 102, 94), fog = Color3.fromRGB(158, 176, 173) },
 		},
@@ -164,7 +164,7 @@ return {
 			base = 1.5,
 			hills = { { 3.5, 60 } },
 			pools = { level = -0.5, threshold = -0.18, scale = 55 }, -- low spots fill with bog water
-			materials = { top = "Mud", alt = "LeafyGrass", cliff = "Ground", beach = "Mud" },
+			materials = { top = "Mud", alt = "Ground", cliff = "Ground", beach = "Mud" },
 			hayType = "swamp",
 			style = { accent = Color3.fromRGB(153, 173, 71), fog = Color3.fromRGB(153, 163, 143), density = 0.08 },
 		},
@@ -177,7 +177,7 @@ return {
 			base = 4,
 			hills = { { 9, 120 } },
 			islets = true, -- broken up into keys by a channel noise
-			materials = { top = "LeafyGrass", alt = "Sand", cliff = "Sandstone", beach = "Salt" },
+			materials = { top = "Sand", alt = "Ground", cliff = "Sandstone", beach = "Salt" },
 			hayType = "keys",
 			style = { accent = Color3.fromRGB(64, 132, 140), fog = Color3.fromRGB(196, 214, 216) },
 		},
@@ -197,7 +197,7 @@ return {
 		},
 	},
 
-	-- Terrain colors for the materials Meadow doesn't color (Meadow sets Grass, LeafyGrass, Ground, Mud, Sand, Rock).
+	-- Terrain colors for the materials Meadow doesn't color (Meadow sets Ground, Mud, Sand, Rock). No terrain grass anywhere.
 	Colors = {
 		Snow = Color3.fromRGB(226, 228, 226),
 		Glacier = Color3.fromRGB(176, 192, 196),

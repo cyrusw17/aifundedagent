@@ -148,7 +148,7 @@ local function writeSkyIsland(terrain)
 	local yBase = math.floor((sky.top - sky.thickness - 20) / RES) * RES
 	local layers = math.ceil((sky.thickness + 50) / RES)
 	local matGrid, occGrid = table.create(size), table.create(size)
-	local grass, cloud, under = material("LeafyGrass"), material("Salt"), material("Limestone")
+	local grass, cloud, under = material("Ground"), material("Salt"), material("Limestone")
 	for i = 1, size do
 		local x = x0 + (i - 0.5) * RES
 		local matX, occX = table.create(layers), table.create(layers)
