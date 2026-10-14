@@ -28,8 +28,8 @@ A full run takes about a minute.
    - runs `src/server/Main.server.luau` as a Script (Data.start, Bank.start, ... World.build, SelfTest.start);
    - advances 10 s of simulated time;
    - a player joins (UserId 1001, "HeadlessTester"): `Players.PlayerAdded` fires, an R15 character spawns at the
-     SpawnLocation, then the client's slot picker is replayed: `ReplicatedStorage.SaveSlots.List` and
-     `SaveSlots.Choose(1, firstFreePlot)` are invoked on the server like `src/client/Saves.client.luau` does, so
+     SpawnLocation, then their profile loads by itself (Data.load, no picker) and the first free plot is bought at
+     the Land Office through `ReplicatedStorage.Land.Buy`, so
      `Data.loaded` fires and the player gets state, tools and a farm;
    - advances 60 s (autosave and every `while true do task.wait() end` loop runs);
    - **poke**: equips and swings every tool, then walks up to every enabled ProximityPrompt and ClickDetector in the
