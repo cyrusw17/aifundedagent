@@ -500,7 +500,7 @@ function WorldShape.column(x, z)
 		elseif water and h < water - 0.5 then
 			material = (h < SEA - 14) and "Slate" or (region and region.materials.beach == "Mud" and "Mud" or "Sand")
 		elseif not region or landness < -0.1 then
-			material = h < SEA + 3 and "Sand" or "LeafyGrass"
+			material = h < SEA + 3 and "Sand" or "Ground"
 		else
 			local m = region.materials
 			if h < SEA + 2.5 and landness < 0.2 then
@@ -520,9 +520,9 @@ function WorldShape.column(x, z)
 			end
 		end
 	end
-	-- Grass blades only grow on the Grass material; nothing out here uses it, so the ground stays clear to see.
-	if material == "Grass" then
-		material = "LeafyGrass"
+	-- No grass in the terrain at all (Cyrus): anything that would be grass is bare ground.
+	if material == "Grass" or material == "LeafyGrass" then
+		material = "Ground"
 	end
 	return h, water, material, region, tube, h0
 end

@@ -26,7 +26,7 @@ end
 -- Plays the named sound at a part or a position. pitchScale multiplies its pitch.
 function Feedback.play(name, at, pitchScale)
 	local def = Sounds[name]
-	if not def or not at then
+	if not def or not at or def.id == "" then
 		return
 	end
 	local parent = at
