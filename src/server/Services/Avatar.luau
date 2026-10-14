@@ -362,6 +362,9 @@ function Avatar.refreshSpeed(player)
 		end
 	end
 	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
+	if not Config.LoadSlowsYou then
+		speed, weight = rig.defaultSpeed, 0 -- a load no longer slows you (Config.LoadSlowsYou)
+	end
 	-- Running (Shift, or the Run button; Run.client) multiplies whatever the load leaves you, so a heavy load still
 	-- slows a run the same share it slows a walk.
 	rig.humanoid.WalkSpeed = running[player] and speed * Config.RunMultiplier or speed

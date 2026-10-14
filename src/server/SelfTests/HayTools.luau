@@ -817,7 +817,11 @@ local function withPlayer(t, player)
 		bareHands(player)
 		Bales.pickup(player, first)
 		t.check("bare hands lift a bale", state.carryBale == first and first.carriedBy == player)
-		t.check("carrying a bale slows you", humanoid.WalkSpeed < 16, humanoid.WalkSpeed)
+		if Config.LoadSlowsYou then
+			t.check("carrying a bale slows you", humanoid.WalkSpeed < Config.WalkSpeed, humanoid.WalkSpeed)
+		else
+			t.near("carrying a bale no longer slows you", humanoid.WalkSpeed, Config.WalkSpeed, 0.01)
+		end
 		Bales.drop(player)
 		t.check("the bale sets down", state.carryBale == nil and first.carriedBy == nil)
 		t.wait(0.8)
@@ -957,7 +961,10 @@ local function withPlayer(t, player)
 			Avatar.refreshSpeed(player)
 			local loadedRun = humanoid.WalkSpeed
 			Avatar.setRunning(player, false)
-			t.check("a load slows a run the same share as a walk", math.abs(loadedRun - humanoid.WalkSpeed * Config.RunMultiplier) < 0.01 and loadedRun < walk * Config.RunMultiplier, ("%.2f"):format(loadedRun))
+			t.check("a loaded run is RunMultiplier times the loaded walk", math.abs(loadedRun - humanoid.WalkSpeed * Config.RunMultiplier) < 0.01, ("%.2f"):format(loadedRun))
+			if not Config.LoadSlowsYou then
+				t.near("a load no longer slows a run", loadedRun, walk * Config.RunMultiplier, 0.01)
+			end
 			state.loadHay, state.loadWeight = keepLoad, keepWeight
 			Avatar.refreshSpeed(player)
 		end
