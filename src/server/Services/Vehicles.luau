@@ -519,9 +519,18 @@ function Vehicles.makeDrivable(model, owner)
 		end
 	end
 
+	-- Steer turns the chassis to the driver's heading through this one (it lines up with the chassis).
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "DriveAttachment"
+	attachment.Name = "SteerAttachment"
 	attachment.Parent = chassis
+	-- Drive pushes through its own attachment, turned so its X is the truck's right and its Y the truck's length (+Z,
+	-- the back). With RelativeTo = Attachment0 a Plane LinearVelocity drives along the attachment's own X and Y, so on
+	-- an unturned attachment PlaneVelocity's second number moved the truck up and down instead of forward (Cyrus's
+	-- playtest, 2026-10-14). Its plane is now the ground under the truck; height is left to gravity and the wheels.
+	local driveAttachment = Instance.new("Attachment")
+	driveAttachment.Name = "DriveAttachment"
+	driveAttachment.CFrame = CFrame.fromMatrix(Vector3.zero, Vector3.xAxis, Vector3.zAxis)
+	driveAttachment.Parent = chassis
 
 	local hitch = Instance.new("Attachment")
 	hitch.Name = "HitchAttachment"
@@ -530,13 +539,13 @@ function Vehicles.makeDrivable(model, owner)
 
 	local drive = Instance.new("LinearVelocity")
 	drive.Name = "Drive"
-	drive.Attachment0 = attachment
+	drive.Attachment0 = driveAttachment
 	-- Speed is set in the truck's own frame: forward and sideways only. Up and down stay free, so gravity and the
 	-- ground decide the height, and the truck never skids sideways.
 	drive.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
 	drive.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
-	drive.PrimaryTangentAxis = Vector3.xAxis
-	drive.SecondaryTangentAxis = Vector3.zAxis
+	drive.PrimaryTangentAxis = Vector3.xAxis -- in the attachment's frame: the truck's right
+	drive.SecondaryTangentAxis = Vector3.yAxis -- in the attachment's frame: the truck's +Z, so -speed is forward
 	drive.PlaneVelocity = Vector2.zero
 	drive.MaxForce = 30000 -- enough to pull a full bed; a heavy load still speeds up slower
 	drive.Parent = chassis
