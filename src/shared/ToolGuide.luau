@@ -13,7 +13,7 @@ local HayMath = require(Shared.HayMath)
 
 local ToolGuide = {}
 
-local WALK = 16 -- Roblox's default walk speed, what every avatar starts with
+local WALK = Game.WalkSpeed -- the empty-handed walk every avatar starts with (Avatar)
 
 local function percent(x: number): string
 	return ("%d%%"):format(math.round(x * 100))

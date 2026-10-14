@@ -14,6 +14,7 @@ local PropsConfig = require(ReplicatedStorage.Shared.Config.Props)
 local Data = require(script.Parent.Data)
 local Gloves = require(script.Parent.Gloves)
 local ToolGuide = require(ReplicatedStorage.Shared.ToolGuide)
+local RateLimit = require(ReplicatedStorage.Shared.RateLimit)
 
 local Avatar = {}
 
@@ -167,7 +168,7 @@ local function setup(player, character)
 		base = motor and motor.C0,
 		leftMotor = leftMotor,
 		leftBase = leftMotor and leftMotor.C0,
-		defaultSpeed = humanoid.WalkSpeed,
+		defaultSpeed = Config.WalkSpeed, -- a little quicker than Roblox's 16 (Cyrus, 2026-10-14)
 		token = 0,
 		swingUntil = 0,
 		carrying = false,
@@ -324,6 +325,15 @@ end
 
 -- Walk speed from what the player is carrying: loose hay (state.loadWeight, kept by Tools) plus any bale, eased by
 -- their gloves. Runs whenever the load, the bale or the gloves change.
+local running = {} -- player -> true while they hold Run (kept across respawns)
+
+-- Turns running on or off for a player (the SetRun remote; the self-tests call it directly).
+function Avatar.setRunning(player, on)
+	running[player] = on == true or nil
+	player:SetAttribute("Running", on == true)
+	Avatar.refreshSpeed(player)
+end
+
 function Avatar.refreshSpeed(player)
 	local rig = rigs[player]
 	local state = Data.get(player)
@@ -352,7 +362,9 @@ function Avatar.refreshSpeed(player)
 		end
 	end
 	local speed = Gloves.walkSpeed(player, rig.defaultSpeed, weight, tier)
-	rig.humanoid.WalkSpeed = speed
+	-- Running (Shift, or the Run button; Run.client) multiplies whatever the load leaves you, so a heavy load still
+	-- slows a run the same share it slows a walk.
+	rig.humanoid.WalkSpeed = running[player] and speed * Config.RunMultiplier or speed
 	-- How hard the load is on you, 0 (easy) to 1 (crawling), for the client's camera bob and stagger.
 	local range = math.max(rig.defaultSpeed - GloveConfig.MinWalkSpeed, 1)
 	player:SetAttribute("Strain", math.clamp((rig.defaultSpeed - speed) / range, 0, 1))
@@ -381,6 +393,18 @@ function Avatar.start()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		rigs[player] = nil
+		running[player] = nil
+	end)
+
+	-- Run on or off from the client (Run.client: Shift, a gamepad's left stick click, or the Run button on touch).
+	local runRemote = Instance.new("RemoteEvent")
+	runRemote.Name = "SetRun"
+	runRemote.Parent = ReplicatedStorage
+	local runLimit = RateLimit.new("Avatar.SetRun", 10, 20)
+	runRemote.OnServerEvent:Connect(function(player, on)
+		if typeof(on) == "boolean" and runLimit:allow(player) then
+			Avatar.setRunning(player, on)
+		end
 	end)
 
 	-- Selling, scooping and gloves all end in an attribute change, so speed follows them.

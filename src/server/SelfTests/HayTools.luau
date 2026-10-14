@@ -943,6 +943,25 @@ local function withPlayer(t, player)
 			t.skip("sell pad", "no Needlewood.SellPad in the world")
 		end
 
+		-- Walking is a little quicker than Roblox's 16, and Run multiplies it (Cyrus, 2026-10-14).
+		do
+			local keepLoad, keepWeight = state.loadHay, state.loadWeight
+			state.loadHay, state.loadWeight = 0, 0
+			Avatar.setRunning(player, false)
+			local walk = humanoid.WalkSpeed
+			t.check("an empty-handed walk is quicker than 16", math.abs(walk - Config.WalkSpeed) < 0.01 and walk > 16, walk)
+			Avatar.setRunning(player, true)
+			t.check("running is RunMultiplier times the walk", math.abs(humanoid.WalkSpeed - walk * Config.RunMultiplier) < 0.01, humanoid.WalkSpeed)
+			t.check("running shows on the player", player:GetAttribute("Running") == true)
+			state.loadHay, state.loadWeight = 60, 60
+			Avatar.refreshSpeed(player)
+			local loadedRun = humanoid.WalkSpeed
+			Avatar.setRunning(player, false)
+			t.check("a load slows a run the same share as a walk", math.abs(loadedRun - humanoid.WalkSpeed * Config.RunMultiplier) < 0.01 and loadedRun < walk * Config.RunMultiplier, ("%.2f"):format(loadedRun))
+			state.loadHay, state.loadWeight = keepLoad, keepWeight
+			Avatar.refreshSpeed(player)
+		end
+
 		-- The wheelbarrow: load three bales, then set them down.
 		stand(spot * CFrame.new(20, 0, 0))
 		state.gear = state.gear or {}
