@@ -119,23 +119,37 @@ local function hide(part)
 	end
 end
 
+-- With StreamingEnabled the fallback can reach this client after its mesh, a piece at a time: a link that is
+-- still empty fills in when its part arrives, and parts streamed in later under a fallback are hidden as they come.
+-- Without this a late piece stays visible inside the mesh and the two flicker over each other.
 local function swap(model, parts)
 	for _, part in parts do
 		part.Transparency = part:GetAttribute("MeshTransparency") or 0
 	end
-	local restore = {}
+	local restore, conns, seen = {}, {}, {}
+	local function cover(part)
+		if part:IsA("BasePart") and not seen[part] and not part:IsDescendantOf(model) then
+			seen[part] = true
+			table.insert(restore, hide(part))
+		end
+	end
+	local function follow(root)
+		if not root or seen[root] == "root" then
+			return
+		end
+		cover(root)
+		seen[root] = "root"
+		for _, d in root:GetDescendants() do
+			cover(d)
+		end
+		table.insert(conns, root.DescendantAdded:Connect(cover))
+	end
 	for _, link in model:GetChildren() do
-		local root = link.Name == "Fallback" and link:IsA("ObjectValue") and link.Value
-		if root then
-			local list = { root }
-			for _, d in root:GetDescendants() do
-				table.insert(list, d)
-			end
-			for _, part in list do
-				if part:IsA("BasePart") and not part:IsDescendantOf(model) then
-					table.insert(restore, hide(part))
-				end
-			end
+		if link.Name == "Fallback" and link:IsA("ObjectValue") then
+			follow(link.Value)
+			table.insert(conns, link.Changed:Connect(function()
+				follow(link.Value)
+			end))
 		end
 	end
 	-- The mesh removed while its fallback stays: show the part look again, or the piece is invisible but solid.
@@ -145,6 +159,9 @@ local function swap(model, parts)
 			return
 		end
 		gone:Disconnect()
+		for _, conn in conns do
+			conn:Disconnect()
+		end
 		for _, show in restore do
 			show()
 		end
