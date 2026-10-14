@@ -147,9 +147,47 @@ function Vehicles.get(id)
 	return nil
 end
 
+-- The ground under a truck's pivot: a pivot given at a fixed height (the dealer lot, the garage, a parking spot) is
+-- moved up or down onto whatever is really there (terrain, a floor, a stage), so a truck is never built sunk into a
+-- hill or hovering. Vehicles are skipped. Only within SNAP studs, so a pivot meant for a bridge or a test pad stays.
+local SNAP = 6
+local snapParams = RaycastParams.new()
+snapParams.FilterType = Enum.RaycastFilterType.Exclude
+snapParams.IgnoreWater = true
+local function onGround(pivot, ignore)
+	local skip = { ignore }
+	for _ = 1, 4 do
+		snapParams.FilterDescendantsInstances = skip
+		local hit = workspace:Raycast(pivot.Position + Vector3.new(0, SNAP, 0), Vector3.new(0, -SNAP * 2, 0), snapParams)
+		if not hit then
+			return pivot
+		end
+		local model = hit.Instance:FindFirstAncestorWhichIsA("Model")
+		if model and (model:GetAttribute("TruckId") or model:GetAttribute("TrailerId")) then
+			table.insert(skip, model)
+			continue
+		end
+		if not hit.Instance.CanCollide and hit.Instance ~= workspace.Terrain then
+			table.insert(skip, hit.Instance)
+			continue
+		end
+		local dy = hit.Position.Y - pivot.Position.Y
+		if math.abs(dy) > 0.25 then
+			return pivot + Vector3.new(0, dy, 0), dy
+		end
+		return pivot
+	end
+	return pivot
+end
+
 -- Builds a truck standing on the ground at pivot (forward is pivot's LookVector). Every part is anchored; call
 -- makeDrivable to weld it into one vehicle.
 function Vehicles.build(def, pivot, parent)
+	local moved
+	pivot, moved = onGround(pivot)
+	if moved and math.abs(moved) > 1 then
+		print(("[Needlewood] %s built %.1f studs %s its given spot to sit on the ground"):format(def.name, math.abs(moved), moved > 0 and "above" or "below"))
+	end
 	local model = Instance.new("Model")
 	model.Name = def.name
 	model:SetAttribute("TruckId", def.id)
@@ -481,9 +519,18 @@ function Vehicles.makeDrivable(model, owner)
 		end
 	end
 
+	-- Steer turns the chassis to the driver's heading through this one (it lines up with the chassis).
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "DriveAttachment"
+	attachment.Name = "SteerAttachment"
 	attachment.Parent = chassis
+	-- Drive pushes through its own attachment, turned so its X is the truck's right and its Y the truck's length (+Z,
+	-- the back). With RelativeTo = Attachment0 a Plane LinearVelocity drives along the attachment's own X and Y, so on
+	-- an unturned attachment PlaneVelocity's second number moved the truck up and down instead of forward (Cyrus's
+	-- playtest, 2026-10-14). Its plane is now the ground under the truck; height is left to gravity and the wheels.
+	local driveAttachment = Instance.new("Attachment")
+	driveAttachment.Name = "DriveAttachment"
+	driveAttachment.CFrame = CFrame.fromMatrix(Vector3.zero, Vector3.xAxis, Vector3.zAxis)
+	driveAttachment.Parent = chassis
 
 	local hitch = Instance.new("Attachment")
 	hitch.Name = "HitchAttachment"
@@ -492,13 +539,13 @@ function Vehicles.makeDrivable(model, owner)
 
 	local drive = Instance.new("LinearVelocity")
 	drive.Name = "Drive"
-	drive.Attachment0 = attachment
+	drive.Attachment0 = driveAttachment
 	-- Speed is set in the truck's own frame: forward and sideways only. Up and down stay free, so gravity and the
 	-- ground decide the height, and the truck never skids sideways.
 	drive.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
 	drive.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
-	drive.PrimaryTangentAxis = Vector3.xAxis
-	drive.SecondaryTangentAxis = Vector3.zAxis
+	drive.PrimaryTangentAxis = Vector3.xAxis -- in the attachment's frame: the truck's right
+	drive.SecondaryTangentAxis = Vector3.yAxis -- in the attachment's frame: the truck's +Z, so -speed is forward
 	drive.PlaneVelocity = Vector2.zero
 	drive.MaxForce = 30000 -- enough to pull a full bed; a heavy load still speeds up slower
 	drive.Parent = chassis
@@ -851,6 +898,7 @@ end
 
 -- Moves an anchored truck (used by the garage drive-out).
 function Vehicles.place(model, cframe)
+	cframe = onGround(cframe, model)
 	local chassis = model.PrimaryPart
 	chassis.CFrame = cframe * CFrame.new(0, model:GetAttribute("Deck") - 0.4, 0)
 end

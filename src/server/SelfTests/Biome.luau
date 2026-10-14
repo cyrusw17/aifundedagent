@@ -64,6 +64,8 @@ return function(SelfTest)
 		return strands, found
 	end
 
+	local lastRise = 0 -- how far the last driveFor moved the truck up or down
+
 	-- Drives straight ahead like Truck.client.luau (steer frame on the ground normal, full plane velocity).
 	local function driveFor(model, seconds, speed)
 		local chassis = model.PrimaryPart
@@ -84,7 +86,9 @@ return function(SelfTest)
 		task.wait(seconds)
 		connection:Disconnect()
 		drive.PlaneVelocity = Vector2.zero
-		return (chassis.Position - start):Dot(heading)
+		local moved = chassis.Position - start
+		lastRise = math.abs(moved.Y)
+		return moved:Dot(heading)
 	end
 
 	SelfTest.register("Biome", function(t)
@@ -107,6 +111,23 @@ return function(SelfTest)
 			local slots = size and math.floor((size.X + 0.3) / 3.2) * math.floor((size.Z + 0.3) / 4.6) or 0
 			t.equal(("%s bed holds %d bales a layer"):format(id, want), slots, want)
 			m:Destroy()
+		end
+
+		-- Drive direction ---------------------------------------------------------------------------------------
+		-- Cyrus's playtest (2026-10-14): W moved the truck up and down. A Plane LinearVelocity relative to its
+		-- attachment pushes along that attachment's X and Y, so the Drive attachment's Y must run along the truck.
+		do
+			local drive = chassis:FindFirstChild("Drive")
+			local att = drive and drive.Attachment0
+			if t.check("the truck has a Drive with its own attachment", att ~= nil and att ~= (chassis:FindFirstChild("Steer") or {}).Attachment0) then
+				local look = chassis.CFrame.LookVector
+				local alongAxis = chassis.CFrame:VectorToWorldSpace(att.CFrame.UpVector)
+				local alongTangent = chassis.CFrame:VectorToWorldSpace(att.CFrame:VectorToWorldSpace(drive.SecondaryTangentAxis))
+				local sideTangent = chassis.CFrame:VectorToWorldSpace(att.CFrame:VectorToWorldSpace(drive.PrimaryTangentAxis))
+				t.check("W pushes the truck forward, not up (attachment axes)", alongAxis:Dot(look) < -0.99, ("dot %.2f"):format(alongAxis:Dot(look)))
+				t.check("W pushes the truck forward, not up (tangent axes)", alongTangent:Dot(look) < -0.99, ("dot %.2f"):format(alongTangent:Dot(look)))
+				t.check("the drive plane is level with the truck", math.abs(sideTangent:Dot(chassis.CFrame.UpVector)) < 0.01 and math.abs(alongTangent:Dot(chassis.CFrame.UpVector)) < 0.01)
+			end
 		end
 
 		-- Hitch and unhitch ------------------------------------------------------------------------------------
@@ -164,6 +185,7 @@ return function(SelfTest)
 			local moved = driveFor(truck2, 3, 24)
 			t.wait(1)
 			t.check("loaded pickup drives forward", moved > 20, ("%.1f studs in 3 s"):format(moved))
+			t.check("the pickup drives along the ground, not up and down", lastRise < 3, ("rose or sank %.1f studs"):format(lastRise))
 			local kept = hayIn(truck2)
 			t.check("most of the hay stays in the bed through the drive", kept >= want * 0.8, ("%d of %d strands"):format(kept, want))
 		end
