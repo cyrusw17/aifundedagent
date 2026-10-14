@@ -6,7 +6,7 @@
 --     it is not open yet, and the server's answer when it says no (loans not paid, the last rebirth reached).
 --   * a "♻ Rebirth N" line over every reborn player's head, from their RebirthCount attribute, for show-off.
 -- It reads only RebirthReady / RebirthCount / RebirthBonus and calls ReplicatedStorage.Rebirth (no arguments,
--- returns ok, message). The server decides everything; a yes saves the reset slot and sends you back through a rejoin.
+-- returns ok, message). The server decides everything; a yes saves the reset profile and sends you back through a rejoin.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

@@ -1,15 +1,15 @@
 --!nonstrict
--- Rebirth (CEO H5, Prices.Rebirth). Once a slot owns the Semi it can start the climb again: cash, the bank and its
+-- Rebirth (CEO H5, Prices.Rebirth). Once a profile owns the Semi it can start the climb again: cash, the bank and its
 -- loans, trucks, trailers, everything built on the farm, plot upgrades, the second farm and plain needles reset, and
 -- every sale after it pays Prices.Rebirth.Bonus more per rebirth for good (Bank.earn reads state.rebirth.count), up to
 -- Prices.Rebirth.Max. Kept: the plot itself, shovels and gear, the needle index, cosmetics and skins, finds, mutated
 -- needles, quests, the codex (best needle), settings, blueprints and the tutorial.
 --
--- The world (trucks out, the farm's machines) is built from the save when a slot loads, so a rebirth saves the reset
--- slot and sends the player back through a rejoin (TeleportService to this place; a kick with a message if that
+-- The world (trucks out, the farm's machines) is built from the save when a profile loads, so a rebirth saves the reset
+-- profile and sends the player back through a rejoin (TeleportService to this place; a kick with a message if that
 -- fails, as in Studio).
 --
---   Rebirth.check(state)  -> ok, why: whether this slot can rebirth now
+--   Rebirth.check(state)  -> ok, why: whether this profile can rebirth now
 --   Rebirth.reset(state)  -> the reset applied to a state table in place (SelfTests/Economy runs it on a copy)
 --   Rebirth.go(player)    -> ok, message
 -- Remote: ReplicatedStorage.Rebirth (RemoteFunction, no arguments) -> ok, message. Player attributes: RebirthCount,
@@ -42,7 +42,7 @@ end
 
 function Rebirth.check(state)
 	if not state then
-		return false, "Pick a save first."
+		return false, "Your profile is still loading."
 	end
 	if countOf(state) >= Terms.Max then
 		return false, ("You've reached the last rebirth (%d)."):format(Terms.Max)
@@ -104,13 +104,13 @@ function Rebirth.go(player)
 	local count = Rebirth.reset(state)
 	Bank.record(state, "rebirth", 0, ("Rebirth %d: every sale pays %d%% more"):format(count, math.floor((Rebirth.bonus(count) - 1) * 100 + 0.5)))
 	state.skipBeforeSave = true
-	Data.release(player) -- a final save of the reset slot, then this server lets it go
+	Data.release(player) -- a final save of the reset profile, then this server lets it go
 	task.spawn(function()
 		local sent = pcall(function()
 			TeleportService:TeleportAsync(game.PlaceId, { player })
 		end)
 		if not sent and player.Parent then
-			player:Kick(("Rebirth %d done! Rejoin and pick your save to start the climb again."):format(count))
+			player:Kick(("Rebirth %d done! Rejoin to start the climb again."):format(count))
 		end
 	end)
 	return true, ("Rebirth %d! Rejoining..."):format(count)
@@ -138,7 +138,7 @@ function Rebirth.start()
 		local ok, result, message = pcall(Rebirth.go, player)
 		if not ok then
 			warn("[Needlewood] rebirth failed: " .. tostring(result))
-			return false, "Something went wrong with the rebirth. Rejoin and check your save."
+			return false, "Something went wrong with the rebirth. Rejoin and try again."
 		end
 		return result, message
 	end
