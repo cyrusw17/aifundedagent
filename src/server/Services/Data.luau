@@ -229,7 +229,7 @@ local function bankFrom(saved)
 	return bank
 end
 
--- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, binSorted, binPolisher, theme, name, savedAt }.
+-- A farm from a save (Land.luau): { owned, plot, items, needles, crew, expansions, rows, binSorted, binPolisher, theme, name, savedAt }.
 local function landFrom(land)
 	if typeof(land) ~= "table" or typeof(land.items) ~= "table" then
 		return nil
@@ -241,6 +241,7 @@ local function landFrom(land)
 		needles = countMap(land.needles),
 		crew = typeof(land.crew) == "table" and land.crew or {}, -- farm crew user ids
 		expansions = typeof(land.expansions) == "number" and land.expansions or nil, -- rows bought
+		rows = typeof(land.rows) == "number" and land.rows or nil, -- rows there were to buy when saved (2 before this was kept)
 		binSorted = land.binSorted == true or nil, -- the needle bin has type dividers
 		binPolisher = land.binPolisher == true or nil, -- the needle bin has a polishing wheel
 		theme = typeof(land.theme) == "string" and land.theme or nil, -- plot theme id

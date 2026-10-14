@@ -395,7 +395,7 @@ local function refreshExpand()
 	local info = state:FindFirstChild("Plot" .. index)
 	local locked = info and info:GetAttribute("LockedRows") or 0
 	expandButton.Visible = locked > 0
-	expandButton.Text = ("EXPAND  $%d"):format(LandConfig.ExpansionPrice)
+	expandButton.Text = ("EXPAND  $%d"):format(LandConfig.expansionPrice(LandConfig.ExpansionRows - locked))
 end
 for _, info in state:GetChildren() do
 	if info:IsA("Configuration") then

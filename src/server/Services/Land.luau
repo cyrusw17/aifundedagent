@@ -20,6 +20,7 @@ local LandConfig = require(Shared.Config.Land)
 local PricesConfig = require(Shared.Config.Prices)
 local Meadow = require(Shared.Config.Meadow)
 local Rustic = require(Shared.Config.Rustic)
+local WorldLabel = require(Shared.WorldLabel)
 local GameConfig = require(Shared.Config.Game)
 local Sorters = require(Shared.Config.Sorters)
 local Economy = require(Shared.Economy)
@@ -56,6 +57,8 @@ local T = Factory.TileSize
 local TOP = Factory.BeltTop
 local STRIP = LandConfig.StripDepth
 local FENCE_HEIGHT = 3
+local PLOT_SOIL = Color3.fromRGB(104, 70, 44) -- owned or for sale: dark tilled soil
+local LOCKED_SOIL = Color3.fromRGB(158, 134, 98) -- rows still to buy: pale packed dirt
 
 local pieces = {}
 for _, def in LandConfig.Pieces do
@@ -206,6 +209,11 @@ local function publish(plot)
 		plot.label.Text = ("%s\n%s\n♥ %d this week"):format(plot.def.name:upper(), title, plot.likes or 0)
 	else
 		plot.label.Text = ("%s FOR SALE\n$%d at the Land Office"):format(plot.def.name:upper(), plot.def.price)
+	end
+	if plot.bigName then
+		plot.bigName.Text = plot.ownerId and ("%s\n%s"):format(plot.def.name:upper(), (plot.farmName or (plot.ownerName .. "'s farm")):upper())
+			or ("%s\nFOR SALE  $%d"):format(plot.def.name:upper(), plot.def.price)
+		plot.bigName.TextColor3 = plot.ownerId and Color3.new(1, 1, 1) or Color3.fromRGB(255, 214, 120)
 	end
 end
 
@@ -949,6 +957,7 @@ local function writeLand(land, plot, ownerId)
 	land.items = items
 	land.plot = plot.index
 	land.expansions = LandConfig.ExpansionRows - (plot.locked or 0)
+	land.rows = LandConfig.ExpansionRows -- how many rows could be bought when this was saved (see claim)
 	land.binSorted = plot.binSorted or nil
 	land.binPolisher = plot.binPolisher or nil
 	land.theme = plot.theme
@@ -1031,11 +1040,12 @@ local function drawLocks(plot)
 	for r = 0, (plot.locked or 0) - 1 do
 		local z = if plot.def.open == "S" then r else plot.tiles.Z - 1 - r
 		local at = plot.corner + Vector3.new(plot.size.X / 2, 0.25, z * T + T / 2)
-		local p = part(plot.model, "LockedRow", Vector3.new(plot.size.X, 0.3, T), CFrame.new(at), Rustic.Mud, Enum.Material.Grass)
+		local p = part(plot.model, "LockedRow", Vector3.new(plot.size.X, 0.3, T), CFrame.new(at), LOCKED_SOIL, Enum.Material.Sand)
 		p.CanCollide = false
 		table.insert(plot.lockParts, p)
 		if r == 0 then
-			sign(p, ("LOCKED ROWS\nBUILD > EXPAND, $%d a row"):format(LandConfig.ExpansionPrice), Vector3.new(0, 4, 0))
+			local bought = LandConfig.ExpansionRows - (plot.locked or 0)
+			sign(p, ("LOCKED ROWS\nBUILD > EXPAND, next row $%d"):format(LandConfig.expansionPrice(bought)), Vector3.new(0, 4, 0))
 		end
 	end
 end
@@ -1205,8 +1215,13 @@ local function claim(plot, player, saved, landKey)
 	player:SetAttribute("LandPlot", plotOf[player].index)
 	plot.leftOut = {}
 	plot.crew = {}
-	-- Saves from before expansions existed get the whole plot.
+	-- Saves from before expansions existed get the whole plot. A save from when fewer rows could be bought (2, before
+	-- rows were saved) keeps every row it had open: the extra locked rows count as bought.
 	local bought = typeof(saved.expansions) == "number" and saved.expansions or LandConfig.ExpansionRows
+	local rowsThen = typeof(saved.rows) == "number" and saved.rows or 2
+	if typeof(saved.expansions) == "number" and rowsThen < LandConfig.ExpansionRows then
+		bought += LandConfig.ExpansionRows - rowsThen
+	end
 	plot.locked = LandConfig.ExpansionRows - math.clamp(math.floor(bought), 0, LandConfig.ExpansionRows)
 	drawLocks(plot)
 	dress(plot, saved.theme)
@@ -1289,14 +1304,14 @@ end
 local function onBuy(player, index)
 	local s = Data.get(player)
 	if not s then
-		return false, "Pick a save first."
+		return false, "Your game is still loading."
 	end
 	-- A save with a farm can buy one more plot, at the second-plot price.
 	local landKey = "land"
 	local price = nil
 	if s.land and s.land.owned then
 		if (s.land2 and s.land2.owned) or not plotOf[player] then
-			return false, "This save already owns all the land it can."
+			return false, "You already own all the land you can."
 		end
 		landKey = "land2"
 		price = LandConfig.SecondPlotPrice
@@ -1312,7 +1327,7 @@ local function onBuy(player, index)
 	if not paid then
 		return false, why
 	end
-	s[landKey] = { owned = true, plot = index, items = {}, expansions = 0 }
+	s[landKey] = { owned = true, plot = index, items = {}, expansions = 0, rows = LandConfig.ExpansionRows }
 	claim(plot, player, s[landKey], landKey)
 	if landKey == "land2" then
 		Data.sync(player)
@@ -1639,7 +1654,8 @@ local function onExpand(player)
 	if (plot.locked or 0) <= 0 then
 		return false, "Your plot is already full size."
 	end
-	local paid, why = Bank.charge(player, LandConfig.ExpansionPrice, "Land: expansion")
+	local price = LandConfig.expansionPrice(LandConfig.ExpansionRows - plot.locked)
+	local paid, why = Bank.charge(player, price, "Land: expansion")
 	if not paid then
 		return false, why
 	end
@@ -1866,9 +1882,27 @@ local function buildPlot(parent, index, def)
 	model.Name = "Plot" .. index
 	model.Parent = parent
 
-	-- Packed dirt over the build grid, and the strip for the sign and the needle bin.
-	part(model, "Ground", Vector3.new(size.X, 0.2, size.Z), CFrame.new(corner + Vector3.new(size.X / 2, 0.1, size.Z / 2)), Rustic.Dirt, Enum.Material.Ground)
+	-- Brown tilled soil over the build grid and the strip for the sign and the needle bin, edged in dark timber on all four sides so every plot reads as a plot from far off (Cyrus: "brown, obvious plots").
+	part(model, "Ground", Vector3.new(size.X, 0.2, size.Z), CFrame.new(corner + Vector3.new(size.X / 2, 0.1, size.Z / 2)), PLOT_SOIL, Enum.Material.Ground)
 	part(model, "Strip", Vector3.new(size.X, 0.2, STRIP), CFrame.new((x0 + x1) / 2, 0.1, stripZ), Rustic.Mud, Enum.Material.Ground)
+	local edging = Instance.new("Model")
+	edging.Name = "Edging"
+	edging.Parent = model
+	local EDGE = 1.2
+	for _, e in {
+		{ Vector3.new(EDGE, 0.7, z1 - z0 + EDGE * 2), Vector3.new(x0 - EDGE / 2, 0.35, (z0 + z1) / 2) },
+		{ Vector3.new(EDGE, 0.7, z1 - z0 + EDGE * 2), Vector3.new(x1 + EDGE / 2, 0.35, (z0 + z1) / 2) },
+		{ Vector3.new(x1 - x0, 0.7, EDGE), Vector3.new((x0 + x1) / 2, 0.35, (def.open == "S" and z0 or z1) + (def.open == "S" and -EDGE / 2 or EDGE / 2)) },
+	} do
+		part(edging, "Timber", e[1], CFrame.new(e[2]), Rustic.WoodDark, Enum.Material.Wood)
+	end
+	-- The lane side stays flush so trucks drive straight in: a flat band of darker soil marks the edge.
+	local edgeZ = def.open == "S" and z1 + EDGE / 2 or z0 - EDGE / 2
+	part(edging, "LaneEdge", Vector3.new(x1 - x0 + EDGE * 2, 0.22, EDGE), CFrame.new((x0 + x1) / 2, 0.11, edgeZ), Rustic.WoodDark, Enum.Material.WoodPlanks)
+	-- A big floating name over the middle of the plot, readable from across the meadow (publish sets the text).
+	local anchor = part(model, "NameAnchor", Vector3.new(1, 1, 1), CFrame.new((x0 + x1) / 2, 1, (z0 + z1) / 2), PLOT_SOIL, Enum.Material.Ground)
+	anchor.Transparency, anchor.CanCollide, anchor.CanQuery, anchor.CanTouch = 1, false, false, false
+	local bigName = WorldLabel.billboard(anchor, def.name:upper(), { kind = "sign", studs = 4, offset = Vector3.new(0, 16, 0), distance = 600 })
 
 	-- Fence on three sides. The lane side stays open.
 	local fences = Instance.new("Model")
@@ -1939,6 +1973,7 @@ local function buildPlot(parent, index, def)
 		items = items,
 		info = info,
 		label = label,
+		bigName = bigName,
 		likePrompt = likePrompt,
 		likes = 0,
 		owner = nil,
@@ -2302,31 +2337,63 @@ local function mailbox(player, land)
 	return letter .. "."
 end
 
+-- Owners pick where their farm goes when they join: player attribute PlotChoice is the suggested plot (their old one
+-- when it is free) while the picker (src/client/PlotPick.client.luau) is open, and the Settle remote answers it. With
+-- no answer in PICK_SECONDS the farm goes on the suggested plot. player -> { chosen = plot? } while picking.
+local PICK_SECONDS = 45
+local picking = {}
+
+local function onSettle(player, index)
+	local wait = picking[player]
+	if not wait then
+		return false, "Your farm is already placed."
+	end
+	local plot = typeof(index) == "number" and plots[index]
+	if not plot then
+		return false, "That plot doesn't exist."
+	end
+	if plot.ownerId then
+		return false, ("%s is taken. Pick another."):format(plot.def.name)
+	end
+	wait.chosen = plot
+	return true, ("Setting up your farm on %s..."):format(plot.def.name)
+end
+
 local function onLoaded(player)
 	local s = Data.get(player)
-	if not s then
+	if not s or not (s.land and s.land.owned) then
+		return -- no land yet: they buy their first plot at the Land Office
+	end
+	local suggested = pickPlot(s.land.plot)
+	if not suggested then
+		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
-	local picked = s.pickedPlot and plots[s.pickedPlot]
-	s.pickedPlot = nil
-	if not (s.land and s.land.owned) then
-		if picked then
-			local ok, message = onBuy(player, picked.index)
-			if ok then
-				task.spawn(sendHome, player, picked)
-			else
-				Data.toast(player, message)
-			end
-		end
+	local wait = {}
+	picking[player] = wait
+	player:SetAttribute("PlotChoice", suggested.index)
+	local deadline = os.clock() + PICK_SECONDS
+	while not wait.chosen and player.Parent and picking[player] == wait and os.clock() < deadline do
+		task.wait(0.2)
+	end
+	if picking[player] ~= wait then
 		return
 	end
-	local plot = (picked and not picked.ownerId) and picked or pickPlot(s.land.plot)
+	picking[player] = nil
+	player:SetAttribute("PlotChoice", nil)
+	if not player.Parent or Data.get(player) ~= s then
+		return
+	end
+	local plot = wait.chosen
+	if not plot or plot.ownerId then
+		plot = pickPlot(s.land.plot) -- the pick was taken meanwhile, or nobody picked
+	end
 	if not plot then
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
 	for _, name in { "AwayCash", "AwayBales", "AwayNeedles", "AwaySeconds" } do
-		player:SetAttribute(name, nil) -- a fresh card per load (a slot switch loads again)
+		player:SetAttribute(name, nil) -- a fresh card per load
 	end
 	local letter = mailbox(player, s.land)
 	claim(plot, player, s.land)
@@ -2367,7 +2434,7 @@ local function onLoaded(player)
 	end
 end
 
--- Buying happens at the Land Office. (Loading a save that picked a plot calls onBuy directly, from anywhere.)
+-- Buying happens at the Land Office.
 local function onBuyRemote(player, ...)
 	if not within(player, LandConfig.OfficeCenter, OFFICE_REACH) then
 		return false, "Buy land at the Land Office."
@@ -2394,6 +2461,7 @@ local limits = {
 	Buy = RateLimit.new("Land.Buy", 0.5, 2),
 	Expand = RateLimit.new("Land.Expand", 1, 3),
 	Paste = RateLimit.new("Land.Paste", 1, 3),
+	Settle = RateLimit.new("Land.Settle", 1, 3),
 }
 
 local function limited(limiter, fn)
@@ -2589,6 +2657,8 @@ Land.test = {
 	claim = claim,
 	release = release,
 	pickPlot = pickPlot,
+	onSettle = onSettle,
+	picking = picking,
 	restoreNeedles = restoreNeedles,
 	mailbox = mailbox,
 	onPlace = onPlace,
@@ -2613,7 +2683,7 @@ function Land.build(worldFolder)
 	state = Instance.new("Folder")
 	state.Name = "Land"
 	local remotes = {}
-	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName", "CrewAnswer" } do
+	for _, name in { "Buy", "Place", "Remove", "Crew", "Visit", "Expand", "Pick", "Move", "Copy", "Paste", "Undo", "Theme", "Switch", "FarmName", "CrewAnswer", "Settle" } do
 		local remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = state
@@ -2653,6 +2723,7 @@ function Land.build(worldFolder)
 	remotes.Theme.OnServerInvoke = guard(onTheme)
 	remotes.FarmName.OnServerInvoke = guard(onName)
 	remotes.Switch.OnServerInvoke = guard(onSwitch)
+	remotes.Settle.OnServerInvoke = guard(limited(limits.Settle, onSettle))
 	-- Crew members may drive the owner's truck.
 	Vehicles.canDrive = function(driver, owner)
 		for _, plot in farms[owner] or {} do
@@ -2680,7 +2751,9 @@ function Land.build(worldFolder)
 		return false
 	end
 
-	Data.loaded.Event:Connect(onLoaded)
+	Data.loaded.Event:Connect(function(player)
+		task.spawn(onLoaded, player) -- waits while the owner picks a plot
+	end)
 	for _, player in Players:GetPlayers() do
 		if Data.get(player) then
 			task.spawn(onLoaded, player)
@@ -2715,6 +2788,7 @@ function Land.build(worldFolder)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
+		picking[player] = nil
 		crewInvites[player] = nil
 		siloHistory[player] = nil
 		lastAction[player] = nil
