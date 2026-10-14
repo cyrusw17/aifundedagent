@@ -13,6 +13,7 @@
 -- its old plot when that is free on this server, else on another free one (Land.luau).
 -- Profiles started before this replaced the three save slots: the first load copies over the slot played last.
 -- Players listed in Config/Land.luau Presets start a new profile as their preset farm instead of from nothing.
+-- Players listed in Config/Game DevFreshStart start from nothing on every join (see justReborn for the one exception).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -531,6 +532,13 @@ local function readProfile(player)
 	return true, old, false
 end
 
+-- True for a save written by a rebirth in the last few minutes (Rebirth.luau sets rebirth.at, then rejoins).
+local function justReborn(saved)
+	local rebirth = typeof(saved) == "table" and saved.rebirth
+	return typeof(rebirth) == "table" and typeof(rebirth.at) == "number" and os.time() - rebirth.at < 300
+end
+Data.test.justReborn = justReborn
+
 -- Loads the player's profile and starts the game for them. Runs once, on joining.
 function Data.load(player)
 	if states[player] or loading[player] then
@@ -547,6 +555,12 @@ function Data.load(player)
 		end
 	else
 		offline[player] = true
+	end
+	-- A developer fresh start (Config/Game DevFreshStart) drops what was saved, except straight after a rebirth, whose
+	-- rejoin must come back to the reset game it saved.
+	local devFresh = table.find(Config.DevFreshStart or {}, player.UserId) ~= nil
+	if devFresh and not justReborn(saved) then
+		saved, restored = nil, false
 	end
 	if saved then
 		saved = migrate(saved)
@@ -574,7 +588,7 @@ function Data.load(player)
 		return false
 	end
 	local fresh = saved == nil
-	if fresh then
+	if fresh and not devFresh then
 		local preset = presetFor(player)
 		saved = preset and copy({ cash = preset.cash, trucks = preset.trucks, trailers = preset.trailers, land = preset.land })
 		-- A preset farm's pieces were free, so removing them refunds nothing.

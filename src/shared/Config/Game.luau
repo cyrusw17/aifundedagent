@@ -1,6 +1,12 @@
 --!strict
 -- Tunable numbers for the first slice. All placeholders to adjust from playtests.
 local Prices = require(script.Parent.Prices)
+
+-- DEVELOPER FRESH START: these UserIds start a brand-new game every time they join (no saved progress, no preset
+-- farm), and Studio test money (InfiniteMoney below) is off so it is a real start from nothing. Their game still saves
+-- while they play, so a Rebirth's rejoin keeps the rebirth. To switch it off, empty the list: {}.
+local DEV_FRESH_START = { 11803361702 }
+
 return {
 	CarryCapacity = 60, -- hay a player can hold in their arms and pockets at once
 	NeedleChancePerHay = Prices.needleChance("meadow"), -- Meadow bales hide 2 needles on average (Config/Prices)
@@ -9,7 +15,10 @@ return {
 	-- TESTING: every player has endless cash, so shops can be tried without grinding. Real balances are kept and
 	-- saved as normal underneath. Studio only, so a live server never hands out free money (refunds of free buys
 	-- would otherwise mint real cash). Set it to true or false outright to change that (ECONOMY.md, "Test money").
-	InfiniteMoney = game:GetService("RunService"):IsStudio(),
+	-- Off while DevFreshStart lists anyone (the headless runner keeps it, it plays a stand-in player).
+	InfiniteMoney = game:GetService("RunService"):IsStudio()
+		and (#DEV_FRESH_START == 0 or workspace:GetAttribute("Headless") == true),
+	DevFreshStart = DEV_FRESH_START,
 
 	-- Hay pieces: a bale breaks into loose pieces, tools move them
 	HayPerPiece = 1,
