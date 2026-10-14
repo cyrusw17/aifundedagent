@@ -1,0 +1,532 @@
+--!strict
+-- Every price in Needlewood, in one place. Shops, sorters, the land office, the dealer, the glove stand and the bank all
+-- read their numbers from here, so changing a price means changing one line.
+--
+-- docs/ECONOMY.md explains why each number is what it is, and tools/economy_model.py re-derives the tables behind it.
+-- The short version: a Meadow bale is worth $47 raw, a player hauls about 2.3 bales a minute by hand (about $6,500 an
+-- hour), and every price is set from how long it takes to earn at the stage where you would buy it, and how fast it
+-- pays you back.
+local Prices = {}
+
+-- Selling -----------------------------------------------------------------------------------------------------------
+
+Prices.HayPerBale = 90 -- straw strands in one bale (Config/Game PiecesPerBale x HayPerPiece)
+Prices.HayPrice = 0.5 -- dollars per strand, at the public shop and at your own hay buyer
+Prices.RawNeedlePrice = 1 -- the public shop finds the needles in your hay but only pays this for each
+
+-- A needle you spot and pick up yourself (one that tumbled out of a broken bale) pays this share of its sorted value.
+-- Full value: it is rare and it is the first thing that shows a new player what sorting is worth.
+Prices.HandFoundNeedleShare = 1
+-- When a bale breaks, this share of its hidden needles tumbles out where you can see it. The rest stay in the hay.
+Prices.VisibleNeedleShare = 0.25
+
+-- Hidden needles per bale, by hay type (ids from Config/Gloves HayTypes). Richer hay pays twice: more needles, and
+-- pricier needles. Meadow's 2 keeps a sorted bale worth 1.6x to 4.9x a raw one instead of 25x.
+Prices.NeedlesPerBale = {
+	meadow = 2,
+	pine = 3,
+	desert = 4,
+	snow = 5,
+	swamp = 6,
+	keys = 6, -- Thimble Keys, by ferry from Swamp Port: Swamp's count with a better needle, paid for by the fare
+	volcano = 8,
+	bobbin = 9, -- Bobbin Rock, by ferry from Ash Dock: between Volcano and Cave
+	cave = 10,
+	sky = 12,
+	haunted = 14,
+	star = 20,
+}
+
+-- Sorted needle value by needle id (Config/Needles). What the SELL NEEDLES pad pays for each.
+Prices.Needles = {
+	steel = 100,
+	pine = 110,
+	sand = 140,
+	ice = 160,
+	bog = 170,
+	coral = 220, -- Thimble Keys
+	obsidian = 300,
+	brass = 320, -- Bobbin Rock
+	geode = 340,
+	cloud = 700,
+	phantom = 800,
+	cosmic = 5000,
+}
+
+-- Finder's rewards for foreign objects in hay (Config/Finds, by id), paid once for the first of each kind. About $1
+-- for every bale it takes on average to turn one up (Finds oneIn), with the two rarest doubled because they are the
+-- finds players talk about. They are a moment, not an income: all six together are under an hour of pickup earnings.
+Prices.FinderRewards = {
+	boot = 50, -- 1 in 50 bales
+	horseshoe = 150, -- 1 in 150
+	key = 300, -- 1 in 300
+	radio = 600, -- 1 in 600
+	ring = 1500, -- 1 in 1,000, doubled
+	fossil = 4000, -- 1 in 2,000, doubled
+}
+
+-- NPC buyer orders (Services/Orders.luau). Three local buyers post an order each, new ones every RotateSeconds. Every
+-- unit delivered pays at once: its normal price times mult, up to the order's amount per player. Plain bales pay 1.5x
+-- the public shop ($71 a bale), sorted bales 2x their hay ($90, double what a hay buyer pays, since the sorting is
+-- done), and steel needles 1.25x list ($125). A full order is worth a few hundred to a thousand dollars over selling
+-- normally: a 5 to 10 minute bonus at the pickup stage, and a reason to haul somewhere other than your own line.
+Prices.Orders = {
+	RotateSeconds = 1200,
+	Buyers = { "Miller Joe", "Widow Hale", "Old Tobias", "Mabel at the feed store", "The Thatcher twins", "Pastor Reed" },
+	Kinds = {
+		bales = { amount = { 8, 16 }, mult = 1.5 },
+		sorted = { amount = { 10, 20 }, mult = 2 },
+		needles = { amount = { 6, 15 }, mult = 1.25 },
+	},
+}
+
+-- Daily contracts (Services/Orders.luau, CEO H9). Three contracts a day from the same buyers, the same for everyone on
+-- a UTC day, reset at midnight UTC. Deliver on the orders pad: goods pay their normal price (or the open order's rate
+-- when one wants them too), so a contract never costs you a sale. Finishing one pays reward, all three pay bonus and
+-- count a streak day. The cash scales with how far along you are, read once a day from your lifetime sales (Bank
+-- sold): each tier starts just after the purchase that opens that stage in tools/economy_model.py's first playthrough
+-- (tools/boost_sim.py checks it), perHour is that stage's
+-- income (the slowest stage until the next tier), and a full day (3 x reward + bonus) is about 20% of one hour there.
+-- tests/contracts.luau fails if any tier goes over 25%. Before a sorter (sold under 10,000) the sorted contract is a
+-- second hay one.
+Prices.DailyContracts = {
+	Kinds = {
+		bales = { amount = { 10, 20 } },
+		sorted = { amount = { 10, 20 } },
+		needles = { amount = { 8, 16 } },
+	},
+	Tiers = {
+		{ fromSold = 0, perHour = 6500, reward = 250, bonus = 500, needle = "steel", kinds = { "bales", "needles", "bales" } },
+		{ fromSold = 10000, perHour = 13700, reward = 550, bonus = 1100, needle = "steel" },
+		{ fromSold = 16000, perHour = 21600, reward = 850, bonus = 1700, needle = "pine" },
+		{ fromSold = 75000, perHour = 40500, reward = 1500, bonus = 3000, needle = "sand" },
+		{ fromSold = 110000, perHour = 90000, reward = 3500, bonus = 7000, needle = "ice" },
+		{ fromSold = 455000, perHour = 150000, reward = 6000, bonus = 12000, needle = "bog" },
+		{ fromSold = 605000, perHour = 436000, reward = 17000, bonus = 34000, needle = "obsidian" },
+		{ fromSold = 2400000, perHour = 750000, reward = 30000, bonus = 60000, needle = "geode" },
+		{ fromSold = 3100000, perHour = 1396000, reward = 55000, bonus = 110000, needle = "cloud" },
+	} :: { any }, -- tiers after the first leave out `kinds` (it is optional)
+}
+
+-- The needle market (Services/Market.luau). Each server's needle prices drift up to Swing either side of the list price:
+-- selling a type pushes its price down, and the push fades with HalfLifeSeconds. NormalSales recent steel sales (about a
+-- solo shaker-table farm's pace) is exactly list price; rarer types need proportionally fewer, but never under
+-- MinNormalSales. A quiet type pays up to 20% more, which nudges players toward regions nobody is farming.
+Prices.Market = {
+	Swing = 0.2,
+	HalfLifeSeconds = 600,
+	NormalSales = 40,
+	MinNormalSales = 5,
+}
+
+-- Buying ------------------------------------------------------------------------------------------------------------
+
+-- Trucks, at Homestead Motors. Each costs one to two hours of what you earn at the stage before it, so it is a real
+-- goal, and the bank finances any of them with 20% down. The pickup is priced like a real used pickup on purpose: you
+-- can't pay cash for it in your first 15 minutes, but you can put $1,200 down.
+Prices.Trucks = {
+	rusty_pickup = 6000,
+	farm_flatbed = 25000,
+	box_truck = 90000,
+	heavy_hauler = 350000,
+	semi_rig = 1500000,
+}
+
+-- Trailers cost about a quarter to a third of the truck that pulls them, like a real hitch-on trailer.
+Prices.Trailers = {
+	wagon_trailer = 1500,
+	small_trailer = 8000,
+	medium_trailer = 30000,
+	large_trailer = 120000,
+	bale_rack_trailer = 200000,
+}
+
+-- The wheelbarrow carries 3 bales a push: about 4.7 bales a minute to the sell pad, double what you carry by hand.
+-- Doubling your income should cost about 10 minutes of hand hauling, so it lands about 12 minutes in, between Work
+-- Gloves and the pickup (docs/ECONOMY.md).
+Prices.Wheelbarrow = 1000
+
+-- Shovel tiers (Config/Gloves Tiers, by id; the keys kept their old glove names). Each shovel costs about 30 minutes of
+-- what you earn just before you need it for the next region's heavier hay: Old Shovel (free), Garden Shovel (work, the
+-- first purchase, two or three minutes in), Steel Shovel (leather), Reinforced Shovel, Iron Spade (iron), Starlight
+-- Shovel.
+Prices.Gloves = {
+	bare = 0,
+	work = 250,
+	leather = 8000,
+	reinforced = 45000,
+	iron = 75000,
+	starlight = 400000,
+}
+
+-- A land plot (Config/Land). Every plot is the same 12 x 10 tiles, and a save owns one. It is the first land goal, at
+-- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
+-- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
+Prices.Plot = 2500
+-- Each extra row of 12 tiles at the back of a plot (two rows to buy). A new plot's 96 tiles hold a first line easily;
+-- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
+-- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
+Prices.PlotExpansion = 5000
+-- A second farm per save. Hauling, not sorting, limits income at almost every stage, so a second plot buys room more
+-- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
+-- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
+Prices.SecondPlot = 60000
+Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
+
+-- Things you build on your land (Config/Land Pieces, by id). Removing one refunds RefundShare of its price.
+-- Sorters are priced from the V8 payback targets: the hand sieve pays back in about 9 minutes, the shaker 15, the
+-- conveyor sorter 30, the magnet drum about 75, and the optical sorter about 3.5 hours (Meadow hay, kept full).
+Prices.Pieces = {
+	belt = 25,
+	hay_buyer = 400,
+	parking = 250,
+	silo = 5000,
+	hand_sieve = 500,
+	shaker_table = 4000,
+	conveyor_sorter = 25000,
+	magnet_drum = 190000, -- A-grade needles (+10%) lift it to $210 a bale; this holds its V8 payback near 74 minutes
+	optical_sorter = 1350000, -- S-grade needles (+25%) lift it to $275 a bale; this holds its payback near 200 minutes
+	-- Blueprints are cheap templates; what you fill them with (bales or needles) is the real cost.
+	blueprint_post = 10,
+	blueprint_wall = 10,
+	blueprint_floor = 10,
+	-- Conveyor thread pieces: belt-priced fittings, a display that is pure pride, and a press that sells nothing
+	-- (thatch is for building), so it is priced like a mid-game toy rather than from a payback.
+	raised_belt = 60, -- a belt on the upper level, so one line can cross another
+	ramp_up = 150,
+	ramp_down = 150,
+	splitter = 300,
+	sort_splitter = 600,
+	display_wall = 1000,
+	hay_press = 8000,
+	loading_dock = 2000, -- the public shop's dock, on your own land: the haul ends at your farm
+	-- Region machines (Services/Treat.luau): each pays back in about 20 to 25 minutes of a solo player's haul (about 3
+	-- to 4 bales a minute) at the stage where they reach that region in ECONOMY.md's timeline: Snow with the box
+	-- truck and a conveyor sorter, Swamp with a magnet drum, Volcano with the heavy hauler. Snow and Swamp hay can't be
+	-- sorted without theirs, so they gate the region; the ash sifter only lifts a penalty, so it pays back slower.
+	thawing_shed = 30000,
+	drying_rack = 50000,
+	ash_sifter = 100000,
+	needle_vault = 6000, -- holds any number of needles with no parts; pure storage, so priced like a mid-game comfort
+	hay_baler = 3000, -- packs raked or scooped strands back into bales: a convenience, so a cheap early buy
+	needle_polisher = 12000,
+	alloy_mixer = 20000,
+	garage = 2000, -- swaps which owned truck is out; a convenience, so priced like a mid-early piece
+	hay_barn = 15000, -- holds 150 bales to the silo's 60, so a long line can run unattended longer
+	-- Decor (Land): looks only, no stats. Small cash sinks that make a farm worth visiting.
+	decor_flowers = 200,
+	decor_bench = 350,
+	decor_lantern = 500,
+	decor_scarecrow = 900,
+	-- Late-game decor: pure show for players with money to spare (Economy: $10k-$50k sinks).
+	decor_fountain = 15000,
+	decor_windmill = 45000,
+}
+Prices.RefundShare = 0.5
+
+-- The Starbeam Collector (alien gauntlet reward): beams one Star hay bale onto its belt every this many minutes.
+-- A Star bale hides NeedlesPerBale.star Cosmic needles, so this is the richest feed in the game; tune with care.
+Prices.Starbeam = {
+	minutes = 10,
+}
+
+-- A needle polisher on a bin polishes needles that land in it: each sells for this much more. It works through
+-- PolishPerMinute needles a minute; the rest stay plain.
+Prices.PolishBonus = 0.25
+
+-- Needle grades: the sorter that finds a needle grades it, and a better grade sells for more. It keeps upgrading
+-- worth it once a sorter's recovery is "good enough". B adds nothing.
+Prices.NeedleGrades = { B = 0, A = 0.10, S = 0.25 }
+Prices.SorterGrade = {
+	hand_sieve = "B",
+	shaker_table = "B",
+	conveyor_sorter = "B",
+	magnet_drum = "A",
+	optical_sorter = "S",
+	alien_collector = "S",
+}
+Prices.PolishPerMinute = 30
+
+-- Sorter oil: click the oil can on any sorter. A flat price, so it is a small treat on a cheap sorter and pocket
+-- change on a big one; it only pays when the sorter is what holds the line back.
+Prices.SorterOil = {
+	price = 250,
+	bales = 25, -- the next this many bales sort faster
+	speedup = 0.1, -- 10% faster
+	maxBales = 75, -- at most three cans stacked
+}
+
+-- Sorter speeds, in bales a minute (Config/Sorters turns them into hay per minute). Each tier doubles the last.
+Prices.SorterBalesPerMinute = {
+	hand_sieve = 2,
+	shaker_table = 4,
+	conveyor_sorter = 8,
+	magnet_drum = 16,
+	optical_sorter = 30,
+}
+
+-- The trading post (Land) settles every trade through Bank.settleTrade. A side that hands over cash pays a small flat
+-- fee plus a share of that cash, so cash-for-needles deals don't dodge the market and moving money between accounts
+-- costs something. A side that only gives items pays nothing, so swaps and gifts are always free. Set both to 0 to
+-- make cash trades free too.
+Prices.Trade = {
+	Fee = 25, -- per side that gives cash, per trade
+	CashShare = 0.05, -- of the cash a side gives
+	-- A save slot can hand over cash only once it has made this much from selling (not from one-time rewards like
+	-- secrets, discoveries, mazes, quests and finds). About 2 hours of a new player's farming, so a fresh alt slot
+	-- can't collect one-time rewards and pass the cash on. Items can always be traded.
+	MinSoldToGiveCash = 25000,
+}
+
+-- Travel fares for the rest of the Stitched Isles (for the world map thread; nothing reads them yet). A fare is a small
+-- share of what the trip carries, so it is felt but never decides whether a trip is worth it. Roads, including the
+-- Longstitch Highway, stay free.
+Prices.Travel = {
+	ferry = 250, -- public ferry, per truck with its trailer, each way: under 5% of a box-truck load of Snow hay
+	barge = 0, -- the Captain's Barge is earned by quest and free to use
+	zeppelin = 1000, -- to Sky Island, per trip: under 5% of a pickup load of Sky hay
+	snack = 15, -- a snack from the ferry galley: cosmetic, a little treat for the crossing
+}
+
+-- Wet hay (Hay thread; Config/Game reads it as WetPriceFactor): a bale soaked by rain sells its hay at this share of
+-- the price until it dries. Needles are unharmed, so a wet Meadow bale sorts to $227 against $245: a nudge to park
+-- under cover or wait out the rain (it dries 150 s after), never a disaster.
+Prices.WetHayShare = 0.6
+
+-- Mutated needles (Needle.rollMutation): 1 found needle in oneIn is mutated and sells for min to max times its value
+-- (announced to the server). The average mutation is 14x, so mutations add (14 - 1) / 500 = 2.6% to needle income: a
+-- jackpot moment, not a source. A mutated Cosmic needle can be worth $125,000.
+Prices.Mutation = {
+	oneIn = 500,
+	min = 3,
+	max = 25,
+}
+
+-- Pity (CEO "Addiction push" H3, src/shared/Pity.luau): after `bales` sorted bales in a row that found needles but no
+-- mutated one, the next such bale makes its first needle mutated at `mult` (the smallest mutation), so a dry run always
+-- ends. A roll under Mutation.oneIn's chance times `nearMiss` that just missed flickers gold ("so close").
+-- tests/pity.luau measures what it adds to needle income (not total): hand sieve 3.9%, Meadow conveyor 2.7%, Desert
+-- magnet drum 1.3%, Swamp optical 0.7%, Star optical 0.1%. It fails if any case reaches 5%.
+Prices.Pity = {
+	bales = 40,
+	mult = 3,
+	nearMiss = 3,
+}
+
+-- The Hay Market (Services/HayMarket.luau, CEO H6): a stall at base camp restocks every RestockSeconds with Slots
+-- rare bales, each a kind (Golden, Storm or Moon Hay) of one region's hay, StockPerSlot of each for the whole server.
+-- A player can buy PerPlayer bales per restock. needles multiplies the bale's hidden needles and mutation multiplies
+-- each found needle's chance to mutate (Prices.Mutation).
+-- Price is not set by hand: it is PriceShare of what the bale is worth sorted on a conveyor sorter
+-- (ReferenceRecovery), mutations included. So a player with a conveyor sorter or better makes a little on every rare
+-- bale and gets a lottery ticket on top, while a player selling raw or hand-sieving loses money on them: rare bales
+-- are a bonus for a working line, not a replacement for farming (ECONOMY.md "The Hay Market").
+Prices.HayMarket = {
+	RestockSeconds = 300,
+	Slots = 3,
+	StockPerSlot = 3,
+	PerPlayer = 2,
+	PriceShare = 0.85,
+	ReferenceRecovery = 0.55,
+	Kinds = {
+		-- weight: how often a slot rolls this kind
+		golden = { name = "Golden Hay", weight = 5, needles = 3, mutation = 1 },
+		storm = { name = "Storm Hay", weight = 3, needles = 2, mutation = 5 },
+		moon = { name = "Moon Hay", weight = 1, needles = 1, mutation = 25 },
+	},
+	-- Which region's hay a slot holds, by weight. Hay that needs a region machine (Snow, Swamp) is left out, so
+	-- any bale can go straight into a sorter.
+	HayTypes = { meadow = 6, pine = 4, desert = 3, keys = 2, volcano = 1, bobbin = 1 },
+}
+
+-- Wet needles (H7 weather, Weather.needleOdds): a needle sorted where it is raining is, 1 in oneIn, a "Wet" needle
+-- worth mult times (x2: under the smallest real mutation, so x2 always means Wet, in saves too). It doesn't end a
+-- pity run. PROPOSED by Conveyor, pending Economy. tests/pity.luau keeps storm + Wet + pity within 2x of the
+-- mutation value of today's rules (pity, no weather) even if it always rained: x1.2 to x1.5.
+Prices.WetMutation = {
+	oneIn = 100,
+	mult = 2,
+}
+
+-- Stacked boosts (CEO H13, src/shared/Boosts.luau). Extras a bale picks up on top of its own boost (the play-together
+-- bonus, thunderstorm odds) stop once the bale's needles are worth Cap times a plain bale's, or the bale's own boost
+-- if that is bigger. tools/boost_sim.py plays a week with every boost stacked and fails if income goes over Cap times
+-- the plain game or any purchase lands in under half its target time.
+Prices.Boosts = {
+	Cap = 2,
+}
+
+-- Needle index (CEO "Addiction push" H10, Services/NeedleIndex): every needle type found plain, Wet and mutated
+-- (12 types x 3 = 36 entries). Each milestone pays once per slot (Bank.earn, note "Discovered ...", a one-time
+-- reward) and gives a title; 75% also unlocks the gilded sorter skin. 100% needs a mutated and a Wet Cosmic needle,
+-- so it is an end-game goal; the first 25% (9 entries) comes from the first few regions.
+Prices.NeedleIndex = {
+	{ at = 25, cash = 5000, title = "Needle Spotter" },
+	{ at = 50, cash = 40000, title = "Needle Collector" },
+	{ at = 75, cash = 250000, title = "Needle Curator", skin = "gilded" },
+	{ at = 100, cash = 1000000, title = "Master Indexer" },
+}
+
+-- Golden field bales (Hay thread, Bales.makeGolden): 1 field bale in oneIn grows golden and hides `needles` times
+-- the needles. On average that adds (needles - 1) / oneIn = 1.3% to needle income, too little to move the pacing, so it
+-- is a moment rather than a source: a golden Meadow bale sorts to about $645 against a plain one's $245.
+Prices.GoldenBale = {
+	oneIn = 150,
+	needles = 3,
+}
+
+-- Region events (world map thread, Services/RegionEvents.luau): one at a time, every EveryMinutes, each for
+-- Minutes. The reward is hay, never cash: the event drops `bales` extra bales of the region's hay, each with `boost`
+-- times the needles (the same NeedleBoost the rich field uses, 2x). Kept near the rich field so an event is worth a
+-- detour but never beats a steady haul. Each is worth about 5 to 10 minutes of income at the stage where you reach
+-- its region (ECONOMY.md "Region events").
+Prices.RegionEvents = {
+	EveryMinutes = 30,
+	Minutes = 5,
+	hay_fever = { bales = 10, boost = 1.5 }, -- Meadow Shore: pollen in the air, the grass bursts
+	windfall = { bales = 12, boost = 1.5 }, -- Pine Forest: the wind brings bales down off the ridge
+	sandstorm = { bales = 10, boost = 2 }, -- Desert Dunes: the storm uncovers buried bales
+	avalanche = { bales = 10, boost = 2 }, -- Snow Peak: bales tumble down to the lodge
+	low_tide = { bales = 10, boost = 1.5 }, -- Swamp: the water drops and sunken bales come up
+	eruption = { bales = 10, boost = 2.5 }, -- Volcano: hot ash over the slopes (hardest to reach, so the richest drop)
+	meteor_shower = { bales = 8, boost = 3 }, -- Mirror Lake Valley, nights only (rarer, so the best Meadow-hay event)
+}
+
+-- Discoveries (Services/Discoveries.luau): the first visit to each region and landmark, once per save slot. Small on
+-- purpose: exploring pays a little everywhere (about $5,700 for the whole map) and the stamps are the real prize.
+Prices.Discovery = {
+	region = 250,
+	landmark = 150,
+}
+
+-- Region secrets (Services/Wilds.luau): paid once per save slot to whoever finds them, like a finder's reward. Each is
+-- worth a trip on its own: for a player who arrives early (walking, before they haul there) it's about the price of
+-- the next mid-game buy, and for one who arrives on schedule it's a few minutes of income. Gated secrets pay more.
+Prices.Secrets = {
+	ember_cache = 40000, -- in the volcano's crater, past the heat: needs $75,000 Iron Gauntlets, so it pays the most
+	captains_lantern = 15000, -- on Ghost Isle, at the end of the night-only Ghost Road: walkable early, so the least
+	geode_heart = 20000, -- behind the crystals on the Crystal Cave's far wall
+	lost_kite = 25000, -- on a ledge under Sky Island's west rim, a $1,000 zeppelin fare away
+	-- Each region's hidden spot (Wilds, hidden_<region>), a short walk off a road from its Old Sign clue. Smaller than
+	-- the four big secrets and scaled to the region: about 5 minutes of income at the stage you reach it, so the
+	-- Meadow ones can't hand a new player a pickup. `hidden` is the fallback for a region not listed. $58,000 in all.
+	hidden = 500,
+	hidden_shore = 500,
+	hidden_valley = 500,
+	hidden_homestead = 500,
+	hidden_spindle = 500,
+	hidden_pine = 1500,
+	hidden_desert = 2500,
+	hidden_snow = 4000,
+	hidden_keys = 5000,
+	hidden_swamp = 6000,
+	hidden_volcano = 10000,
+	hidden_bobbin = 12000,
+	hidden_haunted = 15000,
+}
+
+-- Robux store prices in Robux (V8 Part C). Recorded here so every price is in one place; the store itself waits until
+-- the cash economy has been playtested. Paid trucks match their cash tier's stats exactly, and nothing is random.
+-- Truck keys are the skin mesh names in Config/Props Sizes; a skin is drawn at the meshSize of the truck it repaints.
+Prices.Robux = {
+	Trucks = {
+		homestead_classic = 399, -- skin of the Rusty Pickup tier
+		timber_wolf_4x4 = 799, -- Farm Flatbed tier (key = its mesh name in Config/Props)
+		midnight_express = 1199, -- Box Truck tier
+		prairie_schooner = 1799, -- Heavy Hauler tier
+		founders_semi = 2499, -- Semi tier, launch edition
+	},
+	Passes = {
+		vip = 249,
+		auto_dock = 299,
+		big_silo = 199,
+		paint_studio = 149,
+		plot_themes = 199,
+		truck_radio = 99,
+	},
+	HarvestPass = 499,
+	ServerBoost = 99,
+	PrivateServer = 100, -- a month
+}
+
+-- The bank -----------------------------------------------------------------------------------------------------------
+
+Prices.Bank = {
+	-- Savings interest is paid every InterestSeconds of play, but only if you sold something in that time, so it
+	-- rewards saving while you work and never pays an idle player. Tiered like a real savings account, but upside
+	-- down: the first $10,000 earns the most, so it helps a new farm and stays small next to a big farm's income.
+	InterestSeconds = 600,
+	InterestTiers = {
+		{ upTo = 10000, rate = 0.01 },
+		{ upTo = 100000, rate = 0.005 },
+	},
+
+	-- Loans. You pick what you are financing, put DownPayment of its price in the bank yourself, and the bank lends
+	-- the rest. Interest is one flat fee added up front, so "borrow $4,800, pay back $5,280" is the whole deal.
+	-- Repayment comes out of your sales automatically (repayShare of each one) until it is paid; there are no due
+	-- dates and no penalties, and you can pay the rest off early at any time.
+	DownPayment = 0.2,
+	Loans = {
+		truck = { name = "Truck loan", interest = 0.10, repayShare = 0.25, blurb = "Trucks and trailers" },
+		land = { name = "Land loan", interest = 0.08, repayShare = 0.20, blurb = "Land plots" },
+	},
+	-- How much you can owe in total: a base line of credit plus twice everything you have ever earned.
+	CreditBase = 5000,
+	CreditPerEarned = 2,
+
+	HistoryLength = 40, -- transactions kept per save slot
+}
+
+-- Hidden needles per strand of a hay type, for the rolls in Economy.rollNeedles.
+function Prices.needleChance(hayType: string?): number
+	local perBale = Prices.NeedlesPerBale[hayType or "meadow"] or Prices.NeedlesPerBale.meadow
+	return perBale / Prices.HayPerBale
+end
+
+-- Rebirth (CEO H5, Services/Rebirth.luau). Once you own the Semi you can start the climb again: cash, the bank, loans
+-- (pay them off first), trucks, trailers, the machines and belts on your farm, plot upgrades and the second farm all
+-- reset, and plain needles go with the cash. You keep the plot itself, your shovels, the needle index, cosmetics,
+-- finds, mutated needles, quests and your best needle. Each rebirth adds Bonus to every sale for good (Bank.earn), up
+-- to Max rebirths (1.5x). It is its own multiplier, outside the 2x Boosts cap. With the shovels kept, the next climb
+-- takes about 77%, 70%, 65%, 60% and 56% of the first (tools/boost_sim.py --rebirths).
+Prices.Rebirth = {
+	Unlock = "semi_rig",
+	Bonus = 0.1,
+	Max = 5,
+}
+
+-- Pacing scale (CEO H18) --------------------------------------------------------------------------------------------
+
+-- One dial for how long the climb takes after the first hour. Every truck, trailer, glove and build piece priced at
+-- PacingFrom or more is multiplied by PacingScale and rounded to two significant figures; first-hour buys (under
+-- PacingFrom, and the Rusty Pickup) never change. 1 is the prices written above. tools/boost_sim.py picks the value
+-- that lands the Semi at Prices' target hours for a typical player with typical boosts, and tools/line_sim.py,
+-- pacing_sim.py and economy_model.py apply the same rule (line_sim.paced). Cyrus's 14 h vs 40 h question is
+-- separate: answering it changes the target, then this value.
+Prices.PacingScale = 1.2
+Prices.PacingFrom = 4000
+Prices.PacingKeep = { rusty_pickup = true }
+
+function Prices.paced(id: string, price: number): number
+	if Prices.PacingScale == 1 or price < Prices.PacingFrom or Prices.PacingKeep[id] then
+		return price
+	end
+	local x = price * Prices.PacingScale
+	local step = 10 ^ (math.floor(math.log10(x)) - 1)
+	return math.floor(x / step + 0.5) * step
+end
+
+-- The daily contract tiers are lifetime sales at each stage, so they stretch with it.
+for _, tier: any in Prices.DailyContracts.Tiers do
+	tier.fromSold = math.floor(tier.fromSold * Prices.PacingScale + 0.5)
+end
+
+for _, list: { [string]: any } in { Prices.Trucks, Prices.Trailers, Prices.Gloves, Prices.Pieces } :: { any } do
+	for id, price in list do
+		if typeof(price) == "number" then
+			list[id] = Prices.paced(id :: string, price)
+		end
+	end
+end
+
+return Prices

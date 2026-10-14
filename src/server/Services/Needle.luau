@@ -1,0 +1,814 @@
+--!nonstrict
+-- The needle object. Every needle found in hay is a real physical part (tag "Needle") that stays in the world:
+-- sorters throw them into bins, and anyone can click one to pick it up into their pocket. SELL NEEDLES pads pay for
+-- the needles in their bin plus the ones in your pocket. Other services (sorters, spilled hay) make needles here.
+--
+-- Each needle type has its own color (rarer types glow). About 1 in 500 found needles is MUTATED: bigger, glowing,
+-- worth 3x to 25x, and announced to the whole server.
+--
+-- To keep part counts down, every 10 plain needles of one type and owner resting in a bin are tied into a BUNDLE:
+-- one needle part with a "Count" attribute of 10 and a twine band. A bundle sells and picks up as 10 needles.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+
+local Factory = require(ReplicatedStorage.Shared.Config.Factory)
+local Needles = require(ReplicatedStorage.Shared.Config.Needles)
+local HayTypes = require(ReplicatedStorage.Shared.Config.Gloves).HayTypes
+local Data = require(script.Parent.Data)
+local Announce = require(script.Parent.Announce)
+local Groups = require(script.Parent.Groups)
+local Feedback = require(script.Parent.Feedback)
+local Events = require(script.Parent.Events)
+local Market = require(script.Parent.Market)
+local Props = require(script.Parent.Props)
+local Prices = require(ReplicatedStorage.Shared.Config.Prices)
+local LineMath = require(ReplicatedStorage.Shared.LineMath)
+local Pity = require(ReplicatedStorage.Shared.Pity)
+local Reveal = require(ReplicatedStorage.Shared.Reveal)
+local NeedleIndex = require(script.Parent.NeedleIndex)
+
+local Needle = {}
+
+local SIZE = Vector3.new(1.2, 0.15, 0.15)
+local LITE_SIZE = Vector3.new(1.2, 0.15, 0.17) -- needle_lite, long along X like the cylinder
+local PICKUP_REACH = 10
+local MUTATION_CHANCE = 1 / Prices.Mutation.oneIn
+local MUTATION_MIN, MUTATION_MAX = Prices.Mutation.min, Prices.Mutation.max
+-- For tools/linecheck's million-needle check (CEO #32).
+Needle.MUTATION = { chance = MUTATION_CHANCE, min = MUTATION_MIN, max = MUTATION_MAX }
+local FANFARE = "rbxasset://sounds/victory.wav"
+
+-- Color per needle type, and whether it glows. Common types are plain metal; the rare maps glow.
+-- Glow (Neon) starts at Epic, as STYLE.md settles rarity: common to Rare types are plain metal in their own color.
+local LOOKS = {
+	steel = { Color3.fromRGB(150, 158, 166), false },
+	pine = { Color3.fromRGB(96, 140, 84), false },
+	sand = { Color3.fromRGB(214, 186, 120), false },
+	ice = { Color3.fromRGB(170, 220, 240), false },
+	bog = { Color3.fromRGB(110, 128, 70), false },
+	coral = { Color3.fromRGB(214, 120, 104), false },
+	brass = { Color3.fromRGB(181, 148, 72), false },
+	obsidian = { Color3.fromRGB(96, 64, 112), false },
+	geode = { Color3.fromRGB(170, 110, 220), false },
+	cloud = { Color3.fromRGB(240, 244, 255), true },
+	phantom = { Color3.fromRGB(120, 230, 210), true },
+	cosmic = { Color3.fromRGB(80, 70, 220), true },
+}
+local MUTATED_COLOR = Color3.fromRGB(255, 210, 60)
+local WET = Prices.WetMutation
+local WET_COLOR = Color3.fromRGB(90, 150, 210) -- a Wet needle (x2): rain blue, glassy
+Needle.WET_MULT = WET.mult
+local BUNDLE = 10
+local BUNDLE_SIZE = Vector3.new(1.3, 0.55, 0.55)
+local TWINE = Color3.fromRGB(97, 84, 69)
+
+local rng = Random.new()
+
+local types = {}
+for _, n in Needles do
+	types[n.id] = n
+end
+Needle.default = types[Factory.NeedleId] or Needles[1]
+
+local folder = Instance.new("Folder")
+folder.Name = "Needles"
+folder.Parent = Workspace
+
+local held = {} -- player -> { [key] = count }, only until a save slot is loaded (then Data state.pocket)
+
+-- The needle type hidden in a hay type (Config/Gloves HayTypes): the one from the same map, so Pine straw holds Pine
+-- needles and Star hay holds Cosmic ones.
+local byMap = {}
+for _, n in Needles do
+	byMap[n.map] = n.id
+end
+function Needle.forHay(hayType)
+	local hay = HayTypes[hayType or "meadow"]
+	return hay and byMap[hay.map] or Needle.default.id
+end
+
+function Needle.info(id)
+	return types[id] or Needle.default
+end
+
+-- Dollars one needle of this type and multiplier sells for at a SELL NEEDLES pad.
+-- Follows this server's needle market (Market.luau), so it can drift 20% either side of the list price. A polished
+-- needle (needle polisher) is worth Prices.PolishBonus more.
+function Needle.priceOf(id, mult, polished, grade)
+	return LineMath.price(Needle.info(id).sortedValue, mult, polished, Prices.PolishBonus, Market.multiplier(id), Prices.NeedleGrades[grade or "B"])
+end
+
+-- Rarity by a type's list value: Legendary (Cosmic) and Epic (Cloud, Phantom) twinkle; everything else is nil.
+local RARITIES = {
+	{ name = "Legendary", atLeast = 2000, color = Color3.fromRGB(255, 196, 92), rate = 6 },
+	{ name = "Epic", atLeast = 600, color = Color3.fromRGB(190, 120, 255), rate = 3 },
+}
+function Needle.rarity(id)
+	local value = Needle.info(id).sortedValue
+	for _, r in RARITIES do
+		if value >= r.atLeast then
+			return r
+		end
+	end
+	return nil
+end
+
+-- The grade a sorter tier gives the needles it finds (Prices.SorterGrade): "B", "A" or "S".
+function Needle.gradeFor(tierId)
+	return (LineMath.grade(tierId, Prices.SorterGrade, Prices.NeedleGrades))
+end
+
+-- Marks a needle part (or bundle) with a grade above B. A shines a little, S a lot, so a good find looks it.
+function Needle.setGrade(n, grade)
+	if not grade or grade == "B" then
+		return n
+	end
+	n:SetAttribute("Grade", grade)
+	n.Reflectance = math.max(n.Reflectance, grade == "S" and 0.5 or 0.25)
+	n.Name ..= " (" .. grade .. ")"
+	return n
+end
+
+-- The pocket key for a needle part, grade and all.
+function Needle.keyOfPart(n)
+	return Needle.keyOf(n:GetAttribute("NeedleId") or Needle.default.id, n:GetAttribute("Mutation"), n:GetAttribute("Polished"), n:GetAttribute("Grade"))
+end
+
+-- The pocket lives in the player's save slot (Data state.pocket) so it saves and loads with the slot. It counts
+-- needles by key: the needle id, or "id*mult" for a mutated one, so mutations survive a save.
+local function pocketOf(player)
+	local state = Data.get(player)
+	if state then
+		state.pocket = state.pocket or {}
+		-- Needles picked up before a save slot was chosen join the slot's pocket the first time it is there.
+		local early = held[player]
+		if early then
+			held[player] = nil
+			for key, count in early do
+				state.pocket[key] = (state.pocket[key] or 0) + count
+			end
+		end
+		return state.pocket
+	end
+	held[player] = held[player] or {}
+	return held[player]
+end
+
+-- Pocket and save key for a needle: its id, or "id*mult" when mutated, with a trailing "!" when polished.
+Needle.keyOf = LineMath.keyOf
+
+-- The id, multiplier and polish of a key from keyOf.
+Needle.parseKey = LineMath.parseKey
+
+-- Needles in this player's pocket, as { [key] = count } (see keyOf).
+function Needle.held(player)
+	return pocketOf(player)
+end
+
+-- How many needles a needle part is: 1, or 10 for a bundle.
+function Needle.count(part)
+	return part:GetAttribute("Count") or 1
+end
+
+-- Dollars a needle part sells for (a bundle counts all its needles).
+function Needle.value(part)
+	return Needle.priceOf(part:GetAttribute("NeedleId"), part:GetAttribute("Mutation"), part:GetAttribute("Polished"), part:GetAttribute("Grade"))
+		* Needle.count(part)
+end
+
+function Needle.isNeedle(part)
+	return CollectionService:HasTag(part, "Needle")
+end
+
+-- Rolls whether a freshly found needle is mutated. Returns its multiplier (1 when it is a normal needle).
+-- The second result is true on a near miss (Prices.Pity.nearMiss): a plain needle that rolled just over the chance.
+-- boost multiplies the chance (a Hay Market bale's MutationBoost times Weather.needleOdds' storm odds); wet (found
+-- where it rains) gives a plain needle a 1 in WetMutation.oneIn chance to come out Wet (x2).
+function Needle.rollMutation(boost, wet)
+	local roll = Pity.roll(rng:NextNumber(), Pity.chance(MUTATION_CHANCE, boost), Prices.Pity.nearMiss)
+	if roll == "hit" then
+		return rng:NextInteger(MUTATION_MIN, MUTATION_MAX), false
+	end
+	if wet and rng:NextNumber() * WET.oneIn < 1 then
+		return WET.mult, false
+	end
+	return 1, roll == "near"
+end
+
+-- Weather at a find: storm odds (5 in a Thunderstorm, else 1) and whether it rains there. Weather (H7) is looked up
+-- on first use, so a build without it, or the offline checks, just get 1, false.
+local weather
+function Needle.weatherAt(position)
+	if weather == nil then
+		local m = script.Parent:FindFirstChild("Weather")
+		local ok, mod = pcall(function()
+			return m and require(m)
+		end)
+		weather = ok and mod and mod.needleOdds and mod or false
+	end
+	if weather then
+		local odds, wet = weather.needleOdds(position)
+		return tonumber(odds) or 1, wet == true
+	end
+	return 1, false
+end
+
+-- How many needles are in this player's pocket.
+function Needle.heldCount(player)
+	local total = 0
+	for _, count in pocketOf(player) do
+		total += count
+	end
+	return total
+end
+
+-- Empties the player's pocket and returns what was in it, as a list of { id = needleId, mult = multiplier, polished,
+-- grade }.
+function Needle.takeHeld(player)
+	local list = {}
+	for key, count in pocketOf(player) do
+		local id, mult, polished, grade = Needle.parseKey(key)
+		for _ = 1, count do
+			table.insert(list, { id = id, mult = mult, polished = polished, grade = grade })
+		end
+	end
+	local state = Data.get(player)
+	if state then
+		state.pocket = {}
+	end
+	held[player] = nil
+	player:SetAttribute("NeedlesHeld", 0)
+	return list
+end
+
+-- Sells everything in the player's pocket. Returns how many needles and how many dollars (the caller pays).
+function Needle.sellHeld(player)
+	local count, value = 0, 0
+	local pocket = pocketOf(player)
+	for key, n in pocket do
+		local id, mult, polished, grade = Needle.parseKey(key)
+		count += n
+		value += Needle.priceOf(id, mult, polished, grade) * n -- priced before Market.sold lowers it, like one sale
+	end
+	for key, n in pocket do
+		Market.sold((Needle.parseKey(key)), n)
+	end
+	Needle.takeHeld(player)
+	return count, value
+end
+
+-- Takes the most valuable needle out of the player's pocket, for putting it on show. Returns { id, mult } or nil.
+function Needle.takeBest(player)
+	local pocket = pocketOf(player)
+	local bestKey, bestValue = nil, -1
+	for key, count in pocket do
+		local id, mult, polished, grade = Needle.parseKey(key)
+		if count > 0 and Needle.priceOf(id, mult, polished, grade) > bestValue then
+			bestKey, bestValue = key, Needle.priceOf(id, mult, polished, grade)
+		end
+	end
+	if not bestKey then
+		return nil
+	end
+	pocket[bestKey] -= 1
+	if pocket[bestKey] <= 0 then
+		pocket[bestKey] = nil
+	end
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	local id, mult, polished, grade = Needle.parseKey(bestKey)
+	return { id = id, mult = mult, polished = polished, grade = grade }
+end
+
+-- Takes count plain needles of one type out of the player's pocket (an offering, a recipe). All or nothing: returns
+-- false and takes none when they have too few.
+function Needle.takeFromPocket(player, needleId, count)
+	return Needle.take(player, needleId, count)
+end
+
+-- Puts a needle ({ id, mult }) into the player's pocket.
+function Needle.give(player, n)
+	local pocket = pocketOf(player)
+	local key = Needle.keyOf(n.id, n.mult, n.polished, n.grade)
+	pocket[key] = (pocket[key] or 0) + 1
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+end
+
+-- Puts count needles of one pocket key (keyOf) in the player's pocket at once.
+function Needle.giveKey(player, key, count)
+	local pocket = pocketOf(player)
+	pocket[key] = (pocket[key] or 0) + count
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+end
+
+-- How a needle of this type looks: its color and material (mutated needles are gold and glow).
+function Needle.look(id, mult)
+	local look = LOOKS[id] or LOOKS.steel
+	if mult == WET.mult then
+		return WET_COLOR, Enum.Material.Glass
+	elseif (mult or 1) > 1 then
+		return MUTATED_COLOR, Enum.Material.Neon
+	end
+	return look[1], look[2] and Enum.Material.Neon or Enum.Material.Metal
+end
+
+-- A slow glint for a rare reveal: big soft sparkles drifting off the needle while it hangs, on their own attachment.
+local function revealGlint(n, color, seconds)
+	local at = Instance.new("Attachment")
+	at.Name = "RevealGlint"
+	at.Parent = n
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 10
+	e.Lifetime = NumberRange.new(0.8, 1.3)
+	e.Speed = NumberRange.new(0.3, 1)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.LightEmission = 1
+	e.Color = ColorSequence.new(Color3.new(1, 1, 1), color)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.6), NumberSequenceKeypoint.new(1, 0) })
+	e.Parent = at
+	task.delay(seconds, function()
+		e.Enabled = false
+	end)
+	Debris:AddItem(at, seconds + 1.5)
+end
+
+-- Confetti for a mutation: one burst of little colored flakes, on its own attachment.
+local CONFETTI -- built on first use (the offline checks have no ColorSequenceKeypoint)
+local function confetti(n, color)
+	CONFETTI = CONFETTI
+		or ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 92, 92)),
+			ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 210, 60)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110, 220, 120)),
+			ColorSequenceKeypoint.new(0.75, Color3.fromRGB(90, 160, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 120, 255)),
+		})
+	local at = Instance.new("Attachment")
+	at.Name = "RevealConfetti"
+	at.Parent = n
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 0
+	e.Lifetime = NumberRange.new(1, 1.8)
+	e.Speed = NumberRange.new(8, 14)
+	e.SpreadAngle = Vector2.new(60, 60)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Acceleration = Vector3.new(0, -18, 0)
+	e.Drag = 1.5
+	e.RotSpeed = NumberRange.new(-300, 300)
+	e.Rotation = NumberRange.new(0, 360)
+	e.Color = CONFETTI
+	e.Size = NumberSequence.new(0.18)
+	e.Parent = at
+	e:Emit(40)
+	local sparks = e:Clone()
+	sparks.Color = ColorSequence.new(color)
+	sparks.LightEmission = 1
+	sparks.Parent = at
+	sparks:Emit(12)
+	Debris:AddItem(at, 2.5)
+end
+
+local function sound(parent, id, volume)
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume
+	s.RollOffMaxDistance = 80
+	s.Parent = parent
+	s:Play()
+	Debris:AddItem(s, 4)
+end
+
+-- A burst of glints at a needle.
+local function glint(n, amount)
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 0
+	e.Lifetime = NumberRange.new(0.3, 0.6)
+	e.Speed = NumberRange.new(2, 6)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.LightEmission = 1
+	e.Color = ColorSequence.new(Color3.new(1, 1, 1), n.Color)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	e.Parent = n
+	e:Emit(amount)
+	Debris:AddItem(e, 1)
+end
+
+-- anyReach: from wherever it lies (the Thread Rake). quiet: the caller tells the player. Returns true if picked up.
+local function pickUp(player, n, anyReach, quiet)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not n.Parent or (not anyReach and (n.Position - root.Position).Magnitude > PICKUP_REACH + 2) then
+		return false
+	end
+	-- Needles in a needle bin (Machines marks them Binned) belong to their owner; anyone may pick up a loose field needle.
+	local ownerId = n:GetAttribute("OwnerId")
+	if n:GetAttribute("Binned") and ownerId and ownerId ~= player.UserId then
+		if not quiet then
+			Data.toast(player, "Those needles belong to this bin's owner.")
+		end
+		return false
+	end
+	local id = n:GetAttribute("NeedleId") or Needle.default.id
+	local mult = n:GetAttribute("Mutation") or 1
+	local count = Needle.count(n)
+	local value = Needle.value(n)
+	local pocket = pocketOf(player)
+	local polished = n:GetAttribute("Polished") == true
+	local key = Needle.keyOfPart(n)
+	pocket[key] = (pocket[key] or 0) + count
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	n:Destroy()
+	local grade = n:GetAttribute("Grade")
+	local name = (grade and grade .. " grade " or "") .. (polished and "polished " or "") .. Needle.info(id).name:lower()
+	local what = count > 1 and ("a bundle of %d %s needles"):format(count, name)
+		or ("a %s%s needle"):format(mult == WET.mult and "x2 WET " or mult > 1 and ("x%d MUTATED "):format(mult) or "", name)
+	if not quiet then
+		Data.toast(player, ("Picked up %s ($%d). Any sell pad buys it."):format(what, value))
+	end
+	Events.fire(player, "needle_found", count, { needleId = id })
+	return true
+end
+
+-- Puts a loose needle straight into a player's pocket (the Thread Rake, a quest reward). Quiet. True if it worked.
+function Needle.collect(player, n)
+	return pickUp(player, n, true, true)
+end
+
+-- How many unmutated needles of one type are in the pocket, polished or not, any grade (what offerings take).
+function Needle.plainCount(player, id)
+	local pocket = pocketOf(player)
+	local n = 0
+	for _, key in LineMath.plainKeys(id) do
+		n += pocket[key] or 0
+	end
+	return n
+end
+
+-- Takes count unmutated needles of one type out of the pocket for a quest offering, plain ones before polished.
+-- Takes none and returns false if there aren't enough.
+function Needle.take(player, id, count)
+	if Needle.plainCount(player, id) < count then
+		return false
+	end
+	local pocket = pocketOf(player)
+	for _, key in LineMath.plainKeys(id) do -- cheapest first
+		local used = math.min(pocket[key] or 0, count)
+		count -= used
+		pocket[key] = (pocket[key] or 0) - used
+		if pocket[key] <= 0 then
+			pocket[key] = nil
+		end
+	end
+	player:SetAttribute("NeedlesHeld", Needle.heldCount(player))
+	return true
+end
+
+-- Polishes a needle part (or bundle): worth Prices.PolishBonus more, and it shines.
+function Needle.polish(n)
+	if n:GetAttribute("Polished") then
+		return
+	end
+	n:SetAttribute("Polished", true)
+	n.Reflectance = 0.45
+	n.Color = n.Color:Lerp(Color3.new(1, 1, 1), 0.25)
+end
+
+-- Makes a needle at position. ownerId is who it belongs to while it sits in a bin. mult > 1 makes it mutated.
+-- A mutated needle is dressed by Props.mutationLook (H15: Wet, Golden, Storm, Rainbow, Giant by mult, or lookKind
+-- when the caller knows better, like a storm find); builds without it fall back to the gold 1.6x needle.
+function Needle.spawn(position, ownerId, needleId, mult, polished, lookKind)
+	needleId = needleId or Needle.default.id
+	mult = mult or 1
+	local dressed = mult > 1 and Props.mutationLook ~= nil
+	local grow = (mult > 1 and not dressed) and 1.6 or 1
+	-- The low-poly Blender needle (Config/Props needle_lite) when imported: one shared mesh, tinted by Color, so a
+	-- field or bin of thousands stays cheap. Otherwise a plain cylinder of the same size.
+	local n = Props.meshPart("needle_lite")
+	if n then
+		n.Size = grow * LITE_SIZE
+	else
+		n = Instance.new("Part")
+		n.Shape = Enum.PartType.Cylinder
+		n.Size = grow * SIZE
+	end
+	n.Name = "Needle"
+	n.CFrame = CFrame.new(position)
+	n.Color, n.Material = Needle.look(needleId, if dressed then 1 else mult)
+	n.CollisionGroup = Groups.Loose
+	n:SetAttribute("OwnerId", ownerId)
+	n:SetAttribute("NeedleId", needleId)
+	NeedleIndex.found(ownerId, needleId, mult)
+	if dressed then
+		n:SetAttribute("Mutation", mult)
+		local kind = lookKind or Props.mutationKind(mult)
+		Props.mutationLook(n, kind)
+		n:SetAttribute("MutationLook", kind)
+	elseif mult > 1 then
+		n:SetAttribute("Mutation", mult)
+		local shine = mult == WET.mult and WET_COLOR or MUTATED_COLOR
+		local sparkle = Instance.new("Sparkles")
+		sparkle.SparkleColor = shine
+		sparkle.Parent = n
+		local light = Instance.new("PointLight")
+		light.Color = shine
+		light.Range = 8
+		light.Brightness = 2
+		light.Parent = n
+	end
+	-- Epic and Legendary types (by list value) twinkle in their rarity's color, so a 1.2 stud needle reads from across
+	-- a bin. One slow emitter, no light, to stay cheap when a bin holds hundreds.
+	local rarity = Needle.rarity(needleId)
+	if rarity then
+		local twinkle = Instance.new("ParticleEmitter")
+		twinkle.Name = "Rarity"
+		twinkle.Color = ColorSequence.new(rarity.color)
+		twinkle.LightEmission = 1
+		twinkle.Rate = rarity.rate
+		twinkle.Lifetime = NumberRange.new(0.5, 0.9)
+		twinkle.Speed = NumberRange.new(0.5, 1.5)
+		twinkle.SpreadAngle = Vector2.new(180, 180)
+		twinkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.4, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		twinkle.Parent = n
+		n:SetAttribute("Rarity", rarity.name)
+	end
+	CollectionService:AddTag(n, "Needle")
+
+	local click = Instance.new("ClickDetector")
+	click.MaxActivationDistance = PICKUP_REACH
+	click.MouseClick:Connect(function(player)
+		pickUp(player, n)
+	end)
+	click.Parent = n
+
+	if polished then
+		Needle.polish(n)
+	end
+	n.Parent = folder
+	pcall(function()
+		n:SetNetworkOwner(nil)
+	end)
+	return n
+end
+
+-- Same as spawn, at a CFrame (for code that already has one, like spilled hay).
+function Needle.make(cframe, ownerId, needleId, mult, polished)
+	local n = Needle.spawn(cframe.Position, ownerId, needleId, mult, polished)
+	n.CFrame = cframe
+	return n
+end
+
+-- The clip-worthy moment (Shared/Reveal .clip): the finder's camera pushes in on the needle in slow motion with a
+-- rarity card (Reveal.client.luau, skippable), and Legendary or mutated finds get a line in server chat. Cooldowns
+-- keep a busy line from taking over the camera or chat. Nothing here is bought or rolled for money.
+local revealRemote
+local lastClip = {} -- UserId -> os.clock() of their last cinematic
+local lastChat = nil
+Players.PlayerRemoving:Connect(function(player)
+	lastClip[player.UserId] = nil
+end)
+local function clipMoment(n, ownerId, needleId, mult, reveal, rarity, shine)
+	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+	if not owner or not reveal.clip then
+		return false
+	end
+	if not revealRemote then
+		revealRemote = Instance.new("RemoteEvent")
+		revealRemote.Name = "NeedleReveal"
+		revealRemote.Parent = ReplicatedStorage
+	end
+	local now = os.clock()
+	local cinematic, chat = Reveal.allow(reveal, now, lastClip[ownerId], lastChat)
+	if cinematic then
+		lastClip[ownerId] = now
+	end
+	local kind = mult == WET.mult and "WET" or mult > 1 and ("x%d MUTATED"):format(mult) or (rarity and rarity.name:upper()) or "RARE"
+	local name = Needle.info(needleId).name
+	revealRemote:FireClient(owner, "clip", {
+		part = n,
+		at = n.Position,
+		title = ("%s %s NEEDLE"):format(kind, name:upper()),
+		finder = owner.DisplayName,
+		value = Needle.value(n),
+		color = shine,
+		cinematic = cinematic,
+		seconds = Reveal.CLIP_SECONDS,
+	})
+	if chat then
+		lastChat = now
+		revealRemote:FireAllClients("chat", ("[Needlewood] %s found a %s %s needle worth $%d!"):format(owner.DisplayName, kind:lower(), name:lower(), Needle.value(n)))
+	end
+	return cinematic
+end
+
+local function announce(ownerId, needleId, mult)
+	local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+	local text = ("%s found a x%d MUTATED %s needle worth $%d!"):format(
+		owner and owner.DisplayName or "Someone",
+		mult,
+		Needle.info(needleId).name:lower(),
+		Needle.priceOf(needleId, mult)
+	)
+	Announce.say(text, "gold")
+end
+
+-- The reveal: a freshly found needle pops up at `from` with a flash and hangs there for a moment, spinning, then
+-- arcs to land at `to`, where it glints and dings and settles with physics. Rolls the mutation chance unless mult
+-- comes rolled already (the sorter's bin rolls a bale's needles up front for the pity rule); near makes a plain needle
+-- flicker gold for a moment over the chute, a "so close" near miss.
+function Needle.throw(from, to, ownerId, needleId, grade, mult, near)
+	needleId = needleId or Needle.default.id
+	if mult == nil then
+		mult, near = Needle.rollMutation(Needle.weatherAt(from))
+	end
+	-- A real mutation found during a Thunderstorm always looks Storm (Props H15).
+	local stormy = mult >= MUTATION_MIN and Needle.weatherAt(from) > 1
+	local n = Needle.setGrade(Needle.spawn(from, ownerId, needleId, mult, nil, stormy and "storm" or nil), grade)
+	n.Anchored = true
+	n.CanCollide = false
+	local light = Instance.new("PointLight")
+	light.Color = n.Color
+	light.Range = 6
+	light.Brightness = 3
+	light.Parent = n
+	glint(n, mult > 1 and 30 or 8)
+	-- The reveal (H14, Shared/Reveal): Epic and up hang a little longer with a slow glint and nudge the owner's
+	-- camera; mutations burst confetti and real ones get the fanfare and a server banner. All of it rides on
+	-- attachments, so the needle's own look (H15) is left alone.
+	local rarity = Needle.rarity(needleId)
+	local reveal = Reveal.of(Needle.value(n), rarity and rarity.name, mult, WET.mult)
+	local shine = mult > 1 and (mult == WET.mult and WET_COLOR or MUTATED_COLOR) or (rarity and rarity.color) or n.Color
+	if reveal.glint then
+		revealGlint(n, shine, 1.5)
+		local owner = ownerId and Players:GetPlayerByUserId(ownerId)
+		if owner then
+			Feedback.juice(owner, "reveal", reveal.nudge)
+		end
+	end
+	if reveal.confetti then
+		confetti(n, shine)
+	end
+	if reveal.banner then
+		sound(n, FANFARE, 1)
+		announce(ownerId, needleId, mult)
+	end
+	local cinematic = clipMoment(n, ownerId, needleId, mult, reveal, rarity, shine)
+
+	near = near and mult == 1
+	local own, ownMaterial = n.Color, n.Material
+	if near then
+		local tag = Instance.new("BillboardGui")
+		tag.Name = "SoClose"
+		tag.Size = UDim2.fromOffset(110, 26)
+		tag.StudsOffset = Vector3.new(0, 1.6, 0)
+		tag.MaxDistance = 40
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextScaled = true
+		text.TextColor3 = MUTATED_COLOR
+		text.TextStrokeTransparency = 0.4
+		text.Text = "so close!"
+		text.Parent = tag
+		tag.Parent = n
+		Debris:AddItem(tag, 1.6)
+	end
+
+	task.spawn(function()
+		-- it hangs for the whole camera push-in when the finder gets one
+		local hover = (mult > 1 or cinematic) and Reveal.CLIP_SECONDS or near and 0.9 or reveal.glint and 0.8 or 0.35
+		local lift = from + Vector3.new(0, 1.5, 0)
+		local started = os.clock()
+		while n.Parent and os.clock() - started < hover do
+			local t = (os.clock() - started) / hover
+			n.CFrame = CFrame.new(from:Lerp(lift, math.sin(t * math.pi / 2))) * CFrame.Angles(0, t * 12, math.rad(30))
+			if near then -- flickers gold three times, then settles back to its own color
+				local gold = t < 0.8 and math.floor(t * 7.5) % 2 == 0
+				n.Color = gold and MUTATED_COLOR or own
+				n.Material = gold and Enum.Material.Neon or ownMaterial
+				light.Color = n.Color
+			end
+			RunService.Heartbeat:Wait()
+		end
+		if near and n.Parent then
+			n.Color, n.Material = own, ownMaterial
+		end
+		light:Destroy()
+
+		started = os.clock()
+		local control = (lift + to) / 2 + Vector3.new(0, 4, 0)
+		while n.Parent do
+			local alpha = math.min((os.clock() - started) / 0.6, 1)
+			local inv = 1 - alpha
+			n.CFrame = CFrame.new(inv * inv * lift + 2 * inv * alpha * control + alpha * alpha * to)
+				* CFrame.Angles(alpha * 9, alpha * 5, 0)
+			if alpha >= 1 then
+				break
+			end
+			RunService.Heartbeat:Wait()
+		end
+		if n.Parent then
+			n.Anchored = false
+			n.CanCollide = true
+			pcall(function()
+				n:SetNetworkOwner(nil)
+			end)
+			glint(n, 6)
+			-- a ding pitched by what the needle is worth, and a step higher for each rung of the reveal
+			Feedback.play("NeedleDing", n, Feedback.needlePitch(Needle.value(n)) * reveal.pitch)
+		end
+	end)
+	return n
+end
+
+-- Needle parts inside a box.
+function Needle.inBox(cframe, size)
+	local found = {}
+	for _, p in Workspace:GetPartBoundsInBox(cframe, size) do
+		if CollectionService:HasTag(p, "Needle") then
+			table.insert(found, p)
+		end
+	end
+	return found
+end
+
+-- A bundle of 10 plain needles of one type at cframe. With count (more than 10, or mutated needles of one key), it is a
+-- fatter sheaf tied twice: a crate, so a bin that runs all night stays a few parts per needle kind (LineMath.pack).
+function Needle.bundle(cframe, ownerId, needleId, polished, count, mult)
+	count = count or BUNDLE
+	local b = Needle.spawn(cframe.Position, ownerId, needleId, mult or 1, polished)
+	local crate = count > BUNDLE or (mult or 1) > 1
+	b.Name = crate and "NeedleCrate" or "NeedleBundle"
+	b.Size = crate and BUNDLE_SIZE * Vector3.new(1.15, 1.5, 1.5) or BUNDLE_SIZE
+	b.CFrame = cframe
+	b:SetAttribute("Count", count)
+	for _, x in (crate and { -0.3, 0.3 } or { 0 }) do
+		local band = Instance.new("Part")
+		band.Name = "Twine"
+		band.Shape = Enum.PartType.Cylinder
+		band.Size = Vector3.new(0.2, b.Size.Y + 0.08, b.Size.Z + 0.08)
+		band.CFrame = b.CFrame * CFrame.new(x * b.Size.X, 0, 0)
+		band.Color = TWINE
+		band.Material = Enum.Material.Fabric
+		band.CanCollide = false
+		band.CanQuery = false
+		band.CanTouch = false
+		band.Massless = true
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = b
+		weld.Part1 = band
+		weld.Parent = band
+		band.Parent = b
+	end
+	return b
+end
+Needle.BUNDLE = BUNDLE
+
+-- Packs the needles resting in a box (a needle bin) by owner and key with LineMath.pack: every 10 plain singles tie
+-- into a bundle, and once a key has LineMath.CRATE_AT stacks (or mutated singles) they become one crate. Needles still
+-- flying in are left alone. A merged part is anchored when any part of it was (a pile restored from a save).
+-- Returns how many parts it made.
+function Needle.bundleIn(cframe, size)
+	local byOwner = {}
+	for _, n in Needle.inBox(cframe, size) do
+		if not (n.Anchored and not n.CanCollide) then -- anchored and not solid: still in the air (Needle.throw)
+			local owner = n:GetAttribute("OwnerId") or 0
+			byOwner[owner] = byOwner[owner] or {}
+			table.insert(byOwner[owner], n)
+		end
+	end
+	local made = 0
+	for ownerId, list in byOwner do
+		local parts = {}
+		for i, n in list do
+			parts[i] = { Needle.keyOfPart(n), Needle.count(n) }
+		end
+		for _, m in LineMath.pack(parts, BUNDLE) do
+			local center, anchored, polishedAll = Vector3.zero, false, true
+			for _, i in m.parts do
+				local n = list[i]
+				center += n.Position / #m.parts
+				anchored = anchored or n.Anchored
+				polishedAll = polishedAll and n:GetAttribute("Polished") == true
+			end
+			local id, mult, _, grade = LineMath.parseKey(m.key)
+			for _, i in m.parts do
+				list[i]:Destroy()
+			end
+			local b = Needle.setGrade(Needle.bundle(CFrame.new(center + Vector3.new(0, 0.3, 0)), ownerId ~= 0 and ownerId or nil, id, polishedAll, m.count, mult), grade)
+			b.Anchored = anchored
+			glint(b, math.min(m.count, 20))
+			made += 1
+		end
+	end
+	return made
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	held[player] = nil
+end)
+
+return Needle

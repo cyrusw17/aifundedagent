@@ -1,5 +1,5 @@
 --!nonstrict
--- Collision groups. Loose hay and barrel debris never collide with players, so a pile cannot trip or fling anyone.
+-- Collision groups. Loose hay and bale debris never collide with players, so a pile cannot trip or fling anyone.
 local PhysicsService = game:GetService("PhysicsService")
 
 local Groups = { Loose = "Loose", Players = "Players" }

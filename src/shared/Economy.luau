@@ -1,9 +1,13 @@
 --!strict
 -- Pure economy math. No Roblox services in here, so it can be tested anywhere.
+local Prices = require(script.Parent.Config.Prices)
+
 local Economy = {}
 
-Economy.HAY_PRICE = 0.5 -- dollars per hay, placeholder
-Economy.RAW_NEEDLE_PRICE = 1 -- the basic shop only pays this for needles it cannot see
+Economy.HAY_PRICE = Prices.HayPrice -- dollars per strand of hay
+Economy.RAW_NEEDLE_PRICE = Prices.RawNeedlePrice -- the basic shop only pays this for needles it cannot see
+-- A needle you found by hand and carry in your pocket sells at the public pad for this share of its sorted value.
+Economy.HAND_NEEDLE_SHARE = Prices.HandFoundNeedleShare
 
 -- Value of a load sold raw at the basic shop.
 function Economy.rawLoadValue(hay: number, needlesInside: number): number
