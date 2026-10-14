@@ -159,16 +159,16 @@ Prices.Gloves = {
 	starlight = 400000,
 }
 
--- A land plot (Config/Land). Every plot is the same 12 x 10 tiles, and a save owns one. It is the first land goal, at
--- about 45 minutes in: roughly 15 minutes of pickup earnings once the pickup and wagon are paid for, or $500 down
--- with a land loan. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75.
-Prices.Plot = 2500
--- Each extra row of 12 tiles at the back of a plot (two rows to buy). A new plot's 96 tiles hold a first line easily;
--- the extra rows matter when you add a second line around the shaker-table stage, so a row costs about 12 minutes of
--- earnings there. That is $417 a tile against the plot's $26, because by then you are buying room for income, not land.
-Prices.PlotExpansion = 5000
+-- A land plot (Config/Land). Every plot is the same 12 x 10 tiles, and a profile owns one. It is the first purchase,
+-- inside the first minute (Cyrus's playtest ask: sell hay, buy a plot, expand it): a shovel scoop is 12 strands at
+-- $0.50 ($6) and a full carry about $30, so two trips to the hay shop pay for it.
+Prices.Plot = 50
+-- The back 4 rows of a plot start locked (a new plot is 12 x 6). Each row costs more than the last, one price per row
+-- in buying order (Config/Land expansionPrice; a single number would price every row the same). The first row comes a
+-- few minutes in, the last around the pickup and wagon; all land comes to $13,550, near the old $12,500.
+Prices.PlotExpansion = { 1000, 2500, 4000, 6000 }
 -- A second farm per save. Hauling, not sorting, limits income at almost every stage, so a second plot buys room more
--- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $37,500) and takes one
+-- than money. It comes after the first plot is built out (plot + rows + conveyor sorter is about $43,550) and takes one
 -- of a server's six plots, so it is a mid-game commitment: about 90 minutes at the conveyor-sorter stage.
 Prices.SecondPlot = 60000
 Prices.BinDividers = 1500 -- splits a plot's needle bin into one corner per needle type: tidiness, so cheap (ECONOMY.md)
