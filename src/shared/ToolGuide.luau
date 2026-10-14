@@ -13,7 +13,7 @@ local HayMath = require(Shared.HayMath)
 
 local ToolGuide = {}
 
-local WALK = 16 -- Roblox's default walk speed, what every avatar starts with
+local WALK = Game.WalkSpeed -- the empty-handed walk every avatar starts with (Avatar)
 
 local function percent(x: number): string
 	return ("%d%%"):format(math.round(x * 100))
@@ -50,6 +50,16 @@ end
 
 function ToolGuide.glove(def: any): string
 	local load = Game.CarryCapacity + def.carryBonus
+	if not Game.LoadSlowsYou then
+		-- A load does not slow you (Config.LoadSlowsYou), so a shovel is how much it carries and scoops.
+		local line = if def.tier == 0
+			then ("%s: carries %d hay a load. Better shovels carry and scoop more."):format(def.name, load)
+			else ("%s: carries %d hay a load (%d more), %d more per scoop."):format(def.name, load, def.carryBonus, def.scoopBonus)
+		if def.tier >= Game.DoubleCarryTier then
+			line ..= " Carries two bales at once."
+		end
+		return line
+	end
 	if def.tier == 0 then
 		return ("%s: carries %d hay a load. Walk %.1f with a meadow bale. Better shovels carry more, scoop more and slow you less under a load."):format(
 			def.name,

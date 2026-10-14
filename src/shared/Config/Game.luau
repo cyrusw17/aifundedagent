@@ -60,6 +60,14 @@ return {
 
 	-- Carrying a whole bale
 	CarryWalkSpeed = 8,
+	-- Moving about (Cyrus, 2026-10-14: "slightly faster, and add the option to run"). WalkSpeed is the empty-handed
+	-- walk (Roblox's default is 16); holding Run multiplies whatever speed the load leaves you by RunMultiplier.
+	WalkSpeed = 18.5,
+	RunMultiplier = 1.5,
+	-- Cyrus, 2026-10-14: "carrying hay no longer slows you down". Off, hay in your arms, bales and the barrow leave
+	-- your speed alone (Avatar.refreshSpeed); the shovel tier still sets how much a load holds. The weight math
+	-- (HayMath.speed, Config/Gloves) stays, so turning this back on restores the old slowdown.
+	LoadSlowsYou = false,
 	StackReach = 9, -- a bale set down lands on top of a stack up to this high in front of you
 	-- Hold click (or G) with a bale to charge a throw, then let go to lob it. A plain click still sets it down.
 	TossRange = 10, -- studs on flat ground at full charge
