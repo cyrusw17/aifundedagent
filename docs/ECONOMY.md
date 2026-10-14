@@ -144,22 +144,21 @@ hay that needs them.
 
 ### Land (Land Office)
 
-Every plot is now the same 12 x 10 tiles (the Land Office thread's change), so there is one price: **$2,500**
-(`Prices.Plot`, was $1,500 in that change and $800 to $6,000 before it).
+Every plot is the same 12 x 10 tiles, so there is one price: **$50** (`Prices.Plot`; was $2,500, and $1,500 before
+that). Cyrus's playtest ask is that within the first minute a player sells hay, buys a plot and starts expanding it. A
+shovel scoop is 12 strands at $0.50 ($6) and a full carry is about $30, so two trips to the hay shop buy the plot. The
+plot is no longer the land goal; the rows are. A hand sieve and a short line still cost about $1,150 on top, and lift
+a bale from $47 to $75. The land loan is now pointless for a first plot, but it is harmless.
 
-It is the first land goal, at about 45 minutes: roughly 15 minutes of pickup earnings once the pickup and wagon are
-paid for. With a hand sieve and a short line ($3,600 in all) it lifts a bale from $47 to $75. A land loan brings it
-forward to $500 down. $1,500 would arrive only a few minutes after the pickup, before the player has learned to haul.
-
-**Plot expansion: $5,000 a row** (`Prices.PlotExpansion`, was $1,500 in Land's first version). A plot starts with its
-back two rows locked (96 of 120 tiles), and each row adds 12 tiles. 96 tiles is plenty for the first line, so the rows
-only matter when you build a second line, around the shaker-table stage, where $5,000 is about 12 minutes of earnings.
-At $1,500 it would be a 4-minute afterthought; at $5,000 it is a small goal of its own.
+**Plot expansion: $1,000, $2,500, $4,000, $6,000** (`Prices.PlotExpansion`, one price per row in buying order; was
+$5,000 a row for two rows). A new plot opens with its back four rows locked (12 x 6 tiles), and each row adds 12 tiles.
+The first row is a few minutes in, the last lands around the pickup and wagon stage. All land comes to $13,550, close
+to the old $12,500 (plot plus two $5,000 rows), so the money the climb asks for is unchanged; only its order is.
 
 **Second farm: $60,000** (`Prices.SecondPlot`, Land's placeholder was $25,000). A save can own one more plot. Three
 things set the price. First, hauling is the limit at almost every stage (the stage table sorts exactly what it hauls),
 so a second line mostly buys room and a second region's sorter, not double income. Second, it should come after the
-first plot is fully built out: plot, both rows and a conveyor sorter cost about $37,500, so a second farm has to cost
+first plot is fully built out: plot, all four rows and a conveyor sorter cost about $43,550, so a second farm has to cost
 more or players would skip the rows. Third, each server has only six plots, so a second farm takes one from a player
 who might join later; it should be a real commitment. $60,000 is about 90 minutes at the conveyor-sorter stage and
 40 minutes at the box truck, a mid-game goal. $25,000 would arrive before the conveyor sorter and fill servers early.
