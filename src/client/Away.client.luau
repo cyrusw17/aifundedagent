@@ -49,7 +49,7 @@ end
 
 local function chime()
 	local def = Sounds.CashRegister
-	if not def then
+	if not def or def.id == "" then
 		return
 	end
 	local sound = Instance.new("Sound")

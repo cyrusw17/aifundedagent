@@ -11,6 +11,9 @@ local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local player = Players.LocalPlayer
 
 local function playFlat(def, pitch)
+	if def.id == "" then
+		return
+	end
 	local sound = Instance.new("Sound")
 	sound.SoundId = def.id
 	sound.Volume = def.volume or 0.5

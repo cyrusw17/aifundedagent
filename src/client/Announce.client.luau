@@ -65,7 +65,7 @@ local function show(message, kind)
 	local mine = shown
 	banner.Visible = true
 	fade(1, 0)
-	if kind == "gold" then
+	if kind == "gold" and Sounds.NeedleDing.id ~= "" then
 		local def = Sounds.NeedleDing
 		local sound = Instance.new("Sound")
 		sound.SoundId = def.id
