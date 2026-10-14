@@ -2369,7 +2369,7 @@ local function onLoaded(player)
 		Data.toast(player, "Every plot on this server is taken, so your farm can't be set up here. It is still saved.")
 		return
 	end
-	local wait = {}
+	local wait: { chosen: any } = { chosen = nil }
 	picking[player] = wait
 	player:SetAttribute("PlotChoice", suggested.index)
 	local deadline = os.clock() + PICK_SECONDS
